@@ -1,14 +1,12 @@
 import os
 import sys
 
-# HACK: Bypass ao bloqueio do Discloud. Instala o motor quantitativo após o boot.
+# HACK: Força a instalação das bibliotecas matemáticas após o arranque do contentor para evitar o bug do Discloud
 os.system(f"{sys.executable} -m pip install pandas numpy yfinance")
 
 from flask import Flask, render_template, jsonify
-from Regime import avaliar_regime_mercado
-
-from MeanReversion import calcular_radar_reversao # A nova importação
 from Radar import calcular_radar_momentum_v2, comparar_ativos
+from MeanReversion import calcular_radar_reversao
 
 app = Flask(__name__)
 
