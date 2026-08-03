@@ -1,1 +1,324 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Radar Quantitativo</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #121212; color: #ffffff; padding: 40px; }
+        .container { max-width: 800px; margin: auto; }
+        button { background-color: #007bff; color: white; border: none; padding: 12px 24px; cursor: pointer; font-size: 16px; border-radius: 4px; }
+        button:hover { background-color: #0056b3; }
+        .status-box { background-color: #1e1e1e; padding: 20px; border-radius: 8px; margin-top: 20px; border-left: 5px solid #007bff; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #333; }
+        th { background-color: #1e1e1e; color: #aaa; }
+        .loader { display: none; margin-top: 20px; color: #ffc107; }
+    </style>
+</head>
+<body>
 
+<div class="container">
+    <h1>Radar de Momentum</h1>
+    <button onclick="executarAnalise()">Executar Análise de Mercado</button>
+    
+    <div style="background-color: #1e1e1e; padding: 20px; border-radius: 8px; margin-top: 20px;">
+        <h3 style="margin-top:0;">Duelo Manual de Ativos</h3>
+        <input type="text" id="input-t1" placeholder="Ex: JMT.LS" style="padding: 10px; border-radius: 4px; border: 1px solid #555; background: #333; color: white;">
+        <span style="margin: 0 10px;">vs</span>
+        <input type="text" id="input-t2" placeholder="Ex: NVG.LS" style="padding: 10px; border-radius: 4px; border: 1px solid #555; background: #333; color: white;">
+        <button onclick="compararTickersManual()" style="background-color: #ff9800; margin-left: 15px;">Comparar</button>
+    </div>
+
+    <div id="loading" class="loader">A extrair dados e calcular indicadores... (pode demorar)</div>
+
+    <div id="resultado" style="display:none;">
+        <div class="status-box">
+            <h3 style="margin-top:0;">Regime de Mercado Atual</h3>
+            <p><strong>Estado:</strong> <span id="estado-regime"></span></p>
+            <p><strong>ADX (^GSPC):</strong> <span id="valor-adx"></span></p>
+            <h4 style="color: #4caf50; margin-bottom: 0;" id="estrategia-ativa"></h4>
+        </div>
+
+        <h3 id="titulo-tabela" style="margin-top:40px;">Ativos com Sinal de Entrada</h3>
+        <table id="tabela-ativos">
+            <thead>
+                <!-- Títulos injetados pelo JS dinamicamente -->
+            </thead>
+            <tbody>
+                <!-- Linhas injetadas pelo JS dinamicamente -->
+            </tbody>
+        </table>
+        <div id="relatorio-nlg" style="margin-top: 40px; background-color: #1a1a1a; padding: 25px; border-radius: 8px; border-left: 4px solid #ff9800; display: none;">
+            <!-- O relatório em texto será injetado aqui -->
+        </div>
+    </div>
+    <!-- GUIA EDUCACIONAIS / MATEMÁTICA DOS ALVOS -->
+    <details style="background-color: #1e1e1e; padding: 20px; border-radius: 8px; margin-top: 40px; border: 1px solid #333; cursor: pointer;">
+        <summary style="font-size: 18px; font-weight: bold; color: #ff9800; outline: none; user-select: none;">
+            📖 Guia Educacional: A Matemática dos Alvos de Saída (Como são calculados?)
+        </summary>
+        
+        <div style="margin-top: 20px; color: #d1d1d1; line-height: 1.6; cursor: default;" onclick="event.stopPropagation();">
+            
+            <h3 style="color: #ffffff; border-bottom: 1px solid #444; padding-bottom: 5px;">1. Em Estratégia de Rotação / Trend Following (ex: EDP vs EDPR)</h3>
+            <p>Quando compras um ativo em aceleração técnica, queres dar-lhe espaço para subir acompanhando a volatilidade normal. O indicador ideal para definir o alvo é o <strong>ATR (Average True Range)</strong>, que mede o intervalo médio de variação diária da ação.</p>
+            <ul>
+                <li><strong>Alvo Conservador (T1):</strong> <code style="background:#2d2d2d; padding:2px 6px; border-radius:4px; color:#4caf50;">Preço + (1.5 × ATR₁₄)</code> — Ideal para realizar 50% do lucro e garantir a operação.</li>
+                <li><strong>Alvo Agressivo (T2):</strong> <code style="background:#2d2d2d; padding:2px 6px; border-radius:4px; color:#2196f3;">Preço + (3.0 × ATR₁₄)</code> — Projeção para a saída total do <em>trade</em>.</li>
+                <li><strong>Stop Loss Técnico:</strong> <code style="background:#2d2d2d; padding:2px 6px; border-radius:4px; color:#f44336;">Preço - (1.5 × ATR₁₄)</code> — Proteção se a tendência falhar.</li>
+            </ul>
+
+            <h3 style="color: #ffffff; border-bottom: 1px solid #444; padding-bottom: 5px; margin-top: 30px;">2. Em Estratégia de Mean Reversion (Mercado Lateral / Ressaltos)</h3>
+            <p>Quando compras ativos sobrevendidos no suporte, o objetivo não é uma subida infinita, mas sim o regresso à média.</p>
+            <ul>
+                <li><strong>Alvo Principal (T1):</strong> A <strong>Média Móvel de 20 dias (SMA 20)</strong>. É o ponto de atração natural do preço.</li>
+                <li><strong>Alvo Estendido (T2):</strong> A <strong>Banda Superior de Bollinger</strong> (<code style="background:#2d2d2d; padding:2px 6px; border-radius:4px; color:#ff9800;">SMA₂₀ + 2σ</code>).</li>
+            </ul>
+
+        </div>
+    </details>
+</div>
+
+<script>
+    async function executarAnalise() {
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('resultado').style.display = 'none';
+
+        // NOVO: Garante que o título é o correto para o Radar
+        document.getElementById('titulo-tabela').innerText = 'Ativos com Sinal de Entrada (Radar)';
+
+        // NOVO: Obrigar o sistema a limpar o duelo fantasma anterior
+        document.getElementById('relatorio-nlg').innerHTML = '';
+        document.getElementById('relatorio-nlg').style.display = 'none';
+        
+        const thead = document.querySelector('#tabela-ativos thead');
+        const tbody = document.querySelector('#tabela-ativos tbody');
+        thead.innerHTML = ''; 
+        tbody.innerHTML = ''; 
+
+        try {
+            const resposta = await fetch('/api/analisar');
+            const dados = await resposta.json();
+
+            if (dados.erro) {
+                alert("Erro: " + dados.erro);
+                document.getElementById('loading').style.display = 'none';
+                return;
+            }
+
+            document.getElementById('estado-regime').innerText = dados.regime;
+            document.getElementById('valor-adx').innerText = dados.adx;
+            document.getElementById('estrategia-ativa').innerText = dados.estrategia;
+
+            if (dados.ativos && dados.ativos.length > 0) {
+                // Construir cabeçalhos baseados nas chaves do primeiro ativo
+                
+                
+                // Substitui isto:
+                // let colunas = Object.keys(dados.ativos[0]);
+
+                // Por isto:
+                let colunas = Object.keys(dados.ativos[0]);
+                // Remove o 'Ticker' do array atual e força-o a ser o primeiro elemento
+                colunas = colunas.filter(c => c !== 'Ticker');
+                colunas.unshift('Ticker'); 
+
+                let linhaHeader = '<tr>';
+                colunas.forEach(coluna => {
+                    linhaHeader += `<th>${coluna}</th>`;
+                });
+                linhaHeader += '</tr>';
+                thead.innerHTML = linhaHeader;
+
+                // Construir linhas
+                dados.ativos.forEach(ativo => {
+                    let linhaBody = '<tr>';
+                    colunas.forEach(coluna => {
+                        let valor = ativo[coluna];
+                        // Destacar Ticker a bold
+                        if (coluna === 'Ticker') {
+                            linhaBody += `<td><strong>${valor}</strong></td>`;
+                        } else {
+                            linhaBody += `<td>${valor}</td>`;
+                        }
+                    });
+                    linhaBody += '</tr>';
+                    tbody.innerHTML += linhaBody;
+                });
+                // NOVO: Injetar o relatório macro após a tabela estar construída
+                document.getElementById('relatorio-nlg').innerHTML = gerarRelatorioRadarNLG(dados);
+                document.getElementById('relatorio-nlg').style.display = 'block';
+            } else {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Nenhum ativo cumpriu os critérios da estratégia atual.</td></tr>';
+            }
+
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('resultado').style.display = 'block';
+
+        } catch (erro) {
+            alert("Falha de ligação à API.");
+            document.getElementById('loading').style.display = 'none';
+        }
+    }
+
+    async function compararTickersManual() {
+        const t1 = document.getElementById('input-t1').value.trim();
+        const t2 = document.getElementById('input-t2').value.trim();
+
+        
+        
+        if (!t1 || !t2) {
+            alert("Por favor, insere dois tickers para comparar.");
+            return;
+        }
+
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('resultado').style.display = 'none';
+        
+       
+        // NOVO: Obrigar o sistema a limpar o relatório fantasma anterior
+        document.getElementById('relatorio-nlg').innerHTML = '';
+        document.getElementById('relatorio-nlg').style.display = 'none';
+
+        // NOVO: Muda o título para refletir que é apenas um raio-x
+        document.getElementById('titulo-tabela').innerText = 'Raio-X: Comparação Direta de Ativos';
+
+
+        const thead = document.querySelector('#tabela-ativos thead');
+        const tbody = document.querySelector('#tabela-ativos tbody');
+        thead.innerHTML = ''; tbody.innerHTML = ''; 
+
+        try {
+            const resposta = await fetch(`/api/comparar/${t1}/${t2}`);
+            
+            if (!resposta.ok) {
+                const erroData = await resposta.json();
+                alert(erroData.erro || "Erro na comparação.");
+                document.getElementById('loading').style.display = 'none';
+                return;
+            }
+            
+            const dados = await resposta.json();
+
+            // Esconder a caixa do regime de mercado, pois é um duelo isolado
+            document.getElementById('estado-regime').parentElement.style.display = 'none';
+
+            if (dados && dados.length > 0) {
+                let colunas = Object.keys(dados[0]);
+                colunas = colunas.filter(c => c !== 'Ticker');
+                colunas.unshift('Ticker');
+
+                let linhaHeader = '<tr>';
+                colunas.forEach(coluna => { linhaHeader += `<th>${coluna}</th>`; });
+                linhaHeader += '</tr>';
+                thead.innerHTML = linhaHeader;
+
+                dados.forEach(ativo => {
+                    let linhaBody = '<tr>';
+                    colunas.forEach(coluna => {
+                        let valor = ativo[coluna];
+                        linhaBody += (coluna === 'Ticker') ? `<td><strong>${valor}</strong></td>` : `<td>${valor}</td>`;
+                    });
+                    linhaBody += '</tr>';
+                    tbody.innerHTML += linhaBody;
+                });
+
+            // Ativa o motor NLG se houver 2 ativos, avisa se faltarem dados
+            if (dados.length === 2) {
+                document.getElementById('relatorio-nlg').innerHTML = gerarRelatorioNLG(dados[0], dados[1]);
+                document.getElementById('relatorio-nlg').style.display = 'block';
+            } else if (dados.length === 1) {
+                document.getElementById('relatorio-nlg').innerHTML = `<p style="color: #f44336; font-weight: bold;">Erro de Duelo: Não foi possível comparar. O ticker que falta (provavelmente mal escrito ou recém-criado) não existe na base de dados ou não possui os 252 dias de histórico exigidos para calcular a Força Relativa.</p>`;
+                document.getElementById('relatorio-nlg').style.display = 'block';
+            }
+            }
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('resultado').style.display = 'block';
+
+        } catch (erro) {
+            alert("Falha ao comunicar com o servidor.");
+            document.getElementById('loading').style.display = 'none';
+        }
+    }
+    function gerarRelatorioNLG(t1, t2) {
+        let html = `<h3 style="color: #ff9800;">O Duelo: ${t1.Ticker} vs ${t2.Ticker}</h3>`;
+
+        // 1. Força Relativa de Mansfield
+        html += `<h4>1. Força Relativa de Mansfield (Quem está a bater o mercado?)</h4><ul>`;
+        if (t1['Mansfield RS'] < 0 && t2['Mansfield RS'] < 0) {
+            html += `<li><strong>${t1.Ticker} (${t1['Mansfield RS']}) e ${t2.Ticker} (${t2['Mansfield RS']}):</strong> Ambas estão com valores profundamente negativos. Isto significa que, enquanto o índice geral sobe ou lateraliza, estas duas ações estão a ser massacradas. Nenhuma delas demonstra a força institucional necessária para sustentar uma subida.</li>`;
+        } else {
+            let vencedor = t1['Mansfield RS'] > t2['Mansfield RS'] ? t1 : t2;
+            let perdedor = t1['Mansfield RS'] > t2['Mansfield RS'] ? t2 : t1;
+            html += `<li><strong>O domínio da ${vencedor.Ticker} (${vencedor['Mansfield RS']}):</strong> A ${vencedor.Ticker} está a bater o mercado, ao contrário da ${perdedor.Ticker} (${perdedor['Mansfield RS']}), que apresenta fraqueza relativa face ao índice de referência.</li>`;
+        }
+        html += `</ul>`;
+
+        // 2. ROC 6M
+        html += `<h4>2. ROC 6M (Qual é a velocidade da destruição/criação de capital?)</h4><ul>`;
+        if (t1['ROC 6M (%)'] < 0 && t2['ROC 6M (%)'] < 0) {
+            html += `<li><strong>${t1.Ticker} (${t1['ROC 6M (%)']}%) e ${t2.Ticker} (${t2['ROC 6M (%)']}%):</strong> O <em>Rate of Change</em> mostra-te a realidade nua e crua do médio prazo. Não há qualquer "aceleração real e sustentada" aqui. Há apenas uma fuga massiva de capital em ambos os ativos.</li>`;
+        } else if (t1['ROC 6M (%)'] > 0 && t2['ROC 6M (%)'] > 0) {
+            html += `<li><strong>Ambas em aceleração:</strong> O momentum de médio prazo é positivo para ambas. A ${t1.Ticker} regista ${t1['ROC 6M (%)']}%, e a ${t2.Ticker} regista ${t2['ROC 6M (%)']}%. O capital flui ativamente para os dois ativos.</li>`;
+        } else {
+            let vencedorRoc = t1['ROC 6M (%)'] > 0 ? t1 : t2;
+            let perdedorRoc = t1['ROC 6M (%)'] < 0 ? t1 : t2;
+            html += `<li><strong>Divergência técnica:</strong> A ${vencedorRoc.Ticker} está em clara expansão (${vencedorRoc['ROC 6M (%)']}%), enquanto a ${perdedorRoc.Ticker} continua num ciclo de destruição de capital (${perdedorRoc['ROC 6M (%)']}%).</li>`;
+        }
+        html += `</ul>`;
+
+        // 3. RSI 14
+        html += `<h4>3. RSI de 14 Dias (Existe exaustão ou força?)</h4><ul>`;
+        const avaliaRSI = (ticker, rsi) => {
+            if (rsi < 30) return `<li><strong>${ticker} (${rsi}):</strong> Está a aproximar-se ou já dentro da zona de sobrevenda (<30). Numa ação com ROC negativo, isto significa apenas que a tendência de queda continua intacta e pesada.</li>`;
+            if (rsi > 70) return `<li><strong>${ticker} (${rsi}):</strong> Encontra-se em zona de sobrecompra (>70). O movimento começa a dar sinais de esticão e risco de exaustão no curto prazo.</li>`;
+            return `<li><strong>${ticker} (${rsi}):</strong> Está numa zona neutra. Sem pressões extremas de sobrecompra ou sobrevenda que ditem um ressalto imediato.</li>`;
+        };
+        html += avaliaRSI(t1.Ticker, t1['RSI (14)']);
+        html += avaliaRSI(t2.Ticker, t2['RSI (14)']);
+        html += `</ul>`;
+
+        // Veredicto
+        html += `<h4>O Veredicto do Sistema:</h4>`;
+        if (t1['ROC 6M (%)'] < 0 && t1['Mansfield RS'] < 0 && t2['ROC 6M (%)'] < 0 && t2['Mansfield RS'] < 0) {
+            html += `<p>Se tivesses as duas em carteira, a leitura quantitativa dita que deverias liquidar ambas para proteger capital, pois nenhuma cumpre os teus critérios base (ROC > 0 e Mansfield > 0). Comprar qualquer uma delas em nome do <em>trend following</em> é um erro primário.</p>`;
+        } else if (t1['Mansfield RS'] > 0 && t1['ROC 6M (%)'] > 0 && (t2['Mansfield RS'] < 0 || t2['ROC 6M (%)'] < 0)) {
+            html += `<p>O racional quantitativo apoia inequivocamente a <strong>compra da ${t1.Ticker} e a venda/rejeição da ${t2.Ticker}</strong>. A ${t1.Ticker} cumpre os pressupostos de rotação, demonstrando aceleração sustentada face ao mercado.</p>`;
+        } else if (t2['Mansfield RS'] > 0 && t2['ROC 6M (%)'] > 0 && (t1['Mansfield RS'] < 0 || t1['ROC 6M (%)'] < 0)) {
+            html += `<p>O racional quantitativo apoia inequivocamente a <strong>compra da ${t2.Ticker} e a venda/rejeição da ${t1.Ticker}</strong>. A ${t2.Ticker} cumpre os pressupostos de rotação, demonstrando aceleração sustentada face ao mercado.</p>`;
+        } else {
+            html += `<p>O cenário não apresenta assimetrias óbvias que justifiquem uma rotação agressiva de 1-para-1 baseada nos teus critérios absolutos. Avaliar filtros adicionais de volatilidade ou volume.</p>`;
+        }
+
+        // Injetar Preços de Saída no Relatório
+        const recomendado = t1['Mansfield RS'] > t2['Mansfield RS'] ? t1 : t2;
+        
+        html += `<h4>Níveis Operacionais Sugeridos (${recomendado.Ticker}):</h4><ul>`;
+        html += `<li><strong>Cotação Atual:</strong> ${recomendado['Preço']} €</li>`;
+        html += `<li><strong>Alvo Conservador (T1):</strong> <span style="color:#4caf50;">${recomendado['Alvo T1 (€)']} €</span> (Tomada parcial de lucros)</li>`;
+        html += `<li><strong>Alvo Agressivo (T2):</strong> <span style="color:#2196f3;">${recomendado['Alvo T2 (€)']} €</span> (Saída total da posição)</li>`;
+        html += `<li><strong>Stop Loss Sugerido:</strong> <span style="color:#f44336;">${recomendado['Stop Loss (€)']} €</span> (Invalidação da tese)</li>`;
+        html += `</ul>`;
+        return html;
+    }
+    function gerarRelatorioRadarNLG(dados) {
+        let html = `<h3 style="color: #ff9800;">Análise Macro e Diretrizes de Execução</h3>`;
+
+        if (dados.estrategia.includes("Mean Reversion")) {
+            html += `<p><strong>O Cenário:</strong> O mercado geral encontra-se sem direção clara (ADX a ${dados.adx}). Aplicar estratégias clássicas de seguimento de tendência neste momento iria destruir capital através de sucessivos falsos rompimentos.</p>`;
+            html += `<p><strong>O Racional da Triagem:</strong> O sistema isolou os ativos acima porque sofreram quedas agudas e irracionais no curtíssimo prazo. Todos apresentam um RSI de 4 dias em níveis de exaustão extrema (<30) e encontram-se a negociar abaixo do suporte da Banda de Bollinger Inferior.</p>`;
+            html += `<h4>O Teu Ponto Cego (Como Operar):</h4>`;
+            html += `<p>Isto não é um sinal para "comprar e esquecer". Estás tecnicamente a tentar apanhar facas a cair (<em>falling knives</em>). O objetivo tático aqui é capturar um <strong>ressalto técnico rápido</strong> de volta à média móvel de 20 dias. Exige gestão de risco agressiva e <em>stop losses</em> apertados. Ativos com uma "Dist. Banda Inf." mais negativa (ex: -3.00%) indicam que o elástico está mais esticado, aumentando a probabilidade matemática de um ressalto iminente.</p>`;
+        } else {
+            html += `<p><strong>O Cenário:</strong> O mercado geral apresenta uma tendência direcional forte e validada (ADX a ${dados.adx}). O regime atual exige e favorece a alocação de capital em ativos com <em>momentum</em> acelerado.</p>`;
+            html += `<p><strong>O Racional da Triagem:</strong> Os ativos listados sobreviveram a um filtro de qualidade triplo: batem o desempenho do índice de referência (Mansfield > 0), estão ativamente a criar capital a médio prazo (ROC > 0) e têm espaço para subir sem estarem sobrecomprados (RSI 14 < 65).</p>`;
+            html += `<h4>O Teu Ponto Cego (Como Operar):</h4>`;
+            html += `<p>A presença nesta lista confirma a qualidade técnica, mas <strong>não é um gatilho cego de entrada a mercado</strong>. Comprar imediatamente expõe-te a topos locais. A execução correta exige que aguardes por um <em>pullback</em> (recuo) a uma média móvel de curto prazo (como a EMA 20) acompanhado de uma contração no volume, otimizando o teu rácio de risco/retorno antes de disparar o capital.</p>`;
+        }
+        return html;
+    }
+</script>
+
+</body>
+</html>
