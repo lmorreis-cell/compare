@@ -13,7 +13,8 @@ def calcular_radar_reversao(lista_tickers):
     resultados = []
     print(f"A processar radar de Mean Reversion para {len(lista_tickers)} ativos...")
     
-    dados_acoes = yf.download(lista_tickers, period="6mo", progress=False)['Close']
+    # Adicionado threads=True para extração imediata
+    dados_acoes = yf.download(lista_tickers, period="6mo", progress=False, threads=True)['Close']
     
     for ticker in lista_tickers:
         try:
@@ -23,29 +24,19 @@ def calcular_radar_reversao(lista_tickers):
             if len(fechos) < 30:
                 continue
 
-            # NOVO: Ir buscar a cotação em tempo real (fast_info) para corrigir desfasamentos
-            try:
-                ticker_obj = yf.Ticker(ticker)
-                preco_real = ticker_obj.fast_info['lastPrice']
-                if preco_real and not np.isnan(preco_real):
-                    # Substitui o último valor do histórico pelo preço real instantâneo
-                    fechos.iloc[-1] = preco_real
-            except Exception:
-                pass # Se falhar o tempo real, mantemos o último fecho histórico
+            # ATENÇÃO: O bloco de código que executava a rotina 'fast_info' foi completamente 
+            # removido daqui para estancar os pedidos individuais e viabilizar a execução na cloud.
                 
             preco_atual = fechos.iloc[-1]
             
-            # 1. RSI Curto Prazo (4 dias) com o preço real injetado
             rsi_4 = calcular_rsi_pandas(fechos, 4).iloc[-1]
             
-            # 2. Bollinger Bands
             sma_20 = fechos.rolling(window=20).mean()
             std_20 = fechos.rolling(window=20).std()
             banda_inferior = sma_20 - (2 * std_20)
             
             distancia_banda = ((preco_atual / banda_inferior.iloc[-1]) - 1) * 100
             
-            # 3. Filtros
             if rsi_4 < 30 and distancia_banda < 1.5: 
                 resultados.append({
                     'Ticker': ticker,
