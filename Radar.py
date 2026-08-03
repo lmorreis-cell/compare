@@ -8,16 +8,15 @@ def calcular_rsi(serie, periodo=14):
     ganhos = delta.clip(lower=0).ewm(com=periodo-1, adjust=False).mean()
     perdas = -1 * delta.clip(upper=0).ewm(com=periodo-1, adjust=False).mean()
     
-    # Evitar divisão por zero
     rs = ganhos / perdas.replace(0, np.nan)
     rsi = 100 - (100 / (1.0 + rs))
     
-    # Preencher NaN com 100 onde as perdas são zero
     return rsi.fillna(100)
 
 def calcular_radar_momentum_v2(lista_tickers, ticker_indice="^GSPC"):
     print("A descarregar dados do índice de referência...")
-    indice = yf.download(ticker_indice, period="2y", progress=False)['Close']
+    # Adicionado threads=True
+    indice = yf.download(ticker_indice, period="2y", progress=False, threads=True)['Close']
     
     if indice.empty:
         print("Erro ao obter o índice.")
@@ -25,7 +24,8 @@ def calcular_radar_momentum_v2(lista_tickers, ticker_indice="^GSPC"):
 
     resultados = []
     print(f"A processar o radar para {len(lista_tickers)} ativos...")
-    dados_acoes = yf.download(lista_tickers, period="2y", progress=False)['Close']
+    # Adicionado threads=True para paralelizar o download maciço
+    dados_acoes = yf.download(lista_tickers, period="2y", progress=False, threads=True)['Close']
 
     for ticker in lista_tickers:
         try:
@@ -35,15 +35,11 @@ def calcular_radar_momentum_v2(lista_tickers, ticker_indice="^GSPC"):
             if len(fechos) < 252:
                 continue
                 
-            # 1. Calcular ROC (6 meses aprox. 126 dias úteis) - Pandas Puro
-            # A fórmula é: (Preço Atual - Preço há 126 dias) / Preço há 126 dias * 100
             roc_6m = fechos.pct_change(periods=126).iloc[-1] * 100
             
-            # 2. Calcular RSI (14 dias) - Função Personalizada acima
             serie_rsi = calcular_rsi(fechos, 14)
             rsi_14 = serie_rsi.iloc[-1]
             
-            # 3. Calcular Mansfield (Já estava em Pandas puro)
             dados_alinhados = pd.concat([fechos, indice], axis=1).dropna()
             dados_alinhados.columns = ['Acao', 'Indice']
             rs_base = dados_alinhados['Acao'] / dados_alinhados['Indice']
@@ -51,7 +47,6 @@ def calcular_radar_momentum_v2(lista_tickers, ticker_indice="^GSPC"):
             mansfield = ((rs_base / sma_rs) - 1) * 100
             mansfield_atual = mansfield.iloc[-1]
 
-            # 4. Filtros
             if roc_6m > 0 and rsi_14 < 65 and mansfield_atual > 0:
                 resultados.append({
                     'Ticker': ticker,
@@ -60,7 +55,7 @@ def calcular_radar_momentum_v2(lista_tickers, ticker_indice="^GSPC"):
                     'Mansfield RS': round(mansfield_atual, 2)
                 })
                 
-        except Exception as e:
+        except Exception:
             continue
 
     df_resultados = pd.DataFrame(resultados)
@@ -71,10 +66,11 @@ def calcular_radar_momentum_v2(lista_tickers, ticker_indice="^GSPC"):
 
 def comparar_ativos(ticker1, ticker2, ticker_indice="^GSPC"):
     lista = [ticker1.upper(), ticker2.upper()]
-    indice = yf.download(ticker_indice, period="2y", progress=False)['Close']
+    # Adicionado threads=True
+    indice = yf.download(ticker_indice, period="2y", progress=False, threads=True)['Close']
     
-    # Descarregar OHLC (Open, High, Low, Close) para calcular o ATR
-    dados = yf.download(lista, period="2y", progress=False)
+    # Adicionado threads=True
+    dados = yf.download(lista, period="2y", progress=False, threads=True)
     
     resultados = []
     for ticker in lista:
@@ -87,7 +83,6 @@ def comparar_ativos(ticker1, ticker2, ticker_indice="^GSPC"):
             
             preco_atual = fechos.iloc[-1]
             
-            # Cálculo do ATR (14 dias)
             tr = pd.concat([
                 high - low,
                 (high - fechos.shift(1)).abs(),
@@ -95,7 +90,6 @@ def comparar_ativos(ticker1, ticker2, ticker_indice="^GSPC"):
             ], axis=1).max(axis=1)
             atr_14 = tr.rolling(window=14).mean().iloc[-1]
             
-            # Indicadores existentes
             roc_6m = fechos.pct_change(periods=126).iloc[-1] * 100
             rsi_14 = calcular_rsi(fechos, 14).iloc[-1]
             
@@ -105,7 +99,6 @@ def comparar_ativos(ticker1, ticker2, ticker_indice="^GSPC"):
             sma_rs = rs.rolling(window=252).mean()
             mansfield = (((rs / sma_rs) - 1) * 100).iloc[-1]
             
-            # NOVO: Alvos de Saída Matemáticos
             alvo_t1 = preco_atual + (1.5 * atr_14)
             alvo_t2 = preco_atual + (3.0 * atr_14)
             stop_loss = preco_atual - (1.5 * atr_14)
