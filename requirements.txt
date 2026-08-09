@@ -1,2 +1,5 @@
 flask
-gunicorn
+yfinance
+pandas
+numpy
+python-dotenv
