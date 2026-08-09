@@ -61,6 +61,7 @@ def api_comparar(ticker1, ticker2):
 
 if __name__ == "__main__":
     # Verifica se a variável PORT existe (o Discloud cria isto automaticamente)
+    porta = int(os.environ.get("PORT", 8080))
     if "PORT" in os.environ:
         # Ambiente Cloud (Produção)
         porta = int(os.environ.get("PORT"))
