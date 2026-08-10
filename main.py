@@ -1,12 +1,115 @@
 import os
-import subprocess
+import requests
 import glob
 from dotenv import load_dotenv
 from functools import wraps
-from flask import Flask, render_template, jsonify, request, Response, send_file, render_template_string
+from flask import Flask, render_template, jsonify, request, Response, send_file, render_template_string, redirect, session, url_for
 
 load_dotenv()
 
+app = Flask(__name__)
+# O Flask precisa de uma chave secreta para assinar os cookies do browser
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "chave_fallback_insegura")
+
+# ==========================================
+# MOTOR OAUTH2 DISCORD E RBAC (CASCATA DE PRIVILÉGIOS)
+# ==========================================
+CLIENT_ID = os.environ.get("DISCORD_CLIENT_ID")
+CLIENT_SECRET = os.environ.get("DISCORD_CLIENT_SECRET")
+REDIRECT_URI = os.environ.get("DISCORD_REDIRECT_URI")
+GUILD_ID = os.environ.get("GUILD_ID")
+ROLE_ATIVO = os.environ.get("ROLE_ATIVO")
+ROLE_PATROCINADOR = os.environ.get("ROLE_PATROCINADOR")
+
+API_BASE_URL = "https://discord.com/api"
+
+# O HTML da barreira (Upsell)
+HTML_UPSELL = """
+<!DOCTYPE html><html><body style="background:#0b0e14; color:#d7dce6; font-family:sans-serif; text-align:center; padding:100px;">
+    <h1 style="color:#f28b24;">Acesso Bloqueado</h1>
+    <p>A ferramenta do Radar Interativo e Comparador de Ativos é um benefício exclusivo dos <strong>Trader Patrocinador</strong>.</p>
+    <a href="/" style="color:#3fbf8f; text-decoration:none;">← Voltar ao Portal</a>
+</body></html>
+"""
+
+def requer_cargo(nivel_minimo):
+    """
+    Nível 1 = Trader Ativo (Newsletters)
+    Nível 2 = Trader Patrocinador (Newsletters + Interativo)
+    A matemática garante que o nível 2 herda acesso ao nível 1 automaticamente.
+    """
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            nivel_atual = session.get('nivel_acesso', 0)
+            
+            if nivel_atual == 0:
+                # Não está logado: manda para o Discord
+                return redirect(url_for('login_discord'))
+                
+            if nivel_atual < nivel_minimo:
+                # Está logado mas não tem cargo suficiente: mostra o Upsell
+                return render_template_string(HTML_UPSELL)
+                
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
+
+
+@app.route('/login')
+def login_discord():
+    # Envia o utilizador para o ecrã oficial do Discord pedindo autorização para ler os seus cargos no teu servidor
+    url = f"{API_BASE_URL}/oauth2/authorize?client_id={CLIENT_ID}&redirect_uri={REDIRECT_URI}&response_type=code&scope=identify%20guilds.members.read"
+    return redirect(url)
+
+@app.route('/callback')
+def callback_discord():
+    codigo = request.args.get('code')
+    if not codigo:
+        return "Erro: O Discord não devolveu um código de acesso.", 400
+
+    # 1. Trocar o código temporário por um Token de Acesso permanente
+    dados_token = {
+        'client_id': CLIENT_ID,
+        'client_secret': CLIENT_SECRET,
+        'grant_type': 'authorization_code',
+        'code': codigo,
+        'redirect_uri': REDIRECT_URI
+    }
+    headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+    r_token = requests.post(f"{API_BASE_URL}/oauth2/token", data=dados_token, headers=headers)
+    
+    if r_token.status_code != 200:
+        return "Falha na autenticação com o servidor do Discord.", 500
+        
+    token = r_token.json()['access_token']
+
+    # 2. Perguntar ao Discord quais são os cargos deste utilizador no teu servidor (Guild)
+    headers_auth = {'Authorization': f'Bearer {token}'}
+    r_membro = requests.get(f"{API_BASE_URL}/users/@me/guilds/{GUILD_ID}/member", headers=headers_auth)
+
+    if r_membro.status_code != 200:
+        return "Acesso Negado: Não fazes parte do servidor de Discord.", 403
+
+    cargos_do_utilizador = r_membro.json().get('roles', [])
+
+    # 3. Matemática da Cascata de Privilégios
+    nivel = 0
+    if ROLE_PATROCINADOR in cargos_do_utilizador:
+        nivel = 2
+    elif ROLE_ATIVO in cargos_do_utilizador:
+        nivel = 1
+
+    # 4. Grava a "pulseira de acesso" no browser
+    session['nivel_acesso'] = nivel
+    
+    return redirect(url_for('dashboard_central'))
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('dashboard_central'))
+# ==========================================
 
 
 # 2. Importa os teus motores de cálculo (O QUE FALTAVA)
@@ -15,43 +118,9 @@ from MeanReversion import calcular_radar_reversao
 from Radar import calcular_radar_momentum_v2, comparar_ativos
 
 
-# ... resto do teu código para baixo fica igual ...
-app = Flask(__name__)
 
-# ==========================================
-# MOTOR DE SEGURANÇA MULTI-PERFIL
-# ==========================================
-def check_auth(username, password, requer_admin=False):
-    senha_admin = os.environ.get("APP_PASSWORD", "bloqueado_admin")
-    senha_user = os.environ.get("USER_PASSWORD", "bloqueado_user")
 
-    if requer_admin:
-        # Acesso estrito: apenas o admin pode entrar
-        return username == 'admin' and password == senha_admin
-    else:
-        # Acesso amplo: tanto o admin como o utilizador normal podem entrar
-        valido_como_admin = (username == 'admin' and password == senha_admin)
-        valido_como_user = (username == 'leitor' and password == senha_user)
-        return valido_como_admin or valido_como_user
 
-def authenticate():
-    return Response('Acesso restrito.\n', 401, {'WWW-Authenticate': 'Basic realm="Login Necessário"'})
-
-def requer_login(requer_admin=False):
-    def decorator(f):
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            auth = request.authorization
-            if not auth or not check_auth(auth.username, auth.password, requer_admin):
-                return authenticate()
-            return f(*args, **kwargs)
-        return decorated_function
-    return decorator
-# ==========================================
-
-# @app.route('/')
-# def home():
-#    return render_template('index.html')
 
 @app.route('/api/analisar')
 def api_analisar():
@@ -89,11 +158,15 @@ def api_analisar():
 
     return jsonify(resposta)
 
+
+# O Dashboard base exige que sejas pelo menos Nível 1 (Trader Ativo)
 @app.route('/')
-@requer_login(requer_admin=False)
+@requer_cargo(nivel_minimo=1)
 def dashboard_central():
-    is_admin = request.authorization.username == 'admin'
+    # O teu HTML de portal atual fica aqui...
+    # Podes até injetar o botão de Logout no topo da página:
     
+  
     html_dashboard = """
     <!DOCTYPE html>
     <html>
@@ -142,6 +215,7 @@ def dashboard_central():
         <div class="marca-agua"></div>
 
         <main>
+            <a href="/logout" style="...">Sair da Conta</a>
             <h1>Portal Bolsa - partilha de ideias</h1>
             <p class="sub">Aceda aos relatórios de mercado atualizados e ferramentas de análise quantitativa.</p>
             
