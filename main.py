@@ -91,14 +91,29 @@ def api_comparar(ticker1, ticker2):
 @app.route('/api/universo')
 def api_universo():
     import yfinance as yf
+    import requests
+    import json
+    import os
+    import time
+    
     caminho_ficheiro = "tickers_comparacao.txt"
+    ficheiro_cache = "setores_cache.json"
+
     try:
         with open(caminho_ficheiro, 'r') as ficheiro:
             meus_tickers = [linha.strip() for linha in ficheiro if linha.strip()]
     except FileNotFoundError:
         return jsonify({"erro": "Ficheiro tickers_comparacao.txt não encontrado."}), 500
 
-    # Estrutura base idêntica à da Newsletter (Padrão GICS)
+    # 1. Carrega a memória (Cache) se ela já existir no servidor
+    cache_setores = {}
+    if os.path.exists(ficheiro_cache):
+        try:
+            with open(ficheiro_cache, 'r') as f:
+                cache_setores = json.load(f)
+        except Exception:
+            pass
+
     universo_setorial = {
         "Technology": {"nome": "Tecnologia", "tickers": []},
         "Healthcare": {"nome": "Saúde", "tickers": []},
@@ -113,6 +128,51 @@ def api_universo():
         "Communication Services": {"nome": "Comunicações", "tickers": []},
         "Unknown": {"nome": "Sem Classificação (ETFs/Outros)", "tickers": []}
     }
+
+    # Disfarça o pedido web para não ser detetado como Bot pelo Yahoo
+    session = requests.Session()
+    session.headers.update({'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36'})
+
+    atualizou_cache = False
+
+    for ticker in meus_tickers:
+        setor_raw = "Unknown"
+        
+        # 2. Se a ação já estiver na nossa memória, usamos sem ir à internet
+        if ticker in cache_setores:
+            setor_raw = cache_setores[ticker]
+        else:
+            # 3. Se for uma ação nova, perguntamos ao Yahoo e guardamos
+            try:
+                info = yf.Ticker(ticker, session=session).info
+                setor_raw = info.get('sector', 'Unknown')
+                
+                cache_setores[ticker] = setor_raw
+                atualizou_cache = True
+                time.sleep(0.1) # Pausa de 100ms para não engatilhar o bloqueio do Yahoo
+            except Exception:
+                pass
+
+        if setor_raw in universo_setorial:
+            universo_setorial[setor_raw]["tickers"].append(ticker)
+        else:
+            universo_setorial["Unknown"]["tickers"].append(ticker)
+
+    # 4. Grava a nova memória no disco para usos futuros
+    if atualizou_cache:
+        try:
+            with open(ficheiro_cache, 'w') as f:
+                json.dump(cache_setores, f)
+        except Exception:
+            pass
+
+    resultado_final = {}
+    for key, setor in universo_setorial.items():
+        if setor["tickers"]:
+            setor["tickers"].sort()
+            resultado_final[key] = setor
+
+    return jsonify(resultado_final)
 
     # Varre a lista mestre
     for ticker in meus_tickers:
