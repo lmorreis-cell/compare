@@ -162,7 +162,7 @@ def executar_script(regiao):
     if regiao == "europa":
         ficheiro_py = "Newsletter_Escolhidos.py"
     elif regiao == "states":
-        ficheiro_py = "radar_states_escolhidos.py" # Certifica-te que o nome bate certo com o teu ficheiro
+        ficheiro_py = "Newsletter_Escolhidos_States.py" # Certifica-te que o nome bate certo com o teu ficheiro
     else:
         return jsonify({"erro": "Região inválida"}), 400
 
