@@ -1,11 +1,13 @@
 import os
+import subprocess
+import glob
 from dotenv import load_dotenv
+from functools import wraps
+from flask import Flask, render_template, jsonify, request, Response, send_file, render_template_string
 
-# 1. Carrega as variáveis de ambiente (resolve a Porta 8080)
 load_dotenv()
 
-# NOVO: Adicionar request e Response às importações do Flask
-from flask import Flask, render_template, jsonify, request, Response
+
 
 # 2. Importa os teus motores de cálculo (O QUE FALTAVA)
 from Regime import avaliar_regime_mercado
@@ -17,26 +19,34 @@ from Radar import calcular_radar_momentum_v2, comparar_ativos
 app = Flask(__name__)
 
 # ==========================================
-# MOTOR DE SEGURANÇA (HTTP BASIC AUTH)
+# MOTOR DE SEGURANÇA MULTI-PERFIL
 # ==========================================
-def check_auth(username, password):
-    # O username será sempre 'admin'
-    # A senha é puxada do teu ficheiro .env
-    senha_correta = os.environ.get("APP_PASSWORD", "bloqueado")
-    return username == 'admin' and password == senha_correta
+def check_auth(username, password, requer_admin=False):
+    senha_admin = os.environ.get("APP_PASSWORD", "bloqueado_admin")
+    senha_user = os.environ.get("USER_PASSWORD", "bloqueado_user")
+
+    if requer_admin:
+        # Acesso estrito: apenas o admin pode entrar
+        return username == 'admin' and password == senha_admin
+    else:
+        # Acesso amplo: tanto o admin como o utilizador normal podem entrar
+        valido_como_admin = (username == 'admin' and password == senha_admin)
+        valido_como_user = (username == 'leitor' and password == senha_user)
+        return valido_como_admin or valido_como_user
 
 def authenticate():
-    # Envia o comando para o browser abrir o pop-up de login
-    return Response(
-    'Acesso restrito. Área quantitativa privada.\n', 401,
-    {'WWW-Authenticate': 'Basic realm="Acesso Reservado"'})
+    return Response('Acesso restrito.\n', 401, {'WWW-Authenticate': 'Basic realm="Login Necessário"'})
 
-@app.before_request
-def require_login():
-    # Interceta TODOS os pedidos antes de chegarem às rotas
-    auth = request.authorization
-    if not auth or not check_auth(auth.username, auth.password):
-        return authenticate()
+def requer_login(requer_admin=False):
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            auth = request.authorization
+            if not auth or not check_auth(auth.username, auth.password, requer_admin):
+                return authenticate()
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
 # ==========================================
 
 @app.route('/')
@@ -78,6 +88,107 @@ def api_analisar():
         resposta["ativos"] = oportunidades.to_dict(orient='records')
 
     return jsonify(resposta)
+
+@app.route('/')
+@requer_login(requer_admin=False) # Qualquer pessoa com login válido chega aqui
+def dashboard_central():
+    is_admin = request.authorization.username == 'admin'
+    
+    html_dashboard = """
+    <!DOCTYPE html>
+    <html><head><title>Portal Quantitativo</title>
+    <style>
+        body { font-family: sans-serif; background: #121212; color: white; padding: 40px; text-align: center; }
+        .btn { display: inline-block; padding: 15px 30px; margin: 10px; background: #3fbf8f; color: #121212; text-decoration: none; border-radius: 5px; font-weight: bold; cursor: pointer; border: none; font-size: 16px;}
+        .btn-admin { background: #f28b24; }
+        .box { background: #1e1e1e; padding: 30px; border-radius: 8px; margin-bottom: 20px; }
+        #status { margin-top: 20px; color: #ff9800; font-family: monospace; }
+    </style>
+    </head><body>
+        <h1>Portal Central de Relatórios</h1>
+        
+        <div class="box">
+            <h2>Últimos Relatórios (Área de Leitura)</h2>
+            <a href="/ver/europa" class="btn">Visualizar Radar Europa</a>
+            <a href="/ver/states" class="btn">Visualizar Radar States</a>
+        </div>
+
+        {% if is_admin %}
+        <div class="box" style="border: 1px solid #f28b24;">
+            <h2 style="color: #f28b24;">Central de Comando (Acesso Restrito)</h2>
+            <p style="font-size: 12px; color: #888;">Estes botões executam algoritmos pesados no servidor. Demora ~5 min.</p>
+            <button onclick="correrScript('europa')" class="btn btn-admin">Executar Robô Europa</button>
+            <button onclick="correrScript('states')" class="btn btn-admin">Executar Robô States</button>
+            <div id="status"></div>
+        </div>
+        
+        <script>
+            async function correrScript(regiao) {
+                document.getElementById('status').innerText = `A iniciar extração de dados do Yahoo Finance para ${regiao}... Por favor aguarde.`;
+                const btnEuropa = document.querySelectorAll('.btn-admin')[0];
+                const btnStates = document.querySelectorAll('.btn-admin')[1];
+                btnEuropa.disabled = true; btnStates.disabled = true;
+                
+                try {
+                    const resposta = await fetch(`/executar/${regiao}`);
+                    const dados = await resposta.json();
+                    document.getElementById('status').innerText = dados.mensagem || dados.erro;
+                } catch (e) {
+                    document.getElementById('status').innerText = "Erro ao comunicar com o servidor.";
+                }
+                btnEuropa.disabled = false; btnStates.disabled = false;
+            }
+        </script>
+        {% endif %}
+    </body></html>
+    """
+    return render_template_string(html_dashboard, is_admin=is_admin)
+
+@app.route('/executar/<regiao>')
+@requer_login(requer_admin=True) # SEGREDO: Se um Leitor tentar aceder diretamente por URL, é bloqueado.
+def executar_script(regiao):
+    if regiao == "europa":
+        ficheiro_py = "Newsletter_Escolhidos.py"
+    elif regiao == "states":
+        ficheiro_py = "radar_states_escolhidos.py" # Certifica-te que o nome bate certo com o teu ficheiro
+    else:
+        return jsonify({"erro": "Região inválida"}), 400
+
+    if not os.path.exists(ficheiro_py):
+        return jsonify({"erro": f"O ficheiro {ficheiro_py} não foi encontrado no servidor."}), 404
+
+    try:
+        # Puxa o gatilho: corre o ficheiro Python selecionado como um processo independente
+        processo = subprocess.run(["python", ficheiro_py], capture_output=True, text=True, timeout=600)
+        
+        if processo.returncode == 0:
+            return jsonify({"mensagem": f"Sucesso! O robô gerou o HTML da {regiao}. Acede à Área de Leitura para o ver."})
+        else:
+            return jsonify({"erro": f"O robô crashou durante a execução: {processo.stderr}"}), 500
+    except subprocess.TimeoutExpired:
+        return jsonify({"erro": "O Yahoo Finance demorou demasiado tempo a responder (>10 minutos). O processo foi abortado."}), 504
+
+@app.route('/ver/<regiao>')
+@requer_login(requer_admin=False)
+def visualizar_html(regiao):
+    if regiao == "europa":
+        padrao = "radar_europeu_escolhidos_*.html"
+    elif regiao == "states":
+        padrao = "radar_states_escolhidos_*.html"
+    else:
+        return "Região inválida", 400
+
+    # Procura na pasta atual ficheiros que correspondam ao padrão
+    lista_ficheiros = glob.glob(padrao)
+    
+    if not lista_ficheiros:
+        return "Ainda não existe nenhum relatório gerado para esta região. Pede ao administrador para executar o robô.", 404
+
+    # Ordena os ficheiros por data de modificação para encontrar o mais recente
+    ficheiro_mais_recente = max(lista_ficheiros, key=os.path.getmtime)
+    
+    # Envia o HTML cru diretamente para o ecrã do utilizador
+    return send_file(ficheiro_mais_recente)
 
 @app.route('/api/comparar/<ticker1>/<ticker2>')
 def api_comparar(ticker1, ticker2):
