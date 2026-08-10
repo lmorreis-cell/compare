@@ -246,7 +246,8 @@ def dashboard_central():
     </body>
     </html>
     """
-    return render_template_string(html_dashboard, is_admin=is_admin)
+    
+    return render_template_string(html_dashboard)
 
 @app.route('/ver/<regiao>')
 @requer_cargo(nivel_minimo=1)
