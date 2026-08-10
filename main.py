@@ -101,12 +101,13 @@ def dashboard_central():
         <meta charset="utf-8">
         <title>Portal Quantitativo</title>
         <style>
-            :root{--fundo:#0b0e14;--painel:#151a23;--linha:#232d3f;--texto:#d7dce6;--verde:#3fbf8f;--azul:#4da6ff;}
+            :root{--fundo:#0b0e14;--painel:#151a23;--linha:#232d3f;--texto:#d7dce6;--verde:#3fbf8f;--azul:#4da6ff;--laranja:#f28b24;}
             body{font-family: -apple-system, sans-serif; background: var(--fundo); color: var(--texto); padding: 40px; text-align: center;}
             main{max-width:800px;margin:0 auto}
             .btn { display: inline-block; padding: 15px 30px; margin: 10px; background: var(--verde); color: #121212; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 15px; transition: opacity 0.2s;}
             .btn:hover { opacity: 0.9; }
             .btn-states { background: var(--azul); }
+            .btn-interativo { background: var(--laranja); }
             .box { background: var(--painel); border: 1px solid var(--linha); padding: 35px; border-radius: 8px; margin-top: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
             h1 { font-size: 24px; margin-bottom: 10px; color: #fff; text-transform: uppercase; letter-spacing: -0.5px; }
             p.sub { color: #8a94a8; font-size: 13px; margin-bottom: 25px; }
@@ -115,19 +116,23 @@ def dashboard_central():
     <body>
         <main>
             <h1>Portal Central de Relatórios</h1>
-            <p class="sub">Aceda aos relatórios de mercado atualizados gerados pelo motor quantitativo.</p>
+            <p class="sub">Aceda aos relatórios de mercado atualizados e ferramentas de análise quantitativa.</p>
             
             <div class="box">
-                <h2 style="font-size: 16px; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 0; margin-bottom: 20px; color: #fff; border-bottom: 1px solid var(--linha); padding-bottom: 10px;">Área de Leitura</h2>
-                <a href="/ver/europa" class="btn">Visualizar Radar Europa</a>
-                <a href="/ver/states" class="btn btn-states">Visualizar Radar States</a>
+                <h2 style="font-size: 16px; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 0; margin-bottom: 20px; color: #fff; border-bottom: 1px solid var(--linha); padding-bottom: 10px;">Área de Leitura & Ferramentas</h2>
+                <div>
+                    <a href="/ver/europa" class="btn">Visualizar Radar Europa</a>
+                    <a href="/ver/states" class="btn btn-states">Visualizar Radar States</a>
+                </div>
+                <div style="margin-top: 15px; border-top: 1px dashed var(--linha); padding-top: 15px;">
+                    <a href="/interativo" class="btn btn-interativo">⚡ Abrir Ferramenta Interativa (Radar & Comparador)</a>
+                </div>
             </div>
         </main>
     </body>
     </html>
     """
     return render_template_string(html_dashboard, is_admin=is_admin)
-
 
 @app.route('/ver/<regiao>')
 @requer_login(requer_admin=False)
@@ -150,6 +155,12 @@ def visualizar_html(regiao):
     
     # Envia o HTML cru diretamente para o ecrã do utilizador
     return send_file(ficheiro_mais_recente)
+
+@app.route('/interativo')
+@requer_login(requer_admin=False)
+def ferramenta_interativa():
+    # Aqui colocas a lógica original que renderiza o 'index.html' dinâmico com o screener a correr em tempo real
+    return render_template('index.html')
 
 @app.route('/api/comparar/<ticker1>/<ticker2>')
 def api_comparar(ticker1, ticker2):
