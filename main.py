@@ -90,95 +90,44 @@ def api_analisar():
     return jsonify(resposta)
 
 @app.route('/')
-@requer_login(requer_admin=False) # Qualquer pessoa com login válido chega aqui
+@requer_login(requer_admin=False)
 def dashboard_central():
     is_admin = request.authorization.username == 'admin'
     
     html_dashboard = """
     <!DOCTYPE html>
-    <html><head><title>Portal Quantitativo</title>
-    <style>
-        body { font-family: sans-serif; background: #121212; color: white; padding: 40px; text-align: center; }
-        .btn { display: inline-block; padding: 15px 30px; margin: 10px; background: #3fbf8f; color: #121212; text-decoration: none; border-radius: 5px; font-weight: bold; cursor: pointer; border: none; font-size: 16px;}
-        .btn-admin { background: #f28b24; }
-        .box { background: #1e1e1e; padding: 30px; border-radius: 8px; margin-bottom: 20px; }
-        #status { margin-top: 20px; color: #ff9800; font-family: monospace; }
-    </style>
-    </head><body>
-        <h1>Portal Central de Relatórios</h1>
-        
-        <div class="box">
-            <h2>Últimos Relatórios (Área de Leitura)</h2>
-            <a href="/ver/europa" class="btn">Visualizar Radar Europa</a>
-            <a href="/ver/states" class="btn">Visualizar Radar States</a>
-        </div>
-
-        {% if is_admin %}
-        <div class="box" style="border: 1px solid #f28b24;">
-            <h2 style="color: #f28b24;">Central de Comando (Acesso Restrito)</h2>
-            <p style="font-size: 12px; color: #888;">Estes botões executam algoritmos pesados no servidor. Demora ~5 min.</p>
-            <button onclick="correrScript('europa')" class="btn btn-admin">Executar Robô Europa</button>
-            <button onclick="correrScript('states')" class="btn btn-admin">Executar Robô States</button>
-            <div id="status"></div>
-        </div>
-        
-        <script>
-            async function correrScript(regiao) {
-                document.getElementById('status').innerText = `A iniciar extração de dados do Yahoo Finance para ${regiao}... Por favor aguarde.`;
-                const btnEuropa = document.querySelectorAll('.btn-admin')[0];
-                const btnStates = document.querySelectorAll('.btn-admin')[1];
-                btnEuropa.disabled = true; btnStates.disabled = true;
-                
-                try {
-                    // A CORREÇÃO: 'credentials: include' obriga o browser a anexar a senha de admin ao clique
-                    const resposta = await fetch(`/executar/${regiao}`, {
-                        credentials: 'include'
-                    });
-                    
-                    if (resposta.status === 401) {
-                        throw new Error("Acesso Negado: O pedido não transportou as credenciais de Administrador.");
-                    }
-
-                    const dados = await resposta.json();
-                    document.getElementById('status').innerText = dados.mensagem || dados.erro;
-                } catch (e) {
-                    if (e.message.includes("Acesso Negado")) {
-                        document.getElementById('status').innerText = e.message;
-                    } else {
-                        document.getElementById('status').innerText = "Falha crítica de execução: O robô crashou ou o servidor excedeu o tempo limite.";
-                    }
-                }
-                btnEuropa.disabled = false; btnStates.disabled = false;
-            }
-        </script>
-        {% endif %}
-    </body></html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <title>Portal Quantitativo</title>
+        <style>
+            :root{--fundo:#0b0e14;--painel:#151a23;--linha:#232d3f;--texto:#d7dce6;--verde:#3fbf8f;--azul:#4da6ff;}
+            body{font-family: -apple-system, sans-serif; background: var(--fundo); color: var(--texto); padding: 40px; text-align: center;}
+            main{max-width:800px;margin:0 auto}
+            .btn { display: inline-block; padding: 15px 30px; margin: 10px; background: var(--verde); color: #121212; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 15px; transition: opacity 0.2s;}
+            .btn:hover { opacity: 0.9; }
+            .btn-states { background: var(--azul); }
+            .box { background: var(--painel); border: 1px solid var(--linha); padding: 35px; border-radius: 8px; margin-top: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+            h1 { font-size: 24px; margin-bottom: 10px; color: #fff; text-transform: uppercase; letter-spacing: -0.5px; }
+            p.sub { color: #8a94a8; font-size: 13px; margin-bottom: 25px; }
+        </style>
+    </head>
+    <body>
+        <main>
+            <h1>Portal Central de Relatórios</h1>
+            <p class="sub">Aceda aos relatórios de mercado atualizados gerados pelo motor quantitativo.</p>
+            
+            <div class="box">
+                <h2 style="font-size: 16px; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 0; margin-bottom: 20px; color: #fff; border-bottom: 1px solid var(--linha); padding-bottom: 10px;">Área de Leitura</h2>
+                <a href="/ver/europa" class="btn">Visualizar Radar Europa</a>
+                <a href="/ver/states" class="btn btn-states">Visualizar Radar States</a>
+            </div>
+        </main>
+    </body>
+    </html>
     """
     return render_template_string(html_dashboard, is_admin=is_admin)
 
-@app.route('/executar/<regiao>')
-@requer_login(requer_admin=True) # SEGREDO: Se um Leitor tentar aceder diretamente por URL, é bloqueado.
-def executar_script(regiao):
-    if regiao == "europa":
-        ficheiro_py = "Newsletter_Escolhidos.py"
-    elif regiao == "states":
-        ficheiro_py = "Newsletter_Escolhidos_States.py" # Certifica-te que o nome bate certo com o teu ficheiro
-    else:
-        return jsonify({"erro": "Região inválida"}), 400
-
-    if not os.path.exists(ficheiro_py):
-        return jsonify({"erro": f"O ficheiro {ficheiro_py} não foi encontrado no servidor."}), 404
-
-    try:
-        # Puxa o gatilho: corre o ficheiro Python selecionado como um processo independente
-        processo = subprocess.run(["python", ficheiro_py], capture_output=True, text=True, timeout=600)
-        
-        if processo.returncode == 0:
-            return jsonify({"mensagem": f"Sucesso! O robô gerou o HTML da {regiao}. Acede à Área de Leitura para o ver."})
-        else:
-            return jsonify({"erro": f"O robô crashou durante a execução: {processo.stderr}"}), 500
-    except subprocess.TimeoutExpired:
-        return jsonify({"erro": "O Yahoo Finance demorou demasiado tempo a responder (>10 minutos). O processo foi abortado."}), 504
 
 @app.route('/ver/<regiao>')
 @requer_login(requer_admin=False)
