@@ -88,6 +88,53 @@ def api_comparar(ticker1, ticker2):
         
     return jsonify(df_comparacao.to_dict(orient='records'))
 
+@app.route('/api/universo')
+def api_universo():
+    import yfinance as yf
+    caminho_ficheiro = "tickers_comparacao.txt"
+    try:
+        with open(caminho_ficheiro, 'r') as ficheiro:
+            meus_tickers = [linha.strip() for linha in ficheiro if linha.strip()]
+    except FileNotFoundError:
+        return jsonify({"erro": "Ficheiro tickers_comparacao.txt não encontrado."}), 500
+
+    # Estrutura base idêntica à da Newsletter (Padrão GICS)
+    universo_setorial = {
+        "Technology": {"nome": "Tecnologia", "tickers": []},
+        "Healthcare": {"nome": "Saúde", "tickers": []},
+        "Financial Services": {"nome": "Serviços Financeiros", "tickers": []},
+        "Consumer Cyclical": {"nome": "Consumo Discricionário", "tickers": []},
+        "Consumer Defensive": {"nome": "Bens Básicos", "tickers": []},
+        "Industrials": {"nome": "Indústria", "tickers": []},
+        "Energy": {"nome": "Energia", "tickers": []},
+        "Utilities": {"nome": "Utilities", "tickers": []},
+        "Real Estate": {"nome": "Imobiliário", "tickers": []},
+        "Basic Materials": {"nome": "Materiais Básicos", "tickers": []},
+        "Communication Services": {"nome": "Comunicações", "tickers": []},
+        "Unknown": {"nome": "Sem Classificação (ETFs/Outros)", "tickers": []}
+    }
+
+    # Varre a lista mestre
+    for ticker in meus_tickers:
+        try:
+            info = yf.Ticker(ticker).info
+            setor_raw = info.get('sector', 'Unknown')
+            if setor_raw in universo_setorial:
+                universo_setorial[setor_raw]["tickers"].append(ticker)
+            else:
+                universo_setorial["Unknown"]["tickers"].append(ticker)
+        except Exception:
+            universo_setorial["Unknown"]["tickers"].append(ticker)
+
+    # Limpar setores vazios e ordenar alfabeticamente
+    resultado_final = {}
+    for key, setor in universo_setorial.items():
+        if setor["tickers"]:
+            setor["tickers"].sort()
+            resultado_final[key] = setor
+
+    return jsonify(resultado_final)
+
 if __name__ == "__main__":
     # Verifica se a variável PORT existe (o Discloud cria isto automaticamente)
     porta = int(os.environ.get("PORT", 8080))
