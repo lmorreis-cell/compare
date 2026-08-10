@@ -374,8 +374,12 @@
         
         const loading = document.getElementById('loading-universo');
         const grid = document.getElementById('mapa-universo-grid');
-        
+
+        // NOVO: Limpa a grelha de eventuais erros anteriores antes de arrancar
+        grid.innerHTML = ''; 
         loading.style.display = 'block';
+        
+
         
         try {
             const resposta = await fetch('/api/universo');
