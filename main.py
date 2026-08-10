@@ -1,18 +1,18 @@
 import os
-import sys
-
 from dotenv import load_dotenv
 
-# Força a leitura do ficheiro .env que o suporte pediu para criar
+# 1. Carrega as variáveis de ambiente (resolve a Porta 8080)
 load_dotenv()
 
-# HACK: Força a instalação das bibliotecas matemáticas após o arranque do contentor para evitar o bug do Discloud
-os.system(f"{sys.executable} -m pip install pandas numpy yfinance")
-
 from flask import Flask, render_template, jsonify
-from Radar import calcular_radar_momentum_v2, comparar_ativos
-from MeanReversion import calcular_radar_reversao
 
+# 2. Importa os teus motores de cálculo (O QUE FALTAVA)
+from Regime import avaliar_regime_mercado
+from MeanReversion import calcular_radar_reversao
+from Radar import calcular_radar_momentum_v2, comparar_ativos
+
+
+# ... resto do teu código para baixo fica igual ...
 app = Flask(__name__)
 
 @app.route('/')
