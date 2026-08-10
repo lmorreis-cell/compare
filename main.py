@@ -249,7 +249,7 @@ def dashboard_central():
     return render_template_string(html_dashboard, is_admin=is_admin)
 
 @app.route('/ver/<regiao>')
-@requer_login(requer_admin=False)
+@requer_cargo(nivel_minimo=1)
 def visualizar_html(regiao):
     if regiao == "europa":
         padrao = "radar_europeu_escolhidos_*.html"
@@ -271,7 +271,7 @@ def visualizar_html(regiao):
     return send_file(ficheiro_mais_recente)
 
 @app.route('/interativo')
-@requer_login(requer_admin=False)
+@requer_cargo(nivel_minimo=2)
 def ferramenta_interativa():
     # Aqui colocas a lógica original que renderiza o 'index.html' dinâmico com o screener a correr em tempo real
     return render_template('index.html')
