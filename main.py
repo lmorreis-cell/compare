@@ -130,11 +130,23 @@ def dashboard_central():
                 btnEuropa.disabled = true; btnStates.disabled = true;
                 
                 try {
-                    const resposta = await fetch(`/executar/${regiao}`);
+                    // A CORREÇÃO: 'credentials: include' obriga o browser a anexar a senha de admin ao clique
+                    const resposta = await fetch(`/executar/${regiao}`, {
+                        credentials: 'include'
+                    });
+                    
+                    if (resposta.status === 401) {
+                        throw new Error("Acesso Negado: O pedido não transportou as credenciais de Administrador.");
+                    }
+
                     const dados = await resposta.json();
                     document.getElementById('status').innerText = dados.mensagem || dados.erro;
                 } catch (e) {
-                    document.getElementById('status').innerText = "Erro ao comunicar com o servidor.";
+                    if (e.message.includes("Acesso Negado")) {
+                        document.getElementById('status').innerText = e.message;
+                    } else {
+                        document.getElementById('status').innerText = "Falha crítica de execução: O robô crashou ou o servidor excedeu o tempo limite.";
+                    }
                 }
                 btnEuropa.disabled = false; btnStates.disabled = false;
             }
