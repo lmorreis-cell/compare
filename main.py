@@ -99,7 +99,7 @@ def dashboard_central():
     <html>
     <head>
         <meta charset="utf-8">
-        <title>Portal Quantitativo</title>
+        <title>Portal Bolsa - partilha de ideias</title>
         <style>
             :root{--fundo:#0b0e14;--painel:#151a23;--linha:#232d3f;--texto:#d7dce6;--verde:#3fbf8f;--azul:#4da6ff;--laranja:#f28b24;--mudo:#8a94a8;}
             
@@ -142,7 +142,7 @@ def dashboard_central():
         <div class="marca-agua"></div>
 
         <main>
-            <h1>Portal Central de Relatórios</h1>
+            <h1>Portal Bolsa - partilha de ideias</h1>
             <p class="sub">Aceda aos relatórios de mercado atualizados e ferramentas de análise quantitativa.</p>
             
             <div class="box">
