@@ -42,8 +42,13 @@
         .loader { display: none; margin-top: 20px; color: #ffc107; }
     </style>
 </head>
-<body>
-
+<body position: relative;>
+<!-- BOTÃO DE RETORNO AO MENU -->
+<div style="position: absolute; top: 20px; left: 20px; z-index: 1000;">
+    <a href="/" style="background: #232d3f; color: #d7dce6; padding: 8px 16px; border-radius: 4px; text-decoration: none; font-size: 13px; font-weight: bold; border: 1px solid #2d333b; display: inline-flex; align-items: center; gap: 6px; transition: background 0.2s;">
+        ← Voltar ao Portal
+    </a>
+</div>
 <div class="container">
     <h1>Radar de Momentum</h1>
     <button onclick="executarAnalise()">Executar Análise de Mercado</button>
