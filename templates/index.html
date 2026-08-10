@@ -86,7 +86,7 @@
         document.getElementById('resultado').style.display = 'none';
 
         // NOVO: Garante que o título é o correto para o Radar
-        document.getElementById('titulo-tabela').innerText = 'Ativos com Sinal de Entrada (Radar)';
+       // document.getElementById('titulo-tabela').innerText = 'Ativos com Sinal de Entrada (Radar)';
 
         // NOVO: Obrigar o sistema a limpar o duelo fantasma anterior
         document.getElementById('relatorio-nlg').innerHTML = '';
@@ -110,6 +110,13 @@
             document.getElementById('estado-regime').innerText = dados.regime;
             document.getElementById('valor-adx').innerText = dados.adx;
             document.getElementById('estrategia-ativa').innerText = dados.estrategia;
+
+            // TÍTULO DINÂMICO BASEADO NO REGIME DE MERCADO E QUALIDADE DO ATIVO
+            if (dados.estrategia.includes("Mean Reversion")) {
+                document.getElementById('titulo-tabela').innerHTML = 'Alvos de Ressalto Técnico <span style="color: #f44336; font-size: 0.65em; vertical-align: middle; margin-left: 10px;">⚠️ ALERTA: Ativos em queda livre. Baixa qualidade de momentum. Setup tático rápido.</span>';
+            } else {
+                document.getElementById('titulo-tabela').innerHTML = 'Ativos com Sinal de Entrada <span style="color: #4caf50; font-size: 0.65em; vertical-align: middle; margin-left: 10px;">✅ QUALIDADE CONFIRMADA: Momentum e força institucional validados.</span>';
+            }
 
             if (dados.ativos && dados.ativos.length > 0) {
                 // Construir cabeçalhos baseados nas chaves do primeiro ativo
