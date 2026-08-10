@@ -161,7 +161,7 @@ def dashboard_central():
             <div style="margin-top: 50px; text-align: center;">
                 <video autoplay loop muted playsinline style="max-width: 400px; height: auto; opacity: 0.8; border-radius: 8px;">
                     <!-- O Flask vai procurar o vídeo na pasta /static/ -->
-                    <source src="/static/Intro.mp4" type="video/mp4">
+                    <source src="/static/Black Simple Record Vlog Youtube Intro.mp4" type="video/mp4">
                     O teu navegador não suporta a reprodução de vídeo.
                 </video>
             </div>
