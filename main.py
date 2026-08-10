@@ -1,6 +1,11 @@
 import os
 import sys
 
+from dotenv import load_dotenv
+
+# Força a leitura do ficheiro .env que o suporte pediu para criar
+load_dotenv()
+
 # HACK: Força a instalação das bibliotecas matemáticas após o arranque do contentor para evitar o bug do Discloud
 os.system(f"{sys.executable} -m pip install pandas numpy yfinance")
 
