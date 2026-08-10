@@ -49,9 +49,9 @@ def requer_login(requer_admin=False):
     return decorator
 # ==========================================
 
-@app.route('/')
-def home():
-    return render_template('index.html')
+# @app.route('/')
+# def home():
+#    return render_template('index.html')
 
 @app.route('/api/analisar')
 def api_analisar():
