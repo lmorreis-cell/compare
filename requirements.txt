@@ -3,3 +3,8 @@ yfinance
 pandas
 numpy
 python-dotenv
+gunicorn
+requests
+matplotlib
+plotly
+jinja2
