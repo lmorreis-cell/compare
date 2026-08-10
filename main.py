@@ -138,6 +138,9 @@ def dashboard_central():
         </style>
     </head>
     <body>
+        <!-- INJEÇÃO DA MARCA DE ÁGUA NO FUNDO -->
+        <div class="marca-agua"></div>
+
         <main>
             <h1>Portal Central de Relatórios</h1>
             <p class="sub">Aceda aos relatórios de mercado atualizados e ferramentas de análise quantitativa.</p>
