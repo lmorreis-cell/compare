@@ -4,7 +4,8 @@ from dotenv import load_dotenv
 # 1. Carrega as variáveis de ambiente (resolve a Porta 8080)
 load_dotenv()
 
-from flask import Flask, render_template, jsonify
+# NOVO: Adicionar request e Response às importações do Flask
+from flask import Flask, render_template, jsonify, request, Response
 
 # 2. Importa os teus motores de cálculo (O QUE FALTAVA)
 from Regime import avaliar_regime_mercado
@@ -14,6 +15,29 @@ from Radar import calcular_radar_momentum_v2, comparar_ativos
 
 # ... resto do teu código para baixo fica igual ...
 app = Flask(__name__)
+
+# ==========================================
+# MOTOR DE SEGURANÇA (HTTP BASIC AUTH)
+# ==========================================
+def check_auth(username, password):
+    # O username será sempre 'admin'
+    # A senha é puxada do teu ficheiro .env
+    senha_correta = os.environ.get("APP_PASSWORD", "bloqueado")
+    return username == 'admin' and password == senha_correta
+
+def authenticate():
+    # Envia o comando para o browser abrir o pop-up de login
+    return Response(
+    'Acesso restrito. Área quantitativa privada.\n', 401,
+    {'WWW-Authenticate': 'Basic realm="Acesso Reservado"'})
+
+@app.before_request
+def require_login():
+    # Interceta TODOS os pedidos antes de chegarem às rotas
+    auth = request.authorization
+    if not auth or not check_auth(auth.username, auth.password):
+        return authenticate()
+# ==========================================
 
 @app.route('/')
 def home():
