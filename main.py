@@ -101,16 +101,40 @@ def dashboard_central():
         <meta charset="utf-8">
         <title>Portal Quantitativo</title>
         <style>
-            :root{--fundo:#0b0e14;--painel:#151a23;--linha:#232d3f;--texto:#d7dce6;--verde:#3fbf8f;--azul:#4da6ff;--laranja:#f28b24;}
-            body{font-family: -apple-system, sans-serif; background: var(--fundo); color: var(--texto); padding: 40px; text-align: center;}
-            main{max-width:800px;margin:0 auto}
+            :root{--fundo:#0b0e14;--painel:#151a23;--linha:#232d3f;--texto:#d7dce6;--verde:#3fbf8f;--azul:#4da6ff;--laranja:#f28b24;--mudo:#8a94a8;}
+            
+            body {
+                font-family: -apple-system, sans-serif;
+                background: var(--fundo);
+                color: var(--texto);
+                padding: 40px;
+                text-align: center;
+                position: relative;
+                min-height: 100vh;
+            }
+
+            /* MARCA DE ÁGUA INSTITUCIONAL IDÊNTICA ÀS NEWSLETTERS */
+            .marca-agua {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                z-index: -1;
+                pointer-events: none;
+                user-select: none;
+                background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Ctext x='50%25' y='50%25' transform='rotate(-35 150 150)' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='20' font-weight='900' fill='rgba(255, 255, 255, 0.08)'%3EPartilha de Ideias - Luís Reis%3C/text%3E%3C/svg%3E");
+                background-repeat: repeat;
+            }
+
+            main{max-width:800px;margin:0 auto; position: relative; z-index: 1;}
             .btn { display: inline-block; padding: 15px 30px; margin: 10px; background: var(--verde); color: #121212; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 15px; transition: opacity 0.2s;}
             .btn:hover { opacity: 0.9; }
             .btn-states { background: var(--azul); }
             .btn-interativo { background: var(--laranja); }
             .box { background: var(--painel); border: 1px solid var(--linha); padding: 35px; border-radius: 8px; margin-top: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
             h1 { font-size: 24px; margin-bottom: 10px; color: #fff; text-transform: uppercase; letter-spacing: -0.5px; }
-            p.sub { color: #8a94a8; font-size: 13px; margin-bottom: 25px; }
+            p.sub { color: var(--mudo); font-size: 13px; margin-bottom: 25px; }
         </style>
     </head>
     <body>
