@@ -161,22 +161,55 @@ def api_analisar():
 
 # O Dashboard base exige que sejas pelo menos Nível 1 (Trader Ativo)
 @app.route('/')
-@requer_cargo(nivel_minimo=1)
+# ATENÇÃO: Retirámos o @requer_cargo daqui para o robô do Discord poder entrar e ler as meta tags!
 def dashboard_central():
-    # O teu HTML de portal atual fica aqui...
-    # Podes até injetar o botão de Logout no topo da página:
-    
-  
-    html_dashboard = """
+    nivel_atual = session.get('nivel_acesso', 0)
+
+    # 1. AS ETIQUETAS PARA OS ROBÔS DAS REDES SOCIAIS (OPEN GRAPH)
+    meta_tags = """
+        <meta property="og:title" content="Portal Bolsa - partilha de ideias">
+        <meta property="og:description" content="Ferramentas de análise quantitativa, relatórios de mercado e comparador de ativos.">
+        <meta property="og:image" content="https://comparativo.discloud.app/static/preview.png">
+        <meta property="og:url" content="https://comparativo.discloud.app/">
+        <meta name="twitter:card" content="summary_large_image">
+    """
+
+    # 2. LOBBY PÚBLICO: O QUE APARECE A QUEM NÃO FEZ LOGIN (E AO ROBÔ DO DISCORD)
+    if nivel_atual == 0:
+        html_login = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            {meta_tags}
+            <title>Entrar - Portal Bolsa</title>
+            <style>
+                body {{ background: #0b0e14; color: #d7dce6; font-family: sans-serif; text-align: center; padding-top: 15vh; }}
+                .btn-discord {{ background: #5865F2; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px; display: inline-block; margin-top: 20px; border: none; cursor: pointer; }}
+            </style>
+        </head>
+        <body>
+            <h1>Portal Bolsa - partilha de ideias</h1>
+            <p style="color: #8a94a8;">Acesso restrito aos membros da comunidade.</p>
+            <a href="/login" class="btn-discord">Entrar com o Discord</a>
+        </body>
+        </html>
+        """
+        return render_template_string(html_login)
+
+    # 3. DASHBOARD PRIVADO: O TEU CÓDIGO INTACTO COM MARCA DE ÁGUA E VÍDEO
+    # (Uso f-strings para injetar as chaves css/html sem quebrar o Python, nota os duplos {{ }} no CSS)
+    html_dashboard = f"""
     <!DOCTYPE html>
     <html>
     <head>
         <meta charset="utf-8">
+        {meta_tags}
         <title>Portal Bolsa - partilha de ideias</title>
         <style>
-            :root{--fundo:#0b0e14;--painel:#151a23;--linha:#232d3f;--texto:#d7dce6;--verde:#3fbf8f;--azul:#4da6ff;--laranja:#f28b24;--mudo:#8a94a8;}
+            :root{{--fundo:#0b0e14;--painel:#151a23;--linha:#232d3f;--texto:#d7dce6;--verde:#3fbf8f;--azul:#4da6ff;--laranja:#f28b24;--mudo:#8a94a8;}}
             
-            body {
+            body {{
                 font-family: -apple-system, sans-serif;
                 background: var(--fundo);
                 color: var(--texto);
@@ -184,10 +217,10 @@ def dashboard_central():
                 text-align: center;
                 position: relative;
                 min-height: 100vh;
-            }
+            }}
 
             /* MARCA DE ÁGUA INSTITUCIONAL IDÊNTICA ÀS NEWSLETTERS */
-            .marca-agua {
+            .marca-agua {{
                 position: fixed;
                 top: 0;
                 left: 0;
@@ -198,16 +231,16 @@ def dashboard_central():
                 user-select: none;
                 background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Ctext x='50%25' y='50%25' transform='rotate(-35 150 150)' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='20' font-weight='900' fill='rgba(255, 255, 255, 0.08)'%3EPartilha de Ideias - Luís Reis%3C/text%3E%3C/svg%3E");
                 background-repeat: repeat;
-            }
+            }}
 
-            main{max-width:800px;margin:0 auto; position: relative; z-index: 1;}
-            .btn { display: inline-block; padding: 15px 30px; margin: 10px; background: var(--verde); color: #121212; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 15px; transition: opacity 0.2s;}
-            .btn:hover { opacity: 0.9; }
-            .btn-states { background: var(--azul); }
-            .btn-interativo { background: var(--laranja); }
-            .box { background: var(--painel); border: 1px solid var(--linha); padding: 35px; border-radius: 8px; margin-top: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
-            h1 { font-size: 24px; margin-bottom: 10px; color: #fff; text-transform: uppercase; letter-spacing: -0.5px; }
-            p.sub { color: var(--mudo); font-size: 13px; margin-bottom: 25px; }
+            main{{max-width:800px;margin:0 auto; position: relative; z-index: 1;}}
+            .btn {{ display: inline-block; padding: 15px 30px; margin: 10px; background: var(--verde); color: #121212; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 15px; transition: opacity 0.2s;}}
+            .btn:hover {{ opacity: 0.9; }}
+            .btn-states {{ background: var(--azul); }}
+            .btn-interativo {{ background: var(--laranja); }}
+            .box {{ background: var(--painel); border: 1px solid var(--linha); padding: 35px; border-radius: 8px; margin-top: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }}
+            h1 {{ font-size: 24px; margin-bottom: 10px; color: #fff; text-transform: uppercase; letter-spacing: -0.5px; }}
+            p.sub {{ color: var(--mudo); font-size: 13px; margin-bottom: 25px; }}
         </style>
     </head>
     <body>
@@ -215,7 +248,11 @@ def dashboard_central():
         <div class="marca-agua"></div>
 
         <main>
-            <a href="/logout" style="...">Sair da Conta</a>
+            <!-- Botão de Sair elegante no topo direito -->
+            <div style="text-align: right; margin-bottom: 20px;">
+                <a href="/logout" style="color: #8a94a8; text-decoration: none; font-size: 12px; border: 1px solid #232d3f; padding: 5px 10px; border-radius: 4px;">Sair da Conta</a>
+            </div>
+
             <h1>Portal Bolsa - partilha de ideias</h1>
             <p class="sub">Aceda aos relatórios de mercado atualizados e ferramentas de análise quantitativa.</p>
             
@@ -230,7 +267,6 @@ def dashboard_central():
                 </div>
             </div>
             
-
             <!-- INJEÇÃO DO VÍDEO CENTRAL EM LOOP -->
             <div style="margin-top: 50px; text-align: center;">
                 <video autoplay loop muted playsinline style="max-width: 400px; height: auto; opacity: 0.8; border-radius: 8px;">
@@ -239,9 +275,6 @@ def dashboard_central():
                     O teu navegador não suporta a reprodução de vídeo.
                 </video>
             </div>
-        </main>
-    </body>
-    </html>
         </main>
     </body>
     </html>
