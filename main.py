@@ -132,6 +132,7 @@ from Radar import calcular_radar_momentum_v2, comparar_ativos
 
 
 @app.route('/api/analisar')
+@cache.cached(timeout=300) # <-- ADICIONA ESTA LINHA AQUI
 def api_analisar():
     caminho_ficheiro = "tickers_comparacao.txt"
     try:
@@ -320,6 +321,7 @@ def ferramenta_interativa():
     return render_template('index.html')
 
 @app.route('/api/comparar/<ticker1>/<ticker2>')
+@cache.cached(timeout=300) # <-- ADICIONA ESTA LINHA AQUI
 def api_comparar(ticker1, ticker2):
     df_comparacao = comparar_ativos(ticker1, ticker2)
     
