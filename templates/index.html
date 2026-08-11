@@ -69,7 +69,7 @@
     <div id="loading" class="loader">A extrair dados e calcular indicadores... (pode demorar)</div>
 
     <div id="resultado" style="display:none;">
-        <div class="status-box">
+        <div id="caixa-regime" class="status-box">
             <h3 style="margin-top:0;">Regime de Mercado Atual</h3>
             <p><strong>Estado:</strong> <span id="estado-regime"></span></p>
             <p><strong>ADX (^GSPC):</strong> <span id="valor-adx"></span></p>
@@ -136,6 +136,8 @@
     async function executarAnalise() {
         document.getElementById('loading').style.display = 'block';
         document.getElementById('resultado').style.display = 'none';
+
+        document.getElementById('caixa-regime').style.display = 'block';
 
         // NOVO: Garante que o título é o correto para o Radar
        // document.getElementById('titulo-tabela').innerText = 'Ativos com Sinal de Entrada (Radar)';
@@ -261,7 +263,9 @@
             const dados = await resposta.json();
 
             // Esconder a caixa do regime de mercado, pois é um duelo isolado
-            document.getElementById('estado-regime').parentElement.style.display = 'none';
+            document.getElementById('caixa-regime').style.display = 'none';
+            // Esconder a caixa do regime de mercado, pois é um duelo isolado
+            // document.getElementById('estado-regime').parentElement.style.display = 'none';
 
             if (dados && dados.length > 0) {
                 let colunas = Object.keys(dados[0]);
