@@ -3,11 +3,20 @@ import requests
 import glob
 from dotenv import load_dotenv
 from functools import wraps
+from flask_caching import Cache
 from flask import Flask, render_template, jsonify, request, Response, send_file, render_template_string, redirect, session, url_for
 
 load_dotenv()
 
 app = Flask(__name__)
+
+# ==========================================
+# MOTOR DE CACHE (PROTEÇÃO DE INFRAESTRUTURA)
+# ==========================================
+app.config['CACHE_TYPE'] = 'SimpleCache'
+app.config['CACHE_DEFAULT_TIMEOUT'] = 300 # 300 segundos = 5 minutos
+cache = Cache(app)
+
 # O Flask precisa de uma chave secreta para assinar os cookies do browser
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "chave_fallback_insegura")
 
