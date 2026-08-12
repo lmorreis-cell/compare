@@ -1,4 +1,5 @@
 import os
+import json
 import requests
 import glob
 from dotenv import load_dotenv
@@ -31,6 +32,27 @@ ROLE_ATIVO = os.environ.get("ROLE_ATIVO")
 ROLE_PATROCINADOR = os.environ.get("ROLE_PATROCINADOR")
 
 API_BASE_URL = "https://discord.com/api"
+
+ADMIN_USER_ID = os.environ.get("ADMIN_USER_ID")
+ARQUIVO_CONTADOR = "contador_visitas.json"
+
+def carregar_contador():
+    if os.path.exists(ARQUIVO_CONTADOR):
+        try:
+            with open(ARQUIVO_CONTADOR, 'r') as f:
+                return json.load(f).get('visitas', 0)
+        except Exception:
+            return 0
+    return 0
+
+def incrementar_contador():
+    visitas = carregar_contador() + 1
+    try:
+        with open(ARQUIVO_CONTADOR, 'w') as f:
+            json.dump({'visitas': visitas}, f)
+    except Exception:
+        pass
+    return visitas
 
 # O HTML da barreira (Upsell)
 HTML_UPSELL = """
@@ -111,6 +133,9 @@ def callback_discord():
 
     # 4. Grava a "pulseira de acesso" no browser
     session['nivel_acesso'] = nivel
+
+    # NOVO: Grava também o teu ID de utilizador para te reconhecer como Admin
+    session['user_id'] = r_membro.json().get('user', {}).get('id')
     
     return redirect(url_for('dashboard_central'))
 
@@ -174,6 +199,24 @@ def api_analisar():
 # ATENÇÃO: Retirámos o @requer_cargo daqui para o robô do Discord poder entrar e ler as meta tags!
 def dashboard_central():
     nivel_atual = session.get('nivel_acesso', 0)
+    user_id = session.get('user_id', '')
+
+    # Lógica de contagem: Conta apenas logins válidos
+    if nivel_atual > 0:
+        total_visitas = incrementar_contador()
+    else:
+        total_visitas = carregar_contador()
+
+    is_admin = (user_id == ADMIN_USER_ID)
+
+    # Cria a etiqueta visual apenas se o ID corresponder ao teu
+    badge_admin = ""
+    if is_admin:
+        badge_admin = f"""
+        <div style="position: absolute; top: 20px; left: 20px; background: #f28b24; color: #121212; padding: 8px 15px; border-radius: 6px; font-size: 13px; font-weight: bold; box-shadow: 0 4px 12px rgba(242, 139, 36, 0.3); z-index: 1000;">
+            👑 Admin | {total_visitas} Acessos Globais
+        </div>
+        """
 
     # 1. AS ETIQUETAS PARA OS ROBÔS DAS REDES SOCIAIS (OPEN GRAPH)
     meta_tags = """
@@ -254,6 +297,9 @@ def dashboard_central():
         </style>
     </head>
     <body>
+        <!-- INJEÇÃO DA ETIQUETA DE ADMIN (Só aparece para ti) -->
+        {badge_admin}
+    
         <!-- INJEÇÃO DA MARCA DE ÁGUA NO FUNDO -->
         <div class="marca-agua"></div>
 
