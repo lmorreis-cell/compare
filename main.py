@@ -507,13 +507,17 @@ def api_sniper(ticker, timeframe):
     try:
         # Extração normal da base de dados limpa
         df = yf.Ticker(ticker).history(period=periodo, interval=intervalo)
+        
+        # BLINDAGEM EUROPEIA: Elimina as "velas fantasmas" que o Yahoo devolve com valores NaN
+        df = df.dropna(subset=['Close', 'High', 'Low'])
+        
         if df.empty:
             return jsonify({"erro": "Sem dados para este ativo."}), 404
             
         # --- A VERDADEIRA ÂNCORA (LEILÃO DE FECHO OFICIAL) ---
-        # O Yahoo Finance falha frequentemente o preço do leilão institucional nos gráficos intradiários.
-        # Puxamos o gráfico diário isolado para capturar a verdade absoluta do mercado.
         df_diario = yf.Ticker(ticker).history(period="5d", interval="1d")
+        df_diario = df_diario.dropna(subset=['Close']) # Filtro anti-NaN na âncora também
+        
         preco_oficial = float(df_diario['Close'].iloc[-1]) if not df_diario.empty else float(df['Close'].iloc[-1])
             
         # 2. COMPRESSÃO MATEMÁTICA (O truque para as 4 Horas)
@@ -524,12 +528,15 @@ def api_sniper(ticker, timeframe):
                 'Low': 'min', 
                 'Close': 'last', 
                 'Volume': 'sum'
-            }).dropna(subset=['Close'])
+            }).dropna(subset=['Close', 'High', 'Low'])
             
         # 3. EXTRAÇÃO E SINCRONIZAÇÃO
-        # Esmaga o erro intradiário injetando o preço oficial auditado na última vela
+        # Esmaga o erro intradiário injetando o preço oficial auditado na última vela limpa
         df.loc[df.index[-1], 'Close'] = preco_oficial
         fecho_atual = preco_oficial
+        
+        # Cálculo do ATR (Average True Range) Fractal para gerar Alvos (PT) e Stops
+        # ... (O resto do teu código a partir do df['PrevClose'] continua intacto abaixo)
         
         # Cálculo do ATR (Average True Range) Fractal para gerar Alvos (PT) e Stops
         df['PrevClose'] = df['Close'].shift(1)
@@ -540,6 +547,10 @@ def api_sniper(ticker, timeframe):
         ema_9 = float(df['Close'].ewm(span=9, adjust=False).mean().iloc[-1])
         ema_20 = float(df['Close'].ewm(span=20, adjust=False).mean().iloc[-1])
 
+
+
+
+        
         # 4. ALGORITMO DE SUPORTES E RESISTÊNCIAS (Auto-Leveling)
         # Varre os últimos 50 períodos à procura de picos e vales extremos
         highs = df['High'].rolling(window=10, center=True).max().dropna().unique()
