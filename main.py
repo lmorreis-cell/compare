@@ -545,10 +545,26 @@ def api_sniper(ticker, timeframe):
         rs = up / down
         rsi_atual = float(100 - (100 / (1 + rs)).iloc[-1])
         
+        # ... (mantém o cálculo do ATR e RSI que já lá tens) ...
+        
         ema_9 = float(df['Close'].ewm(span=9, adjust=False).mean().iloc[-1])
         ema_20 = float(df['Close'].ewm(span=20, adjust=False).mean().iloc[-1])
 
-        # --- NÍVEIS KEY ---
+        # --- 1. MATEMÁTICA DE COMPRESSÃO (BOLLINGER BANDS) E VOLUME ---
+        df['SMA_20'] = df['Close'].rolling(window=20).mean()
+        df['STD_20'] = df['Close'].rolling(window=20).std()
+        df['BB_Upper'] = df['SMA_20'] + (df['STD_20'] * 2)
+        df['BB_Lower'] = df['SMA_20'] - (df['STD_20'] * 2)
+        # O "Band Width" mede a distância percentual entre as bandas
+        df['Band_Width'] = (df['BB_Upper'] - df['BB_Lower']) / df['SMA_20']
+        
+        bw_atual = float(df['Band_Width'].iloc[-1])
+        bw_medio = float(df['Band_Width'].tail(50).mean())
+        
+        vol_atual = float(df['Volume'].iloc[-1])
+        vol_medio = float(df['Volume'].tail(20).mean())
+
+        # --- 2. ALGORITMO DE SUPORTES E RESISTÊNCIAS (Auto-Leveling) ---
         highs = df['High'].rolling(window=10, center=True).max().dropna().unique()
         lows = df['Low'].rolling(window=10, center=True).min().dropna().unique()
         todos_niveis = sorted(list(set(highs).union(set(lows))))
@@ -564,7 +580,7 @@ def api_sniper(ticker, timeframe):
         if not suportes: suportes = [fecho_atual - atr_14, fecho_atual - (atr_14*2)]
         if not resistencias: resistencias = [fecho_atual + atr_14, fecho_atual + (atr_14*2)]
 
-        # --- TRADE PLANS & MATEMÁTICA R:R ---
+        # --- 3. TRADE PLANS & MATEMÁTICA R:R ---
         bull_pt1 = fecho_atual + (1.5 * atr_14)
         bull_pt2 = fecho_atual + (3.0 * atr_14)
         bull_stop = fecho_atual - (1.0 * atr_14)
@@ -573,7 +589,6 @@ def api_sniper(ticker, timeframe):
         bear_pt2 = fecho_atual - (3.0 * atr_14)
         bear_stop = fecho_atual + (1.0 * atr_14)
 
-        # Cálculo Risco/Recompensa assumindo entrada na quebra do nível mais próximo
         risco_bull = resistencias[0] - bull_stop
         recompensa_bull = bull_pt1 - resistencias[0]
         rr_bull = (recompensa_bull / risco_bull) if risco_bull > 0 else 0
@@ -582,42 +597,75 @@ def api_sniper(ticker, timeframe):
         recompensa_bear = suportes[0] - bear_pt1
         rr_bear = (recompensa_bear / risco_bear) if risco_bear > 0 else 0
 
-        # --- MOTOR GRÁFICO BASE64 ---
+        # --- 4. MOTOR NLG (NARRATIVA COMPORTAMENTAL COM TOOLTIPS) ---
+        tendencia = "Alta" if ema_9 > ema_20 else "Baixa"
+        
+        # Auditoria de Volume
+        if vol_atual > vol_medio * 1.5:
+            txt_vol = "<span class='sniper-tt'><strong>🟢 Forte influxo de volume institucional</strong><span class='sniper-tt-text'><strong style='color:#4da6ff; font-size:13px; display:block; border-bottom:1px solid #333; padding-bottom:4px; margin-bottom:5px;'>Anomalia de Liquidez</strong>O volume atual excede em mais de 50% a média móvel das últimas 20 velas. Isto valida categoricamente a direção do preço, pois mãos fracas não conseguem gerar esta amplitude de transações.</span></span> detetado na sessão atual."
+        elif vol_atual < vol_medio * 0.6:
+            txt_vol = "<span class='sniper-tt'><strong>🔴 Volume anémico. Ausência de convicção</strong><span class='sniper-tt-text'><strong style='color:#d9534f; font-size:13px; display:block; border-bottom:1px solid #333; padding-bottom:4px; margin-bottom:5px;'>Aviso de Falso Breakout</strong>O mercado está a mover-se sem participação institucional. Rompimentos de resistência ou quebras de suporte com volume fraco são frequentemente armadilhas de liquidez (bull/bear traps).</span></span> (risco de falsos rompimentos)."
+        else:
+            txt_vol = "Volume transacionado dentro da normalidade estatística."
+
+        # Auditoria de Volatilidade (Bandas de Bollinger)
+        if bw_atual < bw_medio * 0.7:
+            txt_bb = " <span class='sniper-tt'><strong>⚡ COMPRESSÃO EXTREMA (Squeeze):</strong><span class='sniper-tt-text'><strong style='color:#f28b24; font-size:13px; display:block; border-bottom:1px solid #333; padding-bottom:4px; margin-bottom:5px;'>Bollinger Squeeze</strong>As Bandas de Bollinger estreitaram drasticamente. O mercado está a acumular energia direcional. A história prova que períodos de letargia aguda antecedem movimentos explosivos iminentes. Prepara os gatilhos.</span></span> As bandas estão a estrangular o preço."
+        elif fecho_atual > df['BB_Upper'].iloc[-1]:
+            txt_bb = " O preço perfurou a Banda de Bollinger superior (Ruptura Estatística). Risco imediato de exaustão compradora."
+        elif fecho_atual < df['BB_Lower'].iloc[-1]:
+            txt_bb = " O preço cota abaixo da Banda de Bollinger inferior. Pressão vendedora anómala instalada."
+        else:
+            txt_bb = " Volatilidade contida nos eixos centrais."
+
+        nlg_notes = (
+            f"O ativo encontra-se a negociar nos {fecho_atual:.2f} no gráfico de {timeframe}. "
+            f"A tendência tática é de {tendencia} (EMA 9 {'acima' if tendencia == 'Alta' else 'abaixo'} da EMA 20). "
+            f"O nível crítico de defesa algorítmica está nos {suportes[0]:.2f}.<br><br>"
+            f"{txt_vol}{txt_bb}"
+        )
+
+        # --- 5. MOTOR GRÁFICO BASE64 HÍBRIDO (PREÇO + VOLUME) ---
         grafico_base64 = ""
         try:
-            hist_recente = df.tail(60) # Puxa as últimas 60 velas para a fotografia
-            fig, ax = plt.subplots(figsize=(5, 3), facecolor='#f0f2f5')
-            ax.set_facecolor('#f0f2f5')
+            hist_recente = df.tail(60)
             
-            # Linha de Preço e EMAs
-            ax.plot(hist_recente.index, hist_recente['Close'], color='#121212', linewidth=1.5)
-            ax.plot(hist_recente.index, hist_recente['Close'].ewm(span=9).mean(), color='#4da6ff', linewidth=1, linestyle='--', label='EMA 9')
-            ax.plot(hist_recente.index, hist_recente['Close'].ewm(span=20).mean(), color='#f28b24', linewidth=1, linestyle='--', label='EMA 20')
+            # Subplots com partilha do Eixo X. Rácio 3:1 dá destaque ao preço.
+            fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(5, 4), facecolor='#f0f2f5', gridspec_kw={'height_ratios': [3, 1]})
+            fig.subplots_adjust(hspace=0.05)
             
-            # Formatação Minimalista
-            ax.legend(loc='upper left', fontsize=8, frameon=False)
-            ax.tick_params(colors='#8a94a8', labelsize=8, bottom=False, labelbottom=False)
-            ax.spines['top'].set_visible(False); ax.spines['right'].set_visible(False)
-            ax.spines['bottom'].set_color('#ccc'); ax.spines['left'].set_color('#ccc')
-            ax.grid(True, color='#ccc', linestyle=':', alpha=0.5)
+            # Painel Superior: Ação de Preço
+            ax1.set_facecolor('#f0f2f5')
+            ax1.plot(hist_recente.index, hist_recente['Close'], color='#121212', linewidth=1.5)
+            ax1.plot(hist_recente.index, hist_recente['Close'].ewm(span=9).mean(), color='#4da6ff', linewidth=1, linestyle='--', label='EMA 9')
+            ax1.plot(hist_recente.index, hist_recente['Close'].ewm(span=20).mean(), color='#f28b24', linewidth=1, linestyle='--', label='EMA 20')
+            
+            ax1.legend(loc='upper left', fontsize=8, frameon=False)
+            ax1.tick_params(colors='#8a94a8', labelsize=8, bottom=False, labelbottom=False)
+            ax1.spines['top'].set_visible(False); ax1.spines['right'].set_visible(False)
+            ax1.spines['bottom'].set_color('#ccc'); ax1.spines['left'].set_color('#ccc')
+            ax1.grid(True, color='#ccc', linestyle=':', alpha=0.5)
+
+            # Painel Inferior: Volume Direcional
+            ax2.set_facecolor('#f0f2f5')
+            # Lógica de cor: Vela verde = Volume verde, Vela vermelha = Volume vermelho
+            cores_vol = ['#5cb85c' if hist_recente['Close'].iloc[i] >= hist_recente['Open'].iloc[i] else '#d9534f' for i in range(len(hist_recente))]
+            ax2.bar(range(len(hist_recente)), hist_recente['Volume'], color=cores_vol, alpha=0.7)
+            
+            ax2.tick_params(colors='#8a94a8', labelsize=8, bottom=False, labelbottom=False)
+            ax2.set_yticks([]) # Limpa eixo Y do volume para minimizar ruído visual
+            ax2.spines['top'].set_visible(False); ax2.spines['right'].set_visible(False)
+            ax2.spines['bottom'].set_color('#ccc'); ax2.spines['left'].set_color('#ccc')
             
             buf = io.BytesIO()
             plt.savefig(buf, format='png', bbox_inches='tight', dpi=100, facecolor='#f0f2f5')
-            plt.close(fig) # Fecha para evitar leaks de memória no servidor
+            plt.close(fig)
             buf.seek(0)
             grafico_base64 = f"data:image/png;base64,{base64.b64encode(buf.read()).decode('utf-8')}"
         except Exception as e:
             print(f"Erro a desenhar gráfico: {e}")
 
-        # --- NLG & EMPACOTAMENTO ---
-        tendencia = "Alta" if ema_9 > ema_20 else "Baixa"
-        nlg_notes = (
-            f"O ativo encontra-se a negociar nos {fecho_atual:.2f} no gráfico de {timeframe}. "
-            f"A tendência tática é de {tendencia} (EMA 9 {'acima' if tendencia == 'Alta' else 'abaixo'} da EMA 20). "
-            f"O nível crítico de defesa algorítmica imediata está nos {suportes[0]:.2f}. "
-            f"Uma rutura sustentada do teto nos {resistencias[0]:.2f} invalida pressões vendedoras locais."
-        )
-
+        # --- 6. EMPACOTAMENTO JSON ---
         return jsonify({
             "ticker": ticker.upper(),
             "timeframe": timeframe.upper(),
