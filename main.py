@@ -505,31 +505,34 @@ def api_sniper(ticker, timeframe):
     else:
         return jsonify({"erro": "Timeframe inválido."}), 400
     try:
-        # O método history garante um formato de dados limpo e contorna o erro de MultiIndex
+        # Extração normal da base de dados limpa
         df = yf.Ticker(ticker).history(period=periodo, interval=intervalo)
-        
         if df.empty:
-    
             return jsonify({"erro": "Sem dados para este ativo."}), 404
+            
+        # --- A VERDADEIRA ÂNCORA (LEILÃO DE FECHO OFICIAL) ---
+        # O Yahoo Finance falha frequentemente o preço do leilão institucional nos gráficos intradiários.
+        # Puxamos o gráfico diário isolado para capturar a verdade absoluta do mercado.
+        df_diario = yf.Ticker(ticker).history(period="5d", interval="1d")
+        preco_oficial = float(df_diario['Close'].iloc[-1]) if not df_diario.empty else float(df['Close'].iloc[-1])
             
         # 2. COMPRESSÃO MATEMÁTICA (O truque para as 4 Horas)
         if timeframe == '4h':
-            # Transforma os blocos de 1 hora em velas puras de 4 horas
             df = df.resample('4h').agg({
                 'Open': 'first', 
                 'High': 'max', 
                 'Low': 'min', 
                 'Close': 'last', 
                 'Volume': 'sum'
-            }).dropna()
+            }).dropna(subset=['Close'])
             
-        # 3. EXTRAÇÃO DE PREÇOS E VOLATILIDADE
-        fecho_atual = float(df['Close'].iloc[-1])
+        # 3. EXTRAÇÃO E SINCRONIZAÇÃO
+        # Esmaga o erro intradiário injetando o preço oficial auditado na última vela
+        df.loc[df.index[-1], 'Close'] = preco_oficial
+        fecho_atual = preco_oficial
         
         # Cálculo do ATR (Average True Range) Fractal para gerar Alvos (PT) e Stops
         df['PrevClose'] = df['Close'].shift(1)
-        df['TR'] = df[['High', 'PrevClose']].max(axis=1) - df[['Low', 'PrevClose']].min(axis=1)
-        atr_14 = float(df['TR'].rolling(window=14).mean().iloc[-1])
         
         # EMAs Táticas (Como no PDF TrendSpider)
         ema_9 = float(df['Close'].ewm(span=9, adjust=False).mean().iloc[-1])
