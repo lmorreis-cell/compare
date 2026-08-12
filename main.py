@@ -533,6 +533,8 @@ def api_sniper(ticker, timeframe):
         
         # Cálculo do ATR (Average True Range) Fractal para gerar Alvos (PT) e Stops
         df['PrevClose'] = df['Close'].shift(1)
+        df['TR'] = df[['High', 'PrevClose']].max(axis=1) - df[['Low', 'PrevClose']].min(axis=1)
+        atr_14 = float(df['TR'].rolling(window=14).mean().iloc[-1])
         
         # EMAs Táticas (Como no PDF TrendSpider)
         ema_9 = float(df['Close'].ewm(span=9, adjust=False).mean().iloc[-1])
