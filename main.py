@@ -488,6 +488,116 @@ def api_universo():
 
     return jsonify(resultado_final)
 
+@app.route('/api/sniper/<ticker>/<timeframe>')
+@cache.cached(timeout=300) # Bloqueia o spam intradiário. 300s = 5 minutos.
+def api_sniper(ticker, timeframe):
+    import numpy as np
+    
+    # 1. TRADUTOR FRACTAL DE TEMPO
+    # O yfinance apenas permite dados intradiários num limite máximo de 730 dias.
+    if timeframe == '1d':
+        periodo = "1y"
+        intervalo = "1d"
+    elif timeframe == '4h' or timeframe == '1h':
+        periodo = "730d"
+        intervalo = "1h"
+    else:
+        return jsonify({"erro": "Timeframe inválido."}), 400
+
+    try:
+        df = yf.download(ticker, period=periodo, interval=intervalo, progress=False)
+        if df.empty:
+            return jsonify({"erro": "Sem dados para este ativo."}), 404
+            
+        # 2. COMPRESSÃO MATEMÁTICA (O truque para as 4 Horas)
+        if timeframe == '4h':
+            # Transforma os blocos de 1 hora em velas puras de 4 horas
+            df = df.resample('4h').agg({
+                'Open': 'first', 
+                'High': 'max', 
+                'Low': 'min', 
+                'Close': 'last', 
+                'Volume': 'sum'
+            }).dropna()
+            
+        # 3. EXTRAÇÃO DE PREÇOS E VOLATILIDADE
+        fecho_atual = float(df['Close'].iloc[-1])
+        
+        # Cálculo do ATR (Average True Range) Fractal para gerar Alvos (PT) e Stops
+        df['PrevClose'] = df['Close'].shift(1)
+        df['TR'] = df[['High', 'PrevClose']].max(axis=1) - df[['Low', 'PrevClose']].min(axis=1)
+        atr_14 = float(df['TR'].rolling(window=14).mean().iloc[-1])
+        
+        # EMAs Táticas (Como no PDF TrendSpider)
+        ema_9 = float(df['Close'].ewm(span=9, adjust=False).mean().iloc[-1])
+        ema_20 = float(df['Close'].ewm(span=20, adjust=False).mean().iloc[-1])
+
+        # 4. ALGORITMO DE SUPORTES E RESISTÊNCIAS (Auto-Leveling)
+        # Varre os últimos 50 períodos à procura de picos e vales extremos
+        highs = df['High'].rolling(window=10, center=True).max().dropna().unique()
+        lows = df['Low'].rolling(window=10, center=True).min().dropna().unique()
+        
+        # Funde, ordena e limpa níveis demasiado próximos (margem de erro de 1%)
+        todos_niveis = sorted(list(set(highs).union(set(lows))))
+        niveis_limpos = []
+        for n in todos_niveis:
+            if not niveis_limpos or abs(n - niveis_limpos[-1])/n > 0.01:
+                niveis_limpos.append(float(n))
+                
+        # Isola as 5 resistências acima e os 5 suportes abaixo
+        suportes = sorted([n for n in niveis_limpos if n < fecho_atual], reverse=True)[:5]
+        resistencias = sorted([n for n in niveis_limpos if n > fecho_atual])[:5]
+
+        # Redes de segurança caso o ativo seja uma IPO recente sem níveis suficientes
+        if not suportes: suportes = [fecho_atual - atr_14, fecho_atual - (atr_14*2)]
+        if not resistencias: resistencias = [fecho_atual + atr_14, fecho_atual + (atr_14*2)]
+
+        # 5. GERADOR DO TRADE PLAN (A Matemática Tática)
+        # Alvos baseados na volatilidade natural do Timeframe atual
+        bull_pt1 = fecho_atual + (1.5 * atr_14)
+        bull_pt2 = fecho_atual + (3.0 * atr_14)
+        bull_stop = fecho_atual - (1.0 * atr_14)
+        
+        bear_pt1 = fecho_atual - (1.5 * atr_14)
+        bear_pt2 = fecho_atual - (3.0 * atr_14)
+        bear_stop = fecho_atual + (1.0 * atr_14)
+
+        # 6. MOTOR NLG (Notas do Sniper Dinâmicas)
+        tendencia = "Alta" if ema_9 > ema_20 else "Baixa"
+        nlg_notes = (
+            f"O ativo encontra-se a negociar nos {fecho_atual:.2f} no gráfico de {timeframe}. "
+            f"A tendência de curto prazo é de {tendencia}, com a EMA 9 a transacionar "
+            f"{'acima' if tendencia == 'Alta' else 'abaixo'} da EMA 20. "
+            f"O nível crítico de defesa algorítmica imediata está nos {suportes[0]:.2f}. "
+            f"Uma rutura sustentada do teto nos {resistencias[0]:.2f} invalida pressões vendedoras locais "
+            f"e expõe os patamares de expansão tática."
+        )
+
+        # 7. EMPACOTAR E ENVIAR PARA O JAVASCRIPT DO BROWSER
+        resposta = {
+            "ticker": ticker.upper(),
+            "timeframe": timeframe.upper(),
+            "preco": f"{fecho_atual:.2f}",
+            "suportes": [f"{s:.2f}" for s in suportes],
+            "resistencias": [f"{r:.2f}" for r in resistencias],
+            "notas": nlg_notes,
+            "bull_plan": {
+                "entrada": f"Rutura confirmada acima de {resistencias[0]:.2f}",
+                "pt": [f"{bull_pt1:.2f}", f"{bull_pt2:.2f}"],
+                "stop": f"{bull_stop:.2f}"
+            },
+            "bear_plan": {
+                "entrada": f"Quebra confirmada abaixo de {suportes[0]:.2f}",
+                "pt": [f"{bear_pt1:.2f}", f"{bear_pt2:.2f}"],
+                "stop": f"{bear_stop:.2f}"
+            }
+        }
+        
+        return jsonify(resposta)
+
+    except Exception as e:
+        return jsonify({"erro": f"Falha na execução quantitativa: {str(e)}"}), 500
+
 if __name__ == "__main__":
     # Verifica se a variável PORT existe (o Discloud cria isto automaticamente)
     porta = int(os.environ.get("PORT", 8080))
