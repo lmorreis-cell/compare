@@ -550,6 +550,18 @@ def api_sniper(ticker, timeframe):
         ema_9 = float(df['Close'].ewm(span=9, adjust=False).mean().iloc[-1])
         ema_20 = float(df['Close'].ewm(span=20, adjust=False).mean().iloc[-1])
 
+        # --- NOVA INJEÇÃO: RAIO-X GRAVITACIONAL ---
+        sma_50 = df['Close'].rolling(window=50).mean().iloc[-1]
+        sma_200 = df['Close'].rolling(window=200).mean().iloc[-1]
+        max_absoluto = df['High'].max()
+
+        # Calcula a percentagem de distância entre o preço atual e as linhas de força
+        import math
+        dist_m50 = ((fecho_atual / sma_50) - 1) * 100 if not math.isnan(sma_50) else 0
+        dist_m200 = ((fecho_atual / sma_200) - 1) * 100 if not math.isnan(sma_200) else 0
+        dist_max = ((fecho_atual / max_absoluto) - 1) * 100 if not math.isnan(max_absoluto) else 0
+        # ------------------------------------------
+
         # --- 1. MATEMÁTICA DE COMPRESSÃO (BOLLINGER BANDS) E VOLUME ---
         df['SMA_20'] = df['Close'].rolling(window=20).mean()
         df['STD_20'] = df['Close'].rolling(window=20).std()
