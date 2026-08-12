@@ -201,15 +201,20 @@ def dashboard_central():
     nivel_atual = session.get('nivel_acesso', 0)
     user_id = session.get('user_id', '')
 
-    # Lógica de contagem: Conta apenas logins válidos
+    # Lógica de contagem
     if nivel_atual > 0:
         total_visitas = incrementar_contador()
     else:
         total_visitas = carregar_contador()
 
-    is_admin = (user_id == ADMIN_USER_ID)
+    # BLINDAGEM: Converte ambos para string (texto puro) e limpa espaços vazios
+    admin_env = str(ADMIN_USER_ID).strip()
+    user_sess = str(user_id).strip()
+    
+    # Verifica se os IDs batem certo e ignora se estiverem vazios
+    is_admin = (user_sess == admin_env) and (user_sess != "None") and (user_sess != "")
 
-    # Cria a etiqueta visual apenas se o ID corresponder ao teu
+    # Cria a etiqueta visual
     badge_admin = ""
     if is_admin:
         badge_admin = f"""
