@@ -505,8 +505,9 @@ def api_sniper(ticker, timeframe):
     else:
         return jsonify({"erro": "Timeframe inválido."}), 400
     try:
-        # Extração normal da base de dados limpa
-        df = yf.Ticker(ticker).history(period=periodo, interval=intervalo)
+        # Instancia o ticker uma única vez para otimizar velocidade
+        tkr = yf.Ticker(ticker)
+        df = tkr.history(period=periodo, interval=intervalo)
         
         # BLINDAGEM EUROPEIA: Elimina as "velas fantasmas" que o Yahoo devolve com valores NaN
         df = df.dropna(subset=['Close', 'High', 'Low'])
@@ -514,11 +515,15 @@ def api_sniper(ticker, timeframe):
         if df.empty:
             return jsonify({"erro": "Sem dados para este ativo."}), 404
             
-        # --- A VERDADEIRA ÂNCORA (LEILÃO DE FECHO OFICIAL) ---
-        df_diario = yf.Ticker(ticker).history(period="5d", interval="1d")
-        df_diario = df_diario.dropna(subset=['Close']) # Filtro anti-NaN na âncora também
-        
-        preco_oficial = float(df_diario['Close'].iloc[-1]) if not df_diario.empty else float(df['Close'].iloc[-1])
+        # --- A VERDADEIRA ÂNCORA (COTAÇÃO EM TEMPO REAL) ---
+        # O histórico diário do Yahoo atrasa frequentemente 24h nas praças europeias.
+        # Usamos o 'fast_info' para forçar a extração do último preço transacionado no mercado.
+        try:
+            preco_oficial = float(tkr.fast_info['lastPrice'])
+        except Exception:
+            # Fallback de segurança caso o servidor live do Yahoo vá abaixo
+            df_diario = tkr.history(period="5d", interval="1d").dropna(subset=['Close'])
+            preco_oficial = float(df_diario['Close'].iloc[-1]) if not df_diario.empty else float(df['Close'].iloc[-1])
             
         # 2. COMPRESSÃO MATEMÁTICA (O truque para as 4 Horas)
         if timeframe == '4h':
@@ -531,12 +536,9 @@ def api_sniper(ticker, timeframe):
             }).dropna(subset=['Close', 'High', 'Low'])
             
         # 3. EXTRAÇÃO E SINCRONIZAÇÃO
-        # Esmaga o erro intradiário injetando o preço oficial auditado na última vela limpa
+        # Esmaga o erro histórico injetando o preço live na última vela
         df.loc[df.index[-1], 'Close'] = preco_oficial
         fecho_atual = preco_oficial
-        
-        # Cálculo do ATR (Average True Range) Fractal para gerar Alvos (PT) e Stops
-        # ... (O resto do teu código a partir do df['PrevClose'] continua intacto abaixo)
         
         # Cálculo do ATR (Average True Range) Fractal para gerar Alvos (PT) e Stops
         df['PrevClose'] = df['Close'].shift(1)
