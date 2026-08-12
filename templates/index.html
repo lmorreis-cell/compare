@@ -402,6 +402,11 @@
                 </div>
 
                 <div style="display: flex; gap: 30px; margin-bottom: 25px;">
+
+
+
+                
+                    <!-- COLUNA ESQUERDA: NÍVEIS E RAIO-X -->
                     <div style="flex: 1;">
                         <h4 style="margin-top: 0; color: #121212; text-transform: uppercase; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Key Levels</h4>
                         <div style="margin-bottom: 15px;">
@@ -412,7 +417,49 @@
                             <span style="color: #5cb85c; font-weight: bold; font-size: 13px;">Resistance</span><br>
                             <span style="font-family: monospace; font-size: 14px; font-weight: bold;">$ ${resist_str}</span>
                         </div>
+
+                        <!-- NOVO: PAINEL DE RAIO-X GRAVITACIONAL PARA PREENCHER O ESPAÇO -->
+                        <h4 style="margin-top: 35px; color: #121212; text-transform: uppercase; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Raio-X Dinâmico</h4>
+                        
+                        <div style="font-size: 13px; line-height: 1.8; color: #121212;">
+                            <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed #ddd; padding-bottom: 4px; margin-bottom: 4px;">
+                                <span class="sniper-tt">
+                                    <strong>Vs. Média 50 (M/P):</strong>
+                                    <span class="sniper-tt-text" style="width: 260px;">
+                                        <strong style="color: #4da6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Força de Médio Prazo (SMA 50)</strong>
+                                        Se o preço está excessivamente acima da linha (ex: +10%), o ativo encontra-se esticado (sobrecomprado) e pode sofrer um <i>pullback</i> gravitacional doloroso. Evitar <i>Breakouts</i> cegos nestes níveis.
+                                    </span>
+                                </span>
+                                <strong style="color: ${dados.cor_m50};">${dados.dist_m50}</strong>
+                            </div>
+
+                            <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed #ddd; padding-bottom: 4px; margin-bottom: 4px;">
+                                <span class="sniper-tt">
+                                    <strong>Vs. Média 200 (L/P):</strong>
+                                    <span class="sniper-tt-text" style="width: 260px;">
+                                        <strong style="color: #4da6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">O Regime do Mercado (SMA 200)</strong>
+                                        A fronteira de ferro institucional entre um Bull Market (valor positivo) e um Bear Market (valor negativo). Operar um <i>Bull Plan</i> enquanto o ativo transaciona abaixo da sua M200 tem uma taxa de insucesso estatisticamente superior.
+                                    </span>
+                                </span>
+                                <strong style="color: ${dados.cor_m200};">${dados.dist_m200}</strong>
+                            </div>
+
+                            <div style="display: flex; justify-content: space-between;">
+                                <span class="sniper-tt">
+                                    <strong>Topo Absoluto:</strong>
+                                    <span class="sniper-tt-text" style="width: 260px;">
+                                        <strong style="color: #4da6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Distância ao Máximo</strong>
+                                        Mede a contração total do ativo na janela selecionada. Quedas gravíssimas (ex: -30%) indicam que a estrutura de alta quebrou e o ativo requer uma longa consolidação no purgatório antes de voltar a subir.
+                                    </span>
+                                </span>
+                                <strong style="color: #d9534f;">${dados.dist_max}</strong>
+                            </div>
+                        </div>
                     </div>
+
+
+
+                    
 
                     <div style="flex: 1.5; display: flex; flex-direction: column; gap: 15px;">
                         <div style="background: #e9ecef; padding: 15px; border-radius: 4px; border-left: 4px solid #8a94a8;">
