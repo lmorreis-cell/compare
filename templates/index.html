@@ -356,32 +356,38 @@
             const cor_rr_bear = rr_bear_val >= 2.0 ? '#843534' : '#d9534f'; 
 
             let html = `
-                <div style="border-bottom: 2px solid #121212; padding-bottom: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end;">
-                    <div>
+                <!-- INJEÇÃO DE CSS EXCLUSIVO PARA AS TOOLTIPS DO SNIPER -->
+                <style>
+                    .sniper-tt { position: relative; display: inline-block; cursor: help; border-bottom: 1px dotted #121212; }
+                    .sniper-tt .sniper-tt-text { visibility: hidden; width: 260px; background-color: #1a1a1a; color: #f0f2f5; text-align: left; border-radius: 6px; padding: 12px; position: absolute; z-index: 100; bottom: 130%; left: 50%; transform: translateX(-50%); opacity: 0; transition: opacity 0.2s; font-size: 12px; line-height: 1.5; font-weight: normal; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+                    .sniper-tt .sniper-tt-text::after { content: ""; position: absolute; top: 100%; left: 50%; margin-left: -6px; border-width: 6px; border-style: solid; border-color: #1a1a1a transparent transparent transparent; }
+                    .sniper-tt:hover .sniper-tt-text { visibility: visible; opacity: 1; }
+                </style>
+
+                <div style="border-bottom: 2px solid #121212; padding-bottom: 15px; margin-bottom: 20px;">
+                    <!-- CABEÇALHO RESTAURADO (TÍTULO E COTAÇÃO) -->
+                    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px;">
                         <h2 style="margin: 0; font-size: 28px; font-weight: 900; letter-spacing: -1px; text-transform: uppercase;">${dados.ticker}</h2>
-                        
-                        <!-- PAINEL DE MOMENTUM (COM TOOLTIPS EDUCACIONAIS) -->
-                        <div style="margin-top: 5px; font-size: 13px;">
-                            <span class="dica-edu dica-desce" style="border-bottom: 1px dotted #121212; cursor: help; margin-right: 15px;">
-                                <strong>RSI (14):</strong> ${dados.rsi}
-                                <span class="dica-texto" style="width: 250px; background: #151a23; color: #fff; border: 1px solid #232d3f;">
-                                    <strong style="color: #4da6ff; font-size: 12px; display: block; border-bottom: 1px solid #333; padding-bottom: 4px; margin-bottom: 6px;">Relative Strength Index</strong>
-                                    Mede a exaustão do preço atual. Acima de 70 assinala uma sobrecompra (risco de queda iminente). Abaixo de 30 assinala uma sobrevenda (oportunidade de ressalto).
-                                </span>
-                            </span>
-                            
-                            <span class="dica-edu dica-desce" style="border-bottom: 1px dotted #121212; cursor: help;">
-                                <strong>Volatilidade (ATR):</strong> $${dados.atr}
-                                <span class="dica-texto" style="width: 250px; background: #151a23; color: #fff; border: 1px solid #232d3f;">
-                                    <strong style="color: #4da6ff; font-size: 12px; display: block; border-bottom: 1px solid #333; padding-bottom: 4px; margin-bottom: 6px;">Average True Range</strong>
-                                    A amplitude média que a ação "respira" numa vela. O sistema usa esta métrica para posicionar os Stops cirurgicamente fora da zona de ruído normal do mercado.
-                                </span>
-                            </span>
-                        </div>
+                        <span style="background: #121212; color: #fff; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 12px; letter-spacing: 1px; white-space: nowrap;">TIMEFRAME: ${dados.timeframe} | COTAÇÃO: ${dados.preco}</span>
                     </div>
                     
-                    <div style="text-align: right;">
-                        <span style="background: #121212; color: #fff; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 12px; letter-spacing: 1px;">TF: ${dados.timeframe} | COTAÇÃO: ${dados.preco}</span>
+                    <!-- PAINEL DE MOMENTUM (NOVA LINHA) -->
+                    <div style="font-size: 13px; color: #333;">
+                        <span class="sniper-tt" style="margin-right: 20px;">
+                            <strong>RSI (14):</strong> ${dados.rsi}
+                            <span class="sniper-tt-text">
+                                <strong style="color: #4da6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Relative Strength Index</strong>
+                                Mede a exaustão do preço atual. Acima de 70 assinala uma sobrecompra (risco de queda). Abaixo de 30 assinala uma sobrevenda (oportunidade de ressalto).
+                            </span>
+                        </span>
+                        
+                        <span class="sniper-tt">
+                            <strong>Volatilidade (ATR):</strong> $${dados.atr}
+                            <span class="sniper-tt-text">
+                                <strong style="color: #4da6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Average True Range</strong>
+                                A amplitude média que a ação respira numa vela. O sistema usa esta métrica para posicionar os Stops cirurgicamente fora da zona de ruído normal do mercado.
+                            </span>
+                        </span>
                     </div>
                 </div>
 
@@ -425,11 +431,11 @@
                             <span style="color: #d9534f; font-weight: 900;">🎯 PT</span> ${bull_pts}<br>
                             <span style="color: #0275d8; font-weight: 900;">🛡️ Stop</span> Below ${dados.bull_plan.stop}<br>
                             
-                            <span class="dica-edu dica-desce" style="border-bottom: 1px dotted #121212; cursor: help;">
+                            <span class="sniper-tt">
                                 ⚖️ <strong style="color: ${cor_rr_bull};">R:R ${dados.bull_plan.rr}</strong>
-                                <span class="dica-texto" style="width: 250px; background: #151a23; color: #fff; border: 1px solid #232d3f;">
-                                    <strong style="color: #4da6ff; font-size: 12px; display: block; border-bottom: 1px solid #333; padding-bottom: 4px; margin-bottom: 6px;">Risco / Recompensa</strong>
-                                    A expectativa matemática. Se a cor for verde (Rácio > 1:2), significa que a recompensa paga pelo risco. Um rácio vermelho invalida matematicamente a entrada a longo prazo.
+                                <span class="sniper-tt-text" style="width: 250px;">
+                                    <strong style="color: #4da6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Risco / Recompensa</strong>
+                                    A expectativa matemática. Se a cor for verde (Rácio &gt; 1:2), significa que a recompensa paga pelo risco. Um rácio vermelho invalida matematicamente a entrada a longo prazo.
                                 </span>
                             </span>
                         </div>
@@ -445,11 +451,11 @@
                             <span style="color: #d9534f; font-weight: 900;">🎯 PT</span> ${bear_pts}<br>
                             <span style="color: #0275d8; font-weight: 900;">🛡️ Stop</span> Above ${dados.bear_plan.stop}<br>
                             
-                            <span class="dica-edu dica-desce" style="border-bottom: 1px dotted #121212; cursor: help;">
+                            <span class="sniper-tt">
                                 ⚖️ <strong style="color: ${cor_rr_bear};">R:R ${dados.bear_plan.rr}</strong>
-                                <span class="dica-texto" style="width: 250px; background: #151a23; color: #fff; border: 1px solid #232d3f;">
-                                    <strong style="color: #4da6ff; font-size: 12px; display: block; border-bottom: 1px solid #333; padding-bottom: 4px; margin-bottom: 6px;">Risco / Recompensa</strong>
-                                    A avaliação do espaço de queda. O primeiro alvo tem de justificar o tamanho do teu Stop. Rituais de risco invertidos (onde perdes mais do que ganhas) destroem qualquer carteira.
+                                <span class="sniper-tt-text" style="width: 250px;">
+                                    <strong style="color: #4da6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Risco / Recompensa</strong>
+                                    A avaliação do espaço de queda. O primeiro alvo tem de justificar o tamanho do teu Stop. Rituais de risco invertidos destroem qualquer carteira.
                                 </span>
                             </span>
                         </div>
