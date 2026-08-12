@@ -550,17 +550,27 @@ def api_sniper(ticker, timeframe):
         ema_9 = float(df['Close'].ewm(span=9, adjust=False).mean().iloc[-1])
         ema_20 = float(df['Close'].ewm(span=20, adjust=False).mean().iloc[-1])
 
-        # --- NOVA INJEÇÃO: RAIO-X GRAVITACIONAL ---
+       # --- RAIO-X GRAVITACIONAL ---
         sma_50 = df['Close'].rolling(window=50).mean().iloc[-1]
         sma_200 = df['Close'].rolling(window=200).mean().iloc[-1]
         max_absoluto = df['High'].max()
 
-        # Calcula a percentagem de distância entre o preço atual e as linhas de força
         import math
         dist_m50 = ((fecho_atual / sma_50) - 1) * 100 if not math.isnan(sma_50) else 0
         dist_m200 = ((fecho_atual / sma_200) - 1) * 100 if not math.isnan(sma_200) else 0
         dist_max = ((fecho_atual / max_absoluto) - 1) * 100 if not math.isnan(max_absoluto) else 0
-        # ------------------------------------------
+
+        # --- NOVA INJEÇÃO: MATRIZ DE MOMENTUM (VELOCIDADE) ---
+        try:
+            perf_1w = ((fecho_atual / float(df['Close'].iloc[-6])) - 1) * 100 if len(df) >= 6 else 0
+        except: perf_1w = 0
+        try:
+            perf_1m = ((fecho_atual / float(df['Close'].iloc[-22])) - 1) * 100 if len(df) >= 22 else 0
+        except: perf_1m = 0
+        try:
+            perf_3m = ((fecho_atual / float(df['Close'].iloc[-64])) - 1) * 100 if len(df) >= 64 else 0
+        except: perf_3m = 0
+        # -----------------------------------------------------
 
         # --- 1. MATEMÁTICA DE COMPRESSÃO (BOLLINGER BANDS) E VOLUME ---
         df['SMA_20'] = df['Close'].rolling(window=20).mean()
@@ -691,6 +701,17 @@ def api_sniper(ticker, timeframe):
             "cor_m200": "#5cb85c" if dist_m200 > 0 else "#d9534f",
             "dist_max": f"{dist_max:+.1f}%",
             # --------------------------------
+                        
+            # --- NOVAS VARIÁVEIS A ENVIAR ---
+            "perf_1w": f"{perf_1w:+.1f}%",
+            "cor_1w": "#5cb85c" if perf_1w > 0 else "#d9534f",
+            "perf_1m": f"{perf_1m:+.1f}%",
+            "cor_1m": "#5cb85c" if perf_1m > 0 else "#d9534f",
+            "perf_3m": f"{perf_3m:+.1f}%",
+            "cor_3m": "#5cb85c" if perf_3m > 0 else "#d9534f",
+            # --------------------------------
+            
+            "grafico": grafico_base64,
             "grafico": grafico_base64,
             "suportes": [f"{s:.2f}" for s in suportes],
             "resistencias": [f"{r:.2f}" for r in resistencias],
