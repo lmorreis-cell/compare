@@ -456,6 +456,44 @@
                             </div>
                         </div>
                     </div>
+                    <!-- MATRIZ DE MOMENTUM PARA FECHAR O ESPAÇO -->
+                        <h4 style="margin-top: 35px; color: #121212; text-transform: uppercase; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Momentum Matrix</h4>
+                        
+                        <div style="font-size: 13px; line-height: 1.8; color: #121212;">
+                            <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed #ddd; padding-bottom: 4px; margin-bottom: 4px;">
+                                <span class="sniper-tt">
+                                    <strong>1 Semana:</strong>
+                                    <span class="sniper-tt-text" style="width: 260px;">
+                                        <strong style="color: #4da6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Velocidade de Curto Prazo</strong>
+                                        Ação de preço dos últimos 5 dias de negociação. Se o valor for negativo num contexto de tendência alta, o ativo está em <i>pullback</i> tático.
+                                    </span>
+                                </span>
+                                <strong style="color: ${dados.cor_1w};">${dados.perf_1w}</strong>
+                            </div>
+
+                            <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed #ddd; padding-bottom: 4px; margin-bottom: 4px;">
+                                <span class="sniper-tt">
+                                    <strong>1 Mês:</strong>
+                                    <span class="sniper-tt-text" style="width: 260px;">
+                                        <strong style="color: #4da6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Ciclo Mensal</strong>
+                                        Desempenho ao longo das últimas 21 sessões. Permite identificar se o ativo está a acumular energia silenciosamente ou a ser distribuído pelos institucionais.
+                                    </span>
+                                </span>
+                                <strong style="color: ${dados.cor_1m};">${dados.perf_1m}</strong>
+                            </div>
+
+                            <div style="display: flex; justify-content: space-between;">
+                                <span class="sniper-tt">
+                                    <strong>3 Meses:</strong>
+                                    <span class="sniper-tt-text" style="width: 260px;">
+                                        <strong style="color: #4da6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Balanço Trimestral</strong>
+                                        A visão de 64 sessões. O verdadeiro filtro de ruído. Se o 1W e 1M estão vermelhos, mas os 3M estão verdes, estás perante uma correção normal dentro de uma estrutura intacta.
+                                    </span>
+                                </span>
+                                <strong style="color: ${dados.cor_3m};">${dados.perf_3m}</strong>
+                            </div>
+                        </div>
+                    </div> <!-- FIM DA COLUNA ESQUERDA -->
 
 
 
