@@ -684,6 +684,13 @@ def api_sniper(ticker, timeframe):
             "preco": f"{fecho_atual:.2f}",
             "rsi": f"{rsi_atual:.1f}",
             "atr": f"{atr_14:.2f}",
+            # --- NOVAS VARIÁVEIS A ENVIAR ---
+            "dist_m50": f"{dist_m50:+.1f}%",
+            "cor_m50": "#5cb85c" if dist_m50 > 0 else "#d9534f",
+            "dist_m200": f"{dist_m200:+.1f}%",
+            "cor_m200": "#5cb85c" if dist_m200 > 0 else "#d9534f",
+            "dist_max": f"{dist_max:+.1f}%",
+            # --------------------------------
             "grafico": grafico_base64,
             "suportes": [f"{s:.2f}" for s in suportes],
             "resistencias": [f"{r:.2f}" for r in resistencias],
