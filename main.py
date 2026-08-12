@@ -489,13 +489,16 @@ def api_universo():
     return jsonify(resultado_final)
 
 @app.route('/api/sniper/<ticker>/<timeframe>')
-@cache.cached(timeout=300) # Bloqueia o spam intradiário. 300s = 5 minutos.
+@cache.cached(timeout=300) 
 def api_sniper(ticker, timeframe):
     import numpy as np
     import yfinance as yf
+    import matplotlib
+    matplotlib.use('Agg') # Fundamental para não estoirar a RAM do servidor
+    import matplotlib.pyplot as plt
+    import io
+    import base64
     
-    # 1. TRADUTOR FRACTAL DE TEMPO
-    # O yfinance apenas permite dados intradiários num limite máximo de 730 dias.
     if timeframe == '1d':
         periodo = "1y"
         intervalo = "1d"
@@ -504,77 +507,64 @@ def api_sniper(ticker, timeframe):
         intervalo = "1h"
     else:
         return jsonify({"erro": "Timeframe inválido."}), 400
+
     try:
-        # Instancia o ticker uma única vez para otimizar velocidade
-        tkr = yf.Ticker(ticker)
-        df = tkr.history(period=periodo, interval=intervalo)
-        
-        # BLINDAGEM EUROPEIA: Elimina as "velas fantasmas" que o Yahoo devolve com valores NaN
+        # Extração limpa e Filtro Anti-NaN europeu
+        df = yf.Ticker(ticker).history(period=periodo, interval=intervalo)
         df = df.dropna(subset=['Close', 'High', 'Low'])
         
         if df.empty:
             return jsonify({"erro": "Sem dados para este ativo."}), 404
             
-        # --- A VERDADEIRA ÂNCORA (COTAÇÃO EM TEMPO REAL) ---
-        # O histórico diário do Yahoo atrasa frequentemente 24h nas praças europeias.
-        # Usamos o 'fast_info' para forçar a extração do último preço transacionado no mercado.
+        # Âncora do Leilão Oficial
+        df_diario = yf.Ticker(ticker).history(period="5d", interval="1d").dropna(subset=['Close'])
         try:
-            preco_oficial = float(tkr.fast_info['lastPrice'])
+            preco_oficial = float(yf.Ticker(ticker).fast_info['lastPrice'])
         except Exception:
-            # Fallback de segurança caso o servidor live do Yahoo vá abaixo
-            df_diario = tkr.history(period="5d", interval="1d").dropna(subset=['Close'])
             preco_oficial = float(df_diario['Close'].iloc[-1]) if not df_diario.empty else float(df['Close'].iloc[-1])
             
-        # 2. COMPRESSÃO MATEMÁTICA (O truque para as 4 Horas)
+        # Compressão 4H
         if timeframe == '4h':
             df = df.resample('4h').agg({
-                'Open': 'first', 
-                'High': 'max', 
-                'Low': 'min', 
-                'Close': 'last', 
-                'Volume': 'sum'
+                'Open': 'first', 'High': 'max', 'Low': 'min', 'Close': 'last', 'Volume': 'sum'
             }).dropna(subset=['Close', 'High', 'Low'])
             
-        # 3. EXTRAÇÃO E SINCRONIZAÇÃO
-        # Esmaga o erro histórico injetando o preço live na última vela
+        # Injeção da Cotação Real
         df.loc[df.index[-1], 'Close'] = preco_oficial
         fecho_atual = preco_oficial
         
-        # Cálculo do ATR (Average True Range) Fractal para gerar Alvos (PT) e Stops
+        # --- NOVOS INDICADORES DE MOMENTUM ---
         df['PrevClose'] = df['Close'].shift(1)
         df['TR'] = df[['High', 'PrevClose']].max(axis=1) - df[['Low', 'PrevClose']].min(axis=1)
         atr_14 = float(df['TR'].rolling(window=14).mean().iloc[-1])
         
-        # EMAs Táticas (Como no PDF TrendSpider)
+        # Cálculo RSI (14)
+        delta = df['Close'].diff()
+        up = delta.clip(lower=0).ewm(com=13, adjust=False).mean()
+        down = (-1 * delta.clip(upper=0)).ewm(com=13, adjust=False).mean()
+        rs = up / down
+        rsi_atual = float(100 - (100 / (1 + rs)).iloc[-1])
+        
         ema_9 = float(df['Close'].ewm(span=9, adjust=False).mean().iloc[-1])
         ema_20 = float(df['Close'].ewm(span=20, adjust=False).mean().iloc[-1])
 
-
-
-
-        
-        # 4. ALGORITMO DE SUPORTES E RESISTÊNCIAS (Auto-Leveling)
-        # Varre os últimos 50 períodos à procura de picos e vales extremos
+        # --- NÍVEIS KEY ---
         highs = df['High'].rolling(window=10, center=True).max().dropna().unique()
         lows = df['Low'].rolling(window=10, center=True).min().dropna().unique()
-        
-        # Funde, ordena e limpa níveis demasiado próximos (margem de erro de 1%)
         todos_niveis = sorted(list(set(highs).union(set(lows))))
+        
         niveis_limpos = []
         for n in todos_niveis:
             if not niveis_limpos or abs(n - niveis_limpos[-1])/n > 0.01:
                 niveis_limpos.append(float(n))
                 
-        # Isola as 5 resistências acima e os 5 suportes abaixo
         suportes = sorted([n for n in niveis_limpos if n < fecho_atual], reverse=True)[:5]
         resistencias = sorted([n for n in niveis_limpos if n > fecho_atual])[:5]
 
-        # Redes de segurança caso o ativo seja uma IPO recente sem níveis suficientes
         if not suportes: suportes = [fecho_atual - atr_14, fecho_atual - (atr_14*2)]
         if not resistencias: resistencias = [fecho_atual + atr_14, fecho_atual + (atr_14*2)]
 
-        # 5. GERADOR DO TRADE PLAN (A Matemática Tática)
-        # Alvos baseados na volatilidade natural do Timeframe atual
+        # --- TRADE PLANS & MATEMÁTICA R:R ---
         bull_pt1 = fecho_atual + (1.5 * atr_14)
         bull_pt2 = fecho_atual + (3.0 * atr_14)
         bull_stop = fecho_atual - (1.0 * atr_14)
@@ -583,38 +573,74 @@ def api_sniper(ticker, timeframe):
         bear_pt2 = fecho_atual - (3.0 * atr_14)
         bear_stop = fecho_atual + (1.0 * atr_14)
 
-        # 6. MOTOR NLG (Notas do Sniper Dinâmicas)
+        # Cálculo Risco/Recompensa assumindo entrada na quebra do nível mais próximo
+        risco_bull = resistencias[0] - bull_stop
+        recompensa_bull = bull_pt1 - resistencias[0]
+        rr_bull = (recompensa_bull / risco_bull) if risco_bull > 0 else 0
+
+        risco_bear = bear_stop - suportes[0]
+        recompensa_bear = suportes[0] - bear_pt1
+        rr_bear = (recompensa_bear / risco_bear) if risco_bear > 0 else 0
+
+        # --- MOTOR GRÁFICO BASE64 ---
+        grafico_base64 = ""
+        try:
+            hist_recente = df.tail(60) # Puxa as últimas 60 velas para a fotografia
+            fig, ax = plt.subplots(figsize=(5, 3), facecolor='#f0f2f5')
+            ax.set_facecolor('#f0f2f5')
+            
+            # Linha de Preço e EMAs
+            ax.plot(hist_recente.index, hist_recente['Close'], color='#121212', linewidth=1.5)
+            ax.plot(hist_recente.index, hist_recente['Close'].ewm(span=9).mean(), color='#4da6ff', linewidth=1, linestyle='--', label='EMA 9')
+            ax.plot(hist_recente.index, hist_recente['Close'].ewm(span=20).mean(), color='#f28b24', linewidth=1, linestyle='--', label='EMA 20')
+            
+            # Formatação Minimalista
+            ax.legend(loc='upper left', fontsize=8, frameon=False)
+            ax.tick_params(colors='#8a94a8', labelsize=8, bottom=False, labelbottom=False)
+            ax.spines['top'].set_visible(False); ax.spines['right'].set_visible(False)
+            ax.spines['bottom'].set_color('#ccc'); ax.spines['left'].set_color('#ccc')
+            ax.grid(True, color='#ccc', linestyle=':', alpha=0.5)
+            
+            buf = io.BytesIO()
+            plt.savefig(buf, format='png', bbox_inches='tight', dpi=100, facecolor='#f0f2f5')
+            plt.close(fig) # Fecha para evitar leaks de memória no servidor
+            buf.seek(0)
+            grafico_base64 = f"data:image/png;base64,{base64.b64encode(buf.read()).decode('utf-8')}"
+        except Exception as e:
+            print(f"Erro a desenhar gráfico: {e}")
+
+        # --- NLG & EMPACOTAMENTO ---
         tendencia = "Alta" if ema_9 > ema_20 else "Baixa"
         nlg_notes = (
             f"O ativo encontra-se a negociar nos {fecho_atual:.2f} no gráfico de {timeframe}. "
-            f"A tendência de curto prazo é de {tendencia}, com a EMA 9 a transacionar "
-            f"{'acima' if tendencia == 'Alta' else 'abaixo'} da EMA 20. "
+            f"A tendência tática é de {tendencia} (EMA 9 {'acima' if tendencia == 'Alta' else 'abaixo'} da EMA 20). "
             f"O nível crítico de defesa algorítmica imediata está nos {suportes[0]:.2f}. "
-            f"Uma rutura sustentada do teto nos {resistencias[0]:.2f} invalida pressões vendedoras locais "
-            f"e expõe os patamares de expansão tática."
+            f"Uma rutura sustentada do teto nos {resistencias[0]:.2f} invalida pressões vendedoras locais."
         )
 
-        # 7. EMPACOTAR E ENVIAR PARA O JAVASCRIPT DO BROWSER
-        resposta = {
+        return jsonify({
             "ticker": ticker.upper(),
             "timeframe": timeframe.upper(),
             "preco": f"{fecho_atual:.2f}",
+            "rsi": f"{rsi_atual:.1f}",
+            "atr": f"{atr_14:.2f}",
+            "grafico": grafico_base64,
             "suportes": [f"{s:.2f}" for s in suportes],
             "resistencias": [f"{r:.2f}" for r in resistencias],
             "notas": nlg_notes,
             "bull_plan": {
                 "entrada": f"Rutura confirmada acima de {resistencias[0]:.2f}",
                 "pt": [f"{bull_pt1:.2f}", f"{bull_pt2:.2f}"],
-                "stop": f"{bull_stop:.2f}"
+                "stop": f"{bull_stop:.2f}",
+                "rr": f"1:{rr_bull:.1f}"
             },
             "bear_plan": {
                 "entrada": f"Quebra confirmada abaixo de {suportes[0]:.2f}",
                 "pt": [f"{bear_pt1:.2f}", f"{bear_pt2:.2f}"],
-                "stop": f"{bear_stop:.2f}"
+                "stop": f"{bear_stop:.2f}",
+                "rr": f"1:{rr_bear:.1f}"
             }
-        }
-        
-        return jsonify(resposta)
+        })
 
     except Exception as e:
         return jsonify({"erro": f"Falha na execução quantitativa: {str(e)}"}), 500
