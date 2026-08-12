@@ -504,10 +504,12 @@ def api_sniper(ticker, timeframe):
         intervalo = "1h"
     else:
         return jsonify({"erro": "Timeframe inválido."}), 400
-
     try:
-        df = yf.download(ticker, period=periodo, interval=intervalo, progress=False)
+        # O método history garante um formato de dados limpo e contorna o erro de MultiIndex
+        df = yf.Ticker(ticker).history(period=periodo, interval=intervalo)
+        
         if df.empty:
+    
             return jsonify({"erro": "Sem dados para este ativo."}), 404
             
         # 2. COMPRESSÃO MATEMÁTICA (O truque para as 4 Horas)
