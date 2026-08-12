@@ -65,7 +65,22 @@
         <input type="text" id="input-t2" placeholder="Ex: NVG.LS" style="padding: 10px; border-radius: 4px; border: 1px solid #555; background: #333; color: white;">
         <button onclick="compararTickersManual()" style="background-color: #ff9800; margin-left: 15px;">Comparar</button>
     </div>
+    <!-- NOVO: GERADOR SNIPER TRADES -->
+    <div style="background-color: #1e1e1e; padding: 20px; border-radius: 8px; margin-top: 20px; border-left: 5px solid #b388ff;">
+        <h3 style="margin-top:0; color: #b388ff;">🎯 Gerador de Blueprints (Sniper Trades)</h3>
+        <input type="text" id="sniper-ticker" placeholder="Ex: SPY" style="padding: 10px; border-radius: 4px; border: 1px solid #555; background: #333; color: white;">
+        <select id="sniper-tf" style="padding: 10px; border-radius: 4px; border: 1px solid #555; background: #333; color: white; margin: 0 10px;">
+            <option value="1d">Diário (1D)</option>
+            <option value="4h">Intradiário (4H)</option>
+            <option value="1h">Intradiário (1H)</option>
+        </select>
+        <button onclick="gerarBlueprintSniper()" style="background-color: #b388ff; color: #121212; margin-left: 5px;">Extrair Alvos</button>
+    </div>
 
+    <!-- O RECIPIENTE ONDE O RELATÓRIO VAI APARECER -->
+    <div id="sniper-resultado" style="display:none; background-color: #f0f2f5; color: #121212; padding: 30px; border-radius: 8px; margin-top: 30px; text-align: left; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+        <!-- O JS injeta o conteúdo aqui dentro -->
+    </div>
     <div id="loading" class="loader">A extrair dados e calcular indicadores... (pode demorar)</div>
 
     <div id="resultado" style="display:none;">
@@ -301,6 +316,105 @@
 
         } catch (erro) {
             alert("Falha ao comunicar com o servidor.");
+            document.getElementById('loading').style.display = 'none';
+        }
+    }
+    async function gerarBlueprintSniper() {
+        const ticker = document.getElementById('sniper-ticker').value.trim();
+        const tf = document.getElementById('sniper-tf').value;
+        
+        if (!ticker) {
+            alert("Por favor, insere um ticker para analisar.");
+            return;
+        }
+
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('sniper-resultado').style.display = 'none';
+
+        try {
+            const resposta = await fetch(`/api/sniper/${ticker}/${tf}`);
+            const dados = await resposta.json();
+
+            if (dados.erro) {
+                alert(dados.erro);
+                document.getElementById('loading').style.display = 'none';
+                return;
+            }
+
+            // Construir o Layout inspirado no PDF "Sniper Trades"
+            const container = document.getElementById('sniper-resultado');
+            
+            // Formatadores de setas
+            const suportes_str = dados.suportes.join(" → ");
+            const resist_str = dados.resistencias.join(" → ");
+            const bull_pts = dados.bull_plan.pt.join(" → ");
+            const bear_pts = dados.bear_plan.pt.join(" → ");
+
+            let html = `
+                <div style="border-bottom: 2px solid #121212; padding-bottom: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: baseline;">
+                    <h2 style="margin: 0; font-size: 28px; font-weight: 900; letter-spacing: -1px; text-transform: uppercase;">${dados.ticker}</h2>
+                    <span style="background: #121212; color: #fff; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 12px; letter-spacing: 1px;">TIMEFRAME: ${dados.timeframe} | COTAÇÃO: ${dados.preco}</span>
+                </div>
+
+                <div style="display: flex; gap: 30px; margin-bottom: 25px;">
+                    <!-- COLUNA ESQUERDA: NÍVEIS -->
+                    <div style="flex: 1;">
+                        <h4 style="margin-top: 0; color: #121212; text-transform: uppercase; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Key Levels</h4>
+                        <div style="margin-bottom: 10px;">
+                            <span style="color: #d9534f; font-weight: bold; font-size: 13px;">Support</span><br>
+                            <span style="font-family: monospace; font-size: 14px; font-weight: bold;">$ ${suportes_str}</span>
+                        </div>
+                        <div>
+                            <span style="color: #5cb85c; font-weight: bold; font-size: 13px;">Resistance</span><br>
+                            <span style="font-family: monospace; font-size: 14px; font-weight: bold;">$ ${resist_str}</span>
+                        </div>
+                    </div>
+
+                    <!-- COLUNA DIREITA: NOTAS DO ALGORITMO -->
+                    <div style="flex: 1.5; background: #e9ecef; padding: 15px; border-radius: 4px; border-left: 4px solid #8a94a8;">
+                        <h4 style="margin-top: 0; color: #121212; text-transform: uppercase; font-size: 14px;">Sniper Notes</h4>
+                        <p style="margin: 0; font-size: 13px; line-height: 1.6; color: #333; text-align: justify;">
+                            ${dados.notas}
+                        </p>
+                    </div>
+                </div>
+
+                <h4 style="margin-top: 0; color: #121212; text-transform: uppercase; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Trade Idea</h4>
+                <div style="display: flex; gap: 20px;">
+                    
+                    <!-- BULL PLAN -->
+                    <div style="flex: 1; background: #eafaf1; border: 1px solid #c3e6cb; border-radius: 6px; padding: 15px;">
+                        <h4 style="margin-top: 0; color: #2b542c; font-size: 16px; margin-bottom: 15px;">📈 Bull Plan</h4>
+                        <div style="font-size: 13px; line-height: 1.8; color: #121212;">
+                            <span style="color: #d9534f; font-weight: 900;">🎯 PT</span> ${bull_pts}<br>
+                            <span style="color: #0275d8; font-weight: 900;">🛡️ Stop</span> Below ${dados.bull_plan.stop}
+                        </div>
+                        <div style="margin-top: 15px; font-size: 12px; color: #3c763d; background: #dff0d8; padding: 10px; border-radius: 4px; line-height: 1.5;">
+                            ⚡ <strong>Confirmation requires:</strong> ${dados.bull_plan.entrada} no gráfico de ${dados.timeframe} com expansão de volume de acumulação.
+                        </div>
+                    </div>
+
+                    <!-- BEAR PLAN -->
+                    <div style="flex: 1; background: #fdf2f2; border: 1px solid #f5c6cb; border-radius: 6px; padding: 15px;">
+                        <h4 style="margin-top: 0; color: #843534; font-size: 16px; margin-bottom: 15px;">📉 Bear Plan</h4>
+                        <div style="font-size: 13px; line-height: 1.8; color: #121212;">
+                            <span style="color: #d9534f; font-weight: 900;">🎯 PT</span> ${bear_pts}<br>
+                            <span style="color: #0275d8; font-weight: 900;">🛡️ Stop</span> Above ${dados.bear_plan.stop}
+                        </div>
+                        <div style="margin-top: 15px; font-size: 12px; color: #a94442; background: #f2dede; padding: 10px; border-radius: 4px; line-height: 1.5;">
+                            ⚡ <strong>Confirmation requires:</strong> ${dados.bear_plan.entrada} no gráfico de ${dados.timeframe} evidenciando falha estrutural e rejeição de preço.
+                        </div>
+                    </div>
+
+                </div>
+            `;
+
+            container.innerHTML = html;
+            document.getElementById('loading').style.display = 'none';
+            container.style.display = 'block';
+
+        } catch (erro) {
+            alert("Falha de comunicação com o servidor.");
             document.getElementById('loading').style.display = 'none';
         }
     }
