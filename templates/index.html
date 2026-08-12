@@ -319,6 +319,9 @@
             document.getElementById('loading').style.display = 'none';
         }
     }
+    // Variável global para guardar o relatório atual em memória
+    window.blueprintAtual = null;
+
     async function gerarBlueprintSniper() {
         const ticker = document.getElementById('sniper-ticker').value.trim();
         const tf = document.getElementById('sniper-tf').value;
@@ -341,14 +344,15 @@
                 return;
             }
 
+            // Grava os dados na memória do browser para o botão de partilha usar depois
+            window.blueprintAtual = dados;
+
             const container = document.getElementById('sniper-resultado');
-            
             const suportes_str = dados.suportes.join(" → ");
             const resist_str = dados.resistencias.join(" → ");
             const bull_pts = dados.bull_plan.pt.join(" → ");
             const bear_pts = dados.bear_plan.pt.join(" → ");
 
-            // Lógica Quantitativa Visual: O Rácio Mínimo Aceitável é 1:2.
             const rr_bull_val = parseFloat(dados.bull_plan.rr.split(':')[1]);
             const cor_rr_bull = rr_bull_val >= 2.0 ? '#2b542c' : '#d9534f'; 
 
@@ -356,7 +360,7 @@
             const cor_rr_bear = rr_bear_val >= 2.0 ? '#843534' : '#d9534f'; 
 
             let html = `
-                <!-- INJEÇÃO DE CSS EXCLUSIVO PARA AS TOOLTIPS DO SNIPER -->
+                <!-- CSS EXCLUSIVO DAS TOOLTIPS -->
                 <style>
                     .sniper-tt { position: relative; display: inline-block; cursor: help; border-bottom: 1px dotted #121212; }
                     .sniper-tt .sniper-tt-text { visibility: hidden; width: 260px; background-color: #1a1a1a; color: #f0f2f5; text-align: left; border-radius: 6px; padding: 12px; position: absolute; z-index: 100; bottom: 130%; left: 50%; transform: translateX(-50%); opacity: 0; transition: opacity 0.2s; font-size: 12px; line-height: 1.5; font-weight: normal; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
@@ -365,13 +369,19 @@
                 </style>
 
                 <div style="border-bottom: 2px solid #121212; padding-bottom: 15px; margin-bottom: 20px;">
-                    <!-- CABEÇALHO RESTAURADO (TÍTULO E COTAÇÃO) -->
                     <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px;">
                         <h2 style="margin: 0; font-size: 28px; font-weight: 900; letter-spacing: -1px; text-transform: uppercase;">${dados.ticker}</h2>
-                        <span style="background: #121212; color: #fff; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 12px; letter-spacing: 1px; white-space: nowrap;">TIMEFRAME: ${dados.timeframe} | COTAÇÃO: ${dados.preco}</span>
+                        
+                        <!-- BOTÃO DE TRANSMISSÃO E INFO -->
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <span style="background: #121212; color: #fff; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 12px; letter-spacing: 1px; white-space: nowrap;">TF: ${dados.timeframe} | COTAÇÃO: ${dados.preco}</span>
+                            <button onclick="transmitirAlertaDiscord()" style="background: #5865F2; color: white; border: none; padding: 5px 12px; border-radius: 4px; font-weight: bold; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 5px; box-shadow: 0 2px 5px rgba(88,101,242,0.4);">
+                                Transmitir Alerta 📡
+                            </button>
+                        </div>
                     </div>
                     
-                    <!-- PAINEL DE MOMENTUM (NOVA LINHA) -->
+                    <!-- PAINEL DE MOMENTUM -->
                     <div style="font-size: 13px; color: #333;">
                         <span class="sniper-tt" style="margin-right: 20px;">
                             <strong>RSI (14):</strong> ${dados.rsi}
@@ -392,7 +402,6 @@
                 </div>
 
                 <div style="display: flex; gap: 30px; margin-bottom: 25px;">
-                    <!-- COLUNA ESQUERDA: NÍVEIS -->
                     <div style="flex: 1;">
                         <h4 style="margin-top: 0; color: #121212; text-transform: uppercase; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Key Levels</h4>
                         <div style="margin-bottom: 15px;">
@@ -405,18 +414,17 @@
                         </div>
                     </div>
 
-                    <!-- COLUNA DIREITA: NOTAS E GRÁFICO BASE64 -->
                     <div style="flex: 1.5; display: flex; flex-direction: column; gap: 15px;">
                         <div style="background: #e9ecef; padding: 15px; border-radius: 4px; border-left: 4px solid #8a94a8;">
                             <h4 style="margin-top: 0; color: #121212; text-transform: uppercase; font-size: 14px;">Sniper Notes</h4>
                             <p style="margin: 0; font-size: 13px; line-height: 1.6; color: #333; text-align: justify;">
-                                ${dados.notas}
+                                ${dados.notas} <!-- O HTML gerado pelo Python com as Dicas entra aqui! -->
                             </p>
                         </div>
                         
                         ${dados.grafico ? `
                         <div style="border: 1px solid #ccc; border-radius: 4px; overflow: hidden; background: #f0f2f5;">
-                            <img src="${dados.grafico}" style="width: 100%; height: auto; display: block;" alt="Mini-Gráfico Tático">
+                            <img src="${dados.grafico}" style="width: 100%; height: auto; display: block;" alt="Mini-Gráfico Híbrido">
                         </div>` : ''}
                     </div>
                 </div>
@@ -424,43 +432,39 @@
                 <h4 style="margin-top: 0; color: #121212; text-transform: uppercase; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Trade Idea</h4>
                 <div style="display: flex; gap: 20px;">
                     
-                    <!-- BULL PLAN -->
                     <div style="flex: 1; background: #eafaf1; border: 1px solid #c3e6cb; border-radius: 6px; padding: 15px; display: flex; flex-direction: column;">
                         <h4 style="margin-top: 0; color: #2b542c; font-size: 16px; margin-bottom: 15px;">📈 Bull Plan</h4>
                         <div style="font-size: 13px; line-height: 1.8; color: #121212; flex-grow: 1;">
                             <span style="color: #d9534f; font-weight: 900;">🎯 PT</span> ${bull_pts}<br>
                             <span style="color: #0275d8; font-weight: 900;">🛡️ Stop</span> Below ${dados.bull_plan.stop}<br>
-                            
                             <span class="sniper-tt">
                                 ⚖️ <strong style="color: ${cor_rr_bull};">R:R ${dados.bull_plan.rr}</strong>
                                 <span class="sniper-tt-text" style="width: 250px;">
                                     <strong style="color: #4da6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Risco / Recompensa</strong>
-                                    A expectativa matemática. Se a cor for verde (Rácio &gt; 1:2), significa que a recompensa paga pelo risco. Um rácio vermelho invalida matematicamente a entrada a longo prazo.
+                                    Se a cor for verde (Rácio &gt; 1:2), a recompensa paga pelo risco. Rácio vermelho invalida matematicamente a entrada a longo prazo.
                                 </span>
                             </span>
                         </div>
                         <div style="margin-top: 15px; font-size: 12px; color: #3c763d; background: #dff0d8; padding: 10px; border-radius: 4px; line-height: 1.5;">
-                            ⚡ <strong>Confirmation requires:</strong> ${dados.bull_plan.entrada} no gráfico de ${dados.timeframe} com expansão de volume.
+                            ⚡ <strong>Confirmation requires:</strong> ${dados.bull_plan.entrada} com expansão de volume.
                         </div>
                     </div>
 
-                    <!-- BEAR PLAN -->
                     <div style="flex: 1; background: #fdf2f2; border: 1px solid #f5c6cb; border-radius: 6px; padding: 15px; display: flex; flex-direction: column;">
                         <h4 style="margin-top: 0; color: #843534; font-size: 16px; margin-bottom: 15px;">📉 Bear Plan</h4>
                         <div style="font-size: 13px; line-height: 1.8; color: #121212; flex-grow: 1;">
                             <span style="color: #d9534f; font-weight: 900;">🎯 PT</span> ${bear_pts}<br>
                             <span style="color: #0275d8; font-weight: 900;">🛡️ Stop</span> Above ${dados.bear_plan.stop}<br>
-                            
                             <span class="sniper-tt">
                                 ⚖️ <strong style="color: ${cor_rr_bear};">R:R ${dados.bear_plan.rr}</strong>
                                 <span class="sniper-tt-text" style="width: 250px;">
                                     <strong style="color: #4da6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Risco / Recompensa</strong>
-                                    A avaliação do espaço de queda. O primeiro alvo tem de justificar o tamanho do teu Stop. Rituais de risco invertidos destroem qualquer carteira.
+                                    O primeiro alvo tem de justificar o tamanho do teu Stop. Rituais de risco invertidos destroem qualquer carteira.
                                 </span>
                             </span>
                         </div>
                         <div style="margin-top: 15px; font-size: 12px; color: #a94442; background: #f2dede; padding: 10px; border-radius: 4px; line-height: 1.5;">
-                            ⚡ <strong>Confirmation requires:</strong> ${dados.bear_plan.entrada} no gráfico de ${dados.timeframe} evidenciando falha estrutural.
+                            ⚡ <strong>Confirmation requires:</strong> ${dados.bear_plan.entrada} evidenciando falha estrutural.
                         </div>
                     </div>
 
@@ -474,6 +478,29 @@
         } catch (erro) {
             alert("Falha de comunicação com o servidor. A API pode estar sobrecarregada.");
             document.getElementById('loading').style.display = 'none';
+        }
+    }
+
+    // NOVA FUNÇÃO: Dispara a transmissão para o Discord
+    async function transmitirAlertaDiscord() {
+        if (!window.blueprintAtual) return;
+        
+        if (confirm(`Queres partilhar a análise técnica de ${window.blueprintAtual.ticker} no Discord da comunidade?`)) {
+            try {
+                const response = await fetch('/api/webhook/sniper', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(window.blueprintAtual)
+                });
+                
+                if (response.ok) {
+                    alert("Alerta transmitido com sucesso!");
+                } else {
+                    alert("Falha ao transmitir o alerta.");
+                }
+            } catch (error) {
+                alert("Erro na comunicação com o servidor.");
+            }
         }
     }
     function gerarRelatorioNLG(t1, t2) {
