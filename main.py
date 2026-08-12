@@ -693,6 +693,53 @@ def api_sniper(ticker, timeframe):
     except Exception as e:
         return jsonify({"erro": f"Falha na execução quantitativa: {str(e)}"}), 500
 
+@app.route('/api/webhook/sniper', methods=['POST'])
+def webhook_sniper():
+    dados = request.json
+    webhook_url = os.environ.get("WEBHOOK_SNIPER")
+    
+    if not webhook_url:
+        return jsonify({"erro": "Webhook não configurado no servidor."}), 500
+
+    # Limpar as tags HTML que injetámos no Python para não sujarem o texto do Discord
+    import re
+    notas_limpas = re.sub(r'<[^>]+>', '', dados.get('notas', ''))
+
+    bull = dados['bull_plan']
+    bear = dados['bear_plan']
+
+    embed = {
+        "embeds": [
+            {
+                "title": f"🎯 SNIPER BLUEPRINT: {dados['ticker']} ({dados['timeframe']})",
+                "color": 11765967, # Roxo Portal Bolsa
+                "description": f"**Cotação Atual:** ${dados['preco']} | **RSI:** {dados['rsi']} | **ATR:** ${dados['atr']}\n\n**Sniper Notes:**\n{notas_limpas}",
+                "fields": [
+                    {
+                        "name": "📈 Bull Plan",
+                        "value": f"**Gatilho:** {bull['entrada']}\n**Alvos:** {bull['pt'][0]} → {bull['pt'][1]}\n**Stop:** {bull['stop']} \n**R:R:** {bull['rr']}",
+                        "inline": True
+                    },
+                    {
+                        "name": "📉 Bear Plan",
+                        "value": f"**Gatilho:** {bear['entrada']}\n**Alvos:** {bear['pt'][0]} → {bear['pt'][1]}\n**Stop:** {bear['stop']} \n**R:R:** {bear['rr']}",
+                        "inline": True
+                    }
+                ],
+                "footer": {
+                    "text": "Portal Bolsa - Risco Quântico Algorítmico"
+                }
+            }
+        ]
+    }
+
+    try:
+        response = requests.post(webhook_url, json=embed)
+        response.raise_for_status()
+        return jsonify({"sucesso": True})
+    except Exception as e:
+        return jsonify({"erro": str(e)}), 500
+
 if __name__ == "__main__":
     # Verifica se a variável PORT existe (o Discloud cria isto automaticamente)
     porta = int(os.environ.get("PORT", 8080))
