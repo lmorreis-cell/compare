@@ -492,6 +492,7 @@ def api_universo():
 @cache.cached(timeout=300) # Bloqueia o spam intradiário. 300s = 5 minutos.
 def api_sniper(ticker, timeframe):
     import numpy as np
+    import yfinance as yf
     
     # 1. TRADUTOR FRACTAL DE TEMPO
     # O yfinance apenas permite dados intradiários num limite máximo de 730 dias.
