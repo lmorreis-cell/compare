@@ -660,36 +660,52 @@
     }
     function gerarRelatorioNLG(t1, t2) {
         window.dueloAtual = { t1: t1, t2: t2 };
-        const svgOverlay = "data:image/svg+xml;charset=utf-8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><text x="50%" y="50%" transform="rotate(-35 200 150)" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="900" fill="rgba(18, 18, 18, 0.04)">PORTAL BOLSA - LUÍS REIS</text></svg>');
+        
+        // Opacidade aumentada (0.08) para o tema claro
+        const svgOverlay = "data:image/svg+xml;charset=utf-8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><text x="50%" y="50%" transform="rotate(-35 200 150)" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="900" fill="rgba(18, 18, 18, 0.08)">PORTAL BOLSA - LUÍS REIS</text></svg>');
 
         let vencedor = parseFloat(t1['Mansfield RS']) > parseFloat(t2['Mansfield RS']) ? t1 : t2;
         let perdedor = parseFloat(t1['Mansfield RS']) > parseFloat(t2['Mansfield RS']) ? t2 : t1;
 
         let nlpText = "";
+        
+        // 1. Mansfield RS
         if (t1['Mansfield RS'] < 0 && t2['Mansfield RS'] < 0) {
             nlpText += `<p><strong>1. Força Relativa:</strong> Ambas estão com valores profundamente negativos. Isto significa que, enquanto o índice geral sobe ou lateraliza, estas duas ações estão a ser massacradas.</p>`;
         } else {
             nlpText += `<p><strong>1. O domínio da ${vencedor.Ticker}:</strong> A ${vencedor.Ticker} está a bater o mercado, ao contrário da ${perdedor.Ticker}, que apresenta fraqueza relativa face ao índice de referência.</p>`;
         }
 
+        // 2. ROC 6M
         if (t1['ROC 6M (%)'] < 0 && t2['ROC 6M (%)'] < 0) {
             nlpText += `<p><strong>2. Velocidade de Capital:</strong> O <em>Rate of Change</em> mostra a realidade nua e crua. Não há aceleração sustentada, apenas fuga massiva de capital em ambos os ativos.</p>`;
         } else if (t1['ROC 6M (%)'] > 0 && t2['ROC 6M (%)'] > 0) {
             nlpText += `<p><strong>2. Velocidade de Capital:</strong> Ambas em aceleração. O momentum de médio prazo é positivo e o capital flui ativamente para as duas.</p>`;
         } else {
-            let vencedorRoc = t1['ROC 6M (%)'] > 0 ? t1 : t2;
-            let perdedorRoc = t1['ROC 6M (%)'] < 0 ? t1 : t2;
+            let vencedorRoc = parseFloat(t1['ROC 6M (%)']) > 0 ? t1 : t2;
+            let perdedorRoc = parseFloat(t1['ROC 6M (%)']) < 0 ? t1 : t2;
             nlpText += `<p><strong>2. Divergência técnica:</strong> A ${vencedorRoc.Ticker} está em clara expansão, enquanto a ${perdedorRoc.Ticker} continua num ciclo de destruição de capital.</p>`;
         }
+
+        // 3. RSI 14
+        const avaliaRSI = (ticker, rsiStr) => {
+            let rsi = parseFloat(rsiStr);
+            if (rsi < 30) return `A ${ticker} (${rsi}) aproxima-se da zona de sobrevenda (<30).`;
+            if (rsi > 70) return `A ${ticker} (${rsi}) encontra-se sobrecomprada (>70), com risco de exaustão.`;
+            return `A ${ticker} (${rsi}) está numa zona neutra.`;
+        };
+        nlpText += `<p><strong>3. Exaustão (RSI):</strong> ${avaliaRSI(t1.Ticker, t1['RSI (14)'])} ${avaliaRSI(t2.Ticker, t2['RSI (14)'])}</p>`;
+
+        // 4. Veredicto Final
+        nlpText += `<p style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed #ccc;"><strong>Veredicto do Sistema:</strong> O racional quantitativo apoia inequivocamente a alocação na <strong>${vencedor.Ticker}</strong> e a liquidação/rejeição da <strong>${perdedor.Ticker}</strong>. A ${vencedor.Ticker} cumpre os pressupostos de rotação ao demonstrar força sustentada.</p>`;
 
         let html = `
             <div style="background-color: #f0f2f5; color: #121212; padding: 30px; border-radius: 8px; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
                 
-                <!-- ESCUDO DE PROPRIEDADE INTELECTUAL -->
-                <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 50; pointer-events: none; background-image: url('${svgOverlay}'); background-repeat: repeat;"></div>
+                <!-- ESCUDO DE PROPRIEDADE INTELECTUAL: z-index a 999 obriga a estar por cima das tabelas brancas -->
+                <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 999; pointer-events: none; background-image: url('${svgOverlay}'); background-repeat: repeat;"></div>
 
                 <style>
-                    .clicavel-sobre-escudo { position: relative; z-index: 51; }
                     .tabela-duelo { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
                     .tabela-duelo th { background: #121212; color: #fff; text-transform: uppercase; padding: 14px; text-align: left; font-size: 12px; }
                     .tabela-duelo td { padding: 14px; text-align: left; border-bottom: 1px solid #eee; color: #333; font-weight: bold; }
@@ -700,15 +716,15 @@
 
                 <div style="border-bottom: 2px solid #121212; padding-bottom: 15px; margin-bottom: 20px;">
                     <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px;">
-                        <h2 class="clicavel-sobre-escudo" style="margin: 0; font-size: 28px; font-weight: 900; letter-spacing: -1px; text-transform: uppercase;">DUELO: ${t1.Ticker} vs ${t2.Ticker}</h2>
+                        <h2 style="margin: 0; font-size: 28px; font-weight: 900; letter-spacing: -1px; text-transform: uppercase;">DUELO: ${t1.Ticker} vs ${t2.Ticker}</h2>
                         
-                        <button class="clicavel-sobre-escudo" onclick="transmitirAlertaDueloDiscord()" style="background: #f39c12; color: #111; border: none; padding: 5px 12px; border-radius: 4px; font-weight: bold; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 5px; box-shadow: 0 2px 5px rgba(243,156,18,0.4);">
+                        <button onclick="transmitirAlertaDueloDiscord()" style="background: #f39c12; color: #111; border: none; padding: 5px 12px; border-radius: 4px; font-weight: bold; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 5px; box-shadow: 0 2px 5px rgba(243,156,18,0.4); position: relative; z-index: 1000;">
                             Transmitir Duelo 📡
                         </button>
                     </div>
                 </div>
 
-                <div class="clicavel-sobre-escudo">
+                <div>
                     <table class="tabela-duelo">
                         <thead>
                             <tr>
@@ -742,7 +758,7 @@
                     </table>
                 </div>
 
-                <div class="clicavel-sobre-escudo" style="display: flex; gap: 30px; margin-top: 25px;">
+                <div style="display: flex; gap: 30px; margin-top: 25px;">
                     <div style="flex: 1.5; background: #e9ecef; padding: 20px; border-radius: 4px; border-left: 4px solid #d68910;">
                         <h4 style="margin-top: 0; color: #121212; text-transform: uppercase; font-size: 14px;">Veredicto Comportamental</h4>
                         <div style="font-size: 13px; line-height: 1.6; color: #333; text-align: justify;">
@@ -750,10 +766,8 @@
                         </div>
                     </div>
 
-                    <!-- MATRIZ OPERACIONAL DUPLA -->
                     <div style="flex: 1; display: flex; flex-direction: column; gap: 15px;">
                         
-                        <!-- PAINEL VENCEDOR (VERDE) -->
                         <div style="background: #eafaf1; border: 1px solid #c3e6cb; border-radius: 6px; padding: 15px;">
                             <h4 style="margin-top: 0; color: #2b542c; font-size: 14px; margin-bottom: 10px; border-bottom: 1px solid #c3e6cb; padding-bottom: 5px;">🟢 ALOCAÇÃO (${vencedor.Ticker})</h4>
                             <div style="font-size: 13px; line-height: 1.8; color: #121212;">
@@ -763,7 +777,6 @@
                             </div>
                         </div>
 
-                        <!-- PAINEL PERDEDOR (VERMELHO) -->
                         <div style="background: #fdf2f2; border: 1px solid #f5c6cb; border-radius: 6px; padding: 15px;">
                             <h4 style="margin-top: 0; color: #843534; font-size: 14px; margin-bottom: 10px; border-bottom: 1px solid #f5c6cb; padding-bottom: 5px;">🔴 LIQUIDAÇÃO (${perdedor.Ticker})</h4>
                             <div style="font-size: 13px; line-height: 1.8; color: #121212;">
@@ -778,6 +791,7 @@
             </div>
         `;
         return html;
+    }
     }
     // NOVA FUNÇÃO: Transmissão do Duelo para o Discord
     async function transmitirAlertaDueloDiscord() {
