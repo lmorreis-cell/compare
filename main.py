@@ -780,6 +780,57 @@ def webhook_sniper():
     except Exception as e:
         return jsonify({"erro": str(e)}), 500
 
+@app.route('/api/webhook/duelo', methods=['POST'])
+def webhook_duelo():
+    dados = request.json
+    webhook_url = os.environ.get("WEBHOOK_SNIPER")
+    
+    if not webhook_url:
+        return jsonify({"erro": "Webhook não configurado no servidor."}), 500
+
+    t1 = dados['t1']
+    t2 = dados['t2']
+    
+    # Determina o vencedor matemático para as diretrizes de execução
+    vencedor = t1 if float(t1['Mansfield RS']) > float(t2['Mansfield RS']) else t2
+
+    embed = {
+        "embeds": [
+            {
+                "title": f"⚔️ DUELO QUANTITATIVO: {t1['Ticker']} vs {t2['Ticker']}",
+                "color": 15965184, # Laranja Portal Bolsa
+                "description": f"O sistema quantitativo avaliou o frente-a-frente entre os dois ativos e declarou a **{vencedor['Ticker']}** como vencedora tática e estrutural.",
+                "fields": [
+                    {
+                        "name": f"📊 {t1['Ticker']} (Métricas)",
+                        "value": f"**Preço:** {t1['Preço']} €\n**Mansfield RS:** {t1['Mansfield RS']}\n**ROC 6M:** {t1['ROC 6M (%)']}%\n**RSI:** {t1['RSI (14)']}",
+                        "inline": True
+                    },
+                    {
+                        "name": f"📊 {t2['Ticker']} (Métricas)",
+                        "value": f"**Preço:** {t2['Preço']} €\n**Mansfield RS:** {t2['Mansfield RS']}\n**ROC 6M:** {t2['ROC 6M (%)']}%\n**RSI:** {t2['RSI (14)']}",
+                        "inline": True
+                    },
+                    {
+                        "name": f"🎯 Plano de Proteção ({vencedor['Ticker']})",
+                        "value": f"**Alvo 1:** {vencedor['Alvo T1 (€)']} € | **Alvo 2:** {vencedor['Alvo T2 (€)']} €\n**Stop Loss:** Abaixo de {vencedor['Stop Loss (€)']} €",
+                        "inline": False
+                    }
+                ],
+                "footer": {
+                    "text": "Portal Bolsa - Radar de Momentum"
+                }
+            }
+        ]
+    }
+
+    try:
+        response = requests.post(webhook_url, json=embed)
+        response.raise_for_status()
+        return jsonify({"sucesso": True})
+    except Exception as e:
+        return jsonify({"erro": str(e)}), 500
+
 if __name__ == "__main__":
     # Verifica se a variável PORT existe (o Discloud cria isto automaticamente)
     porta = int(os.environ.get("PORT", 8080))
