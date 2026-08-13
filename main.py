@@ -781,6 +781,7 @@ def webhook_sniper():
         return jsonify({"erro": str(e)}), 500
 
 @app.route('/api/webhook/duelo', methods=['POST'])
+@app.route('/api/webhook/duelo', methods=['POST'])
 def webhook_duelo():
     dados = request.json
     webhook_url = os.environ.get("WEBHOOK_DUELO")
@@ -791,30 +792,26 @@ def webhook_duelo():
     t1 = dados['t1']
     t2 = dados['t2']
     
-    # Determina o vencedor matemático para as diretrizes de execução
+    # Determina o vencedor matemático
     vencedor = t1 if float(t1['Mansfield RS']) > float(t2['Mansfield RS']) else t2
+    perdedor = t2 if float(t1['Mansfield RS']) > float(t2['Mansfield RS']) else t1
 
     embed = {
         "embeds": [
             {
-                "title": f"⚔️ DUELO QUANTITATIVO: {t1['Ticker']} vs {t2['Ticker']}",
-                "color": 15965184, # Laranja Portal Bolsa
-                "description": f"O sistema quantitativo avaliou o frente-a-frente entre os dois ativos e declarou a **{vencedor['Ticker']}** como vencedora tática e estrutural.",
+                "title": f"⚔️ ROTAÇÃO DE CAPITAL: {t1['Ticker']} vs {t2['Ticker']}",
+                "color": 15965184, 
+                "description": f"O sistema quantitativo ditou a rotação tática para a **{vencedor['Ticker']}**, sinalizando a liquidação da **{perdedor['Ticker']}** devido à degradação da sua Força Institucional.",
                 "fields": [
                     {
-                        "name": f"📊 {t1['Ticker']} (Métricas)",
-                        "value": f"**Preço:** {t1['Preço']} €\n**Mansfield RS:** {t1['Mansfield RS']}\n**ROC 6M:** {t1['ROC 6M (%)']}%\n**RSI:** {t1['RSI (14)']}",
+                        "name": f"🟢 ALOCAÇÃO: {vencedor['Ticker']}",
+                        "value": f"**Mansfield RS:** {vencedor['Mansfield RS']}\n**ROC 6M:** {vencedor['ROC 6M (%)']}%\n**Alvos (PT1/PT2):** {vencedor['Alvo T1 (€)']} / {vencedor['Alvo T2 (€)']}\n**Stop Loss:** {vencedor['Stop Loss (€)']}",
                         "inline": True
                     },
                     {
-                        "name": f"📊 {t2['Ticker']} (Métricas)",
-                        "value": f"**Preço:** {t2['Preço']} €\n**Mansfield RS:** {t2['Mansfield RS']}\n**ROC 6M:** {t2['ROC 6M (%)']}%\n**RSI:** {t2['RSI (14)']}",
+                        "name": f"🔴 LIQUIDAÇÃO: {perdedor['Ticker']}",
+                        "value": f"**Mansfield RS:** {perdedor['Mansfield RS']}\n**ROC 6M:** {perdedor['ROC 6M (%)']}%\n**Alvos (PT1/PT2):** {perdedor['Alvo T1 (€)']} / {perdedor['Alvo T2 (€)']}\n**Stop Loss:** {perdedor['Stop Loss (€)']}",
                         "inline": True
-                    },
-                    {
-                        "name": f"🎯 Plano de Proteção ({vencedor['Ticker']})",
-                        "value": f"**Alvo 1:** {vencedor['Alvo T1 (€)']} € | **Alvo 2:** {vencedor['Alvo T2 (€)']} €\n**Stop Loss:** Abaixo de {vencedor['Stop Loss (€)']} €",
-                        "inline": False
                     }
                 ],
                 "footer": {
