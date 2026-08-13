@@ -239,6 +239,8 @@
     }
 
     async function compararTickersManual() {
+        // ADICIONA ESTA LINHA AQUI PARA LIMPAR O BLUEPRINT ANTERIOR:
+        document.getElementById('sniper-resultado').style.display = 'none';
         const t1 = document.getElementById('input-t1').value.trim();
         const t2 = document.getElementById('input-t2').value.trim();
 
