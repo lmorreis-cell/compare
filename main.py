@@ -781,9 +781,12 @@ def webhook_sniper():
         return jsonify({"erro": str(e)}), 500
 
 @app.route('/api/webhook/duelo', methods=['POST'])
-@app.route('/api/webhook/duelo', methods=['POST'])
 def webhook_duelo():
     dados = request.json
+    import os
+    import requests
+    from flask import jsonify
+    
     webhook_url = os.environ.get("WEBHOOK_DUELO")
     
     if not webhook_url:
@@ -796,26 +799,36 @@ def webhook_duelo():
     vencedor = t1 if float(t1['Mansfield RS']) > float(t2['Mansfield RS']) else t2
     perdedor = t2 if float(t1['Mansfield RS']) > float(t2['Mansfield RS']) else t1
 
+    # Constrói o Veredicto Comportamental para apoiar a decisão na mensagem
+    if float(t1['Mansfield RS']) < 0 and float(t2['Mansfield RS']) < 0:
+        justificacao = f"⚠️ **Alerta de Degradação:** Ambas as ações apresentam Força Relativa institucional negativa. O capital está a fugir de ambas as frentes. A alocação na **{vencedor['Ticker']}** é apenas o 'mal menor' matemático, mas estruturalmente o mercado está a rejeitar ambos os ativos neste momento."
+    else:
+        justificacao = f"📊 **Veredicto do Sistema:** O racional quantitativo apoia inequivocamente a alocação na **{vencedor['Ticker']}** e a liquidação/rejeição da **{perdedor['Ticker']}**. A {vencedor['Ticker']} está a bater o mercado, demonstrando força institucional sustentada face ao índice de referência."
+
     embed = {
         "embeds": [
             {
-                "title": f"⚔️ ROTAÇÃO DE CAPITAL: {t1['Ticker']} vs {t2['Ticker']}",
-                "color": 15965184, 
-                "description": f"O sistema quantitativo ditou a rotação tática para a **{vencedor['Ticker']}**, sinalizando a liquidação da **{perdedor['Ticker']}** devido à degradação da sua Força Institucional.",
+                "author": {
+                    "name": "Partilha de Ideias - Luís Reis",
+                    "icon_url": "https://cdn-icons-png.flaticon.com/512/3594/3594191.png" # Ícone elegante de bolsa/finanças
+                },
+                "title": f"⚔️ ROTAÇÃO TÁTICA DE CAPITAL: {t1['Ticker']} vs {t2['Ticker']}",
+                "color": 15965184, # Laranja Portal Bolsa
+                "description": justificacao,
                 "fields": [
                     {
                         "name": f"🟢 ALOCAÇÃO: {vencedor['Ticker']}",
-                        "value": f"**Mansfield RS:** {vencedor['Mansfield RS']}\n**ROC 6M:** {vencedor['ROC 6M (%)']}%\n**Alvos (PT1/PT2):** {vencedor['Alvo T1 (€)']} / {vencedor['Alvo T2 (€)']}\n**Stop Loss:** {vencedor['Stop Loss (€)']}",
+                        "value": f"**Cotação:** {vencedor['Preço']} €\n**Mansfield RS:** {vencedor['Mansfield RS']}\n**ROC 6M:** {vencedor['ROC 6M (%)']}%\n**RSI (14):** {vencedor['RSI (14)']}\n\n**Alvos (PT1/PT2):** {vencedor['Alvo T1 (€)']} € / {vencedor['Alvo T2 (€)']} €\n**Stop Loss:** Abaixo de {vencedor['Stop Loss (€)']} €",
                         "inline": True
                     },
                     {
                         "name": f"🔴 LIQUIDAÇÃO: {perdedor['Ticker']}",
-                        "value": f"**Mansfield RS:** {perdedor['Mansfield RS']}\n**ROC 6M:** {perdedor['ROC 6M (%)']}%\n**Alvos (PT1/PT2):** {perdedor['Alvo T1 (€)']} / {perdedor['Alvo T2 (€)']}\n**Stop Loss:** {perdedor['Stop Loss (€)']}",
+                        "value": f"**Cotação:** {perdedor['Preço']} €\n**Mansfield RS:** {perdedor['Mansfield RS']}\n**ROC 6M:** {perdedor['ROC 6M (%)']}%\n**RSI (14):** {perdedor['RSI (14)']}\n\n**Alvos (PT1/PT2):** {perdedor['Alvo T1 (€)']} € / {perdedor['Alvo T2 (€)']} €\n**Stop Loss:** Acima de {perdedor['Stop Loss (€)']} €",
                         "inline": True
                     }
                 ],
                 "footer": {
-                    "text": "Portal Bolsa - Radar de Momentum"
+                    "text": "© Portal Bolsa | Algoritmo de Momentum"
                 }
             }
         ]
