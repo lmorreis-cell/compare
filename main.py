@@ -783,7 +783,7 @@ def webhook_sniper():
 @app.route('/api/webhook/duelo', methods=['POST'])
 def webhook_duelo():
     dados = request.json
-    webhook_url = os.environ.get("WEBHOOK_SNIPER")
+    webhook_url = os.environ.get("WEBHOOK_DUELO")
     
     if not webhook_url:
         return jsonify({"erro": "Webhook não configurado no servidor."}), 500
