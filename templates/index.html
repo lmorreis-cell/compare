@@ -335,6 +335,15 @@
             return;
         }
 
+        // --- ADICIONA ESTAS LINHAS AQUI ---
+        // Limpa e oculta outras caixas de resultados que possam estar abertas na página
+        const resultadoManual = document.getElementById('resultado'); // Substitui pelo ID real da caixa do Duelo, se for diferente
+        if (resultadoManual) resultadoManual.style.display = 'none';
+        
+        const radarMomentum = document.getElementById('relatorio-nlg'); // Substitui pelo ID real do Radar, se aplicável
+        if (radarMomentum) radarMomentum.style.display = 'none';
+        // ---------------------------------
+
         document.getElementById('loading').style.display = 'block';
         document.getElementById('sniper-resultado').style.display = 'none';
 
