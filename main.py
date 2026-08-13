@@ -808,10 +808,10 @@ def webhook_duelo():
     embed = {
         "embeds": [
             {
-                "author": {
-                    "name": "Partilha de Ideias - Luís Reis",
-                    "icon_url": "https://cdn-icons-png.flaticon.com/512/3594/3594191.png" # Ícone elegante de bolsa/finanças
-                },
+                #"author": {
+                #    "name": "Partilha de Ideias - Luís Reis",
+                #    "icon_url": "https://cdn-icons-png.flaticon.com/512/3594/3594191.png" # Ícone elegante de bolsa/finanças
+                #},
                 "title": f"⚔️ ROTAÇÃO TÁTICA DE CAPITAL: {t1['Ticker']} vs {t2['Ticker']}",
                 "color": 15965184, # Laranja Portal Bolsa
                 "description": justificacao,
