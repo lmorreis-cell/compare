@@ -247,19 +247,18 @@
 
 <script>
     async function executarAnalise() {
-        // ADICIONA ESTA LINHA AQUI PARA LIMPAR O BLUEPRINT ANTERIOR:
         document.getElementById('sniper-resultado').style.display = 'none';
         document.getElementById('loading').style.display = 'block';
         document.getElementById('resultado').style.display = 'none';
-
         document.getElementById('caixa-regime').style.display = 'block';
 
-        // NOVO: Garante que o título é o correto para o Radar
-       // document.getElementById('titulo-tabela').innerText = 'Ativos com Sinal de Entrada (Radar)';
-
-        // NOVO: Obrigar o sistema a limpar o duelo fantasma anterior
-        document.getElementById('relatorio-nlg').innerHTML = '';
-        document.getElementById('relatorio-nlg').style.display = 'none';
+        // Garante que o formato antigo do Radar é restaurado se viermos de um Duelo
+        document.getElementById('titulo-tabela').style.display = 'block';
+        document.getElementById('tabela-ativos').style.display = 'table';
+        
+        const relatorio = document.getElementById('relatorio-nlg');
+        relatorio.innerHTML = '';
+        relatorio.style.cssText = "margin-top: 40px; background-color: #1a1a1a; padding: 25px; border-radius: 8px; border-left: 4px solid #ff9800; display: none; color: #fff;";
         
         const thead = document.querySelector('#tabela-ativos thead');
         const tbody = document.querySelector('#tabela-ativos tbody');
@@ -280,7 +279,6 @@
             document.getElementById('valor-adx').innerText = dados.adx;
             document.getElementById('estrategia-ativa').innerText = dados.estrategia;
 
-            // TÍTULO DINÂMICO BASEADO NO REGIME DE MERCADO E QUALIDADE DO ATIVO
             if (dados.estrategia.includes("Mean Reversion")) {
                 document.getElementById('titulo-tabela').innerHTML = 'Alvos de Ressalto Técnico <span style="color: #f44336; font-size: 0.65em; vertical-align: middle; margin-left: 10px;">⚠️ ALERTA: Ativos em queda livre. Baixa qualidade de momentum. Setup tático rápido.</span>';
             } else {
@@ -288,43 +286,26 @@
             }
 
             if (dados.ativos && dados.ativos.length > 0) {
-                // Construir cabeçalhos baseados nas chaves do primeiro ativo
-                
-                
-                // Substitui isto:
-                //  colunas = Object.keys(dados.ativos[0]);
-
-                // Por isto:
                 let colunas = Object.keys(dados.ativos[0]);
-                // Remove o 'Ticker' do array atual e força-o a ser o primeiro elemento
                 colunas = colunas.filter(c => c !== 'Ticker');
                 colunas.unshift('Ticker'); 
 
                 let linhaHeader = '<tr>';
-                colunas.forEach(coluna => {
-                    linhaHeader += `<th>${coluna}</th>`;
-                });
+                colunas.forEach(coluna => { linhaHeader += `<th>${coluna}</th>`; });
                 linhaHeader += '</tr>';
                 thead.innerHTML = linhaHeader;
 
-                // Construir linhas
                 dados.ativos.forEach(ativo => {
                     let linhaBody = '<tr>';
                     colunas.forEach(coluna => {
                         let valor = ativo[coluna];
-                        // Destacar Ticker a bold
-                        if (coluna === 'Ticker') {
-                            linhaBody += `<td><strong>${valor}</strong></td>`;
-                        } else {
-                            linhaBody += `<td>${valor}</td>`;
-                        }
+                        linhaBody += (coluna === 'Ticker') ? `<td><strong>${valor}</strong></td>` : `<td>${valor}</td>`;
                     });
                     linhaBody += '</tr>';
                     tbody.innerHTML += linhaBody;
                 });
-                // NOVO: Injetar o relatório macro após a tabela estar construída
-                document.getElementById('relatorio-nlg').innerHTML = gerarRelatorioRadarNLG(dados);
-                document.getElementById('relatorio-nlg').style.display = 'block';
+                relatorio.innerHTML = gerarRelatorioRadarNLG(dados);
+                relatorio.style.display = 'block';
             } else {
                 tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Nenhum ativo cumpriu os critérios da estratégia atual.</td></tr>';
             }
@@ -339,13 +320,10 @@
     }
 
     async function compararTickersManual() {
-        // ADICIONA ESTA LINHA AQUI PARA LIMPAR O BLUEPRINT ANTERIOR:
         document.getElementById('sniper-resultado').style.display = 'none';
         const t1 = document.getElementById('input-t1').value.trim();
         const t2 = document.getElementById('input-t2').value.trim();
 
-        
-        
         if (!t1 || !t2) {
             alert("Por favor, insere dois tickers para comparar.");
             return;
@@ -354,18 +332,14 @@
         document.getElementById('loading').style.display = 'block';
         document.getElementById('resultado').style.display = 'none';
         
-       
-        // NOVO: Obrigar o sistema a limpar o relatório fantasma anterior
-        document.getElementById('relatorio-nlg').innerHTML = '';
-        document.getElementById('relatorio-nlg').style.display = 'none';
+        // Esconde as tabelas escuras originais para o Duelo assumir o novo design
+        document.getElementById('titulo-tabela').style.display = 'none';
+        document.getElementById('tabela-ativos').style.display = 'none';
+        document.getElementById('caixa-regime').style.display = 'none';
 
-        // NOVO: Muda o título para refletir que é apenas um raio-x
-        document.getElementById('titulo-tabela').innerText = 'Raio-X: Comparação Direta de Ativos';
-
-
-        const thead = document.querySelector('#tabela-ativos thead');
-        const tbody = document.querySelector('#tabela-ativos tbody');
-        thead.innerHTML = ''; tbody.innerHTML = ''; 
+        const relatorio = document.getElementById('relatorio-nlg');
+        relatorio.innerHTML = '';
+        relatorio.style.cssText = "margin-top: 30px; display: none;"; // Limpa formatações antigas de Radar
 
         try {
             const resposta = await fetch(`/api/comparar/${t1}/${t2}`);
@@ -379,40 +353,14 @@
             
             const dados = await resposta.json();
 
-            // Esconder a caixa do regime de mercado, pois é um duelo isolado
-            document.getElementById('caixa-regime').style.display = 'none';
-            // Esconder a caixa do regime de mercado, pois é um duelo isolado
-            // document.getElementById('estado-regime').parentElement.style.display = 'none';
-
-            if (dados && dados.length > 0) {
-                let colunas = Object.keys(dados[0]);
-                colunas = colunas.filter(c => c !== 'Ticker');
-                colunas.unshift('Ticker');
-
-                let linhaHeader = '<tr>';
-                colunas.forEach(coluna => { linhaHeader += `<th>${coluna}</th>`; });
-                linhaHeader += '</tr>';
-                thead.innerHTML = linhaHeader;
-
-                dados.forEach(ativo => {
-                    let linhaBody = '<tr>';
-                    colunas.forEach(coluna => {
-                        let valor = ativo[coluna];
-                        linhaBody += (coluna === 'Ticker') ? `<td><strong>${valor}</strong></td>` : `<td>${valor}</td>`;
-                    });
-                    linhaBody += '</tr>';
-                    tbody.innerHTML += linhaBody;
-                });
-
-            // Ativa o motor NLG se houver 2 ativos, avisa se faltarem dados
             if (dados.length === 2) {
-                document.getElementById('relatorio-nlg').innerHTML = gerarRelatorioNLG(dados[0], dados[1]);
-                document.getElementById('relatorio-nlg').style.display = 'block';
+                relatorio.innerHTML = gerarRelatorioNLG(dados[0], dados[1]);
+                relatorio.style.display = 'block';
             } else if (dados.length === 1) {
-                document.getElementById('relatorio-nlg').innerHTML = `<p style="color: #f44336; font-weight: bold;">Erro de Duelo: Não foi possível comparar. O ticker que falta (provavelmente mal escrito ou recém-criado) não existe na base de dados ou não possui os 252 dias de histórico exigidos para calcular a Força Relativa.</p>`;
-                document.getElementById('relatorio-nlg').style.display = 'block';
+                relatorio.innerHTML = `<div style="background-color: #1a1a1a; padding: 25px; border-radius: 8px; border-left: 4px solid #f44336; color: white;"><p style="color: #f44336; font-weight: bold;">Erro de Duelo: O ticker inserido não possui os 252 dias de histórico exigidos para calcular a Força Relativa.</p></div>`;
+                relatorio.style.display = 'block';
             }
-            }
+            
             document.getElementById('loading').style.display = 'none';
             document.getElementById('resultado').style.display = 'block';
 
@@ -421,8 +369,9 @@
             document.getElementById('loading').style.display = 'none';
         }
     }
-    // Variável global para guardar o relatório atual em memória
-    window.blueprintAtual = null;
+
+    // Variável global do duelo para Webhook
+    window.dueloAtual = null;
 
     async function gerarBlueprintSniper() {
         const ticker = document.getElementById('sniper-ticker').value.trim();
@@ -710,65 +659,134 @@
         }
     }
     function gerarRelatorioNLG(t1, t2) {
-        let html = `<h3 style="color: #ff9800;">O Duelo: ${t1.Ticker} vs ${t2.Ticker}</h3>`;
+        window.dueloAtual = { t1: t1, t2: t2 };
+        const svgOverlay = "data:image/svg+xml;charset=utf-8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><text x="50%" y="50%" transform="rotate(-35 200 150)" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="900" fill="rgba(18, 18, 18, 0.04)">PORTAL BOLSA - LUÍS REIS</text></svg>');
 
-        // 1. Força Relativa de Mansfield
-        html += `<h4>1. Força Relativa de Mansfield (Quem está a bater o mercado?)</h4><ul>`;
+        let vencedor = parseFloat(t1['Mansfield RS']) > parseFloat(t2['Mansfield RS']) ? t1 : t2;
+        let perdedor = parseFloat(t1['Mansfield RS']) > parseFloat(t2['Mansfield RS']) ? t2 : t1;
+
+        let nlpText = "";
         if (t1['Mansfield RS'] < 0 && t2['Mansfield RS'] < 0) {
-            html += `<li><strong>${t1.Ticker} (${t1['Mansfield RS']}) e ${t2.Ticker} (${t2['Mansfield RS']}):</strong> Ambas estão com valores profundamente negativos. Isto significa que, enquanto o índice geral sobe ou lateraliza, estas duas ações estão a ser massacradas. Nenhuma delas demonstra a força institucional necessária para sustentar uma subida.</li>`;
+            nlpText += `<p><strong>1. Força Relativa:</strong> Ambas estão com valores profundamente negativos. Isto significa que, enquanto o índice geral sobe ou lateraliza, estas duas ações estão a ser massacradas.</p>`;
         } else {
-            let vencedor = t1['Mansfield RS'] > t2['Mansfield RS'] ? t1 : t2;
-            let perdedor = t1['Mansfield RS'] > t2['Mansfield RS'] ? t2 : t1;
-            html += `<li><strong>O domínio da ${vencedor.Ticker} (${vencedor['Mansfield RS']}):</strong> A ${vencedor.Ticker} está a bater o mercado, ao contrário da ${perdedor.Ticker} (${perdedor['Mansfield RS']}), que apresenta fraqueza relativa face ao índice de referência.</li>`;
+            nlpText += `<p><strong>1. O domínio da ${vencedor.Ticker}:</strong> A ${vencedor.Ticker} está a bater o mercado, ao contrário da ${perdedor.Ticker}, que apresenta fraqueza relativa face ao índice de referência.</p>`;
         }
-        html += `</ul>`;
 
-        // 2. ROC 6M
-        html += `<h4>2. ROC 6M (Qual é a velocidade da destruição/criação de capital?)</h4><ul>`;
         if (t1['ROC 6M (%)'] < 0 && t2['ROC 6M (%)'] < 0) {
-            html += `<li><strong>${t1.Ticker} (${t1['ROC 6M (%)']}%) e ${t2.Ticker} (${t2['ROC 6M (%)']}%):</strong> O <em>Rate of Change</em> mostra-te a realidade nua e crua do médio prazo. Não há qualquer "aceleração real e sustentada" aqui. Há apenas uma fuga massiva de capital em ambos os ativos.</li>`;
+            nlpText += `<p><strong>2. Velocidade de Capital:</strong> O <em>Rate of Change</em> mostra a realidade nua e crua. Não há aceleração sustentada, apenas fuga massiva de capital em ambos os ativos.</p>`;
         } else if (t1['ROC 6M (%)'] > 0 && t2['ROC 6M (%)'] > 0) {
-            html += `<li><strong>Ambas em aceleração:</strong> O momentum de médio prazo é positivo para ambas. A ${t1.Ticker} regista ${t1['ROC 6M (%)']}%, e a ${t2.Ticker} regista ${t2['ROC 6M (%)']}%. O capital flui ativamente para os dois ativos.</li>`;
+            nlpText += `<p><strong>2. Velocidade de Capital:</strong> Ambas em aceleração. O momentum de médio prazo é positivo e o capital flui ativamente para as duas.</p>`;
         } else {
             let vencedorRoc = t1['ROC 6M (%)'] > 0 ? t1 : t2;
             let perdedorRoc = t1['ROC 6M (%)'] < 0 ? t1 : t2;
-            html += `<li><strong>Divergência técnica:</strong> A ${vencedorRoc.Ticker} está em clara expansão (${vencedorRoc['ROC 6M (%)']}%), enquanto a ${perdedorRoc.Ticker} continua num ciclo de destruição de capital (${perdedorRoc['ROC 6M (%)']}%).</li>`;
-        }
-        html += `</ul>`;
-
-        // 3. RSI 14
-        html += `<h4>3. RSI de 14 Dias (Existe exaustão ou força?)</h4><ul>`;
-        const avaliaRSI = (ticker, rsi) => {
-            if (rsi < 30) return `<li><strong>${ticker} (${rsi}):</strong> Está a aproximar-se ou já dentro da zona de sobrevenda (<30). Numa ação com ROC negativo, isto significa apenas que a tendência de queda continua intacta e pesada.</li>`;
-            if (rsi > 70) return `<li><strong>${ticker} (${rsi}):</strong> Encontra-se em zona de sobrecompra (>70). O movimento começa a dar sinais de esticão e risco de exaustão no curto prazo.</li>`;
-            return `<li><strong>${ticker} (${rsi}):</strong> Está numa zona neutra. Sem pressões extremas de sobrecompra ou sobrevenda que ditem um ressalto imediato.</li>`;
-        };
-        html += avaliaRSI(t1.Ticker, t1['RSI (14)']);
-        html += avaliaRSI(t2.Ticker, t2['RSI (14)']);
-        html += `</ul>`;
-
-        // Veredicto
-        html += `<h4>O Veredicto do Sistema:</h4>`;
-        if (t1['ROC 6M (%)'] < 0 && t1['Mansfield RS'] < 0 && t2['ROC 6M (%)'] < 0 && t2['Mansfield RS'] < 0) {
-            html += `<p>Se tivesses as duas em carteira, a leitura quantitativa dita que deverias liquidar ambas para proteger capital, pois nenhuma cumpre os teus critérios base (ROC > 0 e Mansfield > 0). Comprar qualquer uma delas em nome do <em>trend following</em> é um erro primário.</p>`;
-        } else if (t1['Mansfield RS'] > 0 && t1['ROC 6M (%)'] > 0 && (t2['Mansfield RS'] < 0 || t2['ROC 6M (%)'] < 0)) {
-            html += `<p>O racional quantitativo apoia inequivocamente a <strong>compra da ${t1.Ticker} e a venda/rejeição da ${t2.Ticker}</strong>. A ${t1.Ticker} cumpre os pressupostos de rotação, demonstrando aceleração sustentada face ao mercado.</p>`;
-        } else if (t2['Mansfield RS'] > 0 && t2['ROC 6M (%)'] > 0 && (t1['Mansfield RS'] < 0 || t1['ROC 6M (%)'] < 0)) {
-            html += `<p>O racional quantitativo apoia inequivocamente a <strong>compra da ${t2.Ticker} e a venda/rejeição da ${t1.Ticker}</strong>. A ${t2.Ticker} cumpre os pressupostos de rotação, demonstrando aceleração sustentada face ao mercado.</p>`;
-        } else {
-            html += `<p>O cenário não apresenta assimetrias óbvias que justifiquem uma rotação agressiva de 1-para-1 baseada nos teus critérios absolutos. Avaliar filtros adicionais de volatilidade ou volume.</p>`;
+            nlpText += `<p><strong>2. Divergência técnica:</strong> A ${vencedorRoc.Ticker} está em clara expansão, enquanto a ${perdedorRoc.Ticker} continua num ciclo de destruição de capital.</p>`;
         }
 
-        // Injetar Preços de Saída no Relatório
-        const recomendado = t1['Mansfield RS'] > t2['Mansfield RS'] ? t1 : t2;
-        
-        html += `<h4>Níveis Operacionais Sugeridos (${recomendado.Ticker}):</h4><ul>`;
-        html += `<li><strong>Cotação Atual:</strong> ${recomendado['Preço']} €</li>`;
-        html += `<li><strong>Alvo Conservador (T1):</strong> <span style="color:#4caf50;">${recomendado['Alvo T1 (€)']} €</span> (Tomada parcial de lucros)</li>`;
-        html += `<li><strong>Alvo Agressivo (T2):</strong> <span style="color:#2196f3;">${recomendado['Alvo T2 (€)']} €</span> (Saída total da posição)</li>`;
-        html += `<li><strong>Stop Loss Sugerido:</strong> <span style="color:#f44336;">${recomendado['Stop Loss (€)']} €</span> (Invalidação da tese)</li>`;
-        html += `</ul>`;
+        let html = `
+            <div style="background-color: #f0f2f5; color: #121212; padding: 30px; border-radius: 8px; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+                
+                <!-- ESCUDO DE PROPRIEDADE INTELECTUAL -->
+                <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 50; pointer-events: none; background-image: url('${svgOverlay}'); background-repeat: repeat;"></div>
+
+                <style>
+                    .clicavel-sobre-escudo { position: relative; z-index: 51; }
+                    .tabela-duelo { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+                    .tabela-duelo th { background: #121212; color: #fff; text-transform: uppercase; padding: 14px; text-align: left; font-size: 12px; }
+                    .tabela-duelo td { padding: 14px; text-align: left; border-bottom: 1px solid #eee; color: #333; font-weight: bold; }
+                    .tabela-duelo tr:last-child td { border-bottom: none; }
+                    .destaque-vencedor { background-color: #eafaf1; color: #2b542c !important; }
+                    .destaque-perdedor { background-color: #fdf2f2; color: #843534 !important; }
+                </style>
+
+                <div style="border-bottom: 2px solid #121212; padding-bottom: 15px; margin-bottom: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px;">
+                        <h2 class="clicavel-sobre-escudo" style="margin: 0; font-size: 28px; font-weight: 900; letter-spacing: -1px; text-transform: uppercase;">DUELO: ${t1.Ticker} vs ${t2.Ticker}</h2>
+                        
+                        <button class="clicavel-sobre-escudo" onclick="transmitirAlertaDueloDiscord()" style="background: #f39c12; color: #111; border: none; padding: 5px 12px; border-radius: 4px; font-weight: bold; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 5px; box-shadow: 0 2px 5px rgba(243,156,18,0.4);">
+                            Transmitir Duelo 📡
+                        </button>
+                    </div>
+                </div>
+
+                <div class="clicavel-sobre-escudo">
+                    <table class="tabela-duelo">
+                        <thead>
+                            <tr>
+                                <th>Métrica Quantitativa</th>
+                                <th>${t1.Ticker}</th>
+                                <th>${t2.Ticker}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Cotação Atual</td>
+                                <td>${t1.Preço} €</td>
+                                <td>${t2.Preço} €</td>
+                            </tr>
+                            <tr>
+                                <td>Mansfield RS (Força Institucional)</td>
+                                <td class="${parseFloat(t1['Mansfield RS']) > parseFloat(t2['Mansfield RS']) ? 'destaque-vencedor' : 'destaque-perdedor'}">${t1['Mansfield RS']}</td>
+                                <td class="${parseFloat(t2['Mansfield RS']) > parseFloat(t1['Mansfield RS']) ? 'destaque-vencedor' : 'destaque-perdedor'}">${t2['Mansfield RS']}</td>
+                            </tr>
+                            <tr>
+                                <td>ROC 6M (Velocidade do Momentum)</td>
+                                <td class="${parseFloat(t1['ROC 6M (%)']) > parseFloat(t2['ROC 6M (%)']) ? 'destaque-vencedor' : 'destaque-perdedor'}">${t1['ROC 6M (%)']}%</td>
+                                <td class="${parseFloat(t2['ROC 6M (%)']) > parseFloat(t1['ROC 6M (%)']) ? 'destaque-vencedor' : 'destaque-perdedor'}">${t2['ROC 6M (%)']}%</td>
+                            </tr>
+                            <tr>
+                                <td>RSI (14 Dias)</td>
+                                <td>${t1['RSI (14)']}</td>
+                                <td>${t2['RSI (14)']}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="clicavel-sobre-escudo" style="display: flex; gap: 30px; margin-top: 25px;">
+                    <div style="flex: 1.5; background: #e9ecef; padding: 20px; border-radius: 4px; border-left: 4px solid #d68910;">
+                        <h4 style="margin-top: 0; color: #121212; text-transform: uppercase; font-size: 14px;">Veredicto Comportamental</h4>
+                        <div style="font-size: 13px; line-height: 1.6; color: #333; text-align: justify;">
+                            ${nlpText}
+                        </div>
+                    </div>
+
+                    <div style="flex: 1; background: #eafaf1; border: 1px solid #c3e6cb; border-radius: 6px; padding: 20px;">
+                        <h4 style="margin-top: 0; color: #2b542c; font-size: 16px; margin-bottom: 15px;">🎯 Alvos de Saída (${vencedor.Ticker})</h4>
+                        <div style="font-size: 13px; line-height: 1.8; color: #121212;">
+                            <span style="color: #4caf50; font-weight: 900;">PT 1</span> ${vencedor['Alvo T1 (€)']} € (Parcial)<br>
+                            <span style="color: #2196f3; font-weight: 900;">PT 2</span> ${vencedor['Alvo T2 (€)']} € (Final)<br>
+                            <span style="color: #d9534f; font-weight: 900;">🛡️ Stop</span> Abaixo de ${vencedor['Stop Loss (€)']} €<br>
+                        </div>
+                        <div style="margin-top: 15px; font-size: 12px; color: #3c763d; background: #dff0d8; padding: 10px; border-radius: 4px; line-height: 1.5;">
+                            ⚡ <strong>Ação Recomendada:</strong> Alocação na <strong>${vencedor.Ticker}</strong> e rejeição da ${perdedor.Ticker}.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
         return html;
+    }
+    // NOVA FUNÇÃO: Transmissão do Duelo para o Discord
+    async function transmitirAlertaDueloDiscord() {
+        if (!window.dueloAtual) return;
+        
+        if (confirm(`Queres partilhar o duelo entre ${window.dueloAtual.t1.Ticker} e ${window.dueloAtual.t2.Ticker} no Discord?`)) {
+            try {
+                const response = await fetch('/api/webhook/duelo', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(window.dueloAtual)
+                });
+                
+                if (response.ok) {
+                    alert("Duelo transmitido com sucesso!");
+                } else {
+                    alert("Falha ao transmitir o duelo.");
+                }
+            } catch (error) {
+                alert("Erro na comunicação com o servidor.");
+            }
+        }
     }
     function gerarRelatorioRadarNLG(dados) {
         let html = `<h3 style="color: #ff9800;">Análise Macro e Diretrizes de Execução</h3>`;
