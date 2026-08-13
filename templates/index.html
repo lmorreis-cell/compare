@@ -359,6 +359,14 @@
             const rr_bear_val = parseFloat(dados.bear_plan.rr.split(':')[1]);
             const cor_rr_bear = rr_bear_val >= 2.0 ? '#843534' : '#d9534f'; 
 
+            const container = document.getElementById('sniper-resultado');
+            
+            // 1. ÂNCORA OBRIGATÓRIA
+            container.style.position = 'relative'; 
+
+            // 2. MOTOR DO ESCUDO SVG (Codificado em URI para compatibilidade máxima de browser)
+            const svgOverlay = "data:image/svg+xml;charset=utf-8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><text x="50%" y="50%" transform="rotate(-35 200 150)" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="900" fill="rgba(18, 18, 18, 0.04)">PORTAL BOLSA - LUÍS REIS</text></svg>');
+            
             let html = `
                 <!-- CSS EXCLUSIVO DAS TOOLTIPS -->
                 <style>
