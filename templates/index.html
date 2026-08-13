@@ -5,9 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Radar Comparativo</title>
     <style>
-        
         /* ==========================================
-           MARCA DE ÁGUA INSTITUCIONAL
+           MARCA DE ÁGUA E FUNDO INSTITUCIONAL (Original Mantido)
            ========================================== */
         body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
@@ -33,13 +32,104 @@
         }
         
         .container { max-width: 800px; margin: auto; }
-        button { background-color: #007bff; color: white; border: none; padding: 12px 24px; cursor: pointer; font-size: 16px; border-radius: 4px; }
-        button:hover { background-color: #0056b3; }
+        .loader { display: none; margin-top: 20px; color: #ffc107; }
+
+        /* ==========================================
+           SISTEMA DE UI MODERNO PARA PAINÉIS
+           ========================================== */
+        .painel-controlo {
+            background: #1c1e24; /* Fundo ligeiramente mais claro que o preto absoluto */
+            border: 1px solid #2d313a;
+            border-radius: 12px;
+            padding: 25px 30px;
+            margin-top: 20px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .painel-controlo:hover {
+            border-color: #3e4451;
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6);
+        }
+        
+        /* Bordos de categorização elegantes */
+        .borda-azul { border-left: 5px solid #007bff; }
+        .borda-laranja { border-left: 5px solid #d68910; }
+        .borda-roxa { border-left: 5px solid #8e44ad; }
+
+        /* Tipografia dos Cabeçalhos */
+        .painel-titulo {
+            margin: 0 0 5px 0;
+            font-size: 18px;
+            font-weight: 700;
+            color: #e6edf3;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Campos de Texto Modernos */
+        .input-moderno {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            color: #c9d1d9;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            outline: none;
+            transition: all 0.2s ease;
+            flex: 1; /* Faz o input esticar graciosamente */
+            min-width: 150px;
+        }
+        .input-moderno:focus {
+            border-color: #58a6ff;
+            box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.15);
+        }
+
+        /* Botões Táticos */
+        .btn-moderno {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .btn-azul { background: #007bff; color: white; }
+        .btn-azul:hover { background: #0056b3; transform: translateY(-1px); }
+        
+        .btn-laranja { background: #d68910; color: #111; }
+        .btn-laranja:hover { background: #f39c12; transform: translateY(-1px); }
+        
+        .btn-roxo { background: #8e44ad; color: #fff; }
+        .btn-roxo:hover { background: #9b59b6; transform: translateY(-1px); box-shadow: 0 0 15px rgba(155, 89, 182, 0.4); }
+
+        /* Grelha de Alinhamento Perfeito */
+        .linha-inputs {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            margin-top: 20px;
+            flex-wrap: wrap; /* Proteção para telemóveis */
+        }
+        .texto-vs {
+            font-weight: 700;
+            color: #8b949e;
+            font-size: 14px;
+        }
+
+        /* ==========================================
+           TABELAS DE RESULTADOS (Original Mantido)
+           ========================================== */
         .status-box { background-color: #1e1e1e; padding: 20px; border-radius: 8px; margin-top: 20px; border-left: 5px solid #007bff; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th, td { padding: 12px; text-align: left; border-bottom: 1px solid #333; }
         th { background-color: #1e1e1e; color: #aaa; }
-        .loader { display: none; margin-top: 20px; color: #ffc107; }
     </style>
 </head>
 <body position: relative;>
@@ -58,24 +148,32 @@
     Os dados processados neste painel operam com um ciclo de atualização tático de 5 minutos. Este desfasamento temporal não é uma anomalia, mas sim uma medida arquitetural de segurança para evitar limites de estrangulamento (<em>Rate Limiting</em>) e bloqueios de IP por parte das fontes e APIs financeiras. Este ciclo garante a estabilidade e disponibilidade ininterrupta do motor quantitativo para todos os membros da comunidade simultaneamente.
 </div>
     
-    <div style="background-color: #1e1e1e; padding: 20px; border-radius: 8px; margin-top: 20px;">
-        <h3 style="margin-top:0;">Duelo Manual de Ativos</h3>
-        <input type="text" id="input-t1" placeholder="Ex: JMT.LS" style="padding: 10px; border-radius: 4px; border: 1px solid #555; background: #333; color: white;">
-        <span style="margin: 0 10px;">vs</span>
-        <input type="text" id="input-t2" placeholder="Ex: NVG.LS" style="padding: 10px; border-radius: 4px; border: 1px solid #555; background: #333; color: white;">
-        <button onclick="compararTickersManual()" style="background-color: #ff9800; margin-left: 15px;">Comparar</button>
+    <!-- 1. BLOCO: DUELO MANUAL DE ATIVOS -->
+<div class="painel-controlo borda-laranja">
+    <h3 class="painel-titulo">Duelo Manual de Ativos</h3>
+    
+    <div class="linha-inputs">
+        <input type="text" id="ticker1" class="input-moderno" placeholder="Ex: JMT.LS">
+        <span class="texto-vs">VS</span>
+        <input type="text" id="ticker2" class="input-moderno" placeholder="Ex: NVG.LS">
+        <button onclick="compararTickersManual()" class="btn-moderno btn-laranja">Comparar</button>
     </div>
-    <!-- NOVO: GERADOR SNIPER TRADES -->
-    <div style="background-color: #1e1e1e; padding: 20px; border-radius: 8px; margin-top: 20px; border-left: 5px solid #b388ff;">
-        <h3 style="margin-top:0; color: #b388ff;">🎯 Gerador de Blueprints (Sniper Trades)</h3>
-        <input type="text" id="sniper-ticker" placeholder="Ex: SPY" style="padding: 10px; border-radius: 4px; border: 1px solid #555; background: #333; color: white;">
-        <select id="sniper-tf" style="padding: 10px; border-radius: 4px; border: 1px solid #555; background: #333; color: white; margin: 0 10px;">
+</div>
+
+<!-- 2. BLOCO: GERADOR DE BLUEPRINTS (SNIPER TRADES) -->
+<div class="painel-controlo borda-roxa">
+    <h3 class="painel-titulo">🎯 Gerador de Blueprints (Sniper Trades)</h3>
+    
+    <div class="linha-inputs">
+        <input type="text" id="sniper-ticker" class="input-moderno" placeholder="Ex: SPY" style="max-width: 300px;">
+        <select id="sniper-tf" class="input-moderno" style="max-width: 200px; cursor: pointer;">
             <option value="1d">Diário (1D)</option>
             <option value="4h">Intradiário (4H)</option>
             <option value="1h">Intradiário (1H)</option>
         </select>
-        <button onclick="gerarBlueprintSniper()" style="background-color: #b388ff; color: #121212; margin-left: 5px;">Extrair Alvos</button>
+        <button onclick="gerarBlueprintSniper()" class="btn-moderno btn-roxo">Extrair Alvos</button>
     </div>
+</div>
 
     <!-- O RECIPIENTE ONDE O RELATÓRIO VAI APARECER -->
     <div id="sniper-resultado" style="display:none; background-color: #f0f2f5; color: #121212; padding: 30px; border-radius: 8px; margin-top: 30px; text-align: left; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
