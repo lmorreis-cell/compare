@@ -661,7 +661,8 @@
     function gerarRelatorioNLG(t1, t2) {
         window.dueloAtual = { t1: t1, t2: t2 };
         
-        const svgOverlay = "data:image/svg+xml;charset=utf-8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><text x="50%" y="50%" transform="rotate(-35 200 150)" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="900" fill="rgba(18, 18, 18, 0.08)">PORTAL BOLSA - LUÍS REIS</text></svg>');
+        // Opacidade restaurada para 0.04 (muito subtil e não intrusiva)
+        const svgOverlay = "data:image/svg+xml;charset=utf-8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><text x="50%" y="50%" transform="rotate(-35 200 150)" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="900" fill="rgba(18, 18, 18, 0.04)">PORTAL BOLSA - LUÍS REIS</text></svg>');
 
         let vencedor = parseFloat(t1['Mansfield RS']) > parseFloat(t2['Mansfield RS']) ? t1 : t2;
         let perdedor = parseFloat(t1['Mansfield RS']) > parseFloat(t2['Mansfield RS']) ? t2 : t1;
@@ -701,10 +702,11 @@
         let html = `
             <div style="background-color: #f0f2f5; color: #121212; padding: 30px; border-radius: 8px; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
                 
-                <!-- ESCUDO DE PROPRIEDADE INTELECTUAL -->
-                <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 999; pointer-events: none; background-image: url('${svgOverlay}'); background-repeat: repeat;"></div>
+                <!-- ESCUDO DE PROPRIEDADE INTELECTUAL: z-index a 50 (Fica no fundo) -->
+                <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 50; pointer-events: none; background-image: url('${svgOverlay}'); background-repeat: repeat;"></div>
 
                 <style>
+                    .clicavel-sobre-escudo { position: relative; z-index: 51; }
                     .tabela-duelo { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
                     .tabela-duelo th { background: #121212; color: #fff; text-transform: uppercase; padding: 14px; text-align: left; font-size: 12px; }
                     .tabela-duelo td { padding: 14px; text-align: left; border-bottom: 1px solid #eee; color: #333; font-weight: bold; }
@@ -713,17 +715,18 @@
                     .destaque-perdedor { background-color: #fdf2f2; color: #843534 !important; }
                 </style>
 
-                <div style="border-bottom: 2px solid #121212; padding-bottom: 15px; margin-bottom: 20px;">
+                <!-- Aplicamos a classe clicavel-sobre-escudo (z-index: 51) a todo o conteúdo para repousar sobre a marca de água -->
+                <div class="clicavel-sobre-escudo" style="border-bottom: 2px solid #121212; padding-bottom: 15px; margin-bottom: 20px;">
                     <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px;">
-                        <h2 style="margin: 0; font-size: 28px; font-weight: 900; letter-spacing: -1px; text-transform: uppercase; position: relative; z-index: 1000;">DUELO: ${t1.Ticker} vs ${t2.Ticker}</h2>
+                        <h2 style="margin: 0; font-size: 28px; font-weight: 900; letter-spacing: -1px; text-transform: uppercase;">DUELO: ${t1.Ticker} vs ${t2.Ticker}</h2>
                         
-                        <button onclick="transmitirAlertaDueloDiscord()" style="background: #f39c12; color: #111; border: none; padding: 5px 12px; border-radius: 4px; font-weight: bold; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 5px; box-shadow: 0 2px 5px rgba(243,156,18,0.4); position: relative; z-index: 1000;">
+                        <button onclick="transmitirAlertaDueloDiscord()" style="background: #f39c12; color: #111; border: none; padding: 5px 12px; border-radius: 4px; font-weight: bold; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 5px; box-shadow: 0 2px 5px rgba(243,156,18,0.4);">
                             Transmitir Duelo 📡
                         </button>
                     </div>
                 </div>
 
-                <div style="position: relative; z-index: 1000;">
+                <div class="clicavel-sobre-escudo">
                     <table class="tabela-duelo">
                         <thead>
                             <tr>
@@ -757,7 +760,7 @@
                     </table>
                 </div>
 
-                <div style="display: flex; gap: 30px; margin-top: 25px; position: relative; z-index: 1000;">
+                <div class="clicavel-sobre-escudo" style="display: flex; gap: 30px; margin-top: 25px;">
                     <div style="flex: 1.5; background: #e9ecef; padding: 20px; border-radius: 4px; border-left: 4px solid #d68910;">
                         <h4 style="margin-top: 0; color: #121212; text-transform: uppercase; font-size: 14px;">Veredicto Comportamental</h4>
                         <div style="font-size: 13px; line-height: 1.6; color: #333; text-align: justify;">
