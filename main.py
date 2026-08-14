@@ -647,45 +647,25 @@ def api_sniper(ticker, timeframe):
             f"{txt_vol}{txt_bb}"
         )
 
-        # --- 5. MOTOR GRÁFICO BASE64 HÍBRIDO (PREÇO + VOLUME) ---
-        grafico_base64 = ""
+        # --- 5. EXTRAÇÃO DE DADOS PARA GRÁFICO PLOTLY (FRONTEND) ---
+        dados_grafico = {}
         try:
             hist_recente = df.tail(60)
             
-            # Subplots com partilha do Eixo X. Rácio 3:1 dá destaque ao preço.
-            fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(5, 4), facecolor='#f0f2f5', gridspec_kw={'height_ratios': [3, 1]})
-            fig.subplots_adjust(hspace=0.05)
+            # Formata a data: se for 1D, mostra só dia; se for 4H/1H, mostra dia e hora
+            formato_data = '%Y-%m-%d' if timeframe == '1d' else '%Y-%m-%d %H:%M'
             
-            # Painel Superior: Ação de Preço
-            ax1.set_facecolor('#f0f2f5')
-            ax1.plot(hist_recente.index, hist_recente['Close'], color='#121212', linewidth=1.5)
-            ax1.plot(hist_recente.index, hist_recente['Close'].ewm(span=9).mean(), color='#4da6ff', linewidth=1, linestyle='--', label='EMA 9')
-            ax1.plot(hist_recente.index, hist_recente['Close'].ewm(span=20).mean(), color='#f28b24', linewidth=1, linestyle='--', label='EMA 20')
-            
-            ax1.legend(loc='upper left', fontsize=8, frameon=False)
-            ax1.tick_params(colors='#8a94a8', labelsize=8, bottom=False, labelbottom=False)
-            ax1.spines['top'].set_visible(False); ax1.spines['right'].set_visible(False)
-            ax1.spines['bottom'].set_color('#ccc'); ax1.spines['left'].set_color('#ccc')
-            ax1.grid(True, color='#ccc', linestyle=':', alpha=0.5)
-
-            # Painel Inferior: Volume Direcional
-            ax2.set_facecolor('#f0f2f5')
-            # Lógica de cor: Vela verde = Volume verde, Vela vermelha = Volume vermelho
-            cores_vol = ['#5cb85c' if hist_recente['Close'].iloc[i] >= hist_recente['Open'].iloc[i] else '#d9534f' for i in range(len(hist_recente))]
-            ax2.bar(range(len(hist_recente)), hist_recente['Volume'], color=cores_vol, alpha=0.7)
-            
-            ax2.tick_params(colors='#8a94a8', labelsize=8, bottom=False, labelbottom=False)
-            ax2.set_yticks([]) # Limpa eixo Y do volume para minimizar ruído visual
-            ax2.spines['top'].set_visible(False); ax2.spines['right'].set_visible(False)
-            ax2.spines['bottom'].set_color('#ccc'); ax2.spines['left'].set_color('#ccc')
-            
-            buf = io.BytesIO()
-            plt.savefig(buf, format='png', bbox_inches='tight', dpi=100, facecolor='#f0f2f5')
-            plt.close(fig)
-            buf.seek(0)
-            grafico_base64 = f"data:image/png;base64,{base64.b64encode(buf.read()).decode('utf-8')}"
+            dados_grafico = {
+                "datas": hist_recente.index.strftime(formato_data).tolist(),
+                "closes": hist_recente['Close'].round(2).tolist(),
+                "ema9": hist_recente['Close'].ewm(span=9).mean().round(2).tolist(),
+                "ema20": hist_recente['Close'].ewm(span=20).mean().round(2).tolist(),
+                "volumes": hist_recente['Volume'].tolist(),
+                # Lógica de cor: Vela verde = Volume verde, Vela vermelha = Volume vermelho
+                "cores_vol": ['#5cb85c' if hist_recente['Close'].iloc[i] >= hist_recente['Open'].iloc[i] else '#d9534f' for i in range(len(hist_recente))]
+            }
         except Exception as e:
-            print(f"Erro a desenhar gráfico: {e}")
+            print(f"Erro a extrair dados do gráfico: {e}")
 
         # --- 6. EMPACOTAMENTO JSON ---
         return jsonify({
@@ -710,9 +690,10 @@ def api_sniper(ticker, timeframe):
             "perf_3m": f"{perf_3m:+.1f}%",
             "cor_3m": "#5cb85c" if perf_3m > 0 else "#d9534f",
             # --------------------------------
+            "dados_grafico": dados_grafico,  # <--- NOVA VARIÁVEL AQUI
             
-            "grafico": grafico_base64,
-            "grafico": grafico_base64,
+            "suportes": [f"{s:.2f}" for s in suportes],
+            
             "suportes": [f"{s:.2f}" for s in suportes],
             "resistencias": [f"{r:.2f}" for r in resistencias],
             "notas": nlg_notes,
