@@ -467,6 +467,12 @@
                         <!-- BOTÃO DE TRANSMISSÃO E INFO -->
                         <div style="display: flex; gap: 10px; align-items: center;">
                             <span style="background: #121212; color: #fff; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 12px; letter-spacing: 1px; white-space: nowrap;">TF: ${dados.timeframe} | COTAÇÃO: ${dados.preco}</span>
+                            
+                            <!-- NOVO: BOTÃO TRADINGVIEW -->
+                            <a href="https://www.tradingview.com/chart/?symbol=${dados.ticker}" target="_blank" style="background: #232d3f; color: #d7dce6; border: 1px solid #30363d; padding: 5px 12px; border-radius: 4px; font-weight: bold; font-size: 12px; text-decoration: none; display: flex; align-items: center; gap: 5px; transition: background 0.2s;">
+                                Abrir Gráfico 📈
+                            </a>
+
                             <button onclick="transmitirAlertaDiscord()" style="background: #5865F2; color: white; border: none; padding: 5px 12px; border-radius: 4px; font-weight: bold; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 5px; box-shadow: 0 2px 5px rgba(88,101,242,0.4);">
                                 Transmitir Alerta 📡
                             </button>
@@ -550,6 +556,9 @@
                     
                     <!-- MATRIZ DE MOMENTUM PARA FECHAR O ESPAÇO -->
                         <h4 style="margin-top: 35px; color: #121212; text-transform: uppercase; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Momentum Matrix</h4>
+
+                        
+                        
                         
                         <div style="font-size: 13px; line-height: 1.8; color: #121212;">
                             <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed #ddd; padding-bottom: 4px; margin-bottom: 4px;">
@@ -606,7 +615,27 @@
                     </div>
                 </div>
 
-                <h4 style="margin-top: 0; color: #121212; text-transform: uppercase; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Trade Idea</h4>
+                
+
+                <h4 style="margin-top: 0; color: #121212; text-transform: uppercase; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Trade Idea & Execution</h4>
+                
+                <!-- NOVO: CALCULADORA DE POSITION SIZING -->
+                <div style="background: #1c1e24; border: 1px solid #30363d; border-radius: 6px; padding: 12px 15px; margin-bottom: 20px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+                    <span style="color: #8b949e; font-weight: bold; font-size: 13px;">🧮 Position Sizing:</span>
+                    <input type="number" id="calc-banca" placeholder="Banca Total (€/$)" class="input-moderno" style="max-width: 140px; padding: 8px; font-size: 13px;">
+                    <input type="number" id="calc-risco" placeholder="Risco % (Ex: 1)" value="1" class="input-moderno" style="max-width: 120px; padding: 8px; font-size: 13px;">
+                    <button onclick="calcularLotesSniper(${dados.preco}, ${dados.bull_plan.stop}, ${dados.bear_plan.stop})" class="btn-moderno btn-azul" style="padding: 8px 15px; font-size: 12px;">Calcular Exposição</button>
+                    
+                    <div id="calc-resultado" style="margin-left: auto; font-size: 13px; text-align: right; display: none; background: #0d1117; padding: 8px 15px; border-radius: 4px; border: 1px solid #30363d;">
+                        <!-- JS injeta os lotes aqui -->
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 20px;">
+
+
+
+                
                 <div style="display: flex; gap: 20px;">
                     
                     <div style="flex: 1; background: #eafaf1; border: 1px solid #c3e6cb; border-radius: 6px; padding: 15px; display: flex; flex-direction: column;">
@@ -664,6 +693,37 @@
         }
     }
 
+
+    // MOTOR DE POSITION SIZING E GESTÃO DE RISCO
+    function calcularLotesSniper(precoAtual, stopBull, stopBear) {
+        const banca = parseFloat(document.getElementById('calc-banca').value);
+        const riscoPct = parseFloat(document.getElementById('calc-risco').value);
+        const resultadoDiv = document.getElementById('calc-resultado');
+
+        if (!banca || !riscoPct || isNaN(banca) || isNaN(riscoPct)) {
+            alert("Por favor, preenche a Banca Total e o Risco (%) para calcular a exposição.");
+            return;
+        }
+
+        const riscoFinanceiro = banca * (riscoPct / 100);
+        
+        // Risco por ação (distância entre entrada e stop)
+        const riscoPorAcaoBull = Math.abs(precoAtual - stopBull);
+        const riscoPorAcaoBear = Math.abs(precoAtual - stopBear);
+
+        // Quantidade de ações a comprar (arredondado por defeito para proteger o capital)
+        const qtdBull = riscoPorAcaoBull > 0 ? Math.floor(riscoFinanceiro / riscoPorAcaoBull) : 0;
+        const qtdBear = riscoPorAcaoBear > 0 ? Math.floor(riscoFinanceiro / riscoPorAcaoBear) : 0;
+
+        const capAlocadoBull = (qtdBull * precoAtual).toFixed(2);
+        const capAlocadoBear = (qtdBear * precoAtual).toFixed(2);
+
+        resultadoDiv.innerHTML = `
+            <div style="color: #5cb85c; margin-bottom: 3px;"><strong>📈 Lote Bull:</strong> ${qtdBull} ações <span style="color:#8b949e; font-size:11px;">(Alocação: ${capAlocadoBull})</span></div>
+            <div style="color: #d9534f;"><strong>📉 Lote Bear:</strong> ${qtdBear} ações <span style="color:#8b949e; font-size:11px;">(Alocação: ${capAlocadoBear})</span></div>
+        `;
+        resultadoDiv.style.display = 'block';
+    }
     // NOVA FUNÇÃO: Dispara a transmissão para o Discord
     async function transmitirAlertaDiscord() {
         if (!window.blueprintAtual) return;
