@@ -129,7 +129,14 @@
         .status-box { background-color: #1e1e1e; padding: 20px; border-radius: 8px; margin-top: 20px; border-left: 5px solid #007bff; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th, td { padding: 12px; text-align: left; border-bottom: 1px solid #333; }
-        th { background-color: #1e1e1e; color: #aaa; }
+        th { 
+            background-color: #1e1e1e; 
+            color: #aaa; 
+            position: sticky; 
+            top: 0; 
+            z-index: 10; 
+            box-shadow: 0 2px 2px -1px rgba(0,0,0,0.5); /* Sombra para separar os dados do cabeçalho ao fazer scroll */
+        }
     </style>
 </head>
 <body position: relative;>
@@ -189,7 +196,14 @@
             <h4 style="color: #4caf50; margin-bottom: 0;" id="estrategia-ativa"></h4>
         </div>
 
-        <h3 id="titulo-tabela" style="margin-top:40px;">Ativos com Sinal de Entrada</h3>
+        <!-- BARRA DE FERRAMENTAS DA TABELA -->
+        <div id="ferramentas-tabela" style="display:none; justify-content: space-between; align-items: flex-end; margin-top: 40px; margin-bottom: 15px; flex-wrap: wrap; gap: 15px;">
+            <h3 id="titulo-tabela" style="margin: 0;">Ativos com Sinal de Entrada</h3>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <input type="text" id="pesquisa-tabela" class="input-moderno" placeholder="Pesquisar Ticker, Setor..." onkeyup="filtrarTabela()" style="min-width: 220px; padding: 10px 14px;">
+                <button onclick="exportarCSV()" class="btn-moderno" style="background: #238636; color: white; padding: 10px 20px;">📥 Exportar CSV</button>
+            </div>
+        </div>
         <table id="tabela-ativos">
             <thead>
                 <!-- Títulos injetados pelo JS dinamicamente -->
@@ -247,6 +261,7 @@
 
 <script>
     async function executarAnalise() {
+        document.getElementById('ferramentas-tabela').style.display = 'none';
         document.getElementById('sniper-resultado').style.display = 'none';
         document.getElementById('loading').style.display = 'block';
         document.getElementById('resultado').style.display = 'none';
@@ -313,6 +328,10 @@
             document.getElementById('loading').style.display = 'none';
             document.getElementById('resultado').style.display = 'block';
 
+            // NOVO: Mostra a barra de pesquisa e exportação e limpa o input
+            document.getElementById('ferramentas-tabela').style.display = 'flex';
+            document.getElementById('pesquisa-tabela').value = '';
+
         } catch (erro) {
             alert("Falha de ligação à API.");
             document.getElementById('loading').style.display = 'none';
@@ -320,6 +339,7 @@
     }
 
     async function compararTickersManual() {
+        document.getElementById('ferramentas-tabela').style.display = 'none';
         document.getElementById('sniper-resultado').style.display = 'none';
         const t1 = document.getElementById('input-t1').value.trim();
         const t2 = document.getElementById('input-t2').value.trim();
@@ -880,6 +900,58 @@
             loading.style.display = 'none';
             grid.innerHTML = `<div style="color: #f44336; font-weight: bold;">Falha de comunicação com a API.</div>`;
         }
+    }
+    // MOTOR DE PESQUISA EM TEMPO REAL
+    function filtrarTabela() {
+        const input = document.getElementById("pesquisa-tabela");
+        const filtro = input.value.toUpperCase();
+        const tbody = document.querySelector("#tabela-ativos tbody");
+        const linhas = tbody.getElementsByTagName("tr");
+
+        for (let i = 0; i < linhas.length; i++) {
+            // Ignora a linha de "Nenhum ativo cumpriu os critérios"
+            if (linhas[i].cells.length <= 1) continue; 
+            
+            let textoLinha = linhas[i].innerText.toUpperCase();
+            if (textoLinha.indexOf(filtro) > -1) {
+                linhas[i].style.display = "";
+            } else {
+                linhas[i].style.display = "none";
+            }
+        }
+    }
+
+    // MOTOR DE EXPORTAÇÃO PARA CSV
+    function exportarCSV() {
+        const tabela = document.getElementById("tabela-ativos");
+        let csv = [];
+        
+        // Raspa cabeçalhos e linhas
+        for (let i = 0; i < tabela.rows.length; i++) {
+            // Ignora linhas ocultas pela pesquisa
+            if (tabela.rows[i].style.display === "none") continue;
+            
+            let linha = [];
+            let colunas = tabela.rows[i].querySelectorAll("td, th");
+            
+            for (let j = 0; j < colunas.length; j++) {
+                // Limpa quebras de linha e vírgulas (que corrompem o CSV)
+                let dado = colunas[j].innerText.replace(/(\r\n|\n|\r)/gm, " ").replace(/,/g, "");
+                linha.push(dado);
+            }
+            csv.push(linha.join(","));
+        }
+        
+        // Força o download no navegador
+        const string_csv = csv.join("\n");
+        const nome_ficheiro = "Radar_Quantitativo_" + new Date().toISOString().slice(0,10) + ".csv";
+        const link = document.createElement("a");
+        link.style.display = "none";
+        link.setAttribute("href", "data:text/csv;charset=utf-8," + encodeURIComponent(string_csv));
+        link.setAttribute("download", nome_ficheiro);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
 </script>
 
