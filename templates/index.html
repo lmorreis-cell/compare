@@ -641,7 +641,8 @@
 
                     <button onclick="calcularLotesSniper(${dados.resistencias[0]}, ${dados.suportes[0]}, ${dados.bull_plan.stop}, ${dados.bear_plan.stop})" class="btn-moderno btn-azul" style="padding: 8px 15px; font-size: 12px;">Calcular Exposição</button>
                     
-                    <div id="calc-resultado" style="margin-left: auto; font-size: 13px; text-align: right; display: none; background: #0d1117; padding: 8px 15px; border-radius: 4px; border: 1px solid #30363d;">
+                    <!-- <div id="calc-resultado" style="margin-left: auto; font-size: 13px; text-align: right; display: none; background: #0d1117; padding: 8px 15px; border-radius: 4px; border: 1px solid #30363d;"> -->
+                    <div id="calc-resultado" style="width: 100%; margin-top: 10px; display: none; gap: 20px;">
                         <!-- JS injeta os lotes aqui -->
                     </div>
                 </div>
@@ -735,17 +736,20 @@
         const capAlocadoBear = (qtdBear * entradaBear).toFixed(2);
 
         // NOVO: Design atualizado para mostrar o "Talão de Ordem" completo
+        // NOVO: Design com colunas separadas para alinhar com os Planos Bull/Bear abaixo
         resultadoDiv.innerHTML = `
-            <div style="color: #5cb85c; margin-bottom: 8px; border-bottom: 1px dashed #30363d; padding-bottom: 6px; text-align: left;">
-                <strong>📈 LOTE BULL: ${qtdBull} AÇÕES</strong> <span style="color:#8b949e; font-size:11px;">(Alocação: ${capAlocadoBull})</span><br>
-                <span style="font-size: 11px; color: #c9d1d9;">Gatilho Entrada: <strong style="color: #fff;">${entradaBull.toFixed(2)}</strong> | Stop Loss: <strong style="color: #fff;">${stopBull.toFixed(2)}</strong></span>
+            <div style="flex: 1; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 12px; color: #5cb85c; text-align: left;">
+                <strong style="font-size: 14px;">📈 LOTE BULL: ${qtdBull} AÇÕES</strong> <span style="color:#8b949e; font-size:11px;">(Alocação: ${capAlocadoBull})</span><br>
+                <div style="margin-top: 5px; font-size: 11px; color: #c9d1d9;">Gatilho Entrada: <strong style="color: #fff;">${entradaBull.toFixed(2)}</strong> | Stop Loss: <strong style="color: #fff;">${stopBull.toFixed(2)}</strong></div>
             </div>
-            <div style="color: #d9534f; text-align: left;">
-                <strong>📉 LOTE BEAR: ${qtdBear} AÇÕES</strong> <span style="color:#8b949e; font-size:11px;">(Alocação: ${capAlocadoBear})</span><br>
-                <span style="font-size: 11px; color: #c9d1d9;">Gatilho Entrada: <strong style="color: #fff;">${entradaBear.toFixed(2)}</strong> | Stop Loss: <strong style="color: #fff;">${stopBear.toFixed(2)}</strong></span>
+            
+            <div style="flex: 1; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 12px; color: #d9534f; text-align: left;">
+                <strong style="font-size: 14px;">📉 LOTE BEAR: ${qtdBear} AÇÕES</strong> <span style="color:#8b949e; font-size:11px;">(Alocação: ${capAlocadoBear})</span><br>
+                <div style="margin-top: 5px; font-size: 11px; color: #c9d1d9;">Gatilho Entrada: <strong style="color: #fff;">${entradaBear.toFixed(2)}</strong> | Stop Loss: <strong style="color: #fff;">${stopBear.toFixed(2)}</strong></div>
             </div>
         `;
-        resultadoDiv.style.display = 'block';
+        // Alterado de 'block' para 'flex' para colocar lado a lado
+        resultadoDiv.style.display = 'flex';
     }
     // NOVA FUNÇÃO: Dispara a transmissão para o Discord
     async function transmitirAlertaDiscord() {
