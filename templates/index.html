@@ -183,7 +183,13 @@
         <button onclick="gerarBlueprintSniper()" class="btn-moderno btn-roxo">Extrair Alvos</button>
     </div>
 </div>
-
+<!-- NOVO: MEMÓRIA TÁTICA (HISTÓRICO RECENTE) -->
+<div id="painel-historico" style="margin-bottom: 25px; padding: 0 5px; display: none; align-items: center; gap: 15px; flex-wrap: wrap;">
+    <span style="color: #8b949e; font-size: 13px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">🕒 Últimas Análises:</span>
+    <div id="lista-historico" style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <!-- O Javascript vai injetar os botões de atalho aqui -->
+    </div>
+</div>
     <!-- O RECIPIENTE ONDE O RELATÓRIO VAI APARECER -->
     <div id="sniper-resultado" style="display:none; background-color: #f0f2f5; color: #121212; padding: 30px; border-radius: 8px; margin-top: 30px; text-align: left; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
         <!-- O JS injeta o conteúdo aqui dentro -->
@@ -382,6 +388,8 @@
                 relatorio.innerHTML = `<div style="background-color: #1a1a1a; padding: 25px; border-radius: 8px; border-left: 4px solid #f44336; color: white;"><p style="color: #f44336; font-weight: bold;">Erro de Duelo: O ticker inserido não possui os 252 dias de histórico exigidos para calcular a Força Relativa.</p></div>`;
                 relatorio.style.display = 'block';
             }
+
+            guardarHistorico('duelo', t1.toUpperCase(), t2.toUpperCase());
             
             document.getElementById('loading').style.display = 'none';
             document.getElementById('resultado').style.display = 'block';
@@ -428,6 +436,7 @@
 
             // Grava os dados na memória do browser para o botão de partilha usar depois
             window.blueprintAtual = dados;
+            guardarHistorico('sniper', dados.ticker, null, dados.timeframe);
 
             const container = document.getElementById('sniper-resultado');
             const suportes_str = dados.suportes.join(" → ");
@@ -1099,6 +1108,69 @@
 
         Plotly.newPlot('plotly-sniper', data, layout, {responsive: true, displayModeBar: false});
     }
+    // ==========================================
+    // MOTOR DE MEMÓRIA (HISTÓRICO RECENTE)
+    // ==========================================
+    let historico = JSON.parse(localStorage.getItem('radarHistorico')) || [];
+
+    function guardarHistorico(tipo, t1, t2=null, tf=null) {
+        // Cria um identificador único e o texto do botão
+        const id = tipo === 'sniper' ? `${t1}-${tf}` : `${t1} vs ${t2}`;
+        const texto = tipo === 'sniper' ? `🎯 ${t1} (${tf})` : `⚔️ ${t1} vs ${t2}`;
+        
+        // Remove se a análise já existir (para a puxar novamente para o topo)
+        historico = historico.filter(item => item.id !== id);
+        
+        // Adiciona ao início da lista
+        historico.unshift({ id, tipo, t1, t2, tf, texto });
+        
+        // Limita a memória aos últimos 5 itens para não poluir o ecrã
+        if (historico.length > 5) historico.pop();
+        
+        // Grava na memória do navegador
+        localStorage.setItem('radarHistorico', JSON.stringify(historico));
+        renderizarHistorico();
+    }
+
+    function renderizarHistorico() {
+        const painel = document.getElementById('painel-historico');
+        const lista = document.getElementById('lista-historico');
+        
+        if (historico.length === 0) {
+            painel.style.display = 'none';
+            return;
+        }
+
+        lista.innerHTML = '';
+        historico.forEach(item => {
+            const btn = document.createElement('button');
+            btn.className = 'btn-moderno';
+            btn.style.cssText = 'background: #1c1e24; color: #c9d1d9; padding: 6px 14px; font-size: 11px; border: 1px solid #30363d; border-radius: 20px; transition: all 0.2s ease; cursor: pointer;';
+            btn.innerText = item.texto;
+            
+            // Efeito hover dinâmico
+            btn.onmouseover = () => { btn.style.borderColor = '#58a6ff'; btn.style.color = '#fff'; };
+            btn.onmouseout = () => { btn.style.borderColor = '#30363d'; btn.style.color = '#c9d1d9'; };
+            
+            // Quando clicas no atalho, ele re-executa a análise correta automaticamente
+            btn.onclick = () => {
+                if (item.tipo === 'sniper') {
+                    document.getElementById('sniper-ticker').value = item.t1;
+                    document.getElementById('sniper-tf').value = item.tf;
+                    gerarBlueprintSniper();
+                } else {
+                    document.getElementById('input-t1').value = item.t1;
+                    document.getElementById('input-t2').value = item.t2;
+                    compararTickersManual();
+                }
+            };
+            lista.appendChild(btn);
+        });
+        painel.style.display = 'flex';
+    }
+
+    // Carrega o histórico mal a página inicia
+    document.addEventListener('DOMContentLoaded', renderizarHistorico);
 </script>
 
 </body>
