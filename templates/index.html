@@ -722,21 +722,28 @@
 
         const riscoFinanceiro = banca * (riscoPct / 100);
         
-        // NOVO: Risco por ação medido a partir da ENTRADA real e não do preço atual
+        // Risco por ação medido a partir da ENTRADA real
         const riscoPorAcaoBull = Math.abs(entradaBull - stopBull);
         const riscoPorAcaoBear = Math.abs(entradaBear - stopBear);
 
-        // Quantidade de ações a comprar (arredondado por defeito para proteger o capital)
+        // Quantidade de ações a comprar
         const qtdBull = riscoPorAcaoBull > 0 ? Math.floor(riscoFinanceiro / riscoPorAcaoBull) : 0;
         const qtdBear = riscoPorAcaoBear > 0 ? Math.floor(riscoFinanceiro / riscoPorAcaoBear) : 0;
 
-        // O capital total que a corretora te vai cativar para esta operação
+        // Capital alocado
         const capAlocadoBull = (qtdBull * entradaBull).toFixed(2);
         const capAlocadoBear = (qtdBear * entradaBear).toFixed(2);
 
+        // NOVO: Design atualizado para mostrar o "Talão de Ordem" completo
         resultadoDiv.innerHTML = `
-            <div style="color: #5cb85c; margin-bottom: 3px;"><strong>📈 Lote Bull:</strong> ${qtdBull} ações <span style="color:#8b949e; font-size:11px;">(Alocação: ${capAlocadoBull})</span></div>
-            <div style="color: #d9534f;"><strong>📉 Lote Bear:</strong> ${qtdBear} ações <span style="color:#8b949e; font-size:11px;">(Alocação: ${capAlocadoBear})</span></div>
+            <div style="color: #5cb85c; margin-bottom: 8px; border-bottom: 1px dashed #30363d; padding-bottom: 6px; text-align: left;">
+                <strong>📈 LOTE BULL: ${qtdBull} AÇÕES</strong> <span style="color:#8b949e; font-size:11px;">(Alocação: ${capAlocadoBull})</span><br>
+                <span style="font-size: 11px; color: #c9d1d9;">Gatilho Entrada: <strong style="color: #fff;">${entradaBull.toFixed(2)}</strong> | Stop Loss: <strong style="color: #fff;">${stopBull.toFixed(2)}</strong></span>
+            </div>
+            <div style="color: #d9534f; text-align: left;">
+                <strong>📉 LOTE BEAR: ${qtdBear} AÇÕES</strong> <span style="color:#8b949e; font-size:11px;">(Alocação: ${capAlocadoBear})</span><br>
+                <span style="font-size: 11px; color: #c9d1d9;">Gatilho Entrada: <strong style="color: #fff;">${entradaBear.toFixed(2)}</strong> | Stop Loss: <strong style="color: #fff;">${stopBear.toFixed(2)}</strong></span>
+            </div>
         `;
         resultadoDiv.style.display = 'block';
     }
