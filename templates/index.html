@@ -1156,7 +1156,10 @@
             btn.onclick = () => {
                 if (item.tipo === 'sniper') {
                     document.getElementById('sniper-ticker').value = item.t1;
-                    document.getElementById('sniper-tf').value = item.tf;
+                    
+                    // CORREÇÃO CRÍTICA: Forçar minúsculas (1D -> 1d) para o dropdown não rejeitar o valor
+                    document.getElementById('sniper-tf').value = item.tf.toLowerCase(); 
+                    
                     gerarBlueprintSniper();
                 } else {
                     document.getElementById('input-t1').value = item.t1;
