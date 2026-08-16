@@ -182,6 +182,50 @@
             opacity: 1; 
             bottom: 140%; /* Efeito de levitação suave */
         }
+        /* ==========================================
+           SISTEMA DE NAVEGAÇÃO (SEPARADORES/TABS)
+           ========================================== */
+        .tab-menu { 
+            display: flex; 
+            gap: 5px; 
+            margin-bottom: 25px; 
+            border-bottom: 2px solid #30363d; 
+            padding-bottom: 0;
+            overflow-x: auto;
+        }
+        .tab-btn { 
+            background: transparent; 
+            color: #8b949e; 
+            border: none; 
+            padding: 12px 24px; 
+            font-size: 14px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            border-radius: 8px 8px 0 0; 
+            transition: all 0.2s ease; 
+            text-transform: uppercase;
+            border-bottom: 3px solid transparent;
+        }
+        .tab-btn:hover { 
+            color: #c9d1d9; 
+            background: #1c1e24; 
+        }
+        .tab-btn.active { 
+            color: #fff; 
+            background: #232d3f; 
+            border-bottom: 3px solid #58a6ff; 
+        }
+        .tab-content { 
+            display: none; 
+            animation: fadeIn 0.3s; 
+        }
+        .tab-content.active { 
+            display: block; 
+        }
+        @keyframes fadeIn { 
+            from { opacity: 0; transform: translateY(-5px); } 
+            to { opacity: 1; transform: translateY(0); } 
+        }
     </style>
     <!-- Biblioteca Plotly.js para gráficos interativos -->
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js" charset="utf-8"></script>
@@ -196,13 +240,32 @@
 <div class="container">
     <h1>Radar de Momentum</h1>
     <button onclick="executarAnalise()" class="btn-moderno btn-azul" style="margin-bottom: 20px;">Executar Análise de Mercado</button>
-    <!-- AVISO TÉCNICO DE CACHE -->
-<div style="background-color: #151a23; color: #8a94a8; padding: 12px 16px; border-left: 4px solid #f28b24; border-radius: 4px; font-size: 13px; margin-bottom: 20px; text-align: left; line-height: 1.5;">
-    <strong style="color: #d7dce6;">Sincronização de Dados (Delay Intencional)</strong><br>
-    Os dados processados neste painel operam com um ciclo de atualização tático de 5 minutos. Este desfasamento temporal não é uma anomalia, mas sim uma medida arquitetural de segurança para evitar limites de estrangulamento (<em>Rate Limiting</em>) e bloqueios de IP por parte das fontes e APIs financeiras. Este ciclo garante a estabilidade e disponibilidade ininterrupta do motor quantitativo para todos os membros da comunidade simultaneamente.
-</div>
-    
-    <!-- 1. BLOCO: DUELO MANUAL DE ATIVOS -->
+
+<!-- MENU DE NAVEGAÇÃO -->
+    <div class="tab-menu">
+        <button class="tab-btn active" onclick="abrirSeparador(event, 'tab-radar')">📡 Radar Global</button>
+        <button class="tab-btn" onclick="abrirSeparador(event, 'tab-acoes')">📈 Ações & ETFs</button>
+        <button class="tab-btn" onclick="abrirSeparador(event, 'tab-cripto')">⚡ Criptoativos</button>
+    </div>
+
+    <!-- ==========================================
+         CONTEÚDOS DOS SEPARADORES
+         ========================================== -->
+
+    <!-- SEPARADOR 1: RADAR GLOBAL -->
+    <div id="tab-radar" class="tab-content active">
+        <button id="btn-atualizar" class="btn-atualizar" onclick="iniciarAtualizacao()">EXECUTAR ANÁLISE DE MERCADO</button>
+        <div style="background-color: #1c1e24; border: 1px solid #30363d; border-left: 4px solid #f28b24; padding: 15px; border-radius: 8px; margin-bottom: 25px; margin-top: 15px;">
+            <p style="margin: 0; font-size: 11px; font-weight: bold; color: #c9d1d9;">Sincronização de Dados (Delay Intencional)</p>
+            <p style="margin: 5px 0 0 0; font-size: 11px; color: #8b949e; line-height: 1.4;">Os dados processados neste painel operam com um ciclo de atualização tático de 5 minutos. Este desfasamento temporal não é uma anomalia, mas sim uma medida arquitetural de segurança para evitar limites de estrangulamento (<em>Rate Limiting</em>) e bloqueios de IP por parte das fontes e APIs financeiras. Este ciclo garante a estabilidade e disponibilidade ininterrupta do motor quantitativo para todos os membros da comunidade simultaneamente.</p>
+        </div>
+    </div>
+
+    <!-- SEPARADOR 2: AÇÕES E ETFs -->
+    <div id="tab-acoes" class="tab-content">
+        <!-- COLA AQUI: A caixa completa do "Duelo Manual de Ativos" -->
+        <!-- COLA AQUI: A caixa completa do "Gerador de Blueprints (Sniper Trades)" -->
+        <!-- 1. BLOCO: DUELO MANUAL DE ATIVOS -->
 <div class="painel-controlo borda-laranja">
     <h3 class="painel-titulo">Duelo Manual de Ativos</h3>
     
@@ -229,15 +292,12 @@
     </div>
 </div>
 
-<!-- ==========================================
-     LABORATÓRIO CRIPTO (ÁREA ISOLADA)
-     ========================================== -->
-<div style="margin-top: 40px; border-top: 2px dashed #30363d; padding-top: 30px;">
-    <h2 style="color: #00ffcc; font-size: 20px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
-        ⚡ Laboratório de Ativos Digitais (24/7)
-    </h2>
+    </div>
 
-    <!-- DUELO DE CORRELAÇÃO (SPOT VS PROXY) -->
+    <!-- SEPARADOR 3: CRIPTOATIVOS -->
+    <div id="tab-cripto" class="tab-content">
+        <!-- COLA AQUI: A caixa completa da "Arbitragem & Correlação (Spot vs Proxy)" -->
+        <!-- COLA AQUI: A caixa completa do "Cripto Sniper (Alavancagem & Liquidação)" --><!-- DUELO DE CORRELAÇÃO (SPOT VS PROXY) -->
     <div class="painel-controlo" style="border-left: 5px solid #00ffcc;">
         <h3 class="painel-titulo">
             <span class="dica-edu" style="border-bottom: 1px dotted #8b949e; cursor: help;">
@@ -280,6 +340,19 @@
         </div>
     </div>
 </div>
+        
+        
+    </div>
+
+    <!-- ==========================================
+         ZONA COMUM (FICA SEMPRE VISÍVEL)
+         ========================================== -->
+    
+       
+    
+
+
+    
     
     
 <!-- NOVO: MEMÓRIA TÁTICA (HISTÓRICO RECENTE) -->
@@ -1634,6 +1707,33 @@
             alert("Falha no motor quantitativo cripto ou ticker não existe (tenta com sufixo -USD).");
             document.getElementById('loading').style.display = 'none';
         }
+    }
+    // ==========================================
+    // MOTOR DE NAVEGAÇÃO DOS SEPARADORES
+    // ==========================================
+    function abrirSeparador(evt, nomeTab) {
+        // Esconde todos os conteúdos das tabs
+        const conteudos = document.getElementsByClassName("tab-content");
+        for (let i = 0; i < conteudos.length; i++) {
+            conteudos[i].style.display = "none";
+            conteudos[i].classList.remove("active");
+        }
+
+        // Remove a cor ativa de todos os botões do menu
+        const botoes = document.getElementsByClassName("tab-btn");
+        for (let i = 0; i < botoes.length; i++) {
+            botoes[i].classList.remove("active");
+        }
+
+        // Mostra o conteúdo escolhido e ilumina o botão clicado
+        document.getElementById(nomeTab).style.display = "block";
+        
+        // Timeout pequeno apenas para a animação de fade-in funcionar bem
+        setTimeout(() => {
+            document.getElementById(nomeTab).classList.add("active");
+        }, 10);
+        
+        evt.currentTarget.classList.add("active");
     }
 </script>
 
