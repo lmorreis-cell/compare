@@ -457,14 +457,27 @@
     // Variável global do duelo para Webhook
     window.dueloAtual = null;
 
+
     async function gerarBlueprintSniper() {
-        const ticker = document.getElementById('sniper-ticker').value.trim();
+        const ticker = document.getElementById('sniper-ticker').value.trim().toUpperCase();
         const tf = document.getElementById('sniper-tf').value;
         
         if (!ticker) {
             alert("Por favor, insere um ticker para analisar.");
             return;
         }
+
+        // ---------------------------------------------------------
+        // NOVO: BARREIRA DE SEGURANÇA (BLOQUEIA CRIPTOS NAS AÇÕES)
+        // ---------------------------------------------------------
+        if (ticker.includes('-')) {
+            alert("⚠️ Criptoativo Detetado!\n\nPara analisares criptomoedas (como " + ticker + "), utiliza o 'Laboratório de Ativos Digitais' mais abaixo, que possui um motor calibrado para mercados 24/7.");
+            return;
+        }
+        // ---------------------------------------------------------
+
+        
+    
 
         // --- ADICIONA ESTAS LINHAS AQUI ---
         // Limpa e oculta outras caixas de resultados que possam estar abertas na página
