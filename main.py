@@ -732,6 +732,13 @@ def api_sniper_cripto(ticker, timeframe):
     else:
         return jsonify({"erro": "Timeframe inválido."}), 400
 
+    # ==========================================================
+    # BARREIRA DE SEGURANÇA BACKEND (BLOQUEIA AÇÕES TRADICIONAIS)
+    # ==========================================================
+    if "-" not in ticker:
+        return jsonify({"erro": f"Formato inválido! O motor cripto exige a paridade (Ex: {ticker.upper()}-USD). Ações tradicionais não são suportadas neste laboratório."}), 400
+    # ==========================================================
+
     try:
         df = yf.Ticker(ticker).history(period=periodo, interval=intervalo)
         df = df.dropna(subset=['Close', 'High', 'Low'])
