@@ -714,6 +714,115 @@ def api_sniper(ticker, timeframe):
     except Exception as e:
         return jsonify({"erro": f"Falha na execução quantitativa: {str(e)}"}), 500
 
+@app.route('/api/sniper_cripto/<ticker>/<timeframe>')
+@cache.cached(timeout=60) # Timeout mais curto (60s) devido à volatilidade cripto
+def api_sniper_cripto(ticker, timeframe):
+    import numpy as np
+    import yfinance as yf
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    import io
+    import base64
+    
+    if timeframe == '1d':
+        periodo, intervalo = "1y", "1d"
+    elif timeframe in ['4h', '1h']:
+        periodo, intervalo = "60d", "1h" # yfinance limita intraday a 60-730 dias
+    else:
+        return jsonify({"erro": "Timeframe inválido."}), 400
+
+    try:
+        df = yf.Ticker(ticker).history(period=periodo, interval=intervalo)
+        df = df.dropna(subset=['Close', 'High', 'Low'])
+        
+        if df.empty:
+            return jsonify({"erro": "Sem dados para este criptoativo. Tenta adicionar '-USD' (Ex: SOL-USD)."}), 404
+            
+        if timeframe == '4h':
+            df = df.resample('4h').agg({
+                'Open': 'first', 'High': 'max', 'Low': 'min', 'Close': 'last', 'Volume': 'sum'
+            }).dropna(subset=['Close', 'High', 'Low'])
+            
+        fecho_atual = float(df['Close'].iloc[-1])
+        
+        # Matemática Básica (RSI e ATR)
+        df['PrevClose'] = df['Close'].shift(1)
+        df['TR'] = df[['High', 'PrevClose']].max(axis=1) - df[['Low', 'PrevClose']].min(axis=1)
+        atr_14 = float(df['TR'].rolling(window=14).mean().iloc[-1])
+        
+        delta = df['Close'].diff()
+        up = delta.clip(lower=0).ewm(com=13, adjust=False).mean()
+        down = (-1 * delta.clip(upper=0)).ewm(com=13, adjust=False).mean()
+        rsi_atual = float(100 - (100 / (1 + (up / down))).iloc[-1])
+        
+        # Níveis Automáticos
+        highs = df['High'].rolling(window=14, center=True).max().dropna().unique()
+        lows = df['Low'].rolling(window=14, center=True).min().dropna().unique()
+        todos_niveis = sorted(list(set(highs).union(set(lows))))
+        
+        niveis_limpos = []
+        for n in todos_niveis:
+            if not niveis_limpos or abs(n - niveis_limpos[-1])/n > 0.015:
+                niveis_limpos.append(float(n))
+                
+        suportes = sorted([n for n in niveis_limpos if n < fecho_atual], reverse=True)[:5]
+        resistencias = sorted([n for n in niveis_limpos if n > fecho_atual])[:5]
+
+        if not suportes: suportes = [fecho_atual - atr_14]
+        if not resistencias: resistencias = [fecho_atual + atr_14]
+
+        # Trade Plans baseados em Volatilidade Extrema (Múltiplos Maiores)
+        bull_pt1, bull_pt2 = fecho_atual + (2.0 * atr_14), fecho_atual + (4.0 * atr_14)
+        bull_stop = fecho_atual - (1.5 * atr_14)
+        bear_pt1, bear_pt2 = fecho_atual - (2.0 * atr_14), fecho_atual - (4.0 * atr_14)
+        bear_stop = fecho_atual + (1.5 * atr_14)
+
+        risco_bull = resistencias[0] - bull_stop
+        rr_bull = ((bull_pt1 - resistencias[0]) / risco_bull) if risco_bull > 0 else 0
+        risco_bear = bear_stop - suportes[0]
+        rr_bear = ((suportes[0] - bear_pt1) / risco_bear) if risco_bear > 0 else 0
+
+        # Notas Narrativas Cripto-Nativas
+        nlg_notes = (
+            f"<strong>Ativo Operando em Regime 24/7.</strong> O nível institucional crítico reside nos ${suportes[0]:.2f}. "
+            f"No ecossistema cripto, os falsos rompimentos (Wicks/Pavio) são utilizados para liquidar alavancagens altas. "
+            f"Nunca entrar em <i>Breakout</i> sem aguardar o fecho da vela no TF selecionado. O stop-loss nos ativos digitais "
+            f"tem de acomodar choques de liquidez não programados."
+        )
+
+        # Preparação de Dados Gráficos (Sem Matplotlib, puro JSON para Plotly)
+        hist_recente = df.tail(80)
+        formato_data = '%Y-%m-%d' if timeframe == '1d' else '%Y-%m-%d %H:%M'
+        
+        dados_grafico = {
+            "is_crypto": True, # A CHAVE MÁGICA PARA O EIXO X 24/7
+            "datas": hist_recente.index.strftime(formato_data).tolist(),
+            "closes": hist_recente['Close'].round(2).tolist(),
+            "ema9": hist_recente['Close'].ewm(span=9).mean().round(2).tolist(),
+            "ema20": hist_recente['Close'].ewm(span=20).mean().round(2).tolist(),
+            "volumes": hist_recente['Volume'].tolist(),
+            "cores_vol": ['#00ffcc' if hist_recente['Close'].iloc[i] >= hist_recente['Open'].iloc[i] else '#b388ff' for i in range(len(hist_recente))]
+        }
+
+        return jsonify({
+            "ticker": ticker.upper(),
+            "timeframe": timeframe.upper(),
+            "preco": f"{fecho_atual:.2f}",
+            "rsi": f"{rsi_atual:.1f}",
+            "atr": f"{atr_14:.2f}",
+            "dist_m50": "N/A", "cor_m50": "#fff", "dist_m200": "N/A", "cor_m200": "#fff", "dist_max": "N/A",
+            "perf_1w": "N/A", "cor_1w": "#fff", "perf_1m": "N/A", "cor_1m": "#fff", "perf_3m": "N/A", "cor_3m": "#fff",
+            "dados_grafico": dados_grafico,
+            "suportes": [f"{s:.2f}" for s in suportes],
+            "resistencias": [f"{r:.2f}" for r in resistencias],
+            "notas": nlg_notes,
+            "bull_plan": {"entrada": f"Rutura acima de {resistencias[0]:.2f}", "pt": [f"{bull_pt1:.2f}", f"{bull_pt2:.2f}"], "stop": f"{bull_stop:.2f}", "rr": f"1:{rr_bull:.1f}"},
+            "bear_plan": {"entrada": f"Quebra abaixo de {suportes[0]:.2f}", "pt": [f"{bear_pt1:.2f}", f"{bear_pt2:.2f}"], "stop": f"{bear_stop:.2f}", "rr": f"1:{rr_bear:.1f}"}
+        })
+    except Exception as e:
+        return jsonify({"erro": f"Falha Quantitativa Cripto: {str(e)}"}), 500
+
 @app.route('/api/webhook/sniper', methods=['POST'])
 def webhook_sniper():
     dados = request.json
