@@ -1128,10 +1128,12 @@
             showlegend: true,
             legend: { orientation: "h", y: 1.1, x: 0 },
             xaxis: {
-                type: 'category', // Corta fins de semana e noites em que a bolsa está fechada!
+                // Se for Cripto, a linha do tempo é contínua ('date'). Se for TradFi, corta o lixo ('category').
+                type: g.is_crypto ? 'date' : 'category',
                 nticks: 6,
                 showgrid: true, gridcolor: '#d1d5da'
             },
+           
             yaxis: {
                 domain: [0.35, 1], // Preço ocupa a parte de cima
                 showgrid: true, gridcolor: '#d1d5da'
@@ -1211,6 +1213,61 @@
 
     // Carrega o histórico mal a página inicia
     document.addEventListener('DOMContentLoaded', renderizarHistorico);
+
+    async function gerarBlueprintCripto() {
+        const ticker = document.getElementById('sniper-cripto-ticker').value.trim();
+        const tf = document.getElementById('sniper-cripto-tf').value;
+        
+        if (!ticker) { alert("Insere um criptoativo (ex: BTC-USD)."); return; }
+
+        document.getElementById('resultado').style.display = 'none';
+        const radarMomentum = document.getElementById('relatorio-nlg');
+        if (radarMomentum) radarMomentum.style.display = 'none';
+
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('sniper-resultado').style.display = 'none';
+
+        try {
+            // Nota: Chama o NOVO endpoint que acabámos de criar no Python
+            const resposta = await fetch(`/api/sniper_cripto/${ticker}/${tf}`);
+            const dados = await resposta.json();
+
+            if (dados.erro) {
+                alert(dados.erro);
+                document.getElementById('loading').style.display = 'none';
+                return;
+            }
+
+            window.blueprintAtual = dados;
+            guardarHistorico('sniper_cripto', dados.ticker, null, dados.timeframe);
+
+            // Reaproveita o motor gráfico que criaste para o Sniper normal (reutilização de código)
+            const container = document.getElementById('sniper-resultado');
+            
+            // Re-renderizamos o HTML do Sniper (podes usar exatamente o mesmo HTML template literal 
+            // que usas na função gerarBlueprintSniper normal, a estrutura JSON é compatível!)
+            
+            // Para brevidade, podes invocar a renderização visual reaproveitando o código que 
+            // constrói as divs "Trade Idea", "Key Levels", mas com cores néon adaptadas.
+            // Executamos a mesma injeção do Sniper TradFi para maximizar estabilidade:
+            gerarInterfaceBlueprint(container, dados); 
+            
+            document.getElementById('loading').style.display = 'none';
+            container.style.display = 'block';
+            if (dados.dados_grafico) desenharGraficoPlotly(dados.dados_grafico);
+
+        } catch (erro) {
+            alert("A API Cripto colapsou ou o ticker não existe.");
+            document.getElementById('loading').style.display = 'none';
+        }
+    }
+
+    // Função auxiliar para reaproveitar a geração do HTML entre Bolsa e Cripto
+    function gerarInterfaceBlueprint(container, dados) {
+        // Copias o let html = `...` que tinhas no teu gerarBlueprintSniper() original e colas aqui
+        // Isto permite-te desenhar a caixa do Blueprint com 1 linha de código quer seja cripto quer seja ações!
+        // ...
+    }
 </script>
 
 </body>
