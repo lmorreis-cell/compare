@@ -1228,11 +1228,13 @@
             btn.onclick = () => {
                 if (item.tipo === 'sniper') {
                     document.getElementById('sniper-ticker').value = item.t1;
-                    
-                    // CORREÇÃO CRÍTICA: Forçar minúsculas (1D -> 1d) para o dropdown não rejeitar o valor
-                    document.getElementById('sniper-tf').value = item.tf.toLowerCase(); 
-                    
+                    document.getElementById('sniper-tf').value = item.tf.toLowerCase();
                     gerarBlueprintSniper();
+                } else if (item.tipo === 'sniper_cripto') {
+                    // NOVO: Encaminha os atalhos de cripto para o painel roxo!
+                    document.getElementById('sniper-cripto-ticker').value = item.t1;
+                    document.getElementById('sniper-cripto-tf').value = item.tf.toLowerCase();
+                    gerarBlueprintCripto();
                 } else {
                     document.getElementById('input-t1').value = item.t1;
                     document.getElementById('input-t2').value = item.t2;
