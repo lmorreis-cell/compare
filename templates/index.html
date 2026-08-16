@@ -183,6 +183,43 @@
         <button onclick="gerarBlueprintSniper()" class="btn-moderno btn-roxo">Extrair Alvos</button>
     </div>
 </div>
+
+<!-- ==========================================
+     LABORATÓRIO CRIPTO (ÁREA ISOLADA)
+     ========================================== -->
+<div style="margin-top: 40px; border-top: 2px dashed #30363d; padding-top: 30px;">
+    <h2 style="color: #00ffcc; font-size: 20px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+        ⚡ Laboratório de Ativos Digitais (24/7)
+    </h2>
+
+    <!-- DUELO DE CORRELAÇÃO (SPOT VS PROXY) -->
+    <div class="painel-controlo" style="border-left: 5px solid #00ffcc;">
+        <h3 class="painel-titulo">Arbitragem & Correlação (Spot vs Proxy)</h3>
+        <p style="color: #8b949e; font-size: 12px; margin-top: 0; margin-bottom: 15px;">Mede a divergência de Beta entre o criptoativo subjacente e o seu veículo financeiro tradicional.</p>
+        <div class="linha-inputs">
+            <input type="text" id="input-cripto-spot" class="input-moderno" placeholder="Ex: ETH-USD">
+            <span class="texto-vs">VS</span>
+            <input type="text" id="input-cripto-proxy" class="input-moderno" placeholder="Ex: BMNR (Ação Mineira/ETF)">
+            <button onclick="compararCriptoManual()" class="btn-moderno" style="background: #00ffcc; color: #121212;">Analisar Divergência</button>
+        </div>
+    </div>
+
+    <!-- CRIPTO SNIPER BLUEPRINT -->
+    <div class="painel-controlo" style="border-left: 5px solid #b388ff;">
+        <h3 class="painel-titulo">🎯 Cripto Sniper (Alavancagem & Liquidação)</h3>
+        <p style="color: #8b949e; font-size: 12px; margin-top: 0; margin-bottom: 15px;">Motor isento de métricas contabilísticas. Focado em exaustão algorítmica e risco de Squeeze.</p>
+        <div class="linha-inputs">
+            <input type="text" id="sniper-cripto-ticker" class="input-moderno" placeholder="Ex: BTC-USD" style="max-width: 300px;">
+            <select id="sniper-cripto-tf" class="input-moderno" style="max-width: 200px; cursor: pointer;">
+                <option value="1d">Diário (1D)</option>
+                <option value="4h">Intradiário (4H)</option>
+                <option value="1h">Intradiário (1H)</option>
+            </select>
+            <button onclick="gerarBlueprintCripto()" class="btn-moderno" style="background: #b388ff; color: #fff;">Extrair Alvos Cripto</button>
+        </div>
+    </div>
+</div>
+    
 <!-- NOVO: MEMÓRIA TÁTICA (HISTÓRICO RECENTE) -->
 <div id="painel-historico" style="margin-bottom: 25px; padding: 0 5px; display: none; align-items: center; gap: 15px; flex-wrap: wrap;">
     <span style="color: #8b949e; font-size: 13px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">🕒 Últimas Análises:</span>
