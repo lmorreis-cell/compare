@@ -1363,28 +1363,31 @@
             
             // Quando clicas no atalho, ele re-executa a análise correta automaticamente
             btn.onclick = () => {
-                if (item.tipo === 'sniper') {
-                    // Muda automaticamente para o separador de Ações
-                    document.querySelector("button[onclick*='tab-acoes']").click();
-                    document.getElementById('sniper-ticker').value = item.t1;
-                    document.getElementById('sniper-tf').value = item.tf.toLowerCase();
-                    gerarBlueprintSniper();
-                } else if (item.tipo === 'sniper_cripto') {
-                    // Muda automaticamente para o separador de Cripto
-                    document.querySelector("button[onclick*='tab-cripto']").click();
-                    document.getElementById('sniper-cripto-ticker').value = item.t1;
-                    document.getElementById('sniper-cripto-tf').value = item.tf.toLowerCase();
-                    gerarBlueprintCripto();
+                if (item.tipo === 'sniper' || item.tipo === 'sniper_cripto') {
+                    // Verificação universal para o Blueprint (Ignora erros de memória antiga)
+                    if (item.t1.includes('-')) {
+                        // É cripto! Muda para o separador Cripto e usa o motor certo
+                        document.querySelector("button[onclick*='tab-cripto']").click();
+                        document.getElementById('sniper-cripto-ticker').value = item.t1;
+                        document.getElementById('sniper-cripto-tf').value = item.tf.toLowerCase();
+                        gerarBlueprintCripto();
+                    } else {
+                        // É Ação! Muda para o separador de Ações e usa o motor Tradicional
+                        document.querySelector("button[onclick*='tab-acoes']").click();
+                        document.getElementById('sniper-ticker').value = item.t1;
+                        document.getElementById('sniper-tf').value = item.tf.toLowerCase();
+                        gerarBlueprintSniper();
+                    }
                 } else {
-                    // É um duelo! Vamos inspecionar se tem Criptoativos envolvidos...
+                    // É um duelo! Inspeciona se tem Criptoativos envolvidos
                     if (item.t1.includes('-') || (item.t2 && item.t2.includes('-'))) {
-                        // Tem hífen = Cripto. Muda de separador e envia para o motor de Arbitragem.
+                        // Tem hífen = Cripto. Muda para Cripto e usa motor de Arbitragem.
                         document.querySelector("button[onclick*='tab-cripto']").click();
                         document.getElementById('input-cripto-spot').value = item.t1;
                         document.getElementById('input-cripto-proxy').value = item.t2;
                         compararCriptoManual();
                     } else {
-                        // Sem hífen = Ações Tradicionais. Muda de separador e envia para o motor de Bolsa.
+                        // Sem hífen = Ações. Muda para Ações e usa motor de Duelo Tradicional.
                         document.querySelector("button[onclick*='tab-acoes']").click();
                         document.getElementById('input-t1').value = item.t1;
                         document.getElementById('input-t2').value = item.t2;
