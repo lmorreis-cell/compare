@@ -194,19 +194,35 @@
 
     <!-- DUELO DE CORRELAÇÃO (SPOT VS PROXY) -->
     <div class="painel-controlo" style="border-left: 5px solid #00ffcc;">
-        <h3 class="painel-titulo">Arbitragem & Correlação (Spot vs Proxy)</h3>
+        <h3 class="painel-titulo">
+            <span class="sniper-tt" style="border-bottom: 1px dotted #8b949e; cursor: help;">
+                Arbitragem & Correlação (Spot vs Proxy)
+                <span class="sniper-tt-text" style="width: 380px; font-weight: normal; text-transform: none; z-index: 1000;">
+                    <strong style="color: #00ffcc; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Divergência de Beta (Gap Risk)</strong>
+                    A blockchain opera 24/7, mas os veículos financeiros tradicionais (ETFs ou ações de empresas de mineração/infraestrutura) congelam ao fim de semana. Isto cria anomalias matemáticas de correlação. Se o Ethereum, por exemplo, disparar no sábado, a ação <i>proxy</i> será forçada a abrir em <i>Gap Up</i> na segunda-feira para precificar esse movimento. Este motor compara o <i>Momentum</i> de ambos para detetar atrasos de reação e capturar oportunidades de arbitragem institucional.
+                </span>
+            </span>
+        </h3>
         <p style="color: #8b949e; font-size: 12px; margin-top: 0; margin-bottom: 15px;">Mede a divergência de Beta entre o criptoativo subjacente e o seu veículo financeiro tradicional.</p>
         <div class="linha-inputs">
             <input type="text" id="input-cripto-spot" class="input-moderno" placeholder="Ex: ETH-USD">
             <span class="texto-vs">VS</span>
-            <input type="text" id="input-cripto-proxy" class="input-moderno" placeholder="Ex: BMNR (Ação Mineira/ETF)">
+            <input type="text" id="input-cripto-proxy" class="input-moderno" placeholder="Ex: BMNR">
             <button onclick="compararCriptoManual()" class="btn-moderno" style="background: #00ffcc; color: #121212;">Analisar Divergência</button>
         </div>
     </div>
 
     <!-- CRIPTO SNIPER BLUEPRINT -->
     <div class="painel-controlo" style="border-left: 5px solid #b388ff;">
-        <h3 class="painel-titulo">🎯 Cripto Sniper (Alavancagem & Liquidação)</h3>
+        <h3 class="painel-titulo">
+            <span class="sniper-tt" style="border-bottom: 1px dotted #8b949e; cursor: help;">
+                🎯 Cripto Sniper (Alavancagem & Liquidação)
+                <span class="sniper-tt-text" style="width: 380px; font-weight: normal; text-transform: none; z-index: 1000;">
+                    <strong style="color: #b388ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Motor de Liquidez Pura</strong>
+                    Ativos descentralizados não possuem métricas contabilísticas (ROE, P/E Fwd, Margens). Tentar aplicar a triagem da bolsa tradicional aqui resultaria em falsos positivos. Este motor ignora a componente fundamental e atua exclusivamente na geometria da liquidez: mede a volatilidade absoluta (ATR), a exaustão (RSI) e as zonas de estrangulamento (Bollinger Squeeze) onde o mercado liquida posições excessivamente alavancadas em futuros.
+                </span>
+            </span>
+        </h3>
         <p style="color: #8b949e; font-size: 12px; margin-top: 0; margin-bottom: 15px;">Motor isento de métricas contabilísticas. Focado em exaustão algorítmica e risco de Squeeze.</p>
         <div class="linha-inputs">
             <input type="text" id="sniper-cripto-ticker" class="input-moderno" placeholder="Ex: BTC-USD" style="max-width: 300px;">
@@ -219,6 +235,7 @@
         </div>
     </div>
 </div>
+    
     
 <!-- NOVO: MEMÓRIA TÁTICA (HISTÓRICO RECENTE) -->
 <div id="painel-historico" style="margin-bottom: 25px; padding: 0 5px; display: none; align-items: center; gap: 15px; flex-wrap: wrap;">
@@ -1095,7 +1112,8 @@
         document.body.removeChild(link);
     }
     // MOTOR DO GRÁFICO INTERATIVO (PLOTLY)
-    function desenharGraficoPlotly(g) {
+    function desenharGraficoPlotly(g, divId = 'plotly-sniper') {
+    
         // Linha do Preço
         var tracePreco = {
             x: g.datas, y: g.closes, type: 'scatter', mode: 'lines', name: 'Preço',
@@ -1145,7 +1163,8 @@
             hovermode: 'x unified' // Ao passares o rato, mostra Preço+Volume+Médias na mesma caixa
         };
 
-        Plotly.newPlot('plotly-sniper', data, layout, {responsive: true, displayModeBar: false});
+        //Plotly.newPlot('plotly-sniper', data, layout, {responsive: true, displayModeBar: false});
+        Plotly.newPlot(divId, data, layout, {responsive: true, displayModeBar: false});
     }
     // ==========================================
     // MOTOR DE MEMÓRIA (HISTÓRICO RECENTE)
@@ -1267,6 +1286,253 @@
         // Copias o let html = `...` que tinhas no teu gerarBlueprintSniper() original e colas aqui
         // Isto permite-te desenhar a caixa do Blueprint com 1 linha de código quer seja cripto quer seja ações!
         // ...
+    }
+    // ==========================================
+    // MOTOR: DUELO SPOT VS PROXY (CRIPTO)
+    // ==========================================
+    async function compararCriptoManual() {
+        // Esconde o painel do Sniper caso esteja aberto
+        document.getElementById('sniper-resultado').style.display = 'none';
+        
+        const t1 = document.getElementById('input-cripto-spot').value.trim().toUpperCase();
+        const t2 = document.getElementById('input-cripto-proxy').value.trim().toUpperCase();
+
+        if (!t1 || !t2) {
+            alert("Insere o Ativo Spot (ex: ETH-USD) e o Proxy Tradicional (ex: BMNR).");
+            return;
+        }
+
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('resultado').style.display = 'none';
+        document.getElementById('titulo-tabela').style.display = 'none';
+        document.getElementById('tabela-ativos').style.display = 'none';
+        document.getElementById('caixa-regime').style.display = 'none';
+
+        const relatorio = document.getElementById('relatorio-nlg');
+        relatorio.innerHTML = '';
+        relatorio.style.cssText = "margin-top: 30px; display: none;";
+
+        try {
+            // Reaproveitamos o motor Python de comparação tradicional pois o RSI e Mansfield são universais
+            const resposta = await fetch(`/api/comparar/${t1}/${t2}`);
+            
+            if (!resposta.ok) {
+                alert("Erro na comparação. Verifica se os tickers estão corretos na API do Yahoo.");
+                document.getElementById('loading').style.display = 'none';
+                return;
+            }
+            
+            const dados = await resposta.json();
+
+            if (dados.length === 2) {
+                relatorio.innerHTML = gerarRelatorioNLG(dados[0], dados[1]);
+                relatorio.style.display = 'block';
+                guardarHistorico('duelo', t1, t2); // Regista no histórico
+            } else {
+                relatorio.innerHTML = `<div style="background-color: #1a1a1a; padding: 25px; border-radius: 8px; border-left: 4px solid #f44336; color: white;"><p style="color: #f44336; font-weight: bold;">Erro: Histórico insuficiente para calcular divergência.</p></div>`;
+                relatorio.style.display = 'block';
+            }
+            
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('resultado').style.display = 'block';
+
+        } catch (erro) {
+            alert("Falha ao comunicar com o servidor da API.");
+            document.getElementById('loading').style.display = 'none';
+        }
+    }
+
+    // ==========================================
+    // MOTOR: CRIPTO SNIPER BLUEPRINT
+    // ==========================================
+    async function gerarBlueprintCripto() {
+        const ticker = document.getElementById('sniper-cripto-ticker').value.trim();
+        const tf = document.getElementById('sniper-cripto-tf').value;
+        
+        if (!ticker) {
+            alert("Insere um criptoativo (ex: BTC-USD).");
+            return;
+        }
+
+        const resultadoManual = document.getElementById('resultado');
+        if (resultadoManual) resultadoManual.style.display = 'none';
+        const radarMomentum = document.getElementById('relatorio-nlg');
+        if (radarMomentum) radarMomentum.style.display = 'none';
+
+        document.getElementById('loading').style.display = 'block';
+        const container = document.getElementById('sniper-resultado');
+        container.style.display = 'none';
+
+        try {
+            // Invoca o endpoint cripto-nativo criado no Python
+            const resposta = await fetch(`/api/sniper_cripto/${ticker}/${tf}`);
+            const dados = await resposta.json();
+
+            if (dados.erro) {
+                alert(dados.erro);
+                document.getElementById('loading').style.display = 'none';
+                return;
+            }
+
+            window.blueprintAtual = dados;
+            guardarHistorico('sniper', dados.ticker, null, dados.timeframe.toLowerCase());
+
+            const suportes_str = dados.suportes.join(" → ");
+            const resist_str = dados.resistencias.join(" → ");
+            const bull_pts = dados.bull_plan.pt.join(" → ");
+            const bear_pts = dados.bear_plan.pt.join(" → ");
+
+            const rr_bull_val = parseFloat(dados.bull_plan.rr.split(':')[1]);
+            const cor_rr_bull = rr_bull_val >= 2.0 ? '#2b542c' : '#d9534f'; 
+
+            const rr_bear_val = parseFloat(dados.bear_plan.rr.split(':')[1]);
+            const cor_rr_bear = rr_bear_val >= 2.0 ? '#843534' : '#d9534f'; 
+
+            container.style.position = 'relative'; 
+
+            const svgOverlay = "data:image/svg+xml;charset=utf-8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><text x="50%" y="50%" transform="rotate(-35 200 150)" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="900" fill="rgba(18, 18, 18, 0.10)">Partilha de Ideias - Luís Reis</text></svg>');
+
+            // Renderização do HTML com a coloração roxa/néon específica para Cripto
+            let html = `
+                <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 50; pointer-events: none; background-image: url('${svgOverlay}'); background-repeat: repeat;"></div>
+                
+                <style>
+                    .sniper-tt { position: relative; display: inline-block; cursor: help; border-bottom: 1px dotted #121212; }
+                    .sniper-tt .sniper-tt-text { visibility: hidden; width: 260px; background-color: #1a1a1a; color: #f0f2f5; text-align: left; border-radius: 6px; padding: 12px; position: absolute; z-index: 1000; bottom: 130%; left: 50%; transform: translateX(-50%); opacity: 0; transition: opacity 0.2s; font-size: 12px; line-height: 1.5; font-weight: normal; box-shadow: 0 5px 15px rgba(0,0,0,0.3); white-space: normal !important;}
+                    .sniper-tt .sniper-tt-text::after { content: ""; position: absolute; top: 100%; left: 50%; margin-left: -6px; border-width: 6px; border-style: solid; border-color: #1a1a1a transparent transparent transparent; }
+                    .sniper-tt:hover .sniper-tt-text { visibility: visible; opacity: 1; }
+                </style>
+
+                <div style="border-bottom: 2px solid #121212; padding-bottom: 15px; margin-bottom: 20px; position: relative; z-index: 51;">
+                    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px;">
+                        <h2 style="margin: 0; font-size: 28px; font-weight: 900; letter-spacing: -1px; text-transform: uppercase; color: #b388ff;">${dados.ticker}</h2>
+                        
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <span style="background: #121212; color: #fff; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 12px; letter-spacing: 1px; white-space: nowrap;">TF: ${dados.timeframe} | COTAÇÃO: $${dados.preco}</span>
+                            <a href="https://www.tradingview.com/chart/?symbol=${dados.ticker.replace('-USD', '')}USDT" target="_blank" style="background: #232d3f; color: #d7dce6; border: 1px solid #30363d; padding: 5px 12px; border-radius: 4px; font-weight: bold; font-size: 12px; text-decoration: none; display: flex; align-items: center; gap: 5px; transition: background 0.2s;">
+                                Abrir Gráfico 📈
+                            </a>
+                            <button onclick="transmitirAlertaDiscord()" style="background: #5865F2; color: white; border: none; padding: 5px 12px; border-radius: 4px; font-weight: bold; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 5px; box-shadow: 0 2px 5px rgba(88,101,242,0.4);">
+                                Transmitir Alerta 📡
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div style="font-size: 13px; color: #333;">
+                        <span class="sniper-tt" style="margin-right: 20px;">
+                            <strong>RSI (14):</strong> ${dados.rsi}
+                            <span class="sniper-tt-text">
+                                <strong style="color: #b388ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Relative Strength Index</strong>
+                                Em mercados cripto, o RSI pode manter-se sobrecomprado (>70) ou sobrevendido (<30) durante dias num ciclo parabólico. Avaliar sempre a divergência face ao preço.
+                            </span>
+                        </span>
+                        <span class="sniper-tt">
+                            <strong>Volatilidade (ATR):</strong> $${dados.atr}
+                            <span class="sniper-tt-text">
+                                <strong style="color: #b388ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Average True Range</strong>
+                                Amplitude base de ruído. Fundamental para colocar stops fora do alcance das 'wicks' (pavios) dos market makers que caçam liquidez alavancada.
+                            </span>
+                        </span>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 30px; margin-bottom: 25px; position: relative; z-index: 51;">
+                    <div style="flex: 1;">
+                        <h4 style="margin-top: 0; color: #121212; text-transform: uppercase; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Key Levels</h4>
+                        <div style="margin-bottom: 15px;">
+                            <span style="color: #d9534f; font-weight: bold; font-size: 13px;">Support</span><br>
+                            <span style="font-family: monospace; font-size: 14px; font-weight: bold;">$ ${suportes_str}</span>
+                        </div>
+                        <div>
+                            <span style="color: #5cb85c; font-weight: bold; font-size: 13px;">Resistance</span><br>
+                            <span style="font-family: monospace; font-size: 14px; font-weight: bold;">$ ${resist_str}</span>
+                        </div>
+                    </div>
+
+                    <div style="flex: 1.5; display: flex; flex-direction: column; gap: 15px;">
+                        <div style="background: #e9ecef; padding: 15px; border-radius: 4px; border-left: 4px solid #b388ff;">
+                            <h4 style="margin-top: 0; color: #121212; text-transform: uppercase; font-size: 14px;">Sniper Notes</h4>
+                            <p style="margin: 0; font-size: 13px; line-height: 1.6; color: #333; text-align: justify;">
+                                ${dados.notas} 
+                            </p>
+                        </div>
+                        ${dados.dados_grafico ? `
+                        <div style="border: 1px solid #ccc; border-radius: 4px; overflow: hidden; background: #f0f2f5; padding-top: 10px;">
+                            <div id="plotly-sniper-cripto" style="width: 100%; height: 350px;"></div>
+                        </div>` : ''}
+                    </div>
+                </div>
+
+                <h4 style="margin-top: 0; color: #121212; text-transform: uppercase; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px; position: relative; z-index: 51;">Execution Logic</h4>
+                
+                <div style="background: #1c1e24; border: 1px solid #30363d; border-radius: 6px; padding: 12px 15px; margin-bottom: 20px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap; position: relative; z-index: 51;">
+                    <span class="sniper-tt" style="border-bottom: 1px dotted #8b949e; cursor: help; color: #8b949e; font-weight: bold; font-size: 13px;">
+                        🧮 Position Sizing
+                        <span class="sniper-tt-text" style="width: 320px; z-index: 1000; bottom: 150%;">
+                            <strong style="color: #4da6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Gestão de Risco Matemática</strong>
+                            Calcula a exposição exata para o teu Spot ou Derivativos. Previne a liquidação limitando a perda matemática ao risco inserido se o pavio atingir o teu Stop Loss.
+                        </span>
+                    </span>
+                    <input type="number" id="calc-banca" placeholder="Banca Total (€/$)" class="input-moderno" style="max-width: 140px; padding: 8px; font-size: 13px;">
+                    <div style="display: flex; align-items: center; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; overflow: hidden; padding-left: 12px;">
+                        <span style="color: #8b949e; font-size: 13px; white-space: nowrap; font-weight: bold;">Risco:</span>
+                        <input type="number" id="calc-risco" value="1" step="0.1" style="background: transparent; border: none; color: #c9d1d9; padding: 8px; font-size: 14px; width: 45px; text-align: center; outline: none; font-weight: bold;">
+                        <span style="color: #8b949e; font-size: 13px; padding-right: 12px; font-weight: bold;">%</span>
+                    </div>
+                    <button onclick="calcularLotesSniper(${dados.resistencias[0]}, ${dados.suportes[0]}, ${dados.bull_plan.stop}, ${dados.bear_plan.stop})" class="btn-moderno btn-roxo" style="padding: 8px 15px; font-size: 12px;">Calcular Exposição</button>
+                    <div id="calc-resultado" style="width: 100%; margin-top: 10px; display: none; gap: 20px;"></div>
+                </div>
+                
+                <div style="display: flex; gap: 20px; position: relative; z-index: 51;">
+                    <div style="flex: 1; background: #eafaf1; border: 1px solid #c3e6cb; border-radius: 6px; padding: 15px; display: flex; flex-direction: column;">
+                        <h4 style="margin-top: 0; color: #2b542c; font-size: 16px; margin-bottom: 15px;">📈 Bull Plan</h4>
+                        <div style="font-size: 13px; line-height: 1.8; color: #121212; flex-grow: 1;">
+                            <span style="color: #d9534f; font-weight: 900;">🎯 PT</span> ${bull_pts}<br>
+                            <span style="color: #0275d8; font-weight: 900;">🛡️ Stop</span> Below ${dados.bull_plan.stop}<br>
+                            <span class="sniper-tt">
+                                ⚖️ <strong style="color: ${cor_rr_bull};">R:R ${dados.bull_plan.rr}</strong>
+                                <span class="sniper-tt-text" style="width: 250px;">
+                                    Se o rácio for verde, a entrada compensa o risco de volatilidade cripto.
+                                </span>
+                            </span>
+                        </div>
+                        <div style="margin-top: 15px; font-size: 12px; color: #3c763d; background: #dff0d8; padding: 10px; border-radius: 4px; line-height: 1.5;">
+                            ⚡ <strong>Confirmation requires:</strong> ${dados.bull_plan.entrada} com expansão de volume no fecho da vela.
+                        </div>
+                    </div>
+
+                    <div style="flex: 1; background: #fdf2f2; border: 1px solid #f5c6cb; border-radius: 6px; padding: 15px; display: flex; flex-direction: column;">
+                        <h4 style="margin-top: 0; color: #843534; font-size: 16px; margin-bottom: 15px;">📉 Bear Plan</h4>
+                        <div style="font-size: 13px; line-height: 1.8; color: #121212; flex-grow: 1;">
+                            <span style="color: #d9534f; font-weight: 900;">🎯 PT</span> ${bear_pts}<br>
+                            <span style="color: #0275d8; font-weight: 900;">🛡️ Stop</span> Above ${dados.bear_plan.stop}<br>
+                            <span class="sniper-tt">
+                                ⚖️ <strong style="color: ${cor_rr_bear};">R:R ${dados.bear_plan.rr}</strong>
+                                <span class="sniper-tt-text" style="width: 250px;">
+                                    No curto prazo, a liquidação dos Longs suporta alvos mais ambiciosos no Bear Plan.
+                                </span>
+                            </span>
+                        </div>
+                        <div style="margin-top: 15px; font-size: 12px; color: #a94442; background: #f2dede; padding: 10px; border-radius: 4px; line-height: 1.5;">
+                            ⚡ <strong>Confirmation requires:</strong> ${dados.bear_plan.entrada} com aceleração de quebra de suporte.
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            container.innerHTML = html;
+            document.getElementById('loading').style.display = 'none';
+            container.style.display = 'block';
+            
+            // Reaproveita o Plotly mudando apenas o ID do div para não colidir
+            if (dados.dados_grafico && dados.dados_grafico.datas.length > 0) {
+                desenharGraficoPlotly(dados.dados_grafico, 'plotly-sniper-cripto');
+            }
+
+        } catch (erro) {
+            alert("Falha no motor quantitativo cripto ou ticker não existe (tenta com sufixo -USD).");
+            document.getElementById('loading').style.display = 'none';
+        }
     }
 </script>
 
