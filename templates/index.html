@@ -1711,21 +1711,40 @@
     // ==========================================
     // MOTOR DE NAVEGAÇÃO DOS SEPARADORES
     // ==========================================
+    // ==========================================
+    // MOTOR DE NAVEGAÇÃO DOS SEPARADORES
+    // ==========================================
     function abrirSeparador(evt, nomeTab) {
-        // Esconde todos os conteúdos das tabs
+        // 1. Esconde todos os conteúdos das tabs (Os comandos)
         const conteudos = document.getElementsByClassName("tab-content");
         for (let i = 0; i < conteudos.length; i++) {
             conteudos[i].style.display = "none";
             conteudos[i].classList.remove("active");
         }
 
-        // Remove a cor ativa de todos os botões do menu
+        // 2. Remove a cor ativa de todos os botões do menu
         const botoes = document.getElementsByClassName("tab-btn");
         for (let i = 0; i < botoes.length; i++) {
             botoes[i].classList.remove("active");
         }
 
-        // Mostra o conteúdo escolhido e ilumina o botão clicado
+        // ---------------------------------------------------------
+        // NOVO: VASSOURA VISUAL (Limpa a zona comum de resultados)
+        // ---------------------------------------------------------
+        const ecrasDeResultado = [
+            'resultado',          // Tabelas do Radar
+            'sniper-resultado',   // Blueprints do Sniper (Ações e Cripto)
+            'relatorio-nlg',      // Relatórios de texto dos Duelos
+            'caixa-regime'        // Caixa do Regime de Mercado
+        ];
+        
+        ecrasDeResultado.forEach(id => {
+            const ecra = document.getElementById(id);
+            if (ecra) ecra.style.display = 'none';
+        });
+        // ---------------------------------------------------------
+
+        // 3. Mostra o conteúdo escolhido e ilumina o botão clicado
         document.getElementById(nomeTab).style.display = "block";
         
         // Timeout pequeno apenas para a animação de fade-in funcionar bem
