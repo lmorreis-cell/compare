@@ -1247,12 +1247,32 @@
     // Carrega o histórico mal a página inicia
     document.addEventListener('DOMContentLoaded', renderizarHistorico);
 
+
+
+
     async function gerarBlueprintCripto() {
-        const ticker = document.getElementById('sniper-cripto-ticker').value.trim();
+        const ticker = document.getElementById('sniper-cripto-ticker').value.trim().toUpperCase();
         const tf = document.getElementById('sniper-cripto-tf').value;
         
-        if (!ticker) { alert("Insere um criptoativo (ex: BTC-USD)."); return; }
+        if (!ticker) {
+            alert("Insere um criptoativo (ex: BTC-USD).");
+            return;
+        }
 
+        // ---------------------------------------------------------
+        // NOVO: BARREIRA DE SEGURANÇA CRIPTO-NATIVA
+        // Garante que o ticker tem a sintaxe de paridade do Yahoo Finance
+        // ---------------------------------------------------------
+        if (!ticker.includes('-')) {
+            alert("⚠️ Formato de Criptoativo Inválido!\n\nNo ecossistema do Yahoo Finance, as criptomoedas exigem o par fiduciário.\nExperimenta escrever: " + ticker + "-USD");
+            return;
+        }
+        // ---------------------------------------------------------
+
+        const resultadoManual = document.getElementById('resultado');
+        if (resultadoManual) resultadoManual.style.display = 'none';
+        
+    
         document.getElementById('resultado').style.display = 'none';
         const radarMomentum = document.getElementById('relatorio-nlg');
         if (radarMomentum) radarMomentum.style.display = 'none';
