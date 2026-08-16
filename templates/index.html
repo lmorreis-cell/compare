@@ -183,6 +183,32 @@
             bottom: 140%; /* Efeito de levitação suave */
         }
         /* ==========================================
+           CARCAÇA DO TERMINAL TÁTICO
+           ========================================== */
+        .terminal-global {
+            background-color: #0d1117; /* Fundo profundo para contraste */
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 25px 30px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+            margin-top: 20px;
+            margin-bottom: 40px;
+        }
+        .titulo-terminal {
+            margin-top: 0;
+            margin-bottom: 25px;
+            font-size: 22px;
+            font-weight: 900;
+            color: #f0f2f5;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 2px solid #232d3f;
+            padding-bottom: 15px;
+        }
+        /* ==========================================
            SISTEMA DE NAVEGAÇÃO (SEPARADORES/TABS)
            ========================================== */
         .tab-menu { 
@@ -238,7 +264,11 @@
     </a>
 </div>
 <div class="container">
-    <h1>Radar de Momentum</h1>
+    <div class="terminal-global">
+        
+        <h1 class="titulo-terminal">
+            🖥️ Terminal Analítico Integrado
+        </h1>
     <button onclick="executarAnalise()" class="btn-moderno btn-azul" style="margin-bottom: 20px;">Executar Análise de Mercado</button>
 
 <!-- MENU DE NAVEGAÇÃO -->
@@ -439,6 +469,8 @@
     </div>
 </div>
 
+</div> <!-- ✔️ NOVO: FECHA A CAIXA DO TERMINAL GLOBAL AQUI -->
+    
 <script>
     async function executarAnalise() {
         document.getElementById('ferramentas-tabela').style.display = 'none';
