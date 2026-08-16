@@ -137,6 +137,51 @@
             z-index: 10; 
             box-shadow: 0 2px 2px -1px rgba(0,0,0,0.5); /* Sombra para separar os dados do cabeçalho ao fazer scroll */
         }
+        /* ==========================================
+           SISTEMA DE TOOLTIPS NATIVO DO PORTAL
+           ========================================== */
+        .dica-edu { 
+            position: relative; 
+            display: inline-block; 
+            cursor: help; 
+            border-bottom: 1px dotted #8b949e; 
+        }
+        .dica-edu .dica-texto { 
+            visibility: hidden; 
+            width: 320px; 
+            background-color: #1a1a1a; 
+            color: #f0f2f5; 
+            text-align: left; 
+            border-radius: 6px; 
+            padding: 12px; 
+            position: absolute; 
+            z-index: 1000; 
+            bottom: 130%; 
+            left: 50%; 
+            transform: translateX(-50%); 
+            opacity: 0; 
+            transition: opacity 0.2s ease, bottom 0.2s ease; 
+            font-size: 12px; 
+            line-height: 1.5; 
+            font-weight: normal; 
+            box-shadow: 0 8px 24px rgba(0,0,0,0.6); 
+            white-space: normal !important; 
+        }
+        .dica-edu .dica-texto::after { 
+            content: ""; 
+            position: absolute; 
+            top: 100%; 
+            left: 50%; 
+            margin-left: -6px; 
+            border-width: 6px; 
+            border-style: solid; 
+            border-color: #1a1a1a transparent transparent transparent; 
+        }
+        .dica-edu:hover .dica-texto { 
+            visibility: visible; 
+            opacity: 1; 
+            bottom: 140%; /* Efeito de levitação suave */
+        }
     </style>
     <!-- Biblioteca Plotly.js para gráficos interativos -->
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js" charset="utf-8"></script>
