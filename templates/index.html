@@ -284,11 +284,14 @@
 
     <!-- SEPARADOR 1: RADAR GLOBAL -->
     <div id="tab-radar" class="tab-content active">
-        <button id="btn-atualizar" class="btn-atualizar" onclick="iniciarAtualizacao()">EXECUTAR ANÁLISE DE MERCADO</button>
-        <div style="background-color: #1c1e24; border: 1px solid #30363d; border-left: 4px solid #f28b24; padding: 15px; border-radius: 8px; margin-bottom: 25px; margin-top: 15px;">
+        <div style="background-color: #1c1e24; border: 1px solid #30363d; border-left: 4px solid #f28b24; padding: 15px; border-radius: 8px; margin-bottom: 20px; margin-top: 15px;">
             <p style="margin: 0; font-size: 11px; font-weight: bold; color: #c9d1d9;">Sincronização de Dados (Delay Intencional)</p>
             <p style="margin: 5px 0 0 0; font-size: 11px; color: #8b949e; line-height: 1.4;">Os dados processados neste painel operam com um ciclo de atualização tático de 5 minutos. Este desfasamento temporal não é uma anomalia, mas sim uma medida arquitetural de segurança para evitar limites de estrangulamento (<em>Rate Limiting</em>) e bloqueios de IP por parte das fontes e APIs financeiras. Este ciclo garante a estabilidade e disponibilidade ininterrupta do motor quantitativo para todos os membros da comunidade simultaneamente.</p>
         </div>
+        
+        <button id="btn-atualizar" class="btn-atualizar" onclick="iniciarAtualizacao()" style="width: 100%; padding: 12px; font-size: 14px; margin-bottom: 10px; cursor: pointer;">
+            EXECUTAR ANÁLISE DE MERCADO
+        </button>
     </div>
 
     <!-- SEPARADOR 2: AÇÕES E ETFs -->
