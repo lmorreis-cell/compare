@@ -269,8 +269,7 @@
         <h1 class="titulo-terminal">
             🖥️ Terminal Analítico Integrado
         </h1>
-    <button onclick="executarAnalise()" class="btn-moderno btn-azul" style="margin-bottom: 20px;">Executar Análise de Mercado</button>
-
+    
 <!-- MENU DE NAVEGAÇÃO -->
     <div class="tab-menu">
         <button class="tab-btn active" onclick="abrirSeparador(event, 'tab-radar')">📡 Radar Global</button>
@@ -289,7 +288,8 @@
             <p style="margin: 5px 0 0 0; font-size: 11px; color: #8b949e; line-height: 1.4;">Os dados processados neste painel operam com um ciclo de atualização tático de 5 minutos. Este desfasamento temporal não é uma anomalia, mas sim uma medida arquitetural de segurança para evitar limites de estrangulamento (<em>Rate Limiting</em>) e bloqueios de IP por parte das fontes e APIs financeiras. Este ciclo garante a estabilidade e disponibilidade ininterrupta do motor quantitativo para todos os membros da comunidade simultaneamente.</p>
         </div>
         
-        <button id="btn-atualizar" class="btn-atualizar" onclick="iniciarAtualizacao()" style="width: 100%; padding: 12px; font-size: 14px; margin-bottom: 10px; cursor: pointer;">
+        <!-- BOTÃO AZUL CORRIGIDO E FUNCIONAL -->
+        <button id="btn-atualizar" onclick="iniciarAtualizacao()" style="background: #007bff; color: white; border: none; padding: 12px; font-size: 14px; font-weight: bold; border-radius: 6px; width: 100%; cursor: pointer; box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3); transition: opacity 0.2s;">
             EXECUTAR ANÁLISE DE MERCADO
         </button>
     </div>
