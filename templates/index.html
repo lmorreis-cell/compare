@@ -411,6 +411,12 @@
             return;
         }
 
+        // NOVO: Barreira Frontend para Ações
+        if (t1.includes('-') || t2.includes('-')) {
+            alert("⚠️ Criptoativo Detetado!\n\nPara cruzar criptomoedas com ações (Spot vs Proxy), utiliza o 'Laboratório de Ativos Digitais' mais abaixo.");
+            return;
+        }
+        
         document.getElementById('loading').style.display = 'block';
         document.getElementById('resultado').style.display = 'none';
         
@@ -1362,8 +1368,9 @@
         relatorio.style.cssText = "margin-top: 30px; display: none;";
 
         try {
-            // Reaproveitamos o motor Python de comparação tradicional pois o RSI e Mansfield são universais
-            const resposta = await fetch(`/api/comparar/${t1}/${t2}`);
+            
+            // Invoca o endpoint EXCLUSIVO para o cruzamento de Criptoativos
+            const resposta = await fetch(`/api/comparar_cripto/${t1}/${t2}`);
             
             if (!resposta.ok) {
                 alert("Erro na comparação. Verifica se os tickers estão corretos na API do Yahoo.");
