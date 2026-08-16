@@ -372,8 +372,30 @@ def ferramenta_interativa():
     return render_template('index.html')
 
 @app.route('/api/comparar/<ticker1>/<ticker2>')
-@cache.cached(timeout=300) # <-- ADICIONA ESTA LINHA AQUI
+@cache.cached(timeout=300) 
 def api_comparar(ticker1, ticker2):
+    # ==========================================================
+    # BARREIRA: Bloqueia Criptomoedas no Duelo de Ações
+    # ==========================================================
+    if "-" in ticker1 or "-" in ticker2:
+        return jsonify({"erro": "Ativo Inválido! Usa o 'Laboratório de Ativos Digitais' mais abaixo para comparar criptomoedas."}), 400
+        
+    df_comparacao = comparar_ativos(ticker1, ticker2)
+    
+    if df_comparacao.empty:
+        return jsonify({"erro": "Não foi possível obter dados para um ou ambos os tickers."}), 400
+        
+    return jsonify(df_comparacao.to_dict(orient='records'))
+
+@app.route('/api/comparar_cripto/<ticker1>/<ticker2>')
+@cache.cached(timeout=300) 
+def api_comparar_cripto(ticker1, ticker2):
+    # ==========================================================
+    # BARREIRA: Exige pelo menos uma Criptomoeda no Spot vs Proxy
+    # ==========================================================
+    if "-" not in ticker1 and "-" not in ticker2:
+        return jsonify({"erro": "O duelo Spot vs Proxy exige pelo menos um criptoativo com paridade (ex: ETH-USD)."}), 400
+        
     df_comparacao = comparar_ativos(ticker1, ticker2)
     
     if df_comparacao.empty:
