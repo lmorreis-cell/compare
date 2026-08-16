@@ -508,6 +508,13 @@ def api_sniper(ticker, timeframe):
     else:
         return jsonify({"erro": "Timeframe inválido."}), 400
 
+    # ==========================================================
+    # BARREIRA DE SEGURANÇA BACKEND (BLOQUEIA CRIPTO NAS AÇÕES)
+    # ==========================================================
+    if "-" in ticker:
+        return jsonify({"erro": "Ativo Inválido! Usa o 'Laboratório de Ativos Digitais' para analisar criptomoedas."}), 400
+    # ==========================================================
+
     try:
         # Extração limpa e Filtro Anti-NaN europeu
         df = yf.Ticker(ticker).history(period=periodo, interval=intervalo)
