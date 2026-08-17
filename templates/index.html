@@ -298,57 +298,55 @@
 
     <!-- SEPARADOR 2: AÇÕES E ETFs -->
     <div id="tab-acoes" class="tab-content">
+        
         <!-- MARKET BREADTH (RAIO-X DO MERCADO) -->
-            <!-- MARKET BREADTH (RAIO-X DO MERCADO) -->
-            <div style="background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
-                
-                <!-- Cabeçalho e Botão -->
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <h3 style="margin: 0; font-size: 14px; color: #f0f2f5; text-transform: uppercase;">
-                        <span class="dica-edu">
-                            🧭 Market Breadth (Saúde Estrutural)
-                            <span class="dica-texto">
-                                <strong style="color: #58a6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">A Anatomia da Tendência</strong>
-                                Analisa os 11 principais ETFs Setoriais da economia. Se a maioria estiver abaixo da EMA 50, o mercado está num regime de distribuição. Operar Longs com Breadth fraco é nadar contra a maré institucional.
-                            </span>
+        <div style="background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
+            
+            <!-- Cabeçalho e Botão -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin: 0; font-size: 14px; color: #f0f2f5; text-transform: uppercase;">
+                    <span class="dica-edu">
+                        🧭 Market Breadth (Saúde Estrutural)
+                        <span class="dica-texto">
+                            <strong style="color: #58a6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">A Anatomia da Tendência</strong>
+                            Analisa os 11 principais ETFs Setoriais da economia. Se a maioria estiver abaixo da EMA 50, o mercado está num regime de distribuição. Operar Longs com Breadth fraco é nadar contra a maré institucional.
                         </span>
-                    </h3>
-                    <button onclick="carregarBreadth()" style="background: #232d3f; color: #58a6ff; border: 1px solid #58a6ff; padding: 8px 15px; border-radius: 6px; font-weight: bold; font-size: 12px; cursor: pointer; transition: all 0.2s;">Atualizar Radar</button>
-                </div>
-
-                <!-- Gráficos e Indicadores -->
-                <div style="display: flex; gap: 30px; align-items: center;">
-                    <div style="min-width: 140px;">
-                        <span style="font-size: 11px; color: #8b949e;">Setores Bull (Acima EMA 50):</span><br>
-                        <span id="breadth-score" style="font-size: 24px; font-weight: bold; color: #c9d1d9;">--/11</span>
-                    </div>
-                    <div style="flex-grow: 1;">
-                        <div style="width: 100%; background: #232d3f; border-radius: 4px; height: 12px; overflow: hidden; border: 1px solid #30363d;">
-                            <div id="breadth-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #d9534f, #f0ad4e, #5cb85c); transition: width 1s ease;"></div>
-                        </div>
-                    </div>
-                    <div style="min-width: 100px; text-align: right;">
-                        <span class="dica-edu" style="font-size: 11px; color: #8b949e;">
-                            VIX (Medo):
-                            <span class="dica-texto" style="width: 250px;">
-                                <strong style="color: #f28b24; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Índice de Volatilidade</strong>
-                                Mede o prémio de proteção. Valores > 20 exigem stops mais largos e redução no tamanho das posições.
-                            </span>
-                        </span><br>
-                        <span id="breadth-vix" style="font-size: 20px; font-weight: bold; color: #c9d1d9;">--</span>
-                    </div>
-                </div>
-
-                <!-- NOVO: CAIXA DO MOTOR NLG -->
-                <div id="breadth-nlg" style="display: none; margin-top: 20px; background: #0d1117; border-left: 4px solid #58a6ff; padding: 15px; border-radius: 4px; font-size: 13px; line-height: 1.6; color: #c9d1d9; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);">
-                    <!-- O texto educativo gerado pelo JS entra aqui -->
-                </div>
-
+                    </span>
+                </h3>
+                <button onclick="carregarBreadth()" style="background: #232d3f; color: #58a6ff; border: 1px solid #58a6ff; padding: 8px 15px; border-radius: 6px; font-weight: bold; font-size: 12px; cursor: pointer; transition: all 0.2s;">Atualizar Radar</button>
             </div>
-                <div>
-                    <button onclick="carregarBreadth()" style="background: #232d3f; color: #58a6ff; border: 1px solid #58a6ff; padding: 8px 15px; border-radius: 6px; font-weight: bold; font-size: 12px; cursor: pointer; transition: all 0.2s;">Atualizar Radar</button>
+
+            <!-- Gráficos e Indicadores -->
+            <div style="display: flex; gap: 30px; align-items: center;">
+                <div style="min-width: 140px;">
+                    <span style="font-size: 11px; color: #8b949e;">Setores Bull (Acima EMA 50):</span><br>
+                    <span id="breadth-score" style="font-size: 24px; font-weight: bold; color: #c9d1d9;">--/11</span>
+                </div>
+                <div style="flex-grow: 1;">
+                    <div style="width: 100%; background: #232d3f; border-radius: 4px; height: 12px; overflow: hidden; border: 1px solid #30363d;">
+                        <div id="breadth-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #d9534f, #f0ad4e, #5cb85c); transition: width 1s ease;"></div>
+                    </div>
+                </div>
+                <div style="min-width: 100px; text-align: right;">
+                    <span class="dica-edu" style="font-size: 11px; color: #8b949e;">
+                        VIX (Medo):
+                        <span class="dica-texto" style="width: 250px;">
+                            <strong style="color: #f28b24; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Índice de Volatilidade</strong>
+                            Mede o prémio de proteção. Valores > 20 exigem stops mais largos e redução no tamanho das posições.
+                        </span>
+                    </span><br>
+                    <span id="breadth-vix" style="font-size: 20px; font-weight: bold; color: #c9d1d9;">--</span>
                 </div>
             </div>
+
+            <!-- CAIXA DO MOTOR NLG -->
+            <div id="breadth-nlg" style="display: none; margin-top: 20px; background: #0d1117; border-left: 4px solid #58a6ff; padding: 15px; border-radius: 4px; font-size: 13px; line-height: 1.6; color: #c9d1d9; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);">
+                <!-- O texto educativo gerado pelo JS entra aqui -->
+            </div>
+
+        </div>
+
+        <!-- 1. BLOCO: DUELO MANUAL DE ATIVOS -->
         <!-- COLA AQUI: A caixa completa do "Duelo Manual de Ativos" -->
         <!-- COLA AQUI: A caixa completa do "Gerador de Blueprints (Sniper Trades)" -->
         <!-- 1. BLOCO: DUELO MANUAL DE ATIVOS -->
