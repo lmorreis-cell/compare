@@ -324,7 +324,7 @@ def dashboard_central():
                     <a href="/ver/states" class="btn btn-states">Visualizar Radar States</a>
                 </div>
                 <div style="margin-top: 15px; border-top: 1px dashed var(--linha); padding-top: 15px;">
-                    <a href="/interativo" class="btn btn-interativo">⚡ Abrir Terminal Analítico Integrado (Radar, Ações e ETFs, CriptoAtivos (com Duelos e Blueprints)</a>
+                    <a href="/interativo" class="btn btn-interativo">⚡ Terminal Analítico Integrado (Radar, Ações e ETFs, CriptoAtivos)</a>
                 </div>
             </div>
             
