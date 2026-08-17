@@ -998,16 +998,17 @@
                             ⚡ <strong>Confirmation requires:</strong> ${dados.bear_plan.entrada} evidenciando falha estrutural.
                         </div>
                     </div>
+                </div> <!-- ⬅️ ESTE DIV FECHA O BLOCO HORIZONTAL! É ELE QUE RESOLVE O TEU PROBLEMA -->
 
-                </div>
-                <!-- NOVO: BOTÃO DE BACKTEST NA BASE -->
+                <!-- NOVO: BOTÃO DE BACKTEST NA BASE (OCUPA A LINHA TODA) -->
                 <div style="margin-top: 30px; text-align: center; position: relative; z-index: 51;">
                     <button onclick="executarBacktest('${dados.ticker}')" style="background: #2ea043; color: white; border: 1px solid #3fb950; padding: 10px 24px; border-radius: 6px; font-weight: bold; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s; box-shadow: 0 4px 12px rgba(46, 160, 67, 0.3);">
                         ⚙️ Validar Setup no Histórico (Executar Backtest 5A)
                     </button>
                 </div>
+
                 <!-- GAVETA INVISÍVEL DO BACKTEST -->
-                <div id="gaveta-backtest" style="display: none; margin-top: 25px; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 20px; box-shadow: inset 0 0 15px rgba(0,0,0,0.5); position: relative; z-index: 51;">
+                <div id="gaveta-backtest" style="display: none; margin-top: 20px; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 20px; box-shadow: inset 0 0 15px rgba(0,0,0,0.5); position: relative; z-index: 51;">
                     <!-- Os resultados vão ser injetados aqui -->
                 </div>
             `;
