@@ -784,6 +784,10 @@
                             <button onclick="transmitirAlertaDiscord()" style="background: #5865F2; color: white; border: none; padding: 5px 12px; border-radius: 4px; font-weight: bold; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 5px; box-shadow: 0 2px 5px rgba(88,101,242,0.4);">
                                 Transmitir Alerta 📡
                             </button>
+                            <!-- NOVO BOTÃO DE BACKTEST -->
+                            <button onclick="executarBacktest('${dados.ticker}')" style="background: #2ea043; color: white; border: 1px solid #3fb950; padding: 5px 12px; border-radius: 4px; font-weight: bold; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: all 0.2s;">
+                                Executar Backtest (5A) ⚙️
+                            </button>
                         </div>
                     </div>
                     
@@ -998,6 +1002,10 @@
                         </div>
                     </div>
 
+                </div>
+                <!-- GAVETA INVISÍVEL DO BACKTEST -->
+                <div id="gaveta-backtest" style="display: none; margin-top: 25px; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 20px; box-shadow: inset 0 0 15px rgba(0,0,0,0.5); position: relative; z-index: 51;">
+                    <!-- Os resultados vão ser injetados aqui -->
                 </div>
             `;
 
@@ -1943,6 +1951,85 @@
     
     // Opcional: Descomenta a linha abaixo para calcular logo que a página abre
     // document.addEventListener('DOMContentLoaded', carregarBreadth);
+
+    // ==========================================
+    // MOTOR DE BACKTESTING & NLG (PROVA DOS 9)
+    // ==========================================
+    async function executarBacktest(ticker) {
+        const gaveta = document.getElementById('gaveta-backtest');
+        
+        // Efeito de Loading
+        gaveta.style.display = 'block';
+        gaveta.innerHTML = `<div style="text-align: center; color: #8b949e; font-size: 13px;">⚙️ A simular 5 anos de transações algorítmicas na ${ticker}...</div>`;
+        
+        try {
+            const resposta = await fetch(`/api/backtest/${ticker}`);
+            const dados = await resposta.json();
+            
+            if(dados.erro) throw new Error(dados.erro);
+
+            const vitoria = parseFloat(dados.win_rate) > 50;
+            const gerouAlpha = parseFloat(dados.retorno_total) > parseFloat(dados.retorno_bh);
+            
+            // Inteligência Textual (NLG)
+            let avaliacao = "";
+            if(gerouAlpha && vitoria) {
+                avaliacao = `<strong style="color: #5cb85c;">Estratégia com Expectativa Matemática Positiva.</strong> O modelo de <i>Trend Following</i> aplicado à ${ticker} bateu o mercado de forma passiva (Buy & Hold) reduzindo substancialmente a exposição temporal ao risco. A taxa de acerto valida o Setup atual.`;
+            } else if (!gerouAlpha && vitoria) {
+                avaliacao = `<strong style="color: #f0ad4e;">Proteção de Capital Ativa.</strong> O modelo teve um ganho inferior ao Buy & Hold passivo, mas protegeu a carteira contra o Max Drawdown severo, tirando o capital do mercado em períodos de distribuição. Setup tático sólido para controlo de risco.`;
+            } else {
+                avaliacao = `<strong style="color: #d9534f;">Alerta de Ruído (Whipsaw).</strong> O perfil técnico da ${ticker} gerou muitos falsos rompimentos no histórico (Win Rate baixo). O ativo tem um comportamento errático face à EMA 20. Executa o Setup atual com tamanho de posição reduzido.`;
+            }
+
+            // O HTML injetado na Gaveta, com Tooltips Educacionais
+            gaveta.innerHTML = `
+                <h4 style="margin: 0 0 15px 0; color: #58a6ff; font-size: 15px; border-bottom: 1px solid #30363d; padding-bottom: 8px;">
+                    📊 Backtest de Regime: Últimos ${dados.anos} Anos (${ticker})
+                </h4>
+                
+                <div style="display: flex; gap: 20px; margin-bottom: 20px; flex-wrap: wrap;">
+                    
+                    <div style="flex: 1; background: #161b22; padding: 12px; border-radius: 6px; border: 1px solid #30363d;">
+                        <span class="dica-edu" style="font-size: 11px; color: #8b949e;">Win Rate (Tx. Acerto)
+                            <span class="dica-texto" style="width: 250px;">
+                                <strong style="color: #58a6ff; display: block; margin-bottom: 5px;">Rácio de Eficiência</strong>
+                                Percentagem de dias/trades em que a estratégia esteve do lado certo da tendência. Sistemas de <i>Trend Following</i> têm frequentemente Win Rates de 40-50%, compensando matematicamente quando os ganhos são muito superiores às perdas.
+                            </span>
+                        </span><br>
+                        <span style="font-size: 18px; font-weight: bold; color: ${vitoria ? '#5cb85c' : '#d9534f'};">${dados.win_rate}%</span>
+                    </div>
+
+                    <div style="flex: 1; background: #161b22; padding: 12px; border-radius: 6px; border: 1px solid #30363d;">
+                        <span class="dica-edu" style="font-size: 11px; color: #8b949e;">Max Drawdown
+                            <span class="dica-texto" style="width: 250px;">
+                                <strong style="color: #d9534f; display: block; margin-bottom: 5px;">Risco de Ruína (Dor Máxima)</strong>
+                                A maior queda percentual entre um pico da carteira e o fundo subsequente. É a principal métrica de sobrevivência. Se o Buy & Hold tem um Drawdown de -40% e a estratégia tem -15%, o algoritmo poupou-te a uma quebra psicológica severa.
+                            </span>
+                        </span><br>
+                        <span style="font-size: 18px; font-weight: bold; color: #f0ad4e;">${dados.max_dd}%</span>
+                    </div>
+
+                    <div style="flex: 1; background: #161b22; padding: 12px; border-radius: 6px; border: 1px solid #30363d;">
+                        <span class="dica-edu" style="font-size: 11px; color: #8b949e;">Estratégia vs Buy & Hold
+                            <span class="dica-texto" style="width: 260px;">
+                                <strong style="color: #c9d1d9; display: block; margin-bottom: 5px;">Geração de Alpha</strong>
+                                Compara o retorno acumulado de entrar/sair com o Sniper, face ao cenário passivo de comprar a ação e nunca a vender durante 5 anos (suportando todas as quedas de mercado).
+                            </span>
+                        </span><br>
+                        <span style="font-size: 18px; font-weight: bold; color: ${gerouAlpha ? '#5cb85c' : '#8b949e'};">${dados.retorno_total}% vs ${dados.retorno_bh}%</span>
+                    </div>
+
+                </div>
+
+                <div style="background: rgba(88, 166, 255, 0.1); border-left: 4px solid #58a6ff; padding: 12px 15px; border-radius: 4px; font-size: 13px; line-height: 1.6; color: #c9d1d9;">
+                    💡 ${avaliacao} <span style="color: #8b949e; display: block; margin-top: 5px; font-size: 11px;">(Simulação processada com ${dados.total_trades} interações no mercado, comissões não incluídas).</span>
+                </div>
+            `;
+            
+        } catch(erro) {
+            gaveta.innerHTML = `<div style="color: #d9534f; padding: 15px;">Falha ao simular: ${erro.message}</div>`;
+        }
+    }
 </script>
 
 </body>
