@@ -950,19 +950,15 @@
 
                     <button onclick="calcularLotesSniper(${dados.resistencias[0]}, ${dados.suportes[0]}, ${dados.bull_plan.stop}, ${dados.bear_plan.stop})" class="btn-moderno btn-azul" style="padding: 8px 15px; font-size: 12px;">Calcular Exposição</button>
                     
-                    <!-- <div id="calc-resultado" style="margin-left: auto; font-size: 13px; text-align: right; display: none; background: #0d1117; padding: 8px 15px; border-radius: 4px; border: 1px solid #30363d;"> -->
                     <div id="calc-resultado" style="width: 100%; margin-top: 10px; display: none; gap: 20px;">
                         <!-- JS injeta os lotes aqui -->
                     </div>
                 </div>
                 
-                <div style="display: flex; gap: 20px;">
-
-
-
-                
+                <!-- ⬇️ APENAS UMA DECLARAÇÃO FLEX AQUI ⬇️ -->
                 <div style="display: flex; gap: 20px;">
                     
+                    <!-- COLUNA 1: BULL PLAN -->
                     <div style="flex: 1; background: #eafaf1; border: 1px solid #c3e6cb; border-radius: 6px; padding: 15px; display: flex; flex-direction: column;">
                         <h4 style="margin-top: 0; color: #2b542c; font-size: 16px; margin-bottom: 15px;">📈 Bull Plan</h4>
                         <div style="font-size: 13px; line-height: 1.8; color: #121212; flex-grow: 1;">
@@ -981,6 +977,7 @@
                         </div>
                     </div>
 
+                    <!-- COLUNA 2: BEAR PLAN -->
                     <div style="flex: 1; background: #fdf2f2; border: 1px solid #f5c6cb; border-radius: 6px; padding: 15px; display: flex; flex-direction: column;">
                         <h4 style="margin-top: 0; color: #843534; font-size: 16px; margin-bottom: 15px;">📉 Bear Plan</h4>
                         <div style="font-size: 13px; line-height: 1.8; color: #121212; flex-grow: 1;">
@@ -998,9 +995,10 @@
                             ⚡ <strong>Confirmation requires:</strong> ${dados.bear_plan.entrada} evidenciando falha estrutural.
                         </div>
                     </div>
-                </div> <!-- ⬅️ ESTE DIV FECHA O BLOCO HORIZONTAL! É ELE QUE RESOLVE O TEU PROBLEMA -->
 
-                <!-- NOVO: BOTÃO DE BACKTEST NA BASE (OCUPA A LINHA TODA) -->
+                </div> <!-- ⬅️ FECHO DO ALINHAMENTO HORIZONTAL DOS PLANOS -->
+
+                <!-- BOTÃO DE BACKTEST NA BASE -->
                 <div style="margin-top: 30px; text-align: center; position: relative; z-index: 51;">
                     <button onclick="executarBacktest('${dados.ticker}')" style="background: #2ea043; color: white; border: 1px solid #3fb950; padding: 10px 24px; border-radius: 6px; font-weight: bold; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s; box-shadow: 0 4px 12px rgba(46, 160, 67, 0.3);">
                         ⚙️ Validar Setup no Histórico (Executar Backtest 5A)
