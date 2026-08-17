@@ -403,6 +403,38 @@ def api_comparar_cripto(ticker1, ticker2):
         
     return jsonify(df_comparacao.to_dict(orient='records'))
 
+@app.route('/api/breadth')
+@cache.cached(timeout=3600) # Fica em cache durante 1 hora para não abusar do Yahoo
+def api_breadth():
+    import yfinance as yf
+    
+    # Os 11 ETFs Setoriais do S&P500 + VIX
+    tickers = "XLK XLV XLF XLE XLY XLP XLI XLB XLRE XLU XLC ^VIX"
+    
+    try:
+        # Puxa os dados todos de uma só vez (muito mais rápido que um a um)
+        dados = yf.download(tickers, period="100d")['Close']
+        
+        setores = ['XLK', 'XLV', 'XLF', 'XLE', 'XLY', 'XLP', 'XLI', 'XLB', 'XLRE', 'XLU', 'XLC']
+        bull_count = 0
+        
+        for setor in setores:
+            if setor in dados.columns and not dados[setor].isna().all():
+                fecho_atual = dados[setor].dropna().iloc[-1]
+                ema50 = dados[setor].dropna().ewm(span=50, adjust=False).mean().iloc[-1]
+                if fecho_atual > ema50:
+                    bull_count += 1
+                    
+        vix_atual = dados['^VIX'].dropna().iloc[-1] if '^VIX' in dados.columns else 0
+        
+        return jsonify({
+            "bull_count": bull_count,
+            "total_setores": len(setores),
+            "vix": float(vix_atual)
+        })
+    except Exception as e:
+        return jsonify({"erro": str(e)}), 500
+
 @app.route('/api/universo')
 def api_universo():
     import yfinance as yf
