@@ -430,11 +430,73 @@
     <!-- AS NOVAS GAVETAS (EM CONSTRUÇÃO)           -->
     <!-- ========================================== -->
 
-    <!-- SEPARADOR 4: SCREENER ALGORÍTMICO -->
-    <div id="tab-screener" class="tab-content">
-        <div style="background-color: #161b22; border: 1px dashed #30363d; border-radius: 8px; padding: 40px; text-align: center; margin-bottom: 25px;">
-            <h3 style="color: #8b949e; margin: 0;">🦅 O Screener Automático está a ser construído...</h3>
-            <p style="color: #8b949e; font-size: 13px;">Este motor fará o varrimento do mercado em background à procura de setups.</p>
+   <div id="tab-screener" class="tab-content">
+        <div style="background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin: 0; font-size: 14px; color: #f0f2f5; text-transform: uppercase;">
+                    <span class="dica-edu">
+                        🦅 Motor de Triagem Automática (Caçador)
+                        <span class="dica-texto" style="width: 350px;">
+                            <strong style="color: #58a6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Filtro de Ruído Institucional</strong>
+                            O cérebro humano tem um limite cognitivo para analisar gráficos. O Screener delega o trabalho sujo à máquina. Em vez de procurares o que operar, defines a anomalia matemática que queres explorar, e o algoritmo varre milhares de ativos para te entregar apenas os 1% que estão prontos a disparar.
+                        </span>
+                    </span>
+                </h3>
+            </div>
+
+            <div class="linha-inputs" style="background: #0d1117; padding: 15px; border-radius: 6px; border: 1px solid #30363d; align-items: flex-end;">
+                
+                <div style="flex: 1; min-width: 200px;">
+                    <label style="display: block; font-size: 11px; color: #8b949e; margin-bottom: 5px; font-weight: bold; text-transform: uppercase;">1. Universo de Pesquisa</label>
+                    <select id="screener-universo" class="input-moderno" style="width: 100%;">
+                        <option value="ndx">Nasdaq 100 (EUA Tech)</option>
+                        <option value="sp500">S&P 500 (EUA Global)</option>
+                        <option value="cripto">Cripto (Top 50 Cap)</option>
+                    </select>
+                </div>
+
+                <div style="flex: 1.5; min-width: 250px;">
+                    <label style="display: block; font-size: 11px; color: #8b949e; margin-bottom: 5px; font-weight: bold; text-transform: uppercase;">2. Anomalia Matemática (Setup)</label>
+                    <select id="screener-estrategia" class="input-moderno" style="width: 100%;" onchange="atualizarLegendaScreener()">
+                        <option value="pullback">Pullback Tático (Retração à EMA 20)</option>
+                        <option value="squeeze">Compressão de Volatilidade (Bollinger Squeeze)</option>
+                        <option value="oversold">Capitulação (RSI < 25 + Longe da M20)</option>
+                    </select>
+                </div>
+
+                <button onclick="executarScreener()" class="btn-moderno" style="background: #2ea043; color: white; border: 1px solid #3fb950; display: flex; align-items: center; gap: 8px;">
+                    Varrer Mercado 📡
+                </button>
+            </div>
+
+            <div id="screener-legenda" style="margin-top: 15px; padding: 15px; background: rgba(88, 166, 255, 0.05); border-left: 4px solid #58a6ff; font-size: 13px; color: #c9d1d9; line-height: 1.6; border-radius: 0 4px 4px 0;">
+                </div>
+        </div>
+
+        <div id="screener-loading" class="loader" style="display: none; text-align: center; color: #8b949e; padding: 40px; background: #161b22; border-radius: 8px; border: 1px dashed #30363d;">
+            <div style="font-size: 24px; margin-bottom: 10px;">⚙️</div>
+            O algoritmo está a fazer <em>download</em> e a processar a matemática de centenas de ativos na nuvem.<br>Isto vai demorar entre 20 a 60 segundos. Não feches a aba.
+        </div>
+
+        <div id="screener-resultados" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 15px;">
+                <h3 style="margin: 0; color: #f0f2f5;">Alvos Identificados</h3>
+                <span id="screener-contagem" style="background: #232d3f; padding: 4px 10px; border-radius: 4px; font-size: 12px; color: #58a6ff; font-weight: bold;">0 Encontrados</span>
+            </div>
+            
+            <table class="tabela-ativos" id="tabela-screener" style="width: 100%; border-collapse: collapse; background: #161b22; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+                <thead style="background: #0d1117; border-bottom: 2px solid #30363d;">
+                    <tr>
+                        <th style="padding: 15px; text-align: left; color: #8b949e; font-size: 12px; text-transform: uppercase;">Ticker</th>
+                        <th style="padding: 15px; text-align: left; color: #8b949e; font-size: 12px; text-transform: uppercase;">Preço</th>
+                        <th style="padding: 15px; text-align: left; color: #8b949e; font-size: 12px; text-transform: uppercase;">Métricas Chave</th>
+                        <th style="padding: 15px; text-align: center; color: #8b949e; font-size: 12px; text-transform: uppercase;">Ação Tática</th>
+                    </tr>
+                </thead>
+                <tbody id="screener-tbody">
+                    </tbody>
+            </table>
         </div>
     </div>
 
@@ -2043,6 +2105,97 @@
             gaveta.innerHTML = `<div style="color: #d9534f; padding: 15px;">Falha ao simular: ${erro.message}</div>`;
         }
     }
+
+    // ==========================================
+    // MOTOR DO SCREENER (FRONTEND & NLG)
+    // ==========================================
+    
+    // 1. Atualizar o racional educativo sempre que o utilizador muda a estratégia
+    function atualizarLegendaScreener() {
+        const est = document.getElementById('screener-estrategia').value;
+        const legenda = document.getElementById('screener-legenda');
+        
+        if (est === 'pullback') {
+            legenda.style.borderLeftColor = "#58a6ff";
+            legenda.style.background = "rgba(88, 166, 255, 0.05)";
+            legenda.innerHTML = `
+                <strong style="color: #58a6ff;">O Racional (Trend Following):</strong> O algoritmo vai procurar ativos que estão em forte tendência de alta (Acima da SMA 200 e EMA 50), mas que sofreram uma correção temporária de curto prazo, vindo "tocar" na Média Móvel de 20 dias (EMA 20). 
+                <br><br><span style="color: #8b949e; font-size: 12px;">⚠️ <strong>O Risco:</strong> Comprar no <i>pullback</i> assume que a tendência principal não acabou. O Stop-Loss obrigatório deve ficar logo abaixo do último mínimo para evitar a captura numa inversão total de tendência.</span>
+            `;
+        } else if (est === 'squeeze') {
+            legenda.style.borderLeftColor = "#b388ff";
+            legenda.style.background = "rgba(179, 136, 255, 0.05)";
+            legenda.innerHTML = `
+                <strong style="color: #b388ff;">O Racional (Expansão de Volatilidade):</strong> O algoritmo deteta "molas comprimidas". Procura ativos cujas Bandas de Bollinger estão extremamente estreitas (compressão histórica) e o ADX está em colapso. O mercado está sem liquidez direcional. Quando a mola soltar, o movimento será violento.
+                <br><br><span style="color: #8b949e; font-size: 12px;">⚠️ <strong>O Risco:</strong> O <i>Squeeze</i> não prevê a direção, apenas avisa da explosão. Requer colocar ordens de entrada condicionais (Stop Limit) acima e abaixo da zona de consolidação para apanhar o momento em que a rutura se dá.</span>
+            `;
+        } else if (est === 'oversold') {
+            legenda.style.borderLeftColor = "#f28b24";
+            legenda.style.background = "rgba(242, 139, 36, 0.05)";
+            legenda.innerHTML = `
+                <strong style="color: #f28b24;">O Racional (Mean Reversion):</strong> O motor procura pânico puro. Varre ativos cujo preço desabou muito abaixo da Média Móvel de 20 dias e apresentam um RSI de exaustão extrema (< 25). Procura o ressalto técnico originado pelo fecho de posições curtas (Short Covering).
+                <br><br><span style="color: #8b949e; font-size: 12px;">⚠️ <strong>O Risco:</strong> Estás a apanhar "facas a cair". Um ativo pode ficar sobrevendido durante muito tempo se a empresa tiver problemas estruturais fundamentais. Tamanho da posição (Position Sizing) tem de ser cortado a metade.</span>
+            `;
+        }
+    }
+
+    // 2. Disparar a chamada para o Python (Backend)
+    async function executarScreener() {
+        const universo = document.getElementById('screener-universo').value;
+        const estrategia = document.getElementById('screener-estrategia').value;
+        
+        document.getElementById('screener-loading').style.display = 'block';
+        document.getElementById('screener-resultados').style.display = 'none';
+        
+        try {
+            // Vamos chamar a API que criaremos no Python a seguir!
+            const resposta = await fetch(`/api/screener/${universo}/${estrategia}`);
+            const dados = await resposta.json();
+            
+            if(dados.erro) throw new Error(dados.erro);
+
+            const tbody = document.getElementById('screener-tbody');
+            tbody.innerHTML = '';
+            
+            document.getElementById('screener-contagem').innerText = `${dados.resultados.length} Ativos Encontrados`;
+
+            if (dados.resultados.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" style="padding: 20px; text-align: center; color: #8b949e;">Nenhum ativo cumpriu os critérios desta estratégia hoje. O mercado não está a oferecer este setup. Mantém-te líquido.</td></tr>`;
+            } else {
+                dados.resultados.forEach(ativo => {
+                    // O botão tático: Envia o Ticker diretamente para o Sniper correto!
+                    const btnAcao = universo === 'cripto' 
+                        ? `<button onclick="document.getElementById('tab-cripto').click(); document.getElementById('sniper-cripto-ticker').value='${ativo.ticker}'; gerarBlueprintCripto();" style="background: #b388ff; color: #121212; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; font-size: 11px; cursor: pointer;">Analisar no Sniper 🎯</button>`
+                        : `<button onclick="document.getElementById('tab-acoes').click(); document.getElementById('sniper-ticker').value='${ativo.ticker}'; gerarBlueprintSniper();" style="background: #58a6ff; color: #121212; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; font-size: 11px; cursor: pointer;">Analisar no Sniper 🎯</button>`;
+
+                    tbody.innerHTML += `
+                        <tr style="border-bottom: 1px solid #30363d; transition: background 0.2s;">
+                            <td style="padding: 15px;">
+                                <strong style="color: #c9d1d9; font-size: 15px;">${ativo.ticker}</strong>
+                            </td>
+                            <td style="padding: 15px; color: #8b949e; font-family: monospace;">$${ativo.preco.toFixed(2)}</td>
+                            <td style="padding: 15px; font-size: 12px; color: #8b949e; line-height: 1.5;">
+                                ${ativo.metricas}
+                            </td>
+                            <td style="padding: 15px; text-align: center;">
+                                ${btnAcao}
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+
+            document.getElementById('screener-loading').style.display = 'none';
+            document.getElementById('screener-resultados').style.display = 'block';
+
+        } catch(erro) {
+            document.getElementById('screener-loading').style.display = 'none';
+            alert("Erro ao varrer o mercado: " + erro.message);
+        }
+    }
+
+    // Arranca a legenda com o texto correto assim que a página carrega
+    document.addEventListener('DOMContentLoaded', atualizarLegendaScreener);
 </script>
 
 </body>
