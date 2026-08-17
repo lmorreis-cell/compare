@@ -272,10 +272,12 @@
     
 <!-- MENU DE NAVEGAÇÃO -->
     <div class="tab-menu">
-        <button class="tab-btn active" onclick="abrirSeparador(event, 'tab-radar')">📡 Radar Global</button>
-        <button class="tab-btn" onclick="abrirSeparador(event, 'tab-acoes')">📈 Ações & ETFs</button>
-        <button class="tab-btn" onclick="abrirSeparador(event, 'tab-cripto')">⚡ Criptoativos</button>
-    </div>
+            <button class="tab-btn active" onclick="abrirSeparador(event, 'tab-radar')">📡 Radar Global</button>
+            <button class="tab-btn" onclick="abrirSeparador(event, 'tab-acoes')">📈 Ações & ETFs</button>
+            <button class="tab-btn" onclick="abrirSeparador(event, 'tab-cripto')">⚡ Criptoativos</button>
+            <button class="tab-btn" onclick="abrirSeparador(event, 'tab-screener')">🦅 Screener Algorítmico</button>
+            <button class="tab-btn" onclick="abrirSeparador(event, 'tab-cofre')">🏛️ Cofre Fiscal</button>
+        </div>
 
     <!-- ==========================================
          CONTEÚDOS DOS SEPARADORES
@@ -296,6 +298,44 @@
 
     <!-- SEPARADOR 2: AÇÕES E ETFs -->
     <div id="tab-acoes" class="tab-content">
+        <!-- MARKET BREADTH (RAIO-X DO MERCADO) -->
+            <div style="background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 15px 20px; margin-bottom: 25px; display: flex; align-items: center; justify-content: space-between;">
+                <div style="flex: 1;">
+                    <h3 style="margin: 0 0 10px 0; font-size: 14px; color: #f0f2f5; text-transform: uppercase;">
+                        <span class="dica-edu">
+                            🧭 Market Breadth (Saúde Estrutural)
+                            <span class="dica-texto">
+                                <strong style="color: #58a6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">A Anatomia da Tendência</strong>
+                                Analisa os 11 principais ETFs Setoriais da economia (Tecnologia, Saúde, Finanças, Energia, etc.). Se a maioria dos setores estiver abaixo da EMA 50, o mercado está num regime de distribuição (risco elevado). Operar <i>Longs</i> (compras) num mercado com <i>Breadth</i> fraco é nadar contra a maré institucional.
+                            </span>
+                        </span>
+                    </h3>
+                    <div style="display: flex; gap: 20px; align-items: center;">
+                        <div>
+                            <span style="font-size: 11px; color: #8b949e;">Setores Bull (Acima EMA 50):</span><br>
+                            <span id="breadth-score" style="font-size: 22px; font-weight: bold; color: #c9d1d9;">--/11</span>
+                        </div>
+                        <div style="flex-grow: 1; max-width: 300px;">
+                            <div style="width: 100%; background: #232d3f; border-radius: 4px; height: 10px; overflow: hidden; border: 1px solid #30363d;">
+                                <div id="breadth-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #d9534f, #5cb85c); transition: width 1s ease;"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <span class="dica-edu" style="font-size: 11px; color: #8b949e;">
+                                VIX (Medo):
+                                <span class="dica-texto" style="width: 250px;">
+                                    <strong style="color: #f28b24; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Índice de Volatilidade</strong>
+                                    Mede o prémio exigido pelos institucionais para segurarem opções de proteção (Puts). Valores > 20 indicam stress sistémico. Valores < 15 indicam complacência.
+                                </span>
+                            </span><br>
+                            <span id="breadth-vix" style="font-size: 18px; font-weight: bold; color: #c9d1d9;">--</span>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <button onclick="carregarBreadth()" style="background: #232d3f; color: #58a6ff; border: 1px solid #58a6ff; padding: 8px 15px; border-radius: 6px; font-weight: bold; font-size: 12px; cursor: pointer; transition: all 0.2s;">Atualizar Radar</button>
+                </div>
+            </div>
         <!-- COLA AQUI: A caixa completa do "Duelo Manual de Ativos" -->
         <!-- COLA AQUI: A caixa completa do "Gerador de Blueprints (Sniper Trades)" -->
         <!-- 1. BLOCO: DUELO MANUAL DE ATIVOS -->
