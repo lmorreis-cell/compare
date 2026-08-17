@@ -435,6 +435,58 @@ def api_breadth():
     except Exception as e:
         return jsonify({"erro": str(e)}), 500
 
+@app.route('/api/backtest/<ticker>')
+@cache.cached(timeout=3600) # Mantém em memória durante 1 hora
+def api_backtest(ticker):
+    import yfinance as yf
+    import numpy as np
+    
+    try:
+        # Puxa 5 anos de história
+        df = yf.Ticker(ticker).history(period="5y", interval="1d")
+        if df.empty or len(df) < 50:
+            return jsonify({"erro": "Histórico insuficiente para simulação de 5 anos."}), 400
+            
+        # Estratégia Tática (Breakout da Média de 20 dias - Trend Following)
+        df['EMA20'] = df['Close'].ewm(span=20, adjust=False).mean()
+        df['Sinal'] = np.where(df['Close'] > df['EMA20'], 1, 0) # 1 se comprado, 0 se líquido
+        df['Retorno_Diario'] = df['Close'].pct_change()
+        
+        # O retorno da estratégia no dia T é o sinal do dia T-1 multiplicado pelo retorno de T
+        df['Retorno_Estrategia'] = df['Sinal'].shift(1) * df['Retorno_Diario']
+        
+        # Cálculo de Capital e Drawdown (Gestão de Risco)
+        capital_inicial = 10000
+        df['Capital'] = capital_inicial * (1 + df['Retorno_Estrategia']).cumprod()
+        df['Pico'] = df['Capital'].cummax()
+        df['Drawdown'] = (df['Capital'] - df['Pico']) / df['Pico']
+        max_dd = df['Drawdown'].min() * 100
+        
+        # Identificação de Trades 
+        df['Mudanca'] = df['Sinal'].diff()
+        total_trades = len(df[df['Mudanca'] == 1]) # Contagem de vezes que comprou
+        
+        # Win Rate (Dias positivos vs Dias negativos enquanto comprado)
+        dias_ganho = len(df[(df['Sinal'].shift(1) == 1) & (df['Retorno_Diario'] > 0)])
+        dias_perda = len(df[(df['Sinal'].shift(1) == 1) & (df['Retorno_Diario'] < 0)])
+        win_rate = (dias_ganho / (dias_ganho + dias_perda) * 100) if (dias_ganho + dias_perda) > 0 else 0
+        
+        # Rentabilidade: Estratégia vs Buy & Hold
+        retorno_total = ((df['Capital'].iloc[-1] - capital_inicial) / capital_inicial) * 100
+        retorno_bh = ((df['Close'].iloc[-1] - df['Close'].iloc[0]) / df['Close'].iloc[0]) * 100
+        
+        return jsonify({
+            "ticker": ticker.upper(),
+            "win_rate": f"{win_rate:.1f}",
+            "total_trades": total_trades,
+            "max_dd": f"{max_dd:.1f}",
+            "retorno_total": f"{retorno_total:.1f}",
+            "retorno_bh": f"{retorno_bh:.1f}",
+            "anos": 5
+        })
+    except Exception as e:
+        return jsonify({"erro": str(e)}), 500
+
 @app.route('/api/universo')
 def api_universo():
     import yfinance as yf
