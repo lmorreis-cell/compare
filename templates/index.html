@@ -299,39 +299,52 @@
     <!-- SEPARADOR 2: AÇÕES E ETFs -->
     <div id="tab-acoes" class="tab-content">
         <!-- MARKET BREADTH (RAIO-X DO MERCADO) -->
-            <div style="background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 15px 20px; margin-bottom: 25px; display: flex; align-items: center; justify-content: space-between;">
-                <div style="flex: 1;">
-                    <h3 style="margin: 0 0 10px 0; font-size: 14px; color: #f0f2f5; text-transform: uppercase;">
+            <!-- MARKET BREADTH (RAIO-X DO MERCADO) -->
+            <div style="background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
+                
+                <!-- Cabeçalho e Botão -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h3 style="margin: 0; font-size: 14px; color: #f0f2f5; text-transform: uppercase;">
                         <span class="dica-edu">
                             🧭 Market Breadth (Saúde Estrutural)
                             <span class="dica-texto">
                                 <strong style="color: #58a6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">A Anatomia da Tendência</strong>
-                                Analisa os 11 principais ETFs Setoriais da economia (Tecnologia, Saúde, Finanças, Energia, etc.). Se a maioria dos setores estiver abaixo da EMA 50, o mercado está num regime de distribuição (risco elevado). Operar <i>Longs</i> (compras) num mercado com <i>Breadth</i> fraco é nadar contra a maré institucional.
+                                Analisa os 11 principais ETFs Setoriais da economia. Se a maioria estiver abaixo da EMA 50, o mercado está num regime de distribuição. Operar Longs com Breadth fraco é nadar contra a maré institucional.
                             </span>
                         </span>
                     </h3>
-                    <div style="display: flex; gap: 20px; align-items: center;">
-                        <div>
-                            <span style="font-size: 11px; color: #8b949e;">Setores Bull (Acima EMA 50):</span><br>
-                            <span id="breadth-score" style="font-size: 22px; font-weight: bold; color: #c9d1d9;">--/11</span>
-                        </div>
-                        <div style="flex-grow: 1; max-width: 300px;">
-                            <div style="width: 100%; background: #232d3f; border-radius: 4px; height: 10px; overflow: hidden; border: 1px solid #30363d;">
-                                <div id="breadth-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #d9534f, #5cb85c); transition: width 1s ease;"></div>
-                            </div>
-                        </div>
-                        <div>
-                            <span class="dica-edu" style="font-size: 11px; color: #8b949e;">
-                                VIX (Medo):
-                                <span class="dica-texto" style="width: 250px;">
-                                    <strong style="color: #f28b24; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Índice de Volatilidade</strong>
-                                    Mede o prémio exigido pelos institucionais para segurarem opções de proteção (Puts). Valores > 20 indicam stress sistémico. Valores < 15 indicam complacência.
-                                </span>
-                            </span><br>
-                            <span id="breadth-vix" style="font-size: 18px; font-weight: bold; color: #c9d1d9;">--</span>
+                    <button onclick="carregarBreadth()" style="background: #232d3f; color: #58a6ff; border: 1px solid #58a6ff; padding: 8px 15px; border-radius: 6px; font-weight: bold; font-size: 12px; cursor: pointer; transition: all 0.2s;">Atualizar Radar</button>
+                </div>
+
+                <!-- Gráficos e Indicadores -->
+                <div style="display: flex; gap: 30px; align-items: center;">
+                    <div style="min-width: 140px;">
+                        <span style="font-size: 11px; color: #8b949e;">Setores Bull (Acima EMA 50):</span><br>
+                        <span id="breadth-score" style="font-size: 24px; font-weight: bold; color: #c9d1d9;">--/11</span>
+                    </div>
+                    <div style="flex-grow: 1;">
+                        <div style="width: 100%; background: #232d3f; border-radius: 4px; height: 12px; overflow: hidden; border: 1px solid #30363d;">
+                            <div id="breadth-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #d9534f, #f0ad4e, #5cb85c); transition: width 1s ease;"></div>
                         </div>
                     </div>
+                    <div style="min-width: 100px; text-align: right;">
+                        <span class="dica-edu" style="font-size: 11px; color: #8b949e;">
+                            VIX (Medo):
+                            <span class="dica-texto" style="width: 250px;">
+                                <strong style="color: #f28b24; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Índice de Volatilidade</strong>
+                                Mede o prémio de proteção. Valores > 20 exigem stops mais largos e redução no tamanho das posições.
+                            </span>
+                        </span><br>
+                        <span id="breadth-vix" style="font-size: 20px; font-weight: bold; color: #c9d1d9;">--</span>
+                    </div>
                 </div>
+
+                <!-- NOVO: CAIXA DO MOTOR NLG -->
+                <div id="breadth-nlg" style="display: none; margin-top: 20px; background: #0d1117; border-left: 4px solid #58a6ff; padding: 15px; border-radius: 4px; font-size: 13px; line-height: 1.6; color: #c9d1d9; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);">
+                    <!-- O texto educativo gerado pelo JS entra aqui -->
+                </div>
+
+            </div>
                 <div>
                     <button onclick="carregarBreadth()" style="background: #232d3f; color: #58a6ff; border: 1px solid #58a6ff; padding: 8px 15px; border-radius: 6px; font-weight: bold; font-size: 12px; cursor: pointer; transition: all 0.2s;">Atualizar Radar</button>
                 </div>
@@ -1867,14 +1880,16 @@
         evt.currentTarget.classList.add("active");
     }
     // ==========================================
-    // MOTOR DE MARKET BREADTH (RAIO-X MACRO)
+    // MOTOR DE MARKET BREADTH E NLG EDUCATIVO
     // ==========================================
     async function carregarBreadth() {
         const scoreUI = document.getElementById('breadth-score');
         const barraUI = document.getElementById('breadth-bar');
         const vixUI = document.getElementById('breadth-vix');
+        const nlgUI = document.getElementById('breadth-nlg');
         
         scoreUI.innerText = "A calcular...";
+        nlgUI.style.display = 'none';
         
         try {
             const resposta = await fetch('/api/breadth');
@@ -1884,13 +1899,41 @@
             
             const racio = (dados.bull_count / dados.total_setores) * 100;
             
+            // 1. Atualizar UI Gráfica
             scoreUI.innerText = `${dados.bull_count}/${dados.total_setores}`;
             scoreUI.style.color = racio > 50 ? '#5cb85c' : '#d9534f';
-            
             barraUI.style.width = `${racio}%`;
-            
             vixUI.innerText = dados.vix.toFixed(2);
             vixUI.style.color = dados.vix > 20 ? '#d9534f' : '#5cb85c';
+
+            // 2. MOTOR NLG (Tradução Educacional dos Dados)
+            let textoBreadth = "";
+            let corBorda = "#58a6ff";
+
+            if (dados.bull_count >= 8) {
+                textoBreadth = "O mercado apresenta uma <strong>saúde estrutural robusta</strong> (regime de acumulação institucional). A larga maioria dos setores suporta a tendência de alta. Este é o ambiente ideal para confiares em setups de compra (<i>Longs</i>) e <i>Breakouts</i> táticos no Sniper, uma vez que a 'maré' flui a teu favor.";
+                corBorda = "#5cb85c"; // Verde
+            } else if (dados.bull_count >= 4) {
+                textoBreadth = "O mercado encontra-se num <strong>regime misto ou de transição</strong>. A liderança institucional está dividida entre setores defensivos e agressivos. Exige-se máxima seletividade tática: reduz ligeiramente a tua exposição de risco e protege os lucros cedo, pois o perigo de falsos rompimentos (<i>bull traps</i>) aumenta substancialmente.";
+                corBorda = "#f0ad4e"; // Laranja
+            } else {
+                textoBreadth = "O mercado exibe <strong>fraqueza estrutural profunda</strong> (regime de distribuição de risco). É estatisticamente perigoso manter posições de compra quando os alicerces estão a ceder. O foco primário deve transitar para a preservação de capital (aumentar a liquidez) ou procurar configurações de venda a descoberto (<i>Shorts</i>) no Sniper.";
+                corBorda = "#d9534f"; // Vermelho
+            }
+
+            let textoVix = "";
+            if (dados.vix > 25) {
+                textoVix = "<br><br>⚠️ <strong>Aviso de Volatilidade:</strong> Com o VIX em níveis de <i>stress sistémico</i>, os sobressaltos intradiários serão violentos. Podes ser stopado pelo ruído. Corta o <i>Position Sizing</i> (tamanho da posição) da tua calculadora para metade e acomoda Stop-Losses mais largos.";
+            } else if (dados.vix > 18) {
+                textoVix = " <span style='color: #f28b24;'>O prémio de volatilidade está ativo; respeita religiosamente a disciplina dos teus <i>stops</i>.</span>";
+            } else {
+                textoVix = " <span style='color: #8b949e;'>O prémio de risco intradiário indica complacência, um ambiente favorável à maturação tranquila de posições ao longo de vários dias sem sobressaltos drásticos.</span>";
+            }
+
+            // Exibir NLG
+            nlgUI.innerHTML = "💡 " + textoBreadth + textoVix;
+            nlgUI.style.borderLeftColor = corBorda;
+            nlgUI.style.display = 'block';
             
         } catch(erro) {
             scoreUI.innerText = "Erro";
