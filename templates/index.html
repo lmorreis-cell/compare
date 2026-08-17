@@ -766,30 +766,29 @@
                     .sniper-tt:hover .sniper-tt-text { visibility: visible; opacity: 1; }
                 </style>
 
-                <div style="border-bottom: 2px solid #121212; padding-bottom: 15px; margin-bottom: 20px;">
-                    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px;">
-                        <h2 style="margin: 0; font-size: 28px; font-weight: 900; letter-spacing: -1px; text-transform: uppercase;">${dados.ticker}</h2>
+                <div style="border-bottom: 2px solid #121212; padding-bottom: 15px; margin-bottom: 20px; position: relative; z-index: 51;">
+                    
+                    <!-- LINHA 1: IDENTIDADE E FERRAMENTAS EXTERNAS -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 15px;">
                         
-                        <!-- BOTÃO DE TRANSMISSÃO E INFO -->
+                        <!-- BLOCO ESQUERDO: Ticker e Preço (Agrupados) -->
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <h2 style="margin: 0; font-size: 32px; font-weight: 900; letter-spacing: -1px; text-transform: uppercase;">${dados.ticker}</h2>
+                            <span style="background: #121212; color: #fff; padding: 5px 12px; border-radius: 4px; font-weight: bold; font-size: 13px; letter-spacing: 1px;">TF: ${dados.timeframe} | COTAÇÃO: $${dados.preco}</span>
+                        </div>
+                        
+                        <!-- BLOCO DIREITO: Ações Externas -->
                         <div style="display: flex; gap: 10px; align-items: center;">
-                            <span style="background: #121212; color: #fff; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 12px; letter-spacing: 1px; white-space: nowrap;">TF: ${dados.timeframe} | COTAÇÃO: ${dados.preco}</span>
-                            
-                            <!-- NOVO: BOTÃO TRADINGVIEW -->
-                            <a href="https://www.tradingview.com/chart/?symbol=${dados.ticker}" target="_blank" style="background: #232d3f; color: #d7dce6; border: 1px solid #30363d; padding: 5px 12px; border-radius: 4px; font-weight: bold; font-size: 12px; text-decoration: none; display: flex; align-items: center; gap: 5px; transition: background 0.2s;">
+                            <a href="https://www.tradingview.com/chart/?symbol=${dados.ticker}" target="_blank" style="background: #232d3f; color: #d7dce6; border: 1px solid #30363d; padding: 6px 12px; border-radius: 4px; font-weight: bold; font-size: 12px; text-decoration: none; display: flex; align-items: center; gap: 5px; transition: background 0.2s;">
                                 Abrir Gráfico 📈
                             </a>
-
-                            <button onclick="transmitirAlertaDiscord()" style="background: #5865F2; color: white; border: none; padding: 5px 12px; border-radius: 4px; font-weight: bold; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 5px; box-shadow: 0 2px 5px rgba(88,101,242,0.4);">
+                            <button onclick="transmitirAlertaDiscord()" style="background: #5865F2; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 5px; box-shadow: 0 2px 5px rgba(88,101,242,0.4);">
                                 Transmitir Alerta 📡
-                            </button>
-                            <!-- NOVO BOTÃO DE BACKTEST -->
-                            <button onclick="executarBacktest('${dados.ticker}')" style="background: #2ea043; color: white; border: 1px solid #3fb950; padding: 5px 12px; border-radius: 4px; font-weight: bold; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: all 0.2s;">
-                                Executar Backtest (5A) ⚙️
                             </button>
                         </div>
                     </div>
                     
-                    <!-- PAINEL DE MOMENTUM -->
+                    <!-- LINHA 2: PAINEL DE MOMENTUM (RSI / ATR) -->
                     <div style="font-size: 13px; color: #333;">
                         <span class="sniper-tt" style="margin-right: 20px;">
                             <strong>RSI (14):</strong> ${dados.rsi}
@@ -1000,6 +999,12 @@
                         </div>
                     </div>
 
+                </div>
+                <!-- NOVO: BOTÃO DE BACKTEST NA BASE -->
+                <div style="margin-top: 30px; text-align: center; position: relative; z-index: 51;">
+                    <button onclick="executarBacktest('${dados.ticker}')" style="background: #2ea043; color: white; border: 1px solid #3fb950; padding: 10px 24px; border-radius: 6px; font-weight: bold; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s; box-shadow: 0 4px 12px rgba(46, 160, 67, 0.3);">
+                        ⚙️ Validar Setup no Histórico (Executar Backtest 5A)
+                    </button>
                 </div>
                 <!-- GAVETA INVISÍVEL DO BACKTEST -->
                 <div id="gaveta-backtest" style="display: none; margin-top: 25px; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 20px; box-shadow: inset 0 0 15px rgba(0,0,0,0.5); position: relative; z-index: 51;">
