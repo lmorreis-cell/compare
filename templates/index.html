@@ -1846,6 +1846,40 @@
         
         evt.currentTarget.classList.add("active");
     }
+    // ==========================================
+    // MOTOR DE MARKET BREADTH (RAIO-X MACRO)
+    // ==========================================
+    async function carregarBreadth() {
+        const scoreUI = document.getElementById('breadth-score');
+        const barraUI = document.getElementById('breadth-bar');
+        const vixUI = document.getElementById('breadth-vix');
+        
+        scoreUI.innerText = "A calcular...";
+        
+        try {
+            const resposta = await fetch('/api/breadth');
+            const dados = await resposta.json();
+            
+            if(dados.erro) throw new Error(dados.erro);
+            
+            const racio = (dados.bull_count / dados.total_setores) * 100;
+            
+            scoreUI.innerText = `${dados.bull_count}/${dados.total_setores}`;
+            scoreUI.style.color = racio > 50 ? '#5cb85c' : '#d9534f';
+            
+            barraUI.style.width = `${racio}%`;
+            
+            vixUI.innerText = dados.vix.toFixed(2);
+            vixUI.style.color = dados.vix > 20 ? '#d9534f' : '#5cb85c';
+            
+        } catch(erro) {
+            scoreUI.innerText = "Erro";
+            console.error("Falha ao carregar Breadth:", erro);
+        }
+    }
+    
+    // Opcional: Descomenta a linha abaixo para calcular logo que a página abre
+    // document.addEventListener('DOMContentLoaded', carregarBreadth);
 </script>
 
 </body>
