@@ -538,6 +538,27 @@
                     </span><br>
                     <span id="cofre-exposicao" style="font-size: 22px; font-weight: 900; color: #58a6ff;">0.00 €</span>
                 </div>
+                <div style="background-color: #1c1e24; border: 1px solid #30363d; border-radius: 8px; padding: 15px 20px; margin-bottom: 25px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 15px;">
+            <div>
+                <span class="dica-edu" style="font-size: 13px; font-weight: bold; color: #f0f2f5;">
+                    💾 Segurança e Backup do Cofre
+                    <span class="dica-texto" style="width: 320px;">
+                        <strong style="color: #e3b341; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Soberania Total de Dados</strong>
+                        Como os dados são teus e residem no teu dispositivo, podes exportar o histórico do teu Ledger a qualquer momento para um ficheiro local no teu computador. Se mudares de browser ou limpares o cache, basta importares o ficheiro de volta para restaurar o estado exato da tua contabilidade.
+                    </span>
+                </span>
+            </div>
+            
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <button onclick="exportarCofreJSON()" class="btn-moderno" style="background: #238636; color: white; border: none; padding: 8px 14px; font-size: 12px;">
+                    📥 Exportar Backup (JSON)
+                </button>
+                
+                <label class="btn-moderno" style="background: #21262d; color: #58a6ff; border: 1px solid #30363d; padding: 8px 14px; font-size: 12px; cursor: pointer; display: inline-flex; align-items: center;">
+                    📤 Importar Backup <input type="file" id="input-importar-cofre" accept=".json" onchange="importarCofreJSON(event)" style="display: none;">
+                </label>
+            </div>
+        </div>
             </div>
         </div>
 
