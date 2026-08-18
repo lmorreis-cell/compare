@@ -2527,10 +2527,12 @@
         let pnlTotalGlobal = 0;
         let balancoSub1 = 0, balancoSub2 = 0, balancoSub5 = 0, balancoSub8 = 0, balancoPlus8 = 0;
         let totalLotesAbertos = 0;
+        let exposicaoTotalEUR = 0; // Recuperação da variável de exposição
 
         cofreAbertas.filter(l => l.qtdRestante > 0).forEach(lote => {
             totalLotesAbertos++;
             let capitalExpostoEUR = lote.qtdRestante * lote.precoCompraEUR;
+            exposicaoTotalEUR += capitalExpostoEUR;
             let simbolo = lote.moeda === 'USD' ? '$' : '€';
 
             tbodyAbertas.innerHTML += `
@@ -2550,7 +2552,6 @@
             let trade = cofreFechadas[i];
             pnlTotalGlobal += trade.pnlEUR;
             
-            // Reconstrução retroativa para evitar crash em trades da versão anterior
             let fatias = trade.pnlEscaloes || { sub1: trade.pnlEUR, sub2: 0, sub5: 0, sub8: 0, plus8: 0 };
             balancoSub1 += fatias.sub1;
             balancoSub2 += fatias.sub2;
@@ -2575,33 +2576,47 @@
 
         // MOTOR TRIBUTÁRIO AT PORTUGAL
         let baseTributavelGlobal = 0;
+        let baseLongoPrazo = 0;
+        let lucroCurtoPrazo = 0;
         let pnlLongoPrazoBruto = balancoSub2 + balancoSub5 + balancoSub8 + balancoPlus8;
 
         if (pnlTotalGlobal > 0) {
-            // A AT permite abater prejuízos globalmente. As exclusões operam apenas sobre os ganhos faturados nas fatias maturadas.
-            baseTributavelGlobal += Math.max(0, balancoSub1); // Sem exclusão
-            baseTributavelGlobal += Math.max(0, balancoSub2); // Sem exclusão
-            baseTributavelGlobal += Math.max(0, balancoSub5) * 0.90; // Exclui 10%
-            baseTributavelGlobal += Math.max(0, balancoSub8) * 0.80; // Exclui 20%
-            baseTributavelGlobal += Math.max(0, balancoPlus8) * 0.70; // Exclui 30%
+            lucroCurtoPrazo = Math.max(0, balancoSub1);
+            
+            baseLongoPrazo += Math.max(0, balancoSub2); 
+            baseLongoPrazo += Math.max(0, balancoSub5) * 0.90; 
+            baseLongoPrazo += Math.max(0, balancoSub8) * 0.80; 
+            baseLongoPrazo += Math.max(0, balancoPlus8) * 0.70; 
+
+            baseTributavelGlobal = lucroCurtoPrazo + baseLongoPrazo;
         }
 
+        // 1. Cenário Base (28%)
         let impostoTotal = pnlTotalGlobal > 0 ? baseTributavelGlobal * 0.28 : 0;
         let impostoSemBeneficios = pnlTotalGlobal > 0 ? pnlTotalGlobal * 0.28 : 0;
         let poupancaAbsoluta = impostoSemBeneficios - impostoTotal;
 
+        // 2. Cenário Pior: Englobamento (Curto prazo a 48% + Longo Prazo a 28%)
+        let impostoEnglobado = 0;
+        if (pnlTotalGlobal > 0) {
+            impostoEnglobado = (lucroCurtoPrazo * 0.48) + (baseLongoPrazo * 0.28);
+        }
+
         // Atualização Visual Dinâmica
+        document.getElementById('cofre-exposicao').innerText = `€${exposicaoTotalEUR.toFixed(2)}`;
+        
         document.getElementById('cofre-pnl').innerText = `€${pnlTotalGlobal.toFixed(2)}`;
         document.getElementById('cofre-pnl').style.color = pnlTotalGlobal >= 0 ? '#5cb85c' : '#d9534f';
         
         document.getElementById('cofre-curto-prazo').innerText = `€${balancoSub1.toFixed(2)}`;
-        document.getElementById('cofre-curto-prazo').style.color = balancoSub1 >= 0 ? '#d9534f' : '#5cb85c'; // Vermelho se ganho (alerta risco)
+        document.getElementById('cofre-curto-prazo').style.color = balancoSub1 >= 0 ? '#d9534f' : '#5cb85c'; 
 
         document.getElementById('cofre-longo-prazo').innerText = `€${pnlLongoPrazoBruto.toFixed(2)}`;
         document.getElementById('cofre-longo-prazo').style.color = pnlLongoPrazoBruto >= 0 ? '#5cb85c' : '#8b949e';
 
         document.getElementById('cofre-imposto').innerText = `€${impostoTotal.toFixed(2)}`;
-        document.getElementById('cofre-poupanca-fiscal').innerText = `Poupança gerada via exclusões: €${poupancaAbsoluta.toFixed(2)}`;
+        document.getElementById('cofre-imposto-englobado').innerText = `€${impostoEnglobado.toFixed(2)}`;
+        document.getElementById('cofre-poupanca-fiscal').innerText = `Poupança gerada via exclusões (Longo Prazo): €${poupancaAbsoluta.toFixed(2)}`;
 
         document.getElementById('contador-abertas').innerText = `${totalLotesAbertos} Lote${totalLotesAbertos !== 1 ? 's' : ''}`;
         document.getElementById('contador-fechadas').innerText = `${cofreFechadas.length} Trade${cofreFechadas.length !== 1 ? 's' : ''}`;
