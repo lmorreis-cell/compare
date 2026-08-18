@@ -829,7 +829,7 @@ def api_sniper(ticker, timeframe):
 
 
 @app.route('/api/screener/<universo>/<estrategia>')
-@cache.cached(timeout=3600) # Aumentei para 1 hora. Varrer 500 ações é pesado!
+@cache.cached(timeout=3600)
 def api_screener(universo, estrategia):
     import yfinance as yf
     import pandas as pd
@@ -844,13 +844,12 @@ def api_screener(universo, estrategia):
     elif universo == 'ndx':
         caminho = 'ndx.txt'
     elif universo == 'cripto':
-        # Cripto mantém-se no código por serem poucos, ou podes criar um cripto.txt depois
         tickers = ['BTC-USD', 'ETH-USD', 'SOL-USD', 'BNB-USD', 'XRP-USD', 'ADA-USD', 'AVAX-USD', 'DOGE-USD', 'DOT-USD', 'LINK-USD', 'MATIC-USD']
         caminho = None
     else:
         return jsonify({"erro": "Universo inválido."}), 400
 
-    # Abre o ficheiro TXT e raspa os tickers, limpando espaços em branco
+    # Abre o ficheiro TXT e raspa os tickers
     if caminho:
         try:
             with open(caminho, 'r') as f:
@@ -859,72 +858,83 @@ def api_screener(universo, estrategia):
             return jsonify({"erro": f"Ficheiro {caminho} não encontrado no servidor."}), 400
 
     resultados = []
+    
+    # =========================================================
+    # NOVO MOTOR: PROCESSAMENTO EM LOTES DE 50 (BATCH PROCESSING)
+    # =========================================================
+    tamanho_lote = 50
 
     try:
-        # 2. Download em Massa Multithread (Descarrega 500 ações em ~20 segundos)
-        string_tickers = " ".join(tickers)
-        dados = yf.download(string_tickers, period="1y", interval="1d", group_by="ticker", threads=True, progress=False)
-        
-        # 3. Varrer Ativo a Ativo e aplicar a Matemática
-        for ticker in tickers:
-            try:
-                # Isola os dados da ação atual
-                df = dados[ticker].dropna() if len(tickers) > 1 else dados.dropna()
-                
-                if df.empty or len(df) < 200: 
-                    continue # Ignora se não tiver histórico
+        # Parte a lista gigante em pedaços de 50
+        for i in range(0, len(tickers), tamanho_lote):
+            lote_atual = tickers[i:i + tamanho_lote]
+            string_tickers = " ".join(lote_atual)
+            
+            # Descarrega apenas 50 ações para não estourar a RAM
+            dados = yf.download(string_tickers, period="1y", interval="1d", group_by="ticker", threads=True, progress=False)
+            
+            # Varrer os ativos do lote atual
+            for ticker in lote_atual:
+                try:
+                    # Proteção contra estrutura de dados do yfinance
+                    if len(lote_atual) == 1:
+                        df = dados.dropna()
+                    else:
+                        df = dados[ticker].dropna()
+                    
+                    if df.empty or len(df) < 200: 
+                        continue 
 
-                # --- CÁLCULO DE INDICADORES BASE ---
-                df['SMA200'] = df['Close'].rolling(200).mean()
-                df['EMA50'] = df['Close'].ewm(span=50, adjust=False).mean()
-                df['EMA20'] = df['Close'].ewm(span=20, adjust=False).mean()
-                
-                # RSI 14
-                delta = df['Close'].diff()
-                gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-                loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-                rs = gain / loss
-                df['RSI'] = 100 - (100 / (1 + rs))
+                    # --- CÁLCULO DE INDICADORES BASE ---
+                    df['SMA200'] = df['Close'].rolling(200).mean()
+                    df['EMA50'] = df['Close'].ewm(span=50, adjust=False).mean()
+                    df['EMA20'] = df['Close'].ewm(span=20, adjust=False).mean()
+                    
+                    # RSI 14
+                    delta = df['Close'].diff()
+                    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+                    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+                    rs = gain / loss
+                    df['RSI'] = 100 - (100 / (1 + rs))
 
-                # Bandas de Bollinger (20, 2)
-                df['BB_Mid'] = df['Close'].rolling(20).mean()
-                df['BB_Std'] = df['Close'].rolling(20).std()
-                df['BB_Upper'] = df['BB_Mid'] + (df['BB_Std'] * 2)
-                df['BB_Lower'] = df['BB_Mid'] - (df['BB_Std'] * 2)
-                # Largura da Banda (Volatilidade)
-                df['BB_Width'] = (df['BB_Upper'] - df['BB_Lower']) / df['BB_Mid']
+                    # Bandas de Bollinger (20, 2)
+                    df['BB_Mid'] = df['Close'].rolling(20).mean()
+                    df['BB_Std'] = df['Close'].rolling(20).std()
+                    df['BB_Upper'] = df['BB_Mid'] + (df['BB_Std'] * 2)
+                    df['BB_Lower'] = df['BB_Mid'] - (df['BB_Std'] * 2)
+                    df['BB_Width'] = (df['BB_Upper'] - df['BB_Lower']) / df['BB_Mid']
 
-                fecho_atual = df['Close'].iloc[-1]
-                
-                # --- FILTROS DAS ESTRATÉGIAS ---
-                if estrategia == 'pullback':
-                    if fecho_atual > df['SMA200'].iloc[-1] and fecho_atual > df['EMA50'].iloc[-1]:
-                        dist_m20 = abs(fecho_atual - df['EMA20'].iloc[-1]) / fecho_atual
-                        if dist_m20 < 0.015: 
+                    fecho_atual = float(df['Close'].iloc[-1])
+                    
+                    # --- FILTROS DAS ESTRATÉGIAS ---
+                    if estrategia == 'pullback':
+                        if fecho_atual > df['SMA200'].iloc[-1] and fecho_atual > df['EMA50'].iloc[-1]:
+                            dist_m20 = abs(fecho_atual - df['EMA20'].iloc[-1]) / fecho_atual
+                            if dist_m20 < 0.015: 
+                                resultados.append({
+                                    "ticker": ticker,
+                                    "preco": fecho_atual,
+                                    "metricas": f"RSI: {df['RSI'].iloc[-1]:.1f} | Base de Suporte Tático (EMA 20)"
+                                })
+                                
+                    elif estrategia == 'squeeze':
+                        percentil_10 = df['BB_Width'].quantile(0.10)
+                        if df['BB_Width'].iloc[-1] < percentil_10:
                             resultados.append({
                                 "ticker": ticker,
                                 "preco": fecho_atual,
-                                "metricas": f"RSI: {df['RSI'].iloc[-1]:.1f} | Base de Suporte (EMA 20)"
+                                "metricas": f"Risco de Explosão | Largura BB Histórica: {df['BB_Width'].iloc[-1]*100:.1f}%"
                             })
                             
-                elif estrategia == 'squeeze':
-                    percentil_10 = df['BB_Width'].quantile(0.10)
-                    if df['BB_Width'].iloc[-1] < percentil_10:
-                        resultados.append({
-                            "ticker": ticker,
-                            "preco": fecho_atual,
-                            "metricas": f"Risco de Explosão | Largura BB Histórica: {df['BB_Width'].iloc[-1]*100:.1f}%"
-                        })
-                        
-                elif estrategia == 'oversold':
-                    if df['RSI'].iloc[-1] < 30 and fecho_atual < df['BB_Lower'].iloc[-1]:
-                        resultados.append({
-                            "ticker": ticker,
-                            "preco": fecho_atual,
-                            "metricas": f"Capitulação | RSI Extremo: {df['RSI'].iloc[-1]:.1f} | Abaixo Banda Inf."
-                        })
-            except:
-                continue # Se houver erro num ativo (ex: Yahoo Finance falhou esse ticker), ignora e avança para o próximo
+                    elif estrategia == 'oversold':
+                        if df['RSI'].iloc[-1] < 30 and fecho_atual < df['BB_Lower'].iloc[-1]:
+                            resultados.append({
+                                "ticker": ticker,
+                                "preco": fecho_atual,
+                                "metricas": f"Capitulação | RSI Extremo: {df['RSI'].iloc[-1]:.1f} | Partiu Banda Inferior"
+                            })
+                except:
+                    continue # Se a matemática falhar numa ação específica, ignora e avança para a próxima
         
         return jsonify({"resultados": resultados})
         
