@@ -2310,6 +2310,153 @@
             contagem.innerText = `${ativosEncontrados} Alvos Táticos Aprovados`;
         }
     }
+
+    // ==========================================
+    // MOTOR DO COFRE FISCAL E LEDGER (FIFO)
+    // ==========================================
+    
+    // 1. Carregar memória persistente ou criar vazia
+    let cofreAbertas = JSON.parse(localStorage.getItem('cofreAbertas')) || [];
+    let cofreFechadas = JSON.parse(localStorage.getItem('cofreFechadas')) || [];
+
+    function adicionarTrade() {
+        const data = document.getElementById('trade-data').value;
+        const tipo = document.getElementById('trade-tipo').value;
+        const ticker = document.getElementById('trade-ticker').value.trim().toUpperCase();
+        const qtd = parseFloat(document.getElementById('trade-qtd').value);
+        const preco = parseFloat(document.getElementById('trade-preco').value);
+
+        if (!data || !ticker || !qtd || !preco || qtd <= 0 || preco <= 0) {
+            alert("⚠️ Operação Rejeitada: Preenche todos os campos com valores matematicamente válidos (maiores que zero).");
+            return;
+        }
+
+        if (tipo === 'COMPRA') {
+            cofreAbertas.push({
+                id: Date.now(),
+                data: data,
+                ticker: ticker,
+                qtdInicial: qtd,
+                qtdRestante: qtd, // É isto que o FIFO vai consumir
+                precoCompra: preco
+            });
+            // Obriga a ordenar cronologicamente para garantir o First-In-First-Out absoluto
+            cofreAbertas.sort((a, b) => new Date(a.data) - new Date(b.data));
+        } 
+        else if (tipo === 'VENDA') {
+            // Isolamos apenas os lotes deste ativo específico que ainda não foram totalmente vendidos
+            let lotesDisponiveis = cofreAbertas.filter(l => l.ticker === ticker && l.qtdRestante > 0);
+            
+            // Verificação de Segurança (Impede Short Selling nu)
+            let qtdTotalEmArmazem = lotesDisponiveis.reduce((sum, l) => sum + l.qtdRestante, 0);
+            if (qtd > qtdTotalEmArmazem) {
+                alert(`⚠️ Liquidação Impossível: Estás a tentar vender ${qtd} unidades de ${ticker}, mas só tens ${qtdTotalEmArmazem} em exposição (armazém).`);
+                return;
+            }
+
+            let lucroTrade = 0;
+            let qtdParaVender = qtd;
+            let detalhesCasamento = [];
+
+            // O Motor FIFO em ação: Começa a consumir os lotes mais antigos até satisfazer a ordem de venda
+            for (let lote of lotesDisponiveis) {
+                if (qtdParaVender === 0) break;
+
+                // Encontra a fatia que vai usar deste lote
+                let qtdDesteLote = Math.min(qtdParaVender, lote.qtdRestante);
+                
+                // Calcula PnL só dessa fatia
+                let pnlParcial = (preco - lote.precoCompra) * qtdDesteLote;
+                
+                // Atualiza saldos
+                lote.qtdRestante -= qtdDesteLote;
+                qtdParaVender -= qtdDesteLote;
+                lucroTrade += pnlParcial;
+
+                detalhesCasamento.push(`$${lote.precoCompra.toFixed(2)}`);
+            }
+
+            // Regista a ordem fechada no Histórico
+            cofreFechadas.push({
+                id: Date.now(),
+                data: data,
+                ticker: ticker,
+                qtdVendida: qtd,
+                precoVenda: preco,
+                pnl: lucroTrade,
+                detalhes: detalhesCasamento.join(" + ")
+            });
+        }
+
+        // Guarda os dados perpetuamente no browser do utilizador
+        localStorage.setItem('cofreAbertas', JSON.stringify(cofreAbertas));
+        localStorage.setItem('cofreFechadas', JSON.stringify(cofreFechadas));
+        
+        // Limpa a UX
+        document.getElementById('trade-qtd').value = '';
+        document.getElementById('trade-preco').value = '';
+        
+        atualizarCofre();
+    }
+
+    function atualizarCofre() {
+        const tbodyAbertas = document.getElementById('tbody-abertas');
+        const tbodyFechadas = document.getElementById('tbody-fechadas');
+        
+        // Se as tabelas não estiverem no ecrã atual (ex: noutro separador), não faz render desnecessário
+        if (!tbodyAbertas || !tbodyFechadas) return;
+
+        tbodyAbertas.innerHTML = '';
+        tbodyFechadas.innerHTML = '';
+        
+        let exposicaoTotal = 0;
+        let pnlTotal = 0;
+
+        // 1. Processar Lotes Abertos (O que está em risco)
+        cofreAbertas.filter(l => l.qtdRestante > 0).forEach(lote => {
+            let capitalExposto = lote.qtdRestante * lote.precoCompra;
+            exposicaoTotal += capitalExposto;
+
+            tbodyAbertas.innerHTML += `
+                <tr style="border-bottom: 1px solid #30363d; transition: background 0.2s;">
+                    <td style="padding: 12px; color: #c9d1d9;"><strong>${lote.ticker}</strong> <span style="font-size: 10px; color: #8b949e; display: block;">Adquirido a ${lote.data}</span></td>
+                    <td style="padding: 12px; color: #8b949e; font-weight: bold;">${lote.qtdRestante.toFixed(4)}</td>
+                    <td style="padding: 12px; color: #8b949e; font-family: monospace;">$${lote.precoCompra.toFixed(2)}</td>
+                    <td style="padding: 12px; color: #58a6ff; font-weight: bold;">$${capitalExposto.toFixed(2)}</td>
+                </tr>
+            `;
+        });
+
+        // 2. Processar Lotes Fechados (Realização de Lucro/Prejuízo)
+        // O loop processa de trás para a frente para mostrar os trades mais recentes no topo da tabela
+        for (let i = cofreFechadas.length - 1; i >= 0; i--) {
+            let trade = cofreFechadas[i];
+            pnlTotal += trade.pnl;
+            let corPnl = trade.pnl >= 0 ? '#5cb85c' : '#d9534f';
+            let sinal = trade.pnl >= 0 ? '+' : '';
+            
+            tbodyFechadas.innerHTML += `
+                <tr style="border-bottom: 1px solid #30363d; transition: background 0.2s;">
+                    <td style="padding: 12px; color: #c9d1d9;"><strong>${trade.ticker}</strong> <span style="font-size: 10px; color: #8b949e; display: block;">Fechado a ${trade.data}</span></td>
+                    <td style="padding: 12px; color: #8b949e; font-weight: bold;">${trade.qtdVendida.toFixed(4)}</td>
+                    <td style="padding: 12px; color: ${corPnl}; font-weight: 900;">${sinal}$${trade.pnl.toFixed(2)}</td>
+                    <td style="padding: 12px; font-size: 11px; color: #8b949e;">Lote(s) Compra Base:<br><span style="color: #c9d1d9;">${trade.detalhes}</span></td>
+                </tr>
+            `;
+        }
+
+        // 3. Atualizar Painel Financeiro
+        let imposto = pnlTotal > 0 ? pnlTotal * 0.28 : 0; // IRS sobre as mais-valias líquidas
+
+        document.getElementById('cofre-pnl').innerText = `$${pnlTotal.toFixed(2)}`;
+        document.getElementById('cofre-pnl').style.color = pnlTotal >= 0 ? '#5cb85c' : '#d9534f';
+        
+        document.getElementById('cofre-imposto').innerText = `$${imposto.toFixed(2)}`;
+        document.getElementById('cofre-exposicao').innerText = `$${exposicaoTotal.toFixed(2)}`;
+    }
+
+    // Arranque Automático
+    document.addEventListener('DOMContentLoaded', atualizarCofre);
 </script>
 
 </body>
