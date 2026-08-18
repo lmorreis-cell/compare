@@ -2147,15 +2147,23 @@
         document.getElementById('screener-loading').style.display = 'block';
         document.getElementById('screener-resultados').style.display = 'none';
         
-        try {
-            // Vamos chamar a API que criaremos no Python a seguir!
+       try {
             const resposta = await fetch(`/api/screener/${universo}/${estrategia}`);
+            
+            // NOVO: Barreira de segurança para detetar crashes do servidor (Timeouts/Falta de Memória)
+            const contentType = resposta.headers.get("content-type");
+            if (!contentType || !contentType.includes("application/json")) {
+                throw new Error("A Discloud cortou a ligação por Timeout ou falta de memória RAM ao tentar processar 500 ativos em simultâneo.");
+            }
+
             const dados = await resposta.json();
             
             if(dados.erro) throw new Error(dados.erro);
 
             const tbody = document.getElementById('screener-tbody');
             tbody.innerHTML = '';
+            
+            // ... (o resto da função continua igual a partir daqui)
             
             document.getElementById('screener-contagem').innerText = `${dados.resultados.length} Ativos Encontrados`;
 
