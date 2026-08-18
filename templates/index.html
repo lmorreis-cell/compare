@@ -2609,8 +2609,15 @@
 
         // 2. Cenário Pior: Englobamento (Curto prazo a 48% + Longo Prazo a 28%)
         let impostoEnglobado = 0;
+        let poupancaEnglobamento = 0;
+        
         if (pnlTotalGlobal > 0) {
             impostoEnglobado = (lucroCurtoPrazo * 0.48) + (baseLongoPrazo * 0.28);
+            
+            // A poupança aqui é a diferença entre ser taxado cegamente a 48% em TUDO, 
+            // versus a salvação de teres passado parte do lucro para o escudo dos 28% com exclusões.
+            let impostoCaotico = pnlTotalGlobal * 0.48;
+            poupancaEnglobamento = impostoCaotico - impostoEnglobado;
         }
 
         // Atualização Visual Dinâmica
@@ -2627,7 +2634,10 @@
 
         document.getElementById('cofre-imposto').innerText = `€${impostoTotal.toFixed(2)}`;
         document.getElementById('cofre-imposto-englobado').innerText = `€${impostoEnglobado.toFixed(2)}`;
-        document.getElementById('cofre-poupanca-fiscal').innerText = `Poupança gerada via exclusões (Longo Prazo): €${poupancaAbsoluta.toFixed(2)}`;
+        
+        // Injeção da Dupla Poupança
+        document.getElementById('cofre-poupanca-base').innerText = `+ €${poupancaAbsoluta.toFixed(2)}`;
+        document.getElementById('cofre-poupanca-englobado').innerText = `+ €${poupancaEnglobamento.toFixed(2)}`;
 
         document.getElementById('contador-abertas').innerText = `${totalLotesAbertos} Lote${totalLotesAbertos !== 1 ? 's' : ''}`;
         document.getElementById('contador-fechadas').innerText = `${cofreFechadas.length} Trade${cofreFechadas.length !== 1 ? 's' : ''}`;
