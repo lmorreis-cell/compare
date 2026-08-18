@@ -580,22 +580,23 @@
         <div style="background-color: #1c1e24; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
             <h4 style="margin: 0 0 15px 0; color: #8b949e; font-size: 13px; text-transform: uppercase;">✍️ Registar Execução na Corretora</h4>
             <div class="linha-inputs" style="margin-top: 0; align-items: center;">
-                <input type="date" id="trade-data" class="input-moderno" style="max-width: 130px;">
+                
+                <input type="date" id="trade-data" class="input-moderno" style="max-width: 130px;" onchange="buscarCambioAutomatico()">
+                
                 <select id="trade-tipo" class="input-moderno" style="max-width: 110px;">
                     <option value="COMPRA">COMPRA</option>
                     <option value="VENDA">VENDA</option>
                 </select>
+                
                 <input type="text" id="trade-ticker" class="input-moderno" placeholder="Ticker (ex: AAPL)" style="max-width: 110px; text-transform: uppercase;">
                 <input type="number" id="trade-qtd" class="input-moderno" placeholder="Qtd" step="0.0001" style="max-width: 90px;">
                 <input type="number" id="trade-preco" class="input-moderno" placeholder="Preço" step="0.01" style="max-width: 90px;">
                 
-                <!-- SELETOR DE MOEDA COM GATILHO VISUAL -->
-                <select id="trade-moeda" class="input-moderno" style="max-width: 95px; font-weight: bold; color: #e3b341;" onchange="controlarCampoCambio()">
+                <select id="trade-moeda" class="input-moderno" style="max-width: 95px; font-weight: bold; color: #e3b341;" onchange="controlarCampoCambio(); buscarCambioAutomatico();">
                     <option value="EUR">EUR (€)</option>
                     <option value="USD" selected>USD ($)</option>
                 </select>
 
-                <!-- CAMPO DINÂMICO DE TAXA DE CÂMBIO -->
                 <div id="bloco-cambio" style="display: flex; align-items: center; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 0 10px; height: 44px;">
                     <span style="font-size: 11px; color: #8b949e; margin-right: 5px;">Câmbio €/$:</span>
                     <input type="number" id="trade-cambio" class="input-moderno" value="1.08" step="0.0001" style="border: none; background: transparent; width: 70px; padding: 0; color: #e3b341; font-weight: bold;">
@@ -2565,6 +2566,41 @@
             blocoCambio.style.display = 'flex';
         } else {
             blocoCambio.style.display = 'none';
+        }
+    }
+
+    // ==========================================
+    // AUTOMATIZAÇÃO DE CÂMBIO HISTÓRICO
+    // ==========================================
+    async function buscarCambioAutomatico() {
+        const dataInput = document.getElementById('trade-data').value;
+        const moeda = document.getElementById('trade-moeda').value;
+        const inputCambio = document.getElementById('trade-cambio');
+        const blocoCambio = document.getElementById('bloco-cambio');
+
+        if (moeda === 'EUR') {
+            blocoCambio.style.display = 'none';
+            inputCambio.value = 1.0;
+            return;
+        } else {
+            blocoCambio.style.display = 'flex';
+        }
+
+        if (!dataInput) return; // Se não houver data escolhida, não faz a chamada
+
+        try {
+            inputCambio.value = "..."; // Feedback visual de loading
+            const resposta = await fetch(`/api/cambio/${dataInput}`);
+            const dados = await resposta.json();
+            
+            if (dados.cambio) {
+                inputCambio.value = dados.cambio;
+            } else {
+                inputCambio.value = 1.08; // Fallback
+            }
+        } catch (erro) {
+            console.error("Erro ao obter câmbio automático:", erro);
+            inputCambio.value = 1.08;
         }
     }
 </script>
