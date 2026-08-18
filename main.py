@@ -494,21 +494,25 @@ def api_cambio(data):
     import pandas as pd
     
     try:
-        # Pede os dados do par EURUSD=X à volta da data pretendida
-        # Adicionamos um pequeno buffer de dias para garantir fins de semana/feriados
-        data_inicio = pd.to_datetime(data) - pd.Timedelta(days=5)
+        # Alarga a janela de busca para trás (10 dias) para apanhar sempre o último fecho válido (ignora fins de semana)
         data_fim = pd.to_datetime(data) + pd.Timedelta(days=1)
+        data_inicio = data_fim - pd.Timedelta(days=10)
         
         df = yf.download("EURUSD=X", start=data_inicio.strftime('%Y-%m-%d'), end=data_fim.strftime('%Y-%m-%d'), progress=False)
         
-        if df.empty:
-            return jsonify({"cambio": 1.08}) # Valor por defeito de segurança se falhar
+        if df.empty or 'Close' not in df.columns:
+            return jsonify({"cambio": 1.08})
             
-        # Pega no fecho mais próximo da data solicitada
-        taxa = float(df['Close'].dropna().iloc[-1])
-        
+        # Pega no último valor válido da série temporal obtida
+        serie_limpa = df['Close'].dropna()
+        if serie_limpa.empty:
+            return jsonify({"cambio": 1.08})
+            
+        taxa = float(serie_limpa.iloc[-1])
         return jsonify({"cambio": round(taxa, 4)})
+        
     except Exception as e:
+        print(f"Erro no câmbio: {str(e)}")
         return jsonify({"cambio": 1.08}), 500
 
 @app.route('/api/universo')
