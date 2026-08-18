@@ -2600,7 +2600,7 @@
             } else {
                 inputCambio.value = 1.08;
             }
-        } caric (erro) {
+        } catch (erro) {  
             console.error("Erro ao obter câmbio automático:", erro);
             inputCambio.value = 1.08;
         }
