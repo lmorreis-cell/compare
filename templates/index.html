@@ -612,9 +612,11 @@
         <!-- TABELAS DE DADOS (ABERTAS VS FECHADAS) -->
         <div style="display: flex; gap: 20px; flex-wrap: wrap;">
             
-            <!-- POSIÇÕES ABERTAS (Lotes não vendidos) -->
             <div style="flex: 1; min-width: 300px;">
-                <h4 style="margin: 0 0 10px 0; color: #58a6ff; font-size: 14px; border-bottom: 1px solid #30363d; padding-bottom: 5px;">📦 Lotes em Aberto (Inventário)</h4>
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 1px solid #30363d; padding-bottom: 5px; margin-bottom: 10px;">
+                    <h4 style="margin: 0; color: #58a6ff; font-size: 14px;">📦 Lotes em Aberto (Inventário)</h4>
+                    <span id="contador-abertas" style="background: #232d3f; padding: 2px 8px; border-radius: 4px; font-size: 11px; color: #58a6ff; font-weight: bold;">0 Lotes</span>
+                </div>
                 <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 6px; overflow-x: auto;">
                     <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 0;">
                         <thead style="background: #161b22; color: #8b949e; text-align: left;">
@@ -631,9 +633,11 @@
                 </div>
             </div>
 
-            <!-- HISTÓRICO DE VENDAS (Casamentos FIFO) -->
             <div style="flex: 1; min-width: 300px;">
-                <h4 style="margin: 0 0 10px 0; color: #5cb85c; font-size: 14px; border-bottom: 1px solid #30363d; padding-bottom: 5px;">📜 Trades Fechados (PnL)</h4>
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 1px solid #30363d; padding-bottom: 5px; margin-bottom: 10px;">
+                    <h4 style="margin: 0; color: #5cb85c; font-size: 14px;">📜 Trades Fechados (PnL)</h4>
+                    <span id="contador-fechadas" style="background: #232d3f; padding: 2px 8px; border-radius: 4px; font-size: 11px; color: #5cb85c; font-weight: bold;">0 Trades</span>
+                </div>
                 <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 6px; overflow-x: auto;">
                     <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 0;">
                         <thead style="background: #161b22; color: #8b949e; text-align: left;">
@@ -2497,8 +2501,10 @@
         
         let pnlTotalEUR = 0;
         let exposicaoTotalEUR = 0;
+        let totalLotesAbertos = 0; // Novo contador
 
         cofreAbertas.filter(l => l.qtdRestante > 0).forEach(lote => {
+            totalLotesAbertos++; // Incrementa o contador
             let capitalExpostoEUR = lote.qtdRestante * lote.precoCompraEUR;
             exposicaoTotalEUR += capitalExpostoEUR;
             let simbolo = lote.moeda === 'USD' ? '$' : '€';
@@ -2542,6 +2548,10 @@
         document.getElementById('cofre-pnl').style.color = pnlTotalEUR >= 0 ? '#5cb85c' : '#d9534f';
         document.getElementById('cofre-imposto').innerText = `€${impostoEUR.toFixed(2)}`;
         document.getElementById('cofre-exposicao').innerText = `€${exposicaoTotalEUR.toFixed(2)}`;
+
+        // NOVO: Atualiza o texto dos contadores no HTML
+        document.getElementById('contador-abertas').innerText = `${totalLotesAbertos} Lote${totalLotesAbertos !== 1 ? 's' : ''}`;
+        document.getElementById('contador-fechadas').innerText = `${cofreFechadas.length} Trade${cofreFechadas.length !== 1 ? 's' : ''}`;
     }
     // ==========================================
     // MOTOR DE BACKUP LOCAL (EXPORTAR / IMPORTAR)
