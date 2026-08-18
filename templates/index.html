@@ -2478,6 +2478,57 @@
 
     // Arranque Automático
     document.addEventListener('DOMContentLoaded', atualizarCofre);
+
+    // ==========================================
+    // MOTOR DE BACKUP LOCAL (EXPORTAR / IMPORTAR)
+    // ==========================================
+    
+    function exportarCofreJSON() {
+        const dadosCofre = {
+            versao: "1.0",
+            dataExportacao: new Date().toISOString(),
+            abertas: cofreAbertas,
+            fechadas: cofreFechadas
+        };
+
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dadosCofre, null, 2));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", "Cofre_Fiscal_Backup_" + new Date().toISOString().slice(0,10) + ".json");
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+    }
+
+    function importarCofreJSON(event) {
+        const ficheiro = event.target.files[0];
+        if (!ficheiro) return;
+
+        const leitor = new FileReader();
+        leitor.onload = function(e) {
+            try {
+                const conteudo = JSON.parse(e.target.result);
+                
+                if (!conteudo.abertas || !conteudo.fechadas) {
+                    throw new Error("O formato do ficheiro JSON é inválido ou incompatível com o Ledger.");
+                }
+
+                if (confirm(`⚠️ Pretendes substituir os dados atuais do Cofre pelo conteúdo do ficheiro (${conteudo.abertas.length} lotes abertos, ${conteudo.fechadas.length} trades fechados)?`)) {
+                    cofreAbertas = conteudo.abertas;
+                    cofreFechadas = conteudo.fechadas;
+
+                    localStorage.setItem('cofreAbertas', JSON.stringify(cofreAbertas));
+                    localStorage.setItem('cofreFechadas', JSON.stringify(cofreFechadas));
+
+                    atualizarCofre();
+                    alert("✅ Cofre Fiscal restaurado com sucesso a partir do ficheiro local!");
+                }
+            } catch (erro) {
+                alert("❌ Erro ao ler o ficheiro de backup: " + erro.message);
+            }
+        };
+        leitor.readAsText(ficheiro);
+    }
 </script>
 
 </body>
