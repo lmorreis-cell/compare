@@ -2139,71 +2139,88 @@
         }
     }
 
-    // 2. Disparar a chamada para o Python (Backend)
     async function executarScreener() {
         const universo = document.getElementById('screener-universo').value;
         const estrategia = document.getElementById('screener-estrategia').value;
         
-        document.getElementById('screener-loading').style.display = 'block';
-        document.getElementById('screener-resultados').style.display = 'none';
+        const loadingDiv = document.getElementById('screener-loading');
+        const resultadosDiv = document.getElementById('screener-resultados');
+        const tbody = document.getElementById('screener-tbody');
+        const contagem = document.getElementById('screener-contagem');
         
-       try {
-            const resposta = await fetch(`/api/screener/${universo}/${estrategia}`);
-            
-            // NOVO: Barreira de segurança para detetar crashes do servidor (Timeouts/Falta de Memória)
-            const contentType = resposta.headers.get("content-type");
-            if (!contentType || !contentType.includes("application/json")) {
-                throw new Error("A Discloud cortou a ligação por Timeout ou falta de memória RAM ao tentar processar 500 ativos em simultâneo.");
+        loadingDiv.style.display = 'block';
+        resultadosDiv.style.display = 'block'; 
+        tbody.innerHTML = '';
+        
+        let loteAtual = 0;
+        let concluido = false;
+        let ativosEncontrados = 0;
+
+        contagem.innerText = `A iniciar radar quantitativo...`;
+        loadingDiv.innerHTML = `<div style="font-size: 24px; margin-bottom: 10px;">⚙️</div>A processar mercado por lotes de 50 ações. Aguarda...`;
+
+        while (!concluido) {
+            try {
+                // O JAVASCRIPT AGORA PEDE O LOTE ESPECÍFICO À API!
+                const resposta = await fetch(`/api/screener/${universo}/${estrategia}/${loteAtual}`);
+                
+                const contentType = resposta.headers.get("content-type");
+                if (!contentType || !contentType.includes("application/json")) {
+                    throw new Error("Erro de infraestrutura no Lote " + loteAtual + ". O servidor rejeitou o micro-pedido.");
+                }
+
+                const dados = await resposta.json();
+                if(dados.erro) throw new Error(dados.erro);
+
+                // Se encontrou ativos neste pequeno lote, desenha-os JÁ no ecrã!
+                if (dados.resultados && dados.resultados.length > 0) {
+                    ativosEncontrados += dados.resultados.length;
+                    
+                    dados.resultados.forEach(ativo => {
+                        const btnEstilo = universo === 'cripto' 
+                            ? "background: #b388ff; color: #121212; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; font-size: 11px; cursor: pointer;"
+                            : "background: #58a6ff; color: #121212; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; font-size: 11px; cursor: pointer;";
+                            
+                        const btnAcao = universo === 'cripto' 
+                            ? `<button onclick="document.getElementById('tab-cripto').click(); document.getElementById('sniper-cripto-ticker').value='${ativo.ticker}'; gerarBlueprintCripto();" style="${btnEstilo}">Analisar no Sniper 🎯</button>`
+                            : `<button onclick="document.getElementById('tab-acoes').click(); document.getElementById('sniper-ticker').value='${ativo.ticker}'; gerarBlueprintSniper();" style="${btnEstilo}">Analisar no Sniper 🎯</button>`;
+
+                        tbody.innerHTML += `
+                            <tr style="border-bottom: 1px solid #30363d;">
+                                <td style="padding: 15px;"><strong style="color: #c9d1d9; font-size: 15px;">${ativo.ticker}</strong></td>
+                                <td style="padding: 15px; color: #8b949e; font-family: monospace;">$${ativo.preco.toFixed(2)}</td>
+                                <td style="padding: 15px; font-size: 12px; color: #8b949e; line-height: 1.5;">${ativo.metricas}</td>
+                                <td style="padding: 15px; text-align: center;">${btnAcao}</td>
+                            </tr>
+                        `;
+                    });
+                }
+                
+                // Atualiza a percentagem visualmente sem bloquear o ecrã
+                if(dados.total_universo) {
+                    const perc = Math.round((dados.total_processado / dados.total_universo) * 100);
+                    contagem.innerText = `${ativosEncontrados} Encontrados (${perc}% Analisado)`;
+                    loadingDiv.innerHTML = `<div style="font-size: 24px; margin-bottom: 10px;">📡</div>A varrer blocos de liquidez... (${dados.total_processado} de ${dados.total_universo} avaliados)`;
+                }
+
+                concluido = dados.concluido;
+                loteAtual++;
+
+            } catch(erro) {
+                alert("O radar sofreu uma interrupção. Detalhe: " + erro.message);
+                break; 
             }
-
-            const dados = await resposta.json();
-            
-            if(dados.erro) throw new Error(dados.erro);
-
-            const tbody = document.getElementById('screener-tbody');
-            tbody.innerHTML = '';
-            
-            // ... (o resto da função continua igual a partir daqui)
-            
-            document.getElementById('screener-contagem').innerText = `${dados.resultados.length} Ativos Encontrados`;
-
-            if (dados.resultados.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" style="padding: 20px; text-align: center; color: #8b949e;">Nenhum ativo cumpriu os critérios desta estratégia hoje. O mercado não está a oferecer este setup. Mantém-te líquido.</td></tr>`;
-            } else {
-                dados.resultados.forEach(ativo => {
-                    // O botão tático: Envia o Ticker diretamente para o Sniper correto!
-                    const btnAcao = universo === 'cripto' 
-                        ? `<button onclick="document.getElementById('tab-cripto').click(); document.getElementById('sniper-cripto-ticker').value='${ativo.ticker}'; gerarBlueprintCripto();" style="background: #b388ff; color: #121212; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; font-size: 11px; cursor: pointer;">Analisar no Sniper 🎯</button>`
-                        : `<button onclick="document.getElementById('tab-acoes').click(); document.getElementById('sniper-ticker').value='${ativo.ticker}'; gerarBlueprintSniper();" style="background: #58a6ff; color: #121212; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; font-size: 11px; cursor: pointer;">Analisar no Sniper 🎯</button>`;
-
-                    tbody.innerHTML += `
-                        <tr style="border-bottom: 1px solid #30363d; transition: background 0.2s;">
-                            <td style="padding: 15px;">
-                                <strong style="color: #c9d1d9; font-size: 15px;">${ativo.ticker}</strong>
-                            </td>
-                            <td style="padding: 15px; color: #8b949e; font-family: monospace;">$${ativo.preco.toFixed(2)}</td>
-                            <td style="padding: 15px; font-size: 12px; color: #8b949e; line-height: 1.5;">
-                                ${ativo.metricas}
-                            </td>
-                            <td style="padding: 15px; text-align: center;">
-                                ${btnAcao}
-                            </td>
-                        </tr>
-                    `;
-                });
-            }
-
-            document.getElementById('screener-loading').style.display = 'none';
-            document.getElementById('screener-resultados').style.display = 'block';
-
-        } catch(erro) {
-            document.getElementById('screener-loading').style.display = 'none';
-            alert("Erro ao varrer o mercado: " + erro.message);
+        }
+        
+        loadingDiv.style.display = 'none';
+        
+        if (concluido && ativosEncontrados === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" style="padding: 20px; text-align: center; color: #8b949e;">Nenhum ativo cumpriu os critérios desta estratégia hoje. Mantém-te líquido.</td></tr>`;
+            contagem.innerText = `0 Encontrados (Concluído)`;
+        } else if (concluido) {
+            contagem.innerText = `${ativosEncontrados} Alvos Táticos Aprovados`;
         }
     }
-
-    // Arranca a legenda com o texto correto assim que a página carrega
-    document.addEventListener('DOMContentLoaded', atualizarLegendaScreener);
 </script>
 
 </body>
