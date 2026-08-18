@@ -576,9 +576,10 @@
             </div>
         </div>
 
+        <!-- REGISTO DE NOVA TRANSAÇÃO -->
         <div style="background-color: #1c1e24; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
             <h4 style="margin: 0 0 15px 0; color: #8b949e; font-size: 13px; text-transform: uppercase;">✍️ Registar Execução na Corretora</h4>
-            <div class="linha-inputs" style="margin-top: 0;">
+            <div class="linha-inputs" style="margin-top: 0; align-items: center;">
                 <input type="date" id="trade-data" class="input-moderno" style="max-width: 130px;">
                 <select id="trade-tipo" class="input-moderno" style="max-width: 110px;">
                     <option value="COMPRA">COMPRA</option>
@@ -586,14 +587,21 @@
                 </select>
                 <input type="text" id="trade-ticker" class="input-moderno" placeholder="Ticker (ex: AAPL)" style="max-width: 110px; text-transform: uppercase;">
                 <input type="number" id="trade-qtd" class="input-moderno" placeholder="Qtd" step="0.0001" style="max-width: 90px;">
-                <input type="number" id="trade-preco" class="input-moderno" placeholder="Preço" step="0.01" style="max-width: 100px;">
+                <input type="number" id="trade-preco" class="input-moderno" placeholder="Preço" step="0.01" style="max-width: 90px;">
                 
-                <select id="trade-moeda" class="input-moderno" style="max-width: 90px; font-weight: bold; color: #e3b341;">
-                    <option value="USD">USD ($)</option>
+                <!-- SELETOR DE MOEDA COM GATILHO VISUAL -->
+                <select id="trade-moeda" class="input-moderno" style="max-width: 95px; font-weight: bold; color: #e3b341;" onchange="controlarCampoCambio()">
                     <option value="EUR">EUR (€)</option>
+                    <option value="USD" selected>USD ($)</option>
                 </select>
 
-                <button onclick="adicionarTrade()" class="btn-moderno" style="background: #e3b341; color: #121212; border: none; flex-grow: 1;">Registar Trade</button>
+                <!-- CAMPO DINÂMICO DE TAXA DE CÂMBIO -->
+                <div id="bloco-cambio" style="display: flex; align-items: center; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 0 10px; height: 44px;">
+                    <span style="font-size: 11px; color: #8b949e; margin-right: 5px;">Câmbio €/$:</span>
+                    <input type="number" id="trade-cambio" class="input-moderno" value="1.08" step="0.0001" style="border: none; background: transparent; width: 70px; padding: 0; color: #e3b341; font-weight: bold;">
+                </div>
+
+                <button onclick="adicionarTrade()" class="btn-moderno" style="background: #e3b341; color: #121212; border: none; flex-grow: 1; height: 44px;">Registar Trade</button>
             </div>
         </div>
 
@@ -2365,13 +2373,19 @@
         const tipo = document.getElementById('trade-tipo').value;
         const ticker = document.getElementById('trade-ticker').value.trim().toUpperCase();
         const qtd = parseFloat(document.getElementById('trade-qtd').value);
-        const preco = parseFloat(document.getElementById('trade-preco').value);
-        const moeda = document.getElementById('trade-moeda').value; // CAPTA A MOEDA (USD ou EUR)
+        const precoOriginal = parseFloat(document.getElementById('trade-preco').value);
+        const moeda = document.getElementById('trade-moeda').value;
+        let cambio = parseFloat(document.getElementById('trade-cambio').value) || 1.0;
 
-        if (!data || !ticker || !qtd || !preco || qtd <= 0 || preco <= 0) {
-            alert("⚠️ Operação Rejeitada: Preenche todos os campos com valores matematicamente válidos.");
+        if (!data || !ticker || !qtd || !precoOriginal || qtd <= 0 || precoOriginal <= 0) {
+            alert("⚠️ Preenche todos os campos com valores válidos.");
             return;
         }
+
+        // CONVERSÃO MONETÁRIA NORMALIZADA PARA EUROS (€)
+        // Se for USD, dividimos pelo câmbio (ex: $108 / 1.08 = 100€). Se for EUR, o câmbio interno assume 1.0.
+        if (moeda === 'EUR') cambio = 1.0;
+        let precoEmEuros = precoOriginal / cambio;
 
         if (tipo === 'COMPRA') {
             cofreAbertas.push({
@@ -2380,8 +2394,10 @@
                 ticker: ticker,
                 qtdInicial: qtd,
                 qtdRestante: qtd,
-                precoCompra: preco,
-                moeda: moeda // GUARDA A MOEDA NO LOTE
+                precoCompraOriginal: precoOriginal,
+                precoCompraEUR: precoEmEuros, // BASE FISCAL EM EUROS
+                moeda: moeda,
+                cambio: cambio
             });
             cofreAbertas.sort((a, b) => new Date(a.data) - new Date(b.data));
         } 
@@ -2390,28 +2406,28 @@
             
             let qtdTotalEmArmazem = lotesDisponiveis.reduce((sum, l) => sum + l.qtdRestante, 0);
             if (qtd > qtdTotalEmArmazem) {
-                alert(`⚠️ Liquidação Impossível: Estás a tentar vender ${qtd} unidades de ${ticker}, mas só tens ${qtdTotalEmArmazem} em armazém.`);
+                alert(`⚠️ Liquidação Impossível: Só tens ${qtdTotalEmArmazem} unidades de ${ticker} em armazém.`);
                 return;
             }
 
-            let lucroTrade = 0;
+            let lucroTradeEUR = 0;
             let qtdParaVender = qtd;
             let detalhesCasamento = [];
-            let moedaLoteRef = "";
 
             for (let lote of lotesDisponiveis) {
                 if (qtdParaVender === 0) break;
 
                 let qtdDesteLote = Math.min(qtdParaVender, lote.qtdRestante);
-                let pnlParcial = (preco - lote.precoCompra) * qtdDesteLote;
+                
+                // Cálculo do PnL em Euros com base no preço de compra em Euros e venda convertida em Euros
+                let pnlParcialEUR = (precoEmEuros - lote.precoCompraEUR) * qtdDesteLote;
                 
                 lote.qtdRestante -= qtdDesteLote;
                 qtdParaVender -= qtdDesteLote;
-                lucroTrade += pnlParcial;
-                moedaLoteRef = lote.moeda;
+                lucroTradeEUR += pnlParcialEUR;
 
-                let simboloMoeda = lote.moeda === 'USD' ? '$' : '€';
-                detalhesCasamento.push(`${simboloMoeda}${lote.precoCompra.toFixed(2)}`);
+                let simbolo = lote.moeda === 'USD' ? '$' : '€';
+                detalhesCasamento.push(`${simbolo}${lote.precoCompraOriginal.toFixed(2)}`);
             }
 
             cofreFechadas.push({
@@ -2419,9 +2435,9 @@
                 data: data,
                 ticker: ticker,
                 qtdVendida: qtd,
-                precoVenda: preco,
-                moeda: moedaLoteRef, // HERDA A MOEDA DA COMPRA PARA O RELATÓRIO
-                pnl: lucroTrade,
+                precoVendaOriginal: precoOriginal,
+                moeda: moeda,
+                pnlEUR: lucroTradeEUR, // PNL CONSOLIDADO EM EUROS PARA O IRS
                 detalhes: detalhesCasamento.join(" + ")
             });
         }
@@ -2444,25 +2460,21 @@
         tbodyAbertas.innerHTML = '';
         tbodyFechadas.innerHTML = '';
         
-        let pnlTotalUSD = 0;
         let pnlTotalEUR = 0;
-        let exposicaoUSD = 0;
-        let exposicaoEUR = 0;
+        let exposicaoTotalEUR = 0;
 
         // 1. Processar Lotes Abertos
         cofreAbertas.filter(l => l.qtdRestante > 0).forEach(lote => {
-            let capitalExposto = lote.qtdRestante * lote.precoCompra;
+            let capitalExpostoEUR = lote.qtdRestante * lote.precoCompraEUR;
+            exposicaoTotalEUR += capitalExpostoEUR;
             let simbolo = lote.moeda === 'USD' ? '$' : '€';
-
-            if (lote.moeda === 'USD') exposicaoUSD += capitalExposto;
-            else exposicaoEUR += capitalExposto;
 
             tbodyAbertas.innerHTML += `
                 <tr style="border-bottom: 1px solid #30363d;">
                     <td style="padding: 12px; color: #c9d1d9;"><strong>${lote.ticker}</strong> <span style="font-size: 10px; color: #8b949e; display: block;">${lote.data}</span></td>
                     <td style="padding: 12px; color: #8b949e; font-weight: bold;">${lote.qtdRestante.toFixed(4)}</td>
-                    <td style="padding: 12px; color: #8b949e; font-family: monospace;">${simbolo}${lote.precoCompra.toFixed(2)} <span style="font-size:10px; color:#e3b341;">(${lote.moeda})</span></td>
-                    <td style="padding: 12px; color: #58a6ff; font-weight: bold;">${simbolo}${capitalExposto.toFixed(2)}</td>
+                    <td style="padding: 12px; color: #8b949e; font-family: monospace;">${simbolo}${lote.precoCompraOriginal.toFixed(2)} <span style="font-size:10px; color:#e3b341;">(${lote.moeda})</span></td>
+                    <td style="padding: 12px; color: #58a6ff; font-weight: bold;">€${capitalExpostoEUR.toFixed(2)}</td>
                 </tr>
             `;
         });
@@ -2470,54 +2482,31 @@
         // 2. Processar Trades Fechados
         for (let i = cofreFechadas.length - 1; i >= 0; i--) {
             let trade = cofreFechadas[i];
+            pnlTotalEUR += trade.pnlEUR;
             let simbolo = trade.moeda === 'USD' ? '$' : '€';
 
-            if (trade.moeda === 'USD') pnlTotalUSD += trade.pnl;
-            else pnlTotalEUR += trade.pnl;
-
-            let corPnl = trade.pnl >= 0 ? '#5cb85c' : '#d9534f';
-            let sinal = trade.pnl >= 0 ? '+' : '';
+            let corPnl = trade.pnlEUR >= 0 ? '#5cb85c' : '#d9534f';
+            let sinal = trade.pnlEUR >= 0 ? '+' : '';
             
             tbodyFechadas.innerHTML += `
                 <tr style="border-bottom: 1px solid #30363d;">
                     <td style="padding: 12px; color: #c9d1d9;"><strong>${trade.ticker}</strong> <span style="font-size: 10px; color: #8b949e; display: block;">${trade.data}</span></td>
                     <td style="padding: 12px; color: #8b949e; font-weight: bold;">${trade.qtdVendida.toFixed(4)}</td>
-                    <td style="padding: 12px; color: ${corPnl}; font-weight: 900;">${sinal}${simbolo}${trade.pnl.toFixed(2)} <span style="font-size:10px; color:#8b949e;">(${trade.moeda})</span></td>
+                    <td style="padding: 12px; color: ${corPnl}; font-weight: 900;">${sinal}€${trade.pnlEUR.toFixed(2)} <span style="font-size:10px; color:#8b949e;">(${trade.moeda})</span></td>
                     <td style="padding: 12px; font-size: 11px; color: #8b949e;">Base: <span style="color: #c9d1d9;">${trade.detalhes}</span></td>
                 </tr>
             `;
         }
 
-        // 3. Atualizar Painel Financeiro Multi-Moeda
-        let textoPnL = [];
-        let textoImposto = [];
+        // 3. Atualizar Painel Financeiro Consolidado em Euros
+        let impostoEUR = pnlTotalEUR > 0 ? pnlTotalEUR * 0.28 : 0;
 
-        if (pnlTotalUSD !== 0 || cofreFechadas.length > 0) {
-            let impUSD = pnlTotalUSD > 0 ? pnlTotalUSD * 0.28 : 0;
-            textoPnL.includes(`$${pnlTotalUSD.toFixed(2)}`) || textoPnL.push(`$${pnlTotalUSD.toFixed(2)} (USD)`);
-            textoImposto.push(`$${impUSD.toFixed(2)} (USD)`);
-        }
-        if (pnlTotalEUR !== 0 || cofreFechadas.length > 0) {
-            let impEUR = pnlTotalEUR > 0 ? pnlTotalEUR * 0.28 : 0;
-            textoPnL.push(`€${pnlTotalEUR.toFixed(2)} (EUR)`);
-            textoImposto.push(`€${impEUR.toFixed(2)} (EUR)`);
-        }
-
-        if (textoPnL.length === 0) {
-            textoPnL.push("0.00 € / $");
-            textoImposto.push("0.00 € / $");
-        }
-
-        let textoExposicao = [];
-        if (exposicaoUSD > 0) textoExposicao.push(`$${exposicaoUSD.toFixed(2)}`);
-        if (exposicaoEUR > 0) textoExposicao.push(`€${exposicaoEUR.toFixed(2)}`);
-        if (textoExposicao.length === 0) textoExposicao.push("0.00");
-
-        document.getElementById('cofre-pnl').innerText = textoPnL.join(" | ");
-        document.getElementById('cofre-imposto').innerText = textoImposto.join(" | ");
-        document.getElementById('cofre-exposicao').innerText = textoExposicao.join(" | ");
+        document.getElementById('cofre-pnl').innerText = `€${pnlTotalEUR.toFixed(2)}`;
+        document.getElementById('cofre-pnl').style.color = pnlTotalEUR >= 0 ? '#5cb85c' : '#d9534f';
+        
+        document.getElementById('cofre-imposto').innerText = `€${impostoEUR.toFixed(2)}`;
+        document.getElementById('cofre-exposicao').innerText = `€${exposicaoTotalEUR.toFixed(2)}`;
     }
-
     // ==========================================
     // MOTOR DE BACKUP LOCAL (EXPORTAR / IMPORTAR)
     // ==========================================
@@ -2567,6 +2556,16 @@
             }
         };
         leitor.readAsText(ficheiro);
+    }
+
+    function controlarCampoCambio() {
+        const moeda = document.getElementById('trade-moeda').value;
+        const blocoCambio = document.getElementById('bloco-cambio');
+        if (moeda === 'USD') {
+            blocoCambio.style.display = 'flex';
+        } else {
+            blocoCambio.style.display = 'none';
+        }
     }
 </script>
 
