@@ -2586,19 +2586,21 @@
             blocoCambio.style.display = 'flex';
         }
 
-        if (!dataInput) return; // Se não houver data escolhida, não faz a chamada
+        if (!dataInput) return;
 
         try {
-            inputCambio.value = "..."; // Feedback visual de loading
+            inputCambio.value = "...";
             const resposta = await fetch(`/api/cambio/${dataInput}`);
             const dados = await resposta.json();
+            
+            console.log("Câmbio recebido da API:", dados); // Vê o resultado na consola F12 do browser
             
             if (dados.cambio) {
                 inputCambio.value = dados.cambio;
             } else {
-                inputCambio.value = 1.08; // Fallback
+                inputCambio.value = 1.08;
             }
-        } catch (erro) {
+        } caric (erro) {
             console.error("Erro ao obter câmbio automático:", erro);
             inputCambio.value = 1.08;
         }
