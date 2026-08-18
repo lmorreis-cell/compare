@@ -509,36 +509,50 @@
         <!-- PAINEL FISCAL AVANÇADO (CÓDIGO IRS PORTUGUÊS) -->
         <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 25px;">
             
-            <!-- BLOCO 1: PNL E EXPOSIÇÃO -->
-            <div style="flex: 1; min-width: 180px; background: #0d1117; border: 1px solid #30363d; border-left: 4px solid #58a6ff; border-radius: 8px; padding: 15px;">
-                <div style="font-size: 11px; color: #8b949e; font-weight: bold; margin-bottom: 5px;">LUCRO LÍQUIDO GERAL</div>
+            <!-- BLOCO 1: EXPOSIÇÃO (Trades Abertos) -->
+            <div style="flex: 1; min-width: 150px; background: #0d1117; border: 1px solid #30363d; border-left: 4px solid #58a6ff; border-radius: 8px; padding: 15px;">
+                <div style="font-size: 11px; color: #8b949e; font-weight: bold; margin-bottom: 5px;">CAPITAL EXPOSTO</div>
+                <div id="cofre-exposicao" style="font-size: 20px; font-weight: 900; color: #58a6ff;">€0.00</div>
+                <div style="font-size: 10px; color: #8b949e; margin-top: 4px;">Valor em lotes abertos</div>
+            </div>
+
+            <!-- BLOCO 2: PNL LÍQUIDO -->
+            <div style="flex: 1; min-width: 150px; background: #0d1117; border: 1px solid #30363d; border-left: 4px solid #c9d1d9; border-radius: 8px; padding: 15px;">
+                <div style="font-size: 11px; color: #8b949e; font-weight: bold; margin-bottom: 5px;">LUCRO LÍQUIDO</div>
                 <div id="cofre-pnl" style="font-size: 20px; font-weight: 900; color: #c9d1d9;">€0.00</div>
-                <div style="font-size: 10px; color: #8b949e; margin-top: 4px;">Risco Aberto: <span id="cofre-exposicao" style="font-weight:bold; color:#58a6ff;">€0.00</span></div>
+                <div style="font-size: 10px; color: #8b949e; margin-top: 4px;">Balanço total fechado</div>
             </div>
             
-            <!-- BLOCO 2: CURTO PRAZO -->
-            <div style="flex: 1; min-width: 180px; background: #161b22; border: 1px solid #30363d; border-left: 4px solid #d9534f; border-radius: 8px; padding: 15px;">
-                <div style="font-size: 11px; color: #8b949e; font-weight: bold; margin-bottom: 5px;">CURTO PRAZO (< 1 ANO) ⚠️</div>
+            <!-- BLOCO 3: CURTO PRAZO -->
+            <div style="flex: 1; min-width: 150px; background: #161b22; border: 1px solid #30363d; border-left: 4px solid #d9534f; border-radius: 8px; padding: 15px;">
+                <div style="font-size: 11px; color: #8b949e; font-weight: bold; margin-bottom: 5px;">CURTO PRAZO (< 1 ANO)</div>
                 <div id="cofre-curto-prazo" style="font-size: 18px; font-weight: 900; color: #d9534f;">€0.00</div>
-                <div style="font-size: 10px; color: #8b949e; margin-top: 4px;">Risco Englobamento (Último Escalão)</div>
+                <div style="font-size: 10px; color: #8b949e; margin-top: 4px;">Risco de Englobamento</div>
             </div>
 
-            <!-- BLOCO 3: LONGO PRAZO -->
-            <div style="flex: 1; min-width: 180px; background: #161b22; border: 1px solid #30363d; border-left: 4px solid #f28b24; border-radius: 8px; padding: 15px;">
-                <div style="font-size: 11px; color: #8b949e; font-weight: bold; margin-bottom: 5px;">LONGO PRAZO (> 1 ANO) 🛡️</div>
+            <!-- BLOCO 4: LONGO PRAZO -->
+            <div style="flex: 1; min-width: 150px; background: #161b22; border: 1px solid #30363d; border-left: 4px solid #f28b24; border-radius: 8px; padding: 15px;">
+                <div style="font-size: 11px; color: #8b949e; font-weight: bold; margin-bottom: 5px;">LONGO PRAZO (> 1 ANO)</div>
                 <div id="cofre-longo-prazo" style="font-size: 18px; font-weight: 900; color: #f28b24;">€0.00</div>
-                <div style="font-size: 10px; color: #8b949e; margin-top: 4px;">Beneficia de Exclusão Fiscal Base</div>
+                <div style="font-size: 10px; color: #8b949e; margin-top: 4px;">Beneficia de Exclusão</div>
             </div>
 
-            <!-- BLOCO 4: IMPOSTOS -->
-            <div style="flex: 1; min-width: 180px; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 15px;">
-                <div style="font-size: 11px; color: #8b949e; font-weight: bold; margin-bottom: 5px;">PROVISÃO IRS (28%)</div>
-                <div id="cofre-imposto" style="font-size: 20px; font-weight: 900; color: #d9534f;">€0.00</div>
-                <div id="cofre-poupanca-fiscal" style="font-size: 10px; color: #5cb85c; margin-top: 4px;">Poupança gerada via exclusões: €0.00</div>
+            <!-- BLOCO 5: PROVISÃO DE IMPOSTOS AVANÇADA -->
+            <div style="flex: 2; min-width: 280px; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 15px;">
+                <div style="font-size: 11px; color: #8b949e; font-weight: bold; margin-bottom: 5px;">PROVISÃO IRS (ESTIMATIVA ATUALIZADA)</div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                    <div>
+                        <div id="cofre-imposto" style="font-size: 20px; font-weight: 900; color: #d9534f;">€0.00</div>
+                        <div style="font-size: 10px; color: #8b949e;">Taxa Liberatória Base (28%)</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div id="cofre-imposto-englobado" style="font-size: 16px; font-weight: bold; color: #e3b341;">€0.00</div>
+                        <div style="font-size: 10px; color: #8b949e;">Cenário Último Escalão IRS (~48%)</div>
+                    </div>
+                </div>
+                <div id="cofre-poupanca-fiscal" style="font-size: 10px; color: #5cb85c; margin-top: 8px; border-top: 1px dashed #30363d; padding-top: 5px;">Poupança gerada via exclusões: €0.00</div>
             </div>
-
-        </div> <!-- FIM DO PAINEL FISCAL IRS -->
-
+        </div>
         <!-- NOTA DE TRANSPARÊNCIA E SOBERANIA DE DADOS -->
         <div style="background-color: #161b22; border: 1px solid #30363d; border-left: 4px solid #e3b341; border-radius: 8px; padding: 16px 20px; margin-bottom: 20px; font-size: 13px; color: #c9d1d9; line-height: 1.6;">
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-weight: bold; color: #f0f2f5;">
