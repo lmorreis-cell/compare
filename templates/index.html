@@ -503,18 +503,43 @@
 
     <div id="tab-cofre" class="tab-content">
         
-        <div style="background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
-            <h3 style="margin: 0 0 20px 0; font-size: 14px; color: #f0f2f5; text-transform: uppercase;">
-                <span class="dica-edu">
-                    🏛️ Ledger Institucional e Provisão Fiscal
-                    <span class="dica-texto" style="width: 350px;">
-                        <strong style="color: #e3b341; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">A Regra FIFO (First-In-First-Out)</strong>
-                        Obrigatoriedade legal. Se compraste ações da Apple a 100$ em Janeiro, e mais ações a 150$ em Março, quando venderes uma ação em Abril, a Autoridade Tributária obriga a que o cálculo do teu lucro seja feito com base na primeira que compraste (a de 100$). Este motor faz esse casamento matemático automaticamente.
-                    </span>
-                </span>
-            </h3>
+        <!-- 🏛️ LEDGER INSTITUCIONAL E PROVISÃO FISCAL -->
+        <h3 style="color: #c9d1d9; border-bottom: 1px dashed #30363d; padding-bottom: 10px; margin-bottom: 20px;">🏛️ LEDGER INSTITUCIONAL E PROVISÃO FISCAL</h3>
 
-            <!-- NOTA DE TRANSPARÊNCIA E SOBERANIA DE DADOS -->
+        <!-- PAINEL FISCAL AVANÇADO (CÓDIGO IRS PORTUGUÊS) -->
+        <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 25px;">
+            
+            <!-- BLOCO 1: PNL E EXPOSIÇÃO -->
+            <div style="flex: 1; min-width: 180px; background: #0d1117; border: 1px solid #30363d; border-left: 4px solid #58a6ff; border-radius: 8px; padding: 15px;">
+                <div style="font-size: 11px; color: #8b949e; font-weight: bold; margin-bottom: 5px;">LUCRO LÍQUIDO GERAL</div>
+                <div id="cofre-pnl" style="font-size: 20px; font-weight: 900; color: #c9d1d9;">€0.00</div>
+                <div style="font-size: 10px; color: #8b949e; margin-top: 4px;">Risco Aberto: <span id="cofre-exposicao" style="font-weight:bold; color:#58a6ff;">€0.00</span></div>
+            </div>
+            
+            <!-- BLOCO 2: CURTO PRAZO -->
+            <div style="flex: 1; min-width: 180px; background: #161b22; border: 1px solid #30363d; border-left: 4px solid #d9534f; border-radius: 8px; padding: 15px;">
+                <div style="font-size: 11px; color: #8b949e; font-weight: bold; margin-bottom: 5px;">CURTO PRAZO (< 1 ANO) ⚠️</div>
+                <div id="cofre-curto-prazo" style="font-size: 18px; font-weight: 900; color: #d9534f;">€0.00</div>
+                <div style="font-size: 10px; color: #8b949e; margin-top: 4px;">Risco Englobamento (Último Escalão)</div>
+            </div>
+
+            <!-- BLOCO 3: LONGO PRAZO -->
+            <div style="flex: 1; min-width: 180px; background: #161b22; border: 1px solid #30363d; border-left: 4px solid #f28b24; border-radius: 8px; padding: 15px;">
+                <div style="font-size: 11px; color: #8b949e; font-weight: bold; margin-bottom: 5px;">LONGO PRAZO (> 1 ANO) 🛡️</div>
+                <div id="cofre-longo-prazo" style="font-size: 18px; font-weight: 900; color: #f28b24;">€0.00</div>
+                <div style="font-size: 10px; color: #8b949e; margin-top: 4px;">Beneficia de Exclusão Fiscal Base</div>
+            </div>
+
+            <!-- BLOCO 4: IMPOSTOS -->
+            <div style="flex: 1; min-width: 180px; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 15px;">
+                <div style="font-size: 11px; color: #8b949e; font-weight: bold; margin-bottom: 5px;">PROVISÃO IRS (28%)</div>
+                <div id="cofre-imposto" style="font-size: 20px; font-weight: 900; color: #d9534f;">€0.00</div>
+                <div id="cofre-poupanca-fiscal" style="font-size: 10px; color: #5cb85c; margin-top: 4px;">Poupança gerada via exclusões: €0.00</div>
+            </div>
+
+        </div> <!-- FIM DO PAINEL FISCAL IRS -->
+
+        <!-- NOTA DE TRANSPARÊNCIA E SOBERANIA DE DADOS -->
         <div style="background-color: #161b22; border: 1px solid #30363d; border-left: 4px solid #e3b341; border-radius: 8px; padding: 16px 20px; margin-bottom: 20px; font-size: 13px; color: #c9d1d9; line-height: 1.6;">
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-weight: bold; color: #f0f2f5;">
                 🔒 Soberania Absoluta de Dados (Zero-Knowledge Architecture)
@@ -527,33 +552,9 @@
                 <div>📤 <strong>Porquê Importar?</strong> Para restaurares o teu inventário caso mudes de computador ou limpes os dados do navegador.</div>
             </div>
         </div>
-            
-            <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-                <div style="flex: 1; min-width: 200px; background: #0d1117; padding: 15px; border-radius: 6px; border: 1px solid #30363d; border-left: 4px solid #5cb85c;">
-                    <span style="font-size: 11px; color: #8b949e; text-transform: uppercase; font-weight: bold;">Lucro Líquido Fechado (PnL)</span><br>
-                    <span id="cofre-pnl" style="font-size: 22px; font-weight: 900; color: #c9d1d9;">0.00 €</span>
-                </div>
-                
-                <div style="flex: 1; min-width: 200px; background: #0d1117; padding: 15px; border-radius: 6px; border: 1px solid #30363d; border-left: 4px solid #d9534f;">
-                    <span class="dica-edu" style="font-size: 11px; color: #8b949e; text-transform: uppercase; font-weight: bold;">
-                        Provisão para IRS (28%)
-                        <span class="dica-texto" style="width: 280px; bottom: 150%;">
-                            O capital que não te pertence. Sempre que fechas um negócio com lucro, este valor deve ser psicologicamente e financeiramente isolado da tua banca disponível para operar.
-                        </span>
-                    </span><br>
-                    <span id="cofre-imposto" style="font-size: 22px; font-weight: 900; color: #d9534f;">0.00 €</span>
-                </div>
 
-                <div style="flex: 1; min-width: 200px; background: #0d1117; padding: 15px; border-radius: 6px; border: 1px solid #30363d; border-left: 4px solid #58a6ff;">
-                    <span class="dica-edu" style="font-size: 11px; color: #8b949e; text-transform: uppercase; font-weight: bold;">
-                        Exposição Aberta (Risco)
-                        <span class="dica-texto" style="width: 280px; bottom: 150%;">
-                            O capital total que tens atualmente "na mesa". Corresponde à soma do custo de aquisição de todas as posições que ainda não vendeste.
-                        </span>
-                    </span><br>
-                    <span id="cofre-exposicao" style="font-size: 22px; font-weight: 900; color: #58a6ff;">0.00 €</span>
-                </div>
-                <div style="background-color: #1c1e24; border: 1px solid #30363d; border-radius: 8px; padding: 15px 20px; margin-bottom: 25px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 15px;">
+        <!-- BOTÕES DE CONTROLO DE BACKUP LOCAL (JSON) -->
+        <div style="background-color: #1c1e24; border: 1px solid #30363d; border-radius: 8px; padding: 15px 20px; margin-bottom: 25px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 15px;">
             <div>
                 <span class="dica-edu" style="font-size: 13px; font-weight: bold; color: #f0f2f5;">
                     💾 Segurança e Backup do Cofre
@@ -574,7 +575,8 @@
                 </label>
             </div>
         </div>
-            </div>
+
+        <!-- REGISTO DE NOVA TRANSAÇÃO (O formulário que já tens vem logo a seguir a isto...) -->
         </div>
 
         <!-- REGISTO DE NOVA TRANSAÇÃO -->
@@ -2385,12 +2387,12 @@
         const ticker = document.getElementById('trade-ticker').value.trim().toUpperCase();
         const qtd = parseFloat(document.getElementById('trade-qtd').value);
         const precoOriginal = parseFloat(document.getElementById('trade-preco').value);
-        const custoOriginal = parseFloat(document.getElementById('trade-custo').value) || 0; // Se vazio, assume 0
+        const custoOriginal = parseFloat(document.getElementById('trade-custo').value) || 0;
         const moeda = document.getElementById('trade-moeda').value;
         let cambio = parseFloat(document.getElementById('trade-cambio').value) || 1.0;
 
         if (!data || !ticker || !qtd || !precoOriginal || qtd <= 0 || precoOriginal <= 0) {
-            alert("⚠️ Preenche a data, ticker, quantidade e preço com valores válidos.");
+            alert("⚠️ Preenche os campos obrigatórios corretamente.");
             return;
         }
 
@@ -2398,13 +2400,12 @@
         let custoEUR = custoOriginal / cambio;
 
         if (tipo === 'COMPRA') {
-            // A matemática de fundos: O custo da comissão dilui-se no preço de compra (aumenta o preço médio unitário real)
             let precoBaseEUR = precoOriginal / cambio;
             let precoEfetivoEUR = precoBaseEUR + (custoEUR / qtd);
             let precoEfetivoOriginal = precoOriginal + (custoOriginal / qtd);
 
             cofreAbertas.push({
-                id: Date.now(), // ID único para podermos apagar!
+                id: Date.now(),
                 data: data,
                 ticker: ticker,
                 qtdInicial: qtd,
@@ -2421,7 +2422,7 @@
             
             let qtdTotalEmArmazem = lotesDisponiveis.reduce((sum, l) => sum + l.qtdRestante, 0);
             if (qtd > qtdTotalEmArmazem) {
-                alert(`⚠️ Liquidação Impossível: Só tens ${qtdTotalEmArmazem} unidades de ${ticker} em armazém.`);
+                alert(`⚠️ Liquidação Impossível: Só tens ${qtdTotalEmArmazem} unidades.`);
                 return;
             }
 
@@ -2430,13 +2431,23 @@
             let detalhesCasamento = [];
             let precoVendaEUR = precoOriginal / cambio;
 
+            // Fatiador Fiscal (Guarda o PnL por maturidade temporal)
+            let pnlEscaloes = { sub1: 0, sub2: 0, sub5: 0, sub8: 0, plus8: 0 };
+
             for (let lote of lotesDisponiveis) {
                 if (qtdParaVender === 0) break;
 
                 let qtdDesteLote = Math.min(qtdParaVender, lote.qtdRestante);
-                
-                // Lucro = (Preço Venda EUR - Preço Efetivo Compra EUR) * Qtd
                 let pnlParcialEUR = (precoVendaEUR - lote.precoCompraEUR) * qtdDesteLote;
+                
+                // Cálculo de dias exatos detidos
+                let diasDetencao = (new Date(data) - new Date(lote.data)) / (1000 * 3600 * 24);
+
+                if (diasDetencao < 365) pnlEscaloes.sub1 += pnlParcialEUR;
+                else if (diasDetencao < 730) pnlEscaloes.sub2 += pnlParcialEUR;
+                else if (diasDetencao < 1825) pnlEscaloes.sub5 += pnlParcialEUR;
+                else if (diasDetencao < 2920) pnlEscaloes.sub8 += pnlParcialEUR;
+                else pnlEscaloes.plus8 += pnlParcialEUR;
                 
                 lote.qtdRestante -= qtdDesteLote;
                 qtdParaVender -= qtdDesteLote;
@@ -2446,18 +2457,18 @@
                 detalhesCasamento.push(`${simbolo}${lote.precoCompraOriginal.toFixed(2)}`);
             }
 
-            // Abate o custo/comissão de venda ao lucro final!
+            // Abate os custos na tipologia de mais curto prazo para ser conservador com a AT
             lucroTradeEUR -= custoEUR;
+            pnlEscaloes.sub1 -= custoEUR; 
 
             cofreFechadas.push({
                 id: Date.now(),
                 data: data,
                 ticker: ticker,
                 qtdVendida: qtd,
-                precoVendaOriginal: precoOriginal,
-                custoVendaOriginal: custoOriginal,
+                pnlEUR: lucroTradeEUR,
+                pnlEscaloes: pnlEscaloes, // Memória fiscal gravada no trade
                 moeda: moeda,
-                pnlEUR: lucroTradeEUR, 
                 detalhes: detalhesCasamento.join(" + ")
             });
         }
@@ -2476,7 +2487,7 @@
     // FUNÇÕES PARA APAGAR REGISTOS (O TEU "UNDO")
     // ==========================================
     function apagarLoteAberto(id) {
-        if(confirm("Tens a certeza que queres eliminar este lote do armazém?")) {
+        if(confirm("Eliminar este lote do armazém?")) {
             cofreAbertas = cofreAbertas.filter(lote => lote.id !== id);
             localStorage.setItem('cofreAbertas', JSON.stringify(cofreAbertas));
             atualizarCofre();
@@ -2484,7 +2495,7 @@
     }
 
     function apagarTradeFechado(id) {
-        if(confirm("Eliminar este trade do histórico? (Aviso: isto não repõe as ações no armazém. Terás de as registar de novo como Compra se quiseres repor o inventário.)")) {
+        if(confirm("Eliminar este trade do histórico?")) {
             cofreFechadas = cofreFechadas.filter(trade => trade.id !== id);
             localStorage.setItem('cofreFechadas', JSON.stringify(cofreFechadas));
             atualizarCofre();
@@ -2494,30 +2505,28 @@
     function atualizarCofre() {
         const tbodyAbertas = document.getElementById('tbody-abertas');
         const tbodyFechadas = document.getElementById('tbody-fechadas');
-        
         if (!tbodyAbertas || !tbodyFechadas) return;
 
         tbodyAbertas.innerHTML = '';
         tbodyFechadas.innerHTML = '';
         
-        let pnlTotalEUR = 0;
-        let exposicaoTotalEUR = 0;
-        let totalLotesAbertos = 0; // Novo contador
+        let pnlTotalGlobal = 0;
+        let balancoSub1 = 0, balancoSub2 = 0, balancoSub5 = 0, balancoSub8 = 0, balancoPlus8 = 0;
+        let totalLotesAbertos = 0;
 
         cofreAbertas.filter(l => l.qtdRestante > 0).forEach(lote => {
-            totalLotesAbertos++; // Incrementa o contador
+            totalLotesAbertos++;
             let capitalExpostoEUR = lote.qtdRestante * lote.precoCompraEUR;
-            exposicaoTotalEUR += capitalExpostoEUR;
             let simbolo = lote.moeda === 'USD' ? '$' : '€';
 
             tbodyAbertas.innerHTML += `
-                <tr style="border-bottom: 1px solid #30363d; transition: background 0.2s;">
+                <tr style="border-bottom: 1px solid #30363d;">
                     <td style="padding: 12px; color: #c9d1d9;"><strong>${lote.ticker}</strong> <span style="font-size: 10px; color: #8b949e; display: block;">${lote.data}</span></td>
                     <td style="padding: 12px; color: #8b949e; font-weight: bold;">${lote.qtdRestante.toFixed(4)}</td>
                     <td style="padding: 12px; color: #8b949e; font-family: monospace;">${simbolo}${lote.precoCompraOriginal.toFixed(2)}</td>
                     <td style="padding: 12px; color: #58a6ff; font-weight: bold;">€${capitalExpostoEUR.toFixed(2)}</td>
                     <td style="padding: 12px; text-align: center;">
-                        <button onclick="apagarLoteAberto(${lote.id})" style="background: transparent; border: none; cursor: pointer; font-size: 14px;" title="Eliminar Lote">🗑️</button>
+                        <button onclick="apagarLoteAberto(${lote.id})" style="background: transparent; border: none; cursor: pointer; font-size: 14px;">🗑️</button>
                     </td>
                 </tr>
             `;
@@ -2525,32 +2534,61 @@
 
         for (let i = cofreFechadas.length - 1; i >= 0; i--) {
             let trade = cofreFechadas[i];
-            pnlTotalEUR += trade.pnlEUR;
-            let simbolo = trade.moeda === 'USD' ? '$' : '€';
+            pnlTotalGlobal += trade.pnlEUR;
+            
+            // Reconstrução retroativa para evitar crash em trades da versão anterior
+            let fatias = trade.pnlEscaloes || { sub1: trade.pnlEUR, sub2: 0, sub5: 0, sub8: 0, plus8: 0 };
+            balancoSub1 += fatias.sub1;
+            balancoSub2 += fatias.sub2;
+            balancoSub5 += fatias.sub5;
+            balancoSub8 += fatias.sub8;
+            balancoPlus8 += fatias.plus8;
 
             let corPnl = trade.pnlEUR >= 0 ? '#5cb85c' : '#d9534f';
             let sinal = trade.pnlEUR >= 0 ? '+' : '';
             
             tbodyFechadas.innerHTML += `
-                <tr style="border-bottom: 1px solid #30363d; transition: background 0.2s;">
+                <tr style="border-bottom: 1px solid #30363d;">
                     <td style="padding: 12px; color: #c9d1d9;"><strong>${trade.ticker}</strong> <span style="font-size: 10px; color: #8b949e; display: block;">${trade.data}</span></td>
                     <td style="padding: 12px; color: #8b949e; font-weight: bold;">${trade.qtdVendida.toFixed(4)}</td>
                     <td style="padding: 12px; color: ${corPnl}; font-weight: 900;">${sinal}€${trade.pnlEUR.toFixed(2)}</td>
                     <td style="padding: 12px; text-align: center;">
-                        <button onclick="apagarTradeFechado(${trade.id})" style="background: transparent; border: none; cursor: pointer; font-size: 14px;" title="Eliminar Trade">🗑️</button>
+                        <button onclick="apagarTradeFechado(${trade.id})" style="background: transparent; border: none; cursor: pointer; font-size: 14px;">🗑️</button>
                     </td>
                 </tr>
             `;
         }
 
-        let impostoEUR = pnlTotalEUR > 0 ? pnlTotalEUR * 0.28 : 0;
+        // MOTOR TRIBUTÁRIO AT PORTUGAL
+        let baseTributavelGlobal = 0;
+        let pnlLongoPrazoBruto = balancoSub2 + balancoSub5 + balancoSub8 + balancoPlus8;
 
-        document.getElementById('cofre-pnl').innerText = `€${pnlTotalEUR.toFixed(2)}`;
-        document.getElementById('cofre-pnl').style.color = pnlTotalEUR >= 0 ? '#5cb85c' : '#d9534f';
-        document.getElementById('cofre-imposto').innerText = `€${impostoEUR.toFixed(2)}`;
-        document.getElementById('cofre-exposicao').innerText = `€${exposicaoTotalEUR.toFixed(2)}`;
+        if (pnlTotalGlobal > 0) {
+            // A AT permite abater prejuízos globalmente. As exclusões operam apenas sobre os ganhos faturados nas fatias maturadas.
+            baseTributavelGlobal += Math.max(0, balancoSub1); // Sem exclusão
+            baseTributavelGlobal += Math.max(0, balancoSub2); // Sem exclusão
+            baseTributavelGlobal += Math.max(0, balancoSub5) * 0.90; // Exclui 10%
+            baseTributavelGlobal += Math.max(0, balancoSub8) * 0.80; // Exclui 20%
+            baseTributavelGlobal += Math.max(0, balancoPlus8) * 0.70; // Exclui 30%
+        }
 
-        // NOVO: Atualiza o texto dos contadores no HTML
+        let impostoTotal = pnlTotalGlobal > 0 ? baseTributavelGlobal * 0.28 : 0;
+        let impostoSemBeneficios = pnlTotalGlobal > 0 ? pnlTotalGlobal * 0.28 : 0;
+        let poupancaAbsoluta = impostoSemBeneficios - impostoTotal;
+
+        // Atualização Visual Dinâmica
+        document.getElementById('cofre-pnl').innerText = `€${pnlTotalGlobal.toFixed(2)}`;
+        document.getElementById('cofre-pnl').style.color = pnlTotalGlobal >= 0 ? '#5cb85c' : '#d9534f';
+        
+        document.getElementById('cofre-curto-prazo').innerText = `€${balancoSub1.toFixed(2)}`;
+        document.getElementById('cofre-curto-prazo').style.color = balancoSub1 >= 0 ? '#d9534f' : '#5cb85c'; // Vermelho se ganho (alerta risco)
+
+        document.getElementById('cofre-longo-prazo').innerText = `€${pnlLongoPrazoBruto.toFixed(2)}`;
+        document.getElementById('cofre-longo-prazo').style.color = pnlLongoPrazoBruto >= 0 ? '#5cb85c' : '#8b949e';
+
+        document.getElementById('cofre-imposto').innerText = `€${impostoTotal.toFixed(2)}`;
+        document.getElementById('cofre-poupanca-fiscal').innerText = `Poupança gerada via exclusões: €${poupancaAbsoluta.toFixed(2)}`;
+
         document.getElementById('contador-abertas').innerText = `${totalLotesAbertos} Lote${totalLotesAbertos !== 1 ? 's' : ''}`;
         document.getElementById('contador-fechadas').innerText = `${cofreFechadas.length} Trade${cofreFechadas.length !== 1 ? 's' : ''}`;
     }
