@@ -2682,9 +2682,14 @@
         const labelsGrafico = Object.keys(alocacaoTicker);
         const valoresGrafico = Object.values(alocacaoTicker);
 
-        // Cria a legenda com o valor em Euros
+        // 1. Calcula o total de capital para apurar a percentagem
+        const totalCapital = valoresGrafico.reduce((soma, valor) => soma + valor, 0);
+
+        // 2. Cria a legenda com Ticker, Percentagem e Valor em Euros
         const legendasEnriquecidas = labelsGrafico.map((ticker, index) => {
-            return `${ticker} (€${valoresGrafico[index].toFixed(2)})`;
+            const valor = valoresGrafico[index];
+            const percentagem = totalCapital > 0 ? ((valor / totalCapital) * 100).toFixed(1) : 0;
+            return `${ticker} (${percentagem}%) - €${valor.toFixed(2)}`;
         });
 
         if (labelsGrafico.length > 0) {
@@ -2692,13 +2697,13 @@
             
             var dataPie = [{
                 values: valoresGrafico,
-                labels: legendasEnriquecidas, // Alimenta a legenda lateral com Ticker + €
-                text: labelsGrafico,          // Alimenta o interior da fatia apenas com o Ticker
+                labels: legendasEnriquecidas, // Legenda com Ticker + % + €
+                text: labelsGrafico,          // Interior da fatia só com o Ticker
                 type: 'pie',
                 hole: 0.45, 
-                textinfo: 'text+percent',     // Força a mostrar o texto interno + percentagem
-                textposition: 'inside',       // Mantém o texto dentro das fatias
-                hoverinfo: 'label+percent',
+                textinfo: 'text+percent',     
+                textposition: 'inside',       
+                hoverinfo: 'label',
                 marker: {
                     colors: ['#58a6ff', '#5cb85c', '#f28b24', '#d9534f', '#b388ff', '#00ffcc', '#e3b341', '#8e44ad', '#3498db']
                 }
