@@ -494,25 +494,29 @@ def api_cambio(data):
     import pandas as pd
     
     try:
-        # Alarga a janela de busca para trás (10 dias) para apanhar sempre o último fecho válido (ignora fins de semana)
-        data_fim = pd.to_datetime(data) + pd.Timedelta(days=1)
-        data_inicio = data_fim - pd.Timedelta(days=10)
+        # 1. Lê a data enviada pelo HTML (ex: 2025-06-17)
+        data_alvo = pd.to_datetime(data)
         
-        df = yf.download("EURUSD=X", start=data_inicio.strftime('%Y-%m-%d'), end=data_fim.strftime('%Y-%m-%d'), progress=False)
+        # 2. Abre uma janela de 7 dias para trás para garantir que apanha fins de semana/feriados
+        data_inicio = data_alvo - pd.Timedelta(days=7)
+        data_fim = data_alvo + pd.Timedelta(days=1)
         
-        if df.empty or 'Close' not in df.columns:
+        # 3. MUDANÇA CRÍTICA: Usa .history() em vez de .download(). É 100% fiável para extrações únicas.
+        motor_cambio = yf.Ticker("EURUSD=X")
+        df = motor_cambio.history(start=data_inicio.strftime('%Y-%m-%d'), end=data_fim.strftime('%Y-%m-%d'))
+        
+        if df.empty:
+            print(f"Aviso: Yahoo não devolveu dados de câmbio para {data}")
             return jsonify({"cambio": 1.08})
             
-        # Pega no último valor válido da série temporal obtida
-        serie_limpa = df['Close'].dropna()
-        if serie_limpa.empty:
-            return jsonify({"cambio": 1.08})
-            
-        taxa = float(serie_limpa.iloc[-1])
+        # 4. Extrai o último fecho válido antes ou no próprio dia
+        taxa = float(df['Close'].dropna().iloc[-1])
+        
+        # 5. O BCE usa tipicamente 4 casas decimais para o par EUR/USD
         return jsonify({"cambio": round(taxa, 4)})
         
     except Exception as e:
-        print(f"Erro no câmbio: {str(e)}")
+        print(f"Erro grave no motor de câmbio: {str(e)}")
         return jsonify({"cambio": 1.08}), 500
 
 @app.route('/api/universo')
