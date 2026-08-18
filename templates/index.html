@@ -601,6 +601,13 @@
             </div>
         </div>
 
+        <!-- 📊 NOVO: GRÁFICO DE ALOCAÇÃO DE PORTEFÓLIO -->
+        <div id="painel-grafico-alocacao" style="background-color: #1c1e24; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-bottom: 25px; display: none;">
+            <h4 style="margin: 0 0 10px 0; color: #8b949e; font-size: 13px; text-transform: uppercase;">📊 Distribuição de Capital Exposto</h4>
+            <div id="grafico-distribuicao" style="width: 100%; height: 250px;"></div>
+        </div>
+
+            
         <!-- REGISTO DE NOVA TRANSAÇÃO (O formulário que já tens vem logo a seguir a isto...) -->
         
 
@@ -2547,11 +2554,22 @@
         
         // Memória de carteiras para o dropdown automático
         let carteirasUnicas = new Set(); 
+        let alocacaoTicker = {}; // NOVO: Guarda os totais por Ticker para o gráfico
 
         cofreAbertas.filter(l => l.qtdRestante > 0).forEach(lote => {
             totalLotesAbertos++;
             let capitalExpostoEUR = lote.qtdRestante * lote.precoCompraEUR;
             exposicaoTotalEUR += capitalExpostoEUR;
+
+            // NOVO: Agrega o capital por ticker
+            if (alocacaoTicker[lote.ticker]) {
+                alocacaoTicker[lote.ticker] += capitalExpostoEUR;
+            } else {
+                alocacaoTicker[lote.ticker] = capitalExpostoEUR;
+            }
+            
+            let simbolo = lote.moeda === 'USD' ? '$' : '€';
+            
             let simbolo = lote.moeda === 'USD' ? '$' : '€';
             
             let nomeCarteira = lote.carteira || "Geral";
@@ -2655,6 +2673,43 @@
 
         document.getElementById('contador-abertas').innerText = `${totalLotesAbertos} Lote${totalLotesAbertos !== 1 ? 's' : ''}`;
         document.getElementById('contador-fechadas').innerText = `${cofreFechadas.length} Trade${cofreFechadas.length !== 1 ? 's' : ''}`;
+    
+    // ==========================================
+        // RENDERIZAÇÃO DO GRÁFICO CIRCULAR (PLOTLY)
+        // ==========================================
+        const painelGrafico = document.getElementById('painel-grafico-alocacao');
+        const labelsGrafico = Object.keys(alocacaoTicker);
+        const valoresGrafico = Object.values(alocacaoTicker);
+
+        if (labelsGrafico.length > 0) {
+            painelGrafico.style.display = 'block';
+            
+            var dataPie = [{
+                values: valoresGrafico,
+                labels: labelsGrafico,
+                type: 'pie',
+                hole: 0.45, // Transforma num gráfico Donut (mais legível e moderno)
+                textinfo: 'percent+label',
+                textposition: 'inside',
+                hoverinfo: 'label+value+percent',
+                marker: {
+                    colors: ['#58a6ff', '#5cb85c', '#f28b24', '#d9534f', '#b388ff', '#00ffcc', '#e3b341', '#8e44ad', '#3498db']
+                }
+            }];
+
+            var layoutPie = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                margin: { l: 10, r: 10, t: 10, b: 10 },
+                showlegend: true,
+                legend: { font: { color: '#8b949e' } }
+            };
+
+            Plotly.newPlot('grafico-distribuicao', dataPie, layoutPie, {responsive: true, displayModeBar: false});
+        } else {
+            // Esconde o painel se a carteira estiver 100% líquida
+            painelGrafico.style.display = 'none'; 
+        }
     }
     // ==========================================
     // MOTOR DE BACKUP LOCAL (EXPORTAR / IMPORTAR)
