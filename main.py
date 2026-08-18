@@ -487,6 +487,30 @@ def api_backtest(ticker):
     except Exception as e:
         return jsonify({"erro": str(e)}), 500
 
+
+@app.route('/api/cambio/<data>')
+def api_cambio(data):
+    import yfinance as yf
+    import pandas as pd
+    
+    try:
+        # Pede os dados do par EURUSD=X à volta da data pretendida
+        # Adicionamos um pequeno buffer de dias para garantir fins de semana/feriados
+        data_inicio = pd.to_datetime(data) - pd.Timedelta(days=5)
+        data_fim = pd.to_datetime(data) + pd.Timedelta(days=1)
+        
+        df = yf.download("EURUSD=X", start=data_inicio.strftime('%Y-%m-%d'), end=data_fim.strftime('%Y-%m-%d'), progress=False)
+        
+        if df.empty:
+            return jsonify({"cambio": 1.08}) # Valor por defeito de segurança se falhar
+            
+        # Pega no fecho mais próximo da data solicitada
+        taxa = float(df['Close'].dropna().iloc[-1])
+        
+        return jsonify({"cambio": round(taxa, 4)})
+    except Exception as e:
+        return jsonify({"cambio": 1.08}), 500
+
 @app.route('/api/universo')
 def api_universo():
     import yfinance as yf
