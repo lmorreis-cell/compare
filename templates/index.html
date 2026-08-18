@@ -616,11 +616,15 @@
                     <option value="VENDA">VENDA</option>
                 </select>
                 
+                <!-- NOVO CAMPO: CARTEIRA (Com memória automática) -->
+                <input list="lista-carteiras" id="trade-carteira" class="input-moderno" placeholder="Carteira (ex: XTB)" style="max-width: 120px;">
+                <datalist id="lista-carteiras">
+                    <!-- O Javascript vai injetar as tuas corretoras aqui -->
+                </datalist>
+
                 <input type="text" id="trade-ticker" class="input-moderno" placeholder="Ticker" style="max-width: 90px; text-transform: uppercase;">
                 <input type="number" id="trade-qtd" class="input-moderno" placeholder="Qtd" step="0.0001" style="max-width: 80px;">
                 <input type="number" id="trade-preco" class="input-moderno" placeholder="Preço" step="0.01" style="max-width: 80px;">
-                
-                <!-- NOVO CAMPO: CUSTOS/COMISSÕES -->
                 <input type="number" id="trade-custo" class="input-moderno" placeholder="Custos" step="0.01" style="max-width: 80px; border-color: #d9534f;" title="Comissões da corretora e taxas de bolsa">
 
                 <select id="trade-moeda" class="input-moderno" style="max-width: 90px; font-weight: bold; color: #e3b341;" onchange="controlarCampoCambio(); buscarCambioAutomatico();">
@@ -2409,6 +2413,7 @@
     function adicionarTrade() {
         const data = document.getElementById('trade-data').value;
         const tipo = document.getElementById('trade-tipo').value;
+        const carteira = document.getElementById('trade-carteira').value.trim(); // NOVO
         const ticker = document.getElementById('trade-ticker').value.trim().toUpperCase();
         const qtd = parseFloat(document.getElementById('trade-qtd').value);
         const precoOriginal = parseFloat(document.getElementById('trade-preco').value);
@@ -2416,8 +2421,8 @@
         const moeda = document.getElementById('trade-moeda').value;
         let cambio = parseFloat(document.getElementById('trade-cambio').value) || 1.0;
 
-        if (!data || !ticker || !qtd || !precoOriginal || qtd <= 0 || precoOriginal <= 0) {
-            alert("⚠️ Preenche os campos obrigatórios corretamente.");
+        if (!data || !ticker || !carteira || !qtd || !precoOriginal || qtd <= 0 || precoOriginal <= 0) {
+            alert("⚠️ Preenche todos os campos (incluindo a Carteira) corretamente.");
             return;
         }
 
@@ -2432,6 +2437,7 @@
             cofreAbertas.push({
                 id: Date.now(),
                 data: data,
+                carteira: carteira, // GRAVA A CARTEIRA
                 ticker: ticker,
                 qtdInicial: qtd,
                 qtdRestante: qtd,
@@ -2443,11 +2449,12 @@
             cofreAbertas.sort((a, b) => new Date(a.data) - new Date(b.data));
         } 
         else if (tipo === 'VENDA') {
-            let lotesDisponiveis = cofreAbertas.filter(l => l.ticker === ticker && l.qtdRestante > 0);
+            // NOVO: O FIFO agora cruza Ticker + Carteira!
+            let lotesDisponiveis = cofreAbertas.filter(l => l.ticker === ticker && l.carteira === carteira && l.qtdRestante > 0);
             
             let qtdTotalEmArmazem = lotesDisponiveis.reduce((sum, l) => sum + l.qtdRestante, 0);
             if (qtd > qtdTotalEmArmazem) {
-                alert(`⚠️ Liquidação Impossível: Só tens ${qtdTotalEmArmazem} unidades.`);
+                alert(`⚠️ Liquidação Impossível: Só tens ${qtdTotalEmArmazem} unidades de ${ticker} na carteira [${carteira}].`);
                 return;
             }
 
@@ -2455,8 +2462,6 @@
             let qtdParaVender = qtd;
             let detalhesCasamento = [];
             let precoVendaEUR = precoOriginal / cambio;
-
-            // Fatiador Fiscal (Guarda o PnL por maturidade temporal)
             let pnlEscaloes = { sub1: 0, sub2: 0, sub5: 0, sub8: 0, plus8: 0 };
 
             for (let lote of lotesDisponiveis) {
@@ -2465,7 +2470,6 @@
                 let qtdDesteLote = Math.min(qtdParaVender, lote.qtdRestante);
                 let pnlParcialEUR = (precoVendaEUR - lote.precoCompraEUR) * qtdDesteLote;
                 
-                // Cálculo de dias exatos detidos
                 let diasDetencao = (new Date(data) - new Date(lote.data)) / (1000 * 3600 * 24);
 
                 if (diasDetencao < 365) pnlEscaloes.sub1 += pnlParcialEUR;
@@ -2482,17 +2486,17 @@
                 detalhesCasamento.push(`${simbolo}${lote.precoCompraOriginal.toFixed(2)}`);
             }
 
-            // Abate os custos na tipologia de mais curto prazo para ser conservador com a AT
             lucroTradeEUR -= custoEUR;
             pnlEscaloes.sub1 -= custoEUR; 
 
             cofreFechadas.push({
                 id: Date.now(),
                 data: data,
+                carteira: carteira, // GRAVA A CARTEIRA
                 ticker: ticker,
                 qtdVendida: qtd,
                 pnlEUR: lucroTradeEUR,
-                pnlEscaloes: pnlEscaloes, // Memória fiscal gravada no trade
+                pnlEscaloes: pnlEscaloes,
                 moeda: moeda,
                 detalhes: detalhesCasamento.join(" + ")
             });
@@ -2508,6 +2512,7 @@
         atualizarCofre();
     }
 
+    
     // ==========================================
     // FUNÇÕES PARA APAGAR REGISTOS (O TEU "UNDO")
     // ==========================================
@@ -2538,17 +2543,26 @@
         let pnlTotalGlobal = 0;
         let balancoSub1 = 0, balancoSub2 = 0, balancoSub5 = 0, balancoSub8 = 0, balancoPlus8 = 0;
         let totalLotesAbertos = 0;
-        let exposicaoTotalEUR = 0; // Recuperação da variável de exposição
+        let exposicaoTotalEUR = 0;
+        
+        // Memória de carteiras para o dropdown automático
+        let carteirasUnicas = new Set(); 
 
         cofreAbertas.filter(l => l.qtdRestante > 0).forEach(lote => {
             totalLotesAbertos++;
             let capitalExpostoEUR = lote.qtdRestante * lote.precoCompraEUR;
             exposicaoTotalEUR += capitalExpostoEUR;
             let simbolo = lote.moeda === 'USD' ? '$' : '€';
+            
+            let nomeCarteira = lote.carteira || "Geral";
+            carteirasUnicas.add(nomeCarteira);
 
             tbodyAbertas.innerHTML += `
                 <tr style="border-bottom: 1px solid #30363d;">
-                    <td style="padding: 12px; color: #c9d1d9;"><strong>${lote.ticker}</strong> <span style="font-size: 10px; color: #8b949e; display: block;">${lote.data}</span></td>
+                    <td style="padding: 12px; color: #c9d1d9;">
+                        <strong>${lote.ticker}</strong> 
+                        <span style="font-size: 10px; color: #8b949e; display: block;">${lote.data} • <span style="color: #e3b341;">[${nomeCarteira}]</span></span>
+                    </td>
                     <td style="padding: 12px; color: #8b949e; font-weight: bold;">${lote.qtdRestante.toFixed(4)}</td>
                     <td style="padding: 12px; color: #8b949e; font-family: monospace;">${simbolo}${lote.precoCompraOriginal.toFixed(2)}</td>
                     <td style="padding: 12px; color: #58a6ff; font-weight: bold;">€${capitalExpostoEUR.toFixed(2)}</td>
@@ -2572,10 +2586,15 @@
 
             let corPnl = trade.pnlEUR >= 0 ? '#5cb85c' : '#d9534f';
             let sinal = trade.pnlEUR >= 0 ? '+' : '';
+            let nomeCarteira = trade.carteira || "Geral";
+            carteirasUnicas.add(nomeCarteira);
             
             tbodyFechadas.innerHTML += `
                 <tr style="border-bottom: 1px solid #30363d;">
-                    <td style="padding: 12px; color: #c9d1d9;"><strong>${trade.ticker}</strong> <span style="font-size: 10px; color: #8b949e; display: block;">${trade.data}</span></td>
+                    <td style="padding: 12px; color: #c9d1d9;">
+                        <strong>${trade.ticker}</strong> 
+                        <span style="font-size: 10px; color: #8b949e; display: block;">${trade.data} • <span style="color: #e3b341;">[${nomeCarteira}]</span></span>
+                    </td>
                     <td style="padding: 12px; color: #8b949e; font-weight: bold;">${trade.qtdVendida.toFixed(4)}</td>
                     <td style="padding: 12px; color: ${corPnl}; font-weight: 900;">${sinal}€${trade.pnlEUR.toFixed(2)}</td>
                     <td style="padding: 12px; text-align: center;">
@@ -2583,6 +2602,12 @@
                     </td>
                 </tr>
             `;
+        }
+
+        // NOVO: Atualiza a lista de opções de carteiras no formulário
+        const dataList = document.getElementById('lista-carteiras');
+        if (dataList) {
+            dataList.innerHTML = Array.from(carteirasUnicas).map(c => `<option value="${c}">`).join('');
         }
 
         // MOTOR TRIBUTÁRIO AT PORTUGAL
@@ -2602,40 +2627,29 @@
             baseTributavelGlobal = lucroCurtoPrazo + baseLongoPrazo;
         }
 
-        // 1. Cenário Base (28%)
         let impostoTotal = pnlTotalGlobal > 0 ? baseTributavelGlobal * 0.28 : 0;
         let impostoSemBeneficios = pnlTotalGlobal > 0 ? pnlTotalGlobal * 0.28 : 0;
         let poupancaAbsoluta = impostoSemBeneficios - impostoTotal;
 
-        // 2. Cenário Pior: Englobamento (Curto prazo a 48% + Longo Prazo a 28%)
         let impostoEnglobado = 0;
         let poupancaEnglobamento = 0;
         
         if (pnlTotalGlobal > 0) {
             impostoEnglobado = (lucroCurtoPrazo * 0.48) + (baseLongoPrazo * 0.28);
-            
-            // A poupança aqui é a diferença entre ser taxado cegamente a 48% em TUDO, 
-            // versus a salvação de teres passado parte do lucro para o escudo dos 28% com exclusões.
             let impostoCaotico = pnlTotalGlobal * 0.48;
             poupancaEnglobamento = impostoCaotico - impostoEnglobado;
         }
 
-        // Atualização Visual Dinâmica
         document.getElementById('cofre-exposicao').innerText = `€${exposicaoTotalEUR.toFixed(2)}`;
-        
         document.getElementById('cofre-pnl').innerText = `€${pnlTotalGlobal.toFixed(2)}`;
         document.getElementById('cofre-pnl').style.color = pnlTotalGlobal >= 0 ? '#5cb85c' : '#d9534f';
-        
         document.getElementById('cofre-curto-prazo').innerText = `€${balancoSub1.toFixed(2)}`;
         document.getElementById('cofre-curto-prazo').style.color = balancoSub1 >= 0 ? '#d9534f' : '#5cb85c'; 
-
         document.getElementById('cofre-longo-prazo').innerText = `€${pnlLongoPrazoBruto.toFixed(2)}`;
         document.getElementById('cofre-longo-prazo').style.color = pnlLongoPrazoBruto >= 0 ? '#5cb85c' : '#8b949e';
-
         document.getElementById('cofre-imposto').innerText = `€${impostoTotal.toFixed(2)}`;
         document.getElementById('cofre-imposto-englobado').innerText = `€${impostoEnglobado.toFixed(2)}`;
         
-        // Injeção da Dupla Poupança
         document.getElementById('cofre-poupanca-base').innerText = `+ €${poupancaAbsoluta.toFixed(2)}`;
         document.getElementById('cofre-poupanca-englobado').innerText = `+ €${poupancaEnglobamento.toFixed(2)}`;
 
