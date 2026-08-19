@@ -2769,15 +2769,25 @@
                 let baseLongo = Math.max(0, dados.sub2) + (Math.max(0, dados.sub5) * 0.9) + (Math.max(0, dados.sub8) * 0.8) + (Math.max(0, dados.plus8) * 0.7);
                 let baseTributavel = dados.pnlTotal > 0 ? lucroCurto + baseLongo : 0;
                 
+                // 1. Cenário 28%
                 let impostoSemIsencoes = dados.pnlTotal > 0 ? dados.pnlTotal * 0.28 : 0;
                 let impostoReal = dados.pnlTotal > 0 ? baseTributavel * 0.28 : 0;
                 let poupancaGerada = impostoSemIsencoes - impostoReal;
+                
+                // 2. Cenário Englobamento 48%
+                let impostoEnglobado = 0;
+                let poupancaEnglobamento = 0;
+                if (dados.pnlTotal > 0) {
+                    impostoEnglobado = (lucroCurto * 0.48) + (baseLongo * 0.28);
+                    let impostoCaotico = dados.pnlTotal * 0.48;
+                    poupancaEnglobamento = impostoCaotico - impostoEnglobado;
+                }
                 
                 let corPnl = dados.pnlTotal >= 0 ? '#5cb85c' : '#d9534f';
                 let sinal = dados.pnlTotal > 0 ? '+' : '';
 
                 htmlAnos += `
-                    <div style="flex: 1; min-width: 130px; background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 12px; display: flex; flex-direction: column;">
+                    <div style="flex: 1; min-width: 140px; background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 12px; display: flex; flex-direction: column;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                             <span style="font-weight: 900; font-size: 15px; color: #c9d1d9;">${ano}</span>
                         </div>
@@ -2785,15 +2795,28 @@
                             <div style="font-size: 9px; color: #8b949e; text-transform: uppercase; margin-bottom: 2px;">PnL Fechado</div>
                             <div style="font-size: 15px; font-weight: bold; color: ${corPnl};">${sinal}€${dados.pnlTotal.toFixed(2)}</div>
                         </div>
-                        <div style="border-top: 1px dashed #30363d; padding-top: 8px; display: flex; flex-direction: column; gap: 4px;">
+                        <div style="border-top: 1px dashed #30363d; padding-top: 8px; display: flex; flex-direction: column; gap: 2px;">
+                            
+                            <!-- Bloco 28% -->
                             <div style="display: flex; justify-content: space-between;">
-                                <span style="font-size: 10px; color: #8b949e;">IRS (28%):</span>
+                                <span style="font-size: 10px; color: #8b949e;">IRS Base (28%):</span>
                                 <span style="font-size: 10px; color: #d9534f; font-weight: bold;">€${impostoReal.toFixed(2)}</span>
                             </div>
-                            <div style="display: flex; justify-content: space-between;">
-                                <span style="font-size: 10px; color: #8b949e;">Exclusões:</span>
-                                <span style="font-size: 10px; color: #5cb85c; font-weight: bold;">+€${poupancaGerada.toFixed(2)}</span>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                <span style="font-size: 9px; color: #8b949e;">↳ Exclusões:</span>
+                                <span style="font-size: 9px; color: #5cb85c; font-weight: bold;">+€${poupancaGerada.toFixed(2)}</span>
                             </div>
+
+                            <!-- Bloco 48% -->
+                            <div style="display: flex; justify-content: space-between; border-top: 1px dotted #30363d; padding-top: 4px;">
+                                <span style="font-size: 10px; color: #8b949e;">IRS Englob. (48%):</span>
+                                <span style="font-size: 10px; color: #e3b341; font-weight: bold;">€${impostoEnglobado.toFixed(2)}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="font-size: 9px; color: #8b949e;">↳ Escudo L/P:</span>
+                                <span style="font-size: 9px; color: #5cb85c; font-weight: bold;">+€${poupancaEnglobamento.toFixed(2)}</span>
+                            </div>
+
                         </div>
                     </div>
                 `;
