@@ -603,10 +603,22 @@
 
         <!-- 📊 NOVO: GRÁFICO DE ALOCAÇÃO DE PORTEFÓLIO -->
         <div id="painel-grafico-alocacao" style="background-color: #1c1e24; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-bottom: 25px; display: none;">
-            <h4 style="margin: 0 0 10px 0; color: #8b949e; font-size: 13px; text-transform: uppercase;">📊 Distribuição de Capital Exposto</h4>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                <h4 style="margin: 0; color: #8b949e; font-size: 13px; text-transform: uppercase;">📊 Distribuição da Carteira</h4>
+                
+                <div style="display: flex; gap: 5px; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 2px;">
+                    <button id="btn-grafico-custo" onclick="mudarModoGrafico('custo')" style="background: #232d3f; color: #58a6ff; border: none; padding: 6px 14px; font-size: 11px; font-weight: bold; cursor: pointer; border-radius: 4px; transition: all 0.2s;">Risco Inicial (Custo)</button>
+                    <button id="btn-grafico-atual" onclick="mudarModoGrafico('atual')" style="background: transparent; color: #8b949e; border: none; padding: 6px 14px; font-size: 11px; font-weight: bold; cursor: pointer; border-radius: 4px; transition: all 0.2s;">Deriva de Mercado (Live)</button>
+                </div>
+            </div>
+
+            <div id="loading-grafico" style="display: none; text-align: center; color: #e3b341; font-size: 12px; padding: 30px; font-weight: bold;">
+                📡 A sincronizar cotações institucionais de mercado...
+            </div>
+            
             <div id="grafico-distribuicao" style="width: 100%; height: 250px;"></div>
         </div>
-
             
         <!-- REGISTO DE NOVA TRANSAÇÃO (O formulário que já tens vem logo a seguir a isto...) -->
         
@@ -2684,17 +2696,38 @@
         document.getElementById('contador-fechadas').innerText = `${cofreFechadas.length} Trade${cofreFechadas.length !== 1 ? 's' : ''}`;
     
    
-        // ==========================================
+        /// ==========================================
         // RENDERIZAÇÃO DO GRÁFICO CIRCULAR (PLOTLY)
         // ==========================================
         const painelGrafico = document.getElementById('painel-grafico-alocacao');
-        const labelsGrafico = Object.keys(alocacaoTicker);
-        const valoresGrafico = Object.values(alocacaoTicker);
+        let labelsGrafico = [];
+        let valoresGrafico = [];
 
-        // 1. Calcula o total de capital para apurar a percentagem
+        if (modoGraficoAlocacao === 'custo') {
+            labelsGrafico = Object.keys(alocacaoTicker);
+            valoresGrafico = Object.values(alocacaoTicker);
+        } else {
+            // MODO: DERIVA DE MERCADO (LIVE)
+            let alocacaoMarket = {};
+            cofreAbertas.filter(l => l.qtdRestante > 0).forEach(lote => {
+                // Se a API falhou a buscar o preço, a máquina defende-se usando o preço de compra
+                let precoMercadoOriginal = cachePrecosAtuais[lote.ticker] || lote.precoCompraOriginal; 
+                
+                // Converte a cotação americana de hoje de volta para Euros
+                let valorMercadoEUR = (lote.qtdRestante * precoMercadoOriginal) / lote.cambio; 
+                
+                if (alocacaoMarket[lote.ticker]) {
+                    alocacaoMarket[lote.ticker] += valorMercadoEUR;
+                } else {
+                    alocacaoMarket[lote.ticker] = valorMercadoEUR;
+                }
+            });
+            labelsGrafico = Object.keys(alocacaoMarket);
+            valoresGrafico = Object.values(alocacaoMarket);
+        }
+
+        // Matemática da Legenda
         const totalCapital = valoresGrafico.reduce((soma, valor) => soma + valor, 0);
-
-        // 2. Cria a legenda com Ticker, Percentagem e Valor em Euros
         const legendasEnriquecidas = labelsGrafico.map((ticker, index) => {
             const valor = valoresGrafico[index];
             const percentagem = totalCapital > 0 ? ((valor / totalCapital) * 100).toFixed(1) : 0;
@@ -2703,11 +2736,12 @@
 
         if (labelsGrafico.length > 0) {
             painelGrafico.style.display = 'block';
+            document.getElementById('grafico-distribuicao').style.display = 'block'; // Garante que volta a aparecer após o loading
             
             var dataPie = [{
                 values: valoresGrafico,
-                labels: legendasEnriquecidas, // Legenda com Ticker + % + €
-                text: labelsGrafico,          // Interior da fatia só com o Ticker
+                labels: legendasEnriquecidas,
+                text: labelsGrafico,
                 type: 'pie',
                 hole: 0.45, 
                 textinfo: 'text+percent',     
@@ -2920,6 +2954,45 @@
             console.error("Erro ao obter câmbio automático:", erro);
             inputCambio.value = 1.08;
         }
+    }
+    // ==========================================
+    // ESTADO E MOTOR DO GRÁFICO DE ALOCAÇÃO
+    // ==========================================
+    let modoGraficoAlocacao = 'custo';
+    let cachePrecosAtuais = {};
+
+    async function mudarModoGrafico(modo) {
+        modoGraficoAlocacao = modo;
+        
+        // Lógica visual dos botões
+        document.getElementById('btn-grafico-custo').style.background = modo === 'custo' ? '#232d3f' : 'transparent';
+        document.getElementById('btn-grafico-custo').style.color = modo === 'custo' ? '#58a6ff' : '#8b949e';
+        document.getElementById('btn-grafico-atual').style.background = modo === 'atual' ? '#232d3f' : 'transparent';
+        document.getElementById('btn-grafico-atual').style.color = modo === 'atual' ? '#58a6ff' : '#8b949e';
+
+        if (modo === 'atual') {
+            document.getElementById('grafico-distribuicao').style.display = 'none';
+            document.getElementById('loading-grafico').style.display = 'block';
+            
+            // Varre o armazém para ver que ações temos abertas
+            let tickersAbertos = [...new Set(cofreAbertas.filter(l => l.qtdRestante > 0).map(l => l.ticker))];
+            
+            // Só vai à internet buscar os preços que ainda não estão gravados no Cache
+            for (let t of tickersAbertos) {
+                if (!cachePrecosAtuais[t]) {
+                    try {
+                        let resposta = await fetch(`/api/cotacao/${t}`);
+                        if(resposta.ok) {
+                            let dados = await resposta.json();
+                            cachePrecosAtuais[t] = dados.preco;
+                        }
+                    } catch(e) { console.error("Falha ao atualizar cotação de:", t); }
+                }
+            }
+            document.getElementById('loading-grafico').style.display = 'none';
+        }
+        
+        atualizarCofre(); // Força o redesenho com as novas regras
     }
 </script>
 
