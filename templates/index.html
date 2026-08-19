@@ -2731,12 +2731,14 @@
             painelGrafico.style.display = 'none'; 
         }
         // ==========================================
-        // MOTOR DO HISTÓRICO FISCAL (ÚLTIMOS 5 ANOS)
+        // MOTOR DO HISTÓRICO FISCAL (ÚLTIMOS 4 ANOS FECHADOS)
         // ==========================================
         const painelAnos = document.getElementById('painel-anos-fiscais');
         if (painelAnos) {
             const anoAtual = new Date().getFullYear();
-            const anos = [anoAtual, anoAtual - 1, anoAtual - 2, anoAtual - 3, anoAtual - 4];
+            
+            // Oculta o ano atual (já está no topo) e foca apenas nos 4 anos de auditoria fechados
+            const anos = [anoAtual - 1, anoAtual - 2, anoAtual - 3, anoAtual - 4];
             let agrupamentoAnos = {};
             
             anos.forEach(a => {
@@ -2746,6 +2748,7 @@
             cofreFechadas.forEach(trade => {
                 let anoFecho = new Date(trade.data).getFullYear();
                 
+                // Processa apenas se o ano estiver na nossa grelha dos 4 anteriores
                 if (agrupamentoAnos[anoFecho] !== undefined) {
                     agrupamentoAnos[anoFecho].pnlTotal += trade.pnlEUR;
                     
@@ -2766,22 +2769,17 @@
                 let baseLongo = Math.max(0, dados.sub2) + (Math.max(0, dados.sub5) * 0.9) + (Math.max(0, dados.sub8) * 0.8) + (Math.max(0, dados.plus8) * 0.7);
                 let baseTributavel = dados.pnlTotal > 0 ? lucroCurto + baseLongo : 0;
                 
-                // Cálculo Duplo: Imposto com e sem isenções
                 let impostoSemIsencoes = dados.pnlTotal > 0 ? dados.pnlTotal * 0.28 : 0;
                 let impostoReal = dados.pnlTotal > 0 ? baseTributavel * 0.28 : 0;
                 let poupancaGerada = impostoSemIsencoes - impostoReal;
                 
                 let corPnl = dados.pnlTotal >= 0 ? '#5cb85c' : '#d9534f';
                 let sinal = dados.pnlTotal > 0 ? '+' : '';
-                let corBorda = ano === anoAtual ? '#58a6ff' : '#30363d'; 
-                let tagAtual = ano === anoAtual ? '<span style="background:#232d3f; color:#58a6ff; font-size:9px; padding:2px 6px; border-radius:4px; font-weight:bold; letter-spacing:1px;">ATUAL</span>' : '';
 
-                // Reduzimos o min-width, o padding e os tamanhos de fonte para caber tudo numa linha
                 htmlAnos += `
-                    <div style="flex: 1; min-width: 130px; background: #161b22; border: 1px solid ${corBorda}; border-radius: 8px; padding: 12px; display: flex; flex-direction: column;">
+                    <div style="flex: 1; min-width: 130px; background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 12px; display: flex; flex-direction: column;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                             <span style="font-weight: 900; font-size: 15px; color: #c9d1d9;">${ano}</span>
-                            ${tagAtual}
                         </div>
                         <div style="margin-bottom: 10px; flex-grow: 1;">
                             <div style="font-size: 9px; color: #8b949e; text-transform: uppercase; margin-bottom: 2px;">PnL Fechado</div>
