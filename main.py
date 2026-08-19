@@ -2,6 +2,7 @@ import os
 import json
 import requests
 import glob
+import yfinance as yf
 from dotenv import load_dotenv
 from functools import wraps
 from flask_caching import Cache
@@ -491,8 +492,8 @@ def api_backtest(ticker):
 @app.route('/api/cotacao/<ticker>')
 def cotacao_live(ticker):
     try:
-        # Usa o fast_info do yfinance para uma resposta de milissegundos
         ativo = yf.Ticker(ticker)
+        # fast_info devolve o preço ao segundo
         preco_atual = ativo.fast_info['last_price']
         return jsonify({"preco": preco_atual})
     except Exception as e:
