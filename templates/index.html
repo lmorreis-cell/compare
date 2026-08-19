@@ -2696,7 +2696,7 @@
         document.getElementById('contador-fechadas').innerText = `${cofreFechadas.length} Trade${cofreFechadas.length !== 1 ? 's' : ''}`;
     
    
-        /// ==========================================
+        // ==========================================
         // RENDERIZAÇÃO DO GRÁFICO CIRCULAR (PLOTLY)
         // ==========================================
         const painelGrafico = document.getElementById('painel-grafico-alocacao');
@@ -2707,14 +2707,17 @@
             labelsGrafico = Object.keys(alocacaoTicker);
             valoresGrafico = Object.values(alocacaoTicker);
         } else {
-            // MODO: DERIVA DE MERCADO (LIVE)
+            // MODO: DERIVA DE MERCADO (LIVE) COM CÂMBIO ATUAL
             let alocacaoMarket = {};
+            
             cofreAbertas.filter(l => l.qtdRestante > 0).forEach(lote => {
-                // Se a API falhou a buscar o preço, a máquina defende-se usando o preço de compra
                 let precoMercadoOriginal = cachePrecosAtuais[lote.ticker] || lote.precoCompraOriginal; 
                 
-                // Converte a cotação americana de hoje de volta para Euros
-                let valorMercadoEUR = (lote.qtdRestante * precoMercadoOriginal) / lote.cambio; 
+                // NOVO: Aplica o câmbio atualizado se for USD, ou 1.0 se for EUR
+                let cambioAtual = lote.moeda === 'USD' ? cacheCambioLive : 1.0;
+                
+                // Converte para Euros ao segundo
+                let valorMercadoEUR = (lote.qtdRestante * precoMercadoOriginal) / cambioAtual; 
                 
                 if (alocacaoMarket[lote.ticker]) {
                     alocacaoMarket[lote.ticker] += valorMercadoEUR;
@@ -2726,7 +2729,6 @@
             valoresGrafico = Object.values(alocacaoMarket);
         }
 
-        // Matemática da Legenda
         const totalCapital = valoresGrafico.reduce((soma, valor) => soma + valor, 0);
         const legendasEnriquecidas = labelsGrafico.map((ticker, index) => {
             const valor = valoresGrafico[index];
@@ -2736,7 +2738,7 @@
 
         if (labelsGrafico.length > 0) {
             painelGrafico.style.display = 'block';
-            document.getElementById('grafico-distribuicao').style.display = 'block'; // Garante que volta a aparecer após o loading
+            document.getElementById('grafico-distribuicao').style.display = 'block';
             
             var dataPie = [{
                 values: valoresGrafico,
@@ -2960,11 +2962,11 @@
     // ==========================================
     let modoGraficoAlocacao = 'custo';
     let cachePrecosAtuais = {};
+    let cacheCambioLive = 1.08; // Valor de arranque, será substituído pela API
 
     async function mudarModoGrafico(modo) {
         modoGraficoAlocacao = modo;
         
-        // Lógica visual dos botões
         document.getElementById('btn-grafico-custo').style.background = modo === 'custo' ? '#232d3f' : 'transparent';
         document.getElementById('btn-grafico-custo').style.color = modo === 'custo' ? '#58a6ff' : '#8b949e';
         document.getElementById('btn-grafico-atual').style.background = modo === 'atual' ? '#232d3f' : 'transparent';
@@ -2974,25 +2976,31 @@
             document.getElementById('grafico-distribuicao').style.display = 'none';
             document.getElementById('loading-grafico').style.display = 'block';
             
-            // Varre o armazém para ver que ações temos abertas
+            // 1. Obtém a taxa de câmbio EUR/USD real ao segundo
+            try {
+                let respCambio = await fetch(`/api/cotacao/EURUSD=X`);
+                if (respCambio.ok) {
+                    let dadosCambio = await respCambio.json();
+                    if (dadosCambio.preco) cacheCambioLive = dadosCambio.preco;
+                }
+            } catch(e) { console.error("Falha ao obter câmbio live."); }
+
+            // 2. Varre os tickers abertos e força a atualização das cotações
             let tickersAbertos = [...new Set(cofreAbertas.filter(l => l.qtdRestante > 0).map(l => l.ticker))];
             
-            // Só vai à internet buscar os preços que ainda não estão gravados no Cache
             for (let t of tickersAbertos) {
-                if (!cachePrecosAtuais[t]) {
-                    try {
-                        let resposta = await fetch(`/api/cotacao/${t}`);
-                        if(resposta.ok) {
-                            let dados = await resposta.json();
-                            cachePrecosAtuais[t] = dados.preco;
-                        }
-                    } catch(e) { console.error("Falha ao atualizar cotação de:", t); }
-                }
+                try {
+                    let resposta = await fetch(`/api/cotacao/${t}`);
+                    if (resposta.ok) {
+                        let dados = await resposta.json();
+                        if (dados.preco) cachePrecosAtuais[t] = dados.preco;
+                    }
+                } catch(e) { console.error("Falha ao atualizar cotação de:", t); }
             }
             document.getElementById('loading-grafico').style.display = 'none';
         }
         
-        atualizarCofre(); // Força o redesenho com as novas regras
+        atualizarCofre(); 
     }
 </script>
 
