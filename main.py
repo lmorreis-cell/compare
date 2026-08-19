@@ -488,6 +488,16 @@ def api_backtest(ticker):
         return jsonify({"erro": str(e)}), 500
 
 
+@app.route('/api/cotacao/<ticker>')
+def cotacao_live(ticker):
+    try:
+        # Usa o fast_info do yfinance para uma resposta de milissegundos
+        ativo = yf.Ticker(ticker)
+        preco_atual = ativo.fast_info['last_price']
+        return jsonify({"preco": preco_atual})
+    except Exception as e:
+        return jsonify({"erro": str(e)}), 400
+
 @app.route('/api/cambio/<data>')
 def api_cambio(data):
     import yfinance as yf
