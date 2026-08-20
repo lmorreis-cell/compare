@@ -618,6 +618,11 @@
             </div>
             
             <div id="grafico-distribuicao" style="width: 100%; height: 250px;"></div>
+            <!-- NOVO: TOTAL EM DESTAQUE NO RODAPÉ -->
+            <div style="text-align: right; margin-top: 5px; padding-top: 15px; border-top: 1px dashed #30363d; display: flex; justify-content: flex-end; align-items: baseline; gap: 10px;">
+                <span style="font-size: 11px; color: #8b949e; text-transform: uppercase; font-weight: bold;">Valor Total Exposto:</span>
+                <span id="grafico-total-exposto" style="font-size: 20px; font-weight: 900; color: #58a6ff;">€0.00</span>
+            </div>
         </div>
             
         <!-- REGISTO DE NOVA TRANSAÇÃO (O formulário que já tens vem logo a seguir a isto...) -->
@@ -2784,6 +2789,15 @@
         }
 
         const totalCapital = valoresGrafico.reduce((soma, valor) => soma + valor, 0);
+
+        // Injeta o total na nova área de destaque do rodapé
+        const elementoTotal = document.getElementById('grafico-total-exposto');
+        if (elementoTotal) {
+            elementoTotal.innerText = `€${totalCapital.toFixed(2)}`;
+            // Feedback visual: Azul para Custo (Fixo), Dourado para Mercado (Live)
+            elementoTotal.style.color = modoGraficoAlocacao === 'custo' ? '#58a6ff' : '#e3b341';
+        }
+        
         const legendasEnriquecidas = labelsGrafico.map((ticker, index) => {
             const valor = valoresGrafico[index];
             const percentagem = totalCapital > 0 ? ((valor / totalCapital) * 100).toFixed(1) : 0;
