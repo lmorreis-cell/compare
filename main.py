@@ -678,7 +678,15 @@ def api_sniper(ticker, timeframe):
             preco_oficial = float(yf.Ticker(ticker).fast_info['lastPrice'])
         except Exception:
             preco_oficial = float(df_diario['Close'].iloc[-1]) if not df_diario.empty else float(df['Close'].iloc[-1])
-            
+
+        # --- EXTRAÇÃO DO VALUATION RISK (P/E) ---
+        try:
+            info = yf.Ticker(ticker).info
+            pe_ratio = info.get('forwardPE') or info.get('trailingPE') or 0
+        except:
+            pe_ratio = 0
+        # ----------------------------------------
+        
         # Compressão 4H
         if timeframe == '4h':
             df = df.resample('4h').agg({
@@ -830,6 +838,7 @@ def api_sniper(ticker, timeframe):
             "preco": f"{fecho_atual:.2f}",
             "rsi": f"{rsi_atual:.1f}",
             "atr": f"{atr_14:.2f}",
+            "pe_ratio": round(pe_ratio, 2) if pe_ratio else 0,
             # --- NOVAS VARIÁVEIS A ENVIAR ---
             "dist_m50": f"{dist_m50:+.1f}%",
             "cor_m50": "#5cb85c" if dist_m50 > 0 else "#d9534f",
