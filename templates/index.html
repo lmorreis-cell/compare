@@ -1194,6 +1194,67 @@
                     </div>
                 </div>
 
+
+                // ==========================================
+                // MOTOR NLG: VALUATION RISK & FUNDAMENTAL GRAVITY
+                // ==========================================
+                let peTag = "";
+                let nlgValuation = "";
+                let corValuation = "";
+                
+                if (dados.pe_ratio <= 0) {
+                    peTag = "EMPRESA COM PREJUÍZOS (N/A)";
+                    corValuation = "#8b949e";
+                    nlgValuation = `<strong style="color: #c9d1d9;">O Racional:</strong> A empresa não gera lucros consistentes (P/E negativo ou inexistente).<br>
+                    <strong style="color: #c9d1d9;">Impacto no Trade:</strong> O preço está a mover-se com base em pura especulação, promessas de crescimento futuro ou volatilidade técnica. Não há chão fundamental. <strong>Risco máximo.</strong> Utiliza Position Sizing defensivo.`;
+                } else if (dados.pe_ratio < 15) {
+                    peTag = "SUB-AVALIADA / VALUE (P/E < 15)";
+                    corValuation = "#5cb85c"; // Verde
+                    nlgValuation = `<strong style="color: #5cb85c;">O Racional (Margem de Segurança):</strong> Os institucionais estão a pagar menos de $15 por cada $1 de lucro futuro. O mercado está pessimista ou a ignorar o ativo.<br>
+                    <strong style="color: #5cb85c;">Impacto no Trade:</strong> Se o gráfico mostrar um <i>setup</i> de compra (Bull Plan), tens a gravidade do teu lado. Como a ação está "barata", o risco de quedas abruptas pós-lucros é menor. É o cenário ideal para capturar reversões de tendência (<i>Mean Reversion</i>).`;
+                } else if (dados.pe_ratio >= 15 && dados.pe_ratio <= 25) {
+                    peTag = "AVALIAÇÃO JUSTA / FAIR VALUE (P/E 15-25)";
+                    corValuation = "#f0ad4e"; // Laranja
+                    nlgValuation = `<strong style="color: #f0ad4e;">O Racional (Equilíbrio):</strong> O múltiplo está alinhado com a média histórica do S&P 500. A empresa está precificada de forma eficiente para o seu nível de crescimento normal.<br>
+                    <strong style="color: #f0ad4e;">Impacto no Trade:</strong> A análise técnica (suportes e resistências) tem primazia total aqui. Não há ventos fundamentais a ajudar nem a prejudicar. Executa o plano com o risco padrão da tua calculadora.`;
+                } else {
+                    peTag = "AVALIAÇÃO PRÉMIO / ESTICADA (P/E > 25)";
+                    corValuation = "#d9534f"; // Vermelho
+                    nlgValuation = `<strong style="color: #d9534f;">O Racional (Risco de Contração):</strong> O mercado está a pagar um prémio absurdo (>25x os lucros). Os investidores estão a precificar a "perfeição" no crescimento futuro.<br>
+                    <strong style="color: #d9534f;">Impacto no Trade:</strong> Se a empresa falhar estimativas por 1 cêntimo, sofre dupla penalização: cai o lucro e colapsa o múltiplo. Se operares Longo (Bull Plan), fá-lo com stop-losses curtíssimos. Se a estrutura gráfica quebrar, este é o <strong>cenário perfeito para operações Short (Venda a Descoberto)</strong>, pois o ar lá para baixo é imenso.`;
+                }
+
+                // INJEÇÃO DO BLOCO HTML NA BLUEPRINT
+                html += `
+                <h4 style="margin-top: 35px; color: #121212; text-transform: uppercase; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px; position: relative; z-index: 51;">
+                    ⚖️ Valuation Risk & Fundamental Gravity
+                </h4>
+                
+                <div style="background: #1c1e24; border: 1px solid #30363d; border-radius: 6px; padding: 20px; margin-bottom: 25px; display: flex; gap: 25px; align-items: center; flex-wrap: wrap; position: relative; z-index: 51;">
+                    
+                    <!-- O Medidor -->
+                    <div style="min-width: 180px; text-align: center; border-right: 1px solid #30363d; padding-right: 20px;">
+                        <span class="sniper-tt" style="color: #8b949e; font-size: 11px; text-transform: uppercase; font-weight: bold; margin-bottom: 8px; display: block;">
+                            Forward P/E Ratio
+                            <span class="sniper-tt-text" style="width: 250px;">
+                                <strong style="color: #4da6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Múltiplo de Avaliação</strong>
+                                Mede quantos anos demoraria a empresa a pagar o preço atual da ação, assumindo que os lucros futuros se mantêm constantes. É a medida definitiva de quão "cara" está uma ação.
+                            </span>
+                        </span>
+                        <div style="font-size: 32px; font-weight: 900; color: ${corValuation}; line-height: 1;">
+                            ${dados.pe_ratio > 0 ? dados.pe_ratio + 'x' : 'N/A'}
+                        </div>
+                        <div style="margin-top: 8px; font-size: 10px; font-weight: bold; color: ${corValuation}; background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 4px;">
+                            ${peTag}
+                        </div>
+                    </div>
+
+                    <!-- A Inteligência (NLG) -->
+                    <div style="flex: 1; font-size: 13px; line-height: 1.6; color: #c9d1d9;">
+                        ${nlgValuation}
+                    </div>
+                </div>
+                `;
                 
 
                 <h4 style="margin-top: 0; color: #121212; text-transform: uppercase; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Trade Idea & Execution</h4>
