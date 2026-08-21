@@ -1050,8 +1050,9 @@
                     <!-- LINHA 1: IDENTIDADE E FERRAMENTAS EXTERNAS -->
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 15px;">
                         
-                        <!-- BLOCO ESQUERDO: Ticker e Preço (Agrupados) -->
+                        <!-- BLOCO ESQUERDO: Logótipo, Ticker e Preço -->
                         <div style="display: flex; align-items: center; gap: 15px;">
+                            ${dados.logo_url ? `<img src="${dados.logo_url}" alt="${dados.ticker}" style="width: 45px; height: 45px; border-radius: 8px; background: #fff; padding: 3px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">` : ''}
                             <h2 style="margin: 0; font-size: 32px; font-weight: 900; letter-spacing: -1px; text-transform: uppercase;">${dados.ticker}</h2>
                             <span style="background: #121212; color: #fff; padding: 5px 12px; border-radius: 4px; font-weight: bold; font-size: 13px; letter-spacing: 1px;">TF: ${dados.timeframe} | COTAÇÃO: $${dados.preco}</span>
                         </div>
@@ -1066,6 +1067,12 @@
                             </button>
                         </div>
                     </div>
+                    
+                    <!-- ALERTA DE EARNINGS FMP -->
+                    ${dados.earnings_warning ? `
+                    <div style="background-color: ${dados.earnings_warning.includes('ALERTA') ? '#d9534f' : '#1c1e24'}; border-left: 4px solid ${dados.earnings_warning.includes('ALERTA') ? '#fff' : '#58a6ff'}; color: ${dados.earnings_warning.includes('ALERTA') ? '#fff' : '#c9d1d9'}; padding: 10px 15px; border-radius: 4px; font-size: 13px; font-weight: bold; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+                        ${dados.earnings_warning}
+                    </div>` : ''}
                     
                     <!-- LINHA 2: PAINEL DE MOMENTUM (RSI / ATR) -->
                     <div style="font-size: 13px; color: #333;">
