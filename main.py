@@ -810,31 +810,49 @@ def api_sniper(ticker, timeframe):
             if target_consensus > 0 and fecho_atual > 0:
                 target_upside = ((target_consensus / fecho_atual) - 1) * 100
 
-            # 3. Notícias (YF)
+            # 3. Notícias (YF - Correção de Estrutura Dupla)
             raw_news = tk.news
             if raw_news:
                 for n in raw_news[:3]:
-                    # Converte o timestamp Unix da notícia para data legível
-                    data_pub = datetime.datetime.fromtimestamp(n.get('providerPublishTime', 0)).strftime('%Y-%m-%d')
-                    news_data.append({"title": n.get('title'), "url": n.get('link'), "date": data_pub})
+                    # O YF muda o JSON frequentemente. Este código lê os dois formatos conhecidos.
+                    if 'content' in n:
+                        titulo = n['content'].get('title', 'Notícia Wall Street')
+                        link = n['content'].get('canonicalUrl', n['content'].get('clickThroughUrl', '#'))
+                        pub_time = n['content'].get('pubDate', '')
+                    else:
+                        titulo = n.get('title', 'Notícia Wall Street')
+                        link = n.get('link', '#')
+                        pub_time = n.get('providerPublishTime', '')
 
-            # 4. Insider Trading (YF)
+                    # Bloqueador do Erro 1969 (Unix Epoch 0)
+                    if isinstance(pub_time, (int, float)) and pub_time > 0:
+                        data_pub = datetime.datetime.fromtimestamp(pub_time).strftime('%Y-%m-%d')
+                    elif isinstance(pub_time, str) and len(pub_time) >= 10:
+                        data_pub = pub_time[:10]
+                    else:
+                        data_pub = hoje.strftime('%Y-%m-%d')
+
+                    news_data.append({"title": titulo, "url": link, "date": data_pub})
+
+            # 4. Insider Trading (YF - Correção de Análise Semântica)
             insiders = tk.insider_transactions
             if insiders is not None and not insiders.empty:
-                # Isolar apenas transações quantificáveis na coluna Shares
-                if 'Shares' in insiders.columns:
-                    shares = pd.to_numeric(insiders['Shares'], errors='coerce').dropna()
-                    compras = len(shares[shares > 0])
-                    vendas = len(shares[shares < 0])
-                    
-                    if compras == 0 and vendas == 0:
-                        pass # Mantém o "Sem dados recentes"
-                    elif compras > vendas * 2:
-                        insider_signal = f"Acumulação Forte ({compras}C / {vendas}V)"
-                    elif vendas > compras * 2:
-                        insider_signal = f"Distribuição Forte ({vendas}V / {compras}C)"
-                    else:
-                        insider_signal = f"Fluxo Misto ({compras}C / {vendas}V)"
+                # O YF devolve as ações sempre como positivas.
+                # Vamos converter as primeiras 15 linhas para texto e procurar o que eles realmente fizeram (Buy vs Sale).
+                textos = insiders.head(15).astype(str).apply(lambda x: ' '.join(x), axis=1).str.lower()
+                
+                compras = len(textos[textos.str.contains('buy|purchase|award')])
+                vendas = len(textos[textos.str.contains('sell|sale|disposition')])
+                
+                if compras == 0 and vendas == 0:
+                    pass # Mantém o alerta "Sem dados recentes"
+                elif compras >= vendas * 2 and compras > 0:
+                    insider_signal = f"Acumulação Forte ({compras}C / {vendas}V)"
+                elif vendas >= compras * 2 and vendas > 0:
+                    insider_signal = f"Distribuição Forte ({vendas}V / {compras}C)"
+                else:
+                    insider_signal = f"Fluxo Misto ({compras}C / {vendas}V)"
+
         except Exception as e:
             print(f"Erro YF Extras para {ticker}: {e}")
 
