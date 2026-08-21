@@ -9,3 +9,4 @@ matplotlib
 plotly
 jinja2
 Flask-Caching
+fundamentalanalysis
