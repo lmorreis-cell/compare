@@ -785,35 +785,45 @@ def api_sniper(ticker, timeframe):
         try:
             fmp_key = os.environ.get("FMP_API_KEY")
             if fmp_key:
-                # 1. Puxar Logótipo (Endpoint Profile)
-                resp_profile = requests.get(f"https://financialmodelingprep.com/api/v3/profile/{ticker}?apikey={fmp_key}", timeout=3)
-                if resp_profile.status_code == 200 and resp_profile.json():
-                    logo_url = resp_profile.json()[0].get('image', '')
+                # 1. Puxar Logótipo (Usando a rota "stable" exigida no email)
+                url_profile = f"https://financialmodelingprep.com/stable/profile?symbol={ticker}&apikey={fmp_key}"
+                resp_profile = requests.get(url_profile, timeout=5)
                 
-                # 2. Puxar Próximos Resultados (Endpoint Earnings Calendar)
-                import datetime
-                hoje = datetime.date.today()
-                resp_earn = requests.get(f"https://financialmodelingprep.com/api/v3/earning_calendar?symbol={ticker}&apikey={fmp_key}", timeout=3)
+                if resp_profile.status_code == 200:
+                    dados_profile = resp_profile.json()
+                    if isinstance(dados_profile, list) and len(dados_profile) > 0:
+                        logo_url = dados_profile[0].get('image', '')
+                else:
+                    print(f"FMP Erro Profile: HTTP {resp_profile.status_code}")
                 
-                if resp_earn.status_code == 200 and resp_earn.json():
-                    # Filtra apenas os resultados de hoje para a frente
-                    futuros = [e for e in resp_earn.json() if e.get('date', '') >= hoje.strftime('%Y-%m-%d')]
+                # 2. Puxar Próximos Resultados (Earnings)
+                url_earn = f"https://financialmodelingprep.com/api/v3/earning_calendar?symbol={ticker}&apikey={fmp_key}"
+                resp_earn = requests.get(url_earn, timeout=5)
+                
+                if resp_earn.status_code == 200:
+                    import datetime
+                    hoje = datetime.date.today()
+                    dados_earn = resp_earn.json()
                     
-                    if futuros:
-                        # Ordena para garantir que apanhamos o mais próximo
-                        futuros.sort(key=lambda x: x['date'])
-                        prox_data_str = futuros[0]['date']
-                        prox_data_obj = datetime.datetime.strptime(prox_data_str, '%Y-%m-%d').date()
-                        dias_restantes = (prox_data_obj - hoje).days
-                        
-                        # Motor de Gestão de Risco
-                        if dias_restantes <= 7:
-                            earnings_warning = f"⚠️ ALERTA DE RISCO: Apresentação de Resultados em {dias_restantes} dias ({prox_data_str}). A volatilidade anulará suportes técnicos."
-                        else:
-                            earnings_warning = f"📅 Próximos Resultados: {prox_data_str} (faltam {dias_restantes} dias)"
+                    if isinstance(dados_earn, list):
+                        futuros = [e for e in dados_earn if e.get('date', '') >= hoje.strftime('%Y-%m-%d')]
+                        if futuros:
+                            futuros.sort(key=lambda x: x['date'])
+                            prox_data_str = futuros[0]['date']
+                            prox_data_obj = datetime.datetime.strptime(prox_data_str, '%Y-%m-%d').date()
+                            dias_restantes = (prox_data_obj - hoje).days
+                            
+                            # Motor de Alerta de Volatilidade
+                            if dias_restantes <= 7:
+                                earnings_warning = f"⚠️ ALERTA DE RISCO: Apresentação de Resultados em {dias_restantes} dias ({prox_data_str}). A volatilidade anulará suportes técnicos."
+                            else:
+                                earnings_warning = f"📅 Próximos Resultados: {prox_data_str} (faltam {dias_restantes} dias)"
+                else:
+                    print(f"FMP Erro Earnings: HTTP {resp_earn.status_code}")
         except Exception as e:
-            print(f"Erro na FMP (Logo/Earnings) para {ticker}: {e}")
+            print(f"Exceção no bloco FMP para {ticker}: {e}")
         # -----------------------------------------------------
+     
         
         # --- 1. MATEMÁTICA DE COMPRESSÃO (BOLLINGER BANDS) E VOLUME ---
         df['SMA_20'] = df['Close'].rolling(window=20).mean()
