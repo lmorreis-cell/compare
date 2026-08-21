@@ -681,35 +681,45 @@ def api_sniper(ticker, timeframe):
         except Exception:
             preco_oficial = float(df_diario['Close'].iloc[-1]) if not df_diario.empty else float(df['Close'].iloc[-1])
 
-        # --- EXTRAÇÃO DO VALUATION RISK (FMP -> FALLBACK YF) ---
+        # --- EXTRAÇÃO DO VALUATION RISK (PEDIDO DIRETO FMP -> FALLBACK YF) ---
         try:
             fmp_key = os.environ.get("FMP_API_KEY")
-            if fmp_key:
-                # 1. Tenta extrair pela Financial Modeling Prep
-                metrics = fa.key_metrics(ticker, fmp_key, period="annual")
-                ratios = fa.financial_ratios(ticker, fmp_key, period="annual")
+            if not fmp_key:
+                raise ValueError("Chave FMP não encontrada no .env")
+
+            # Faz o pedido direto ao endpoint gratuito de Rácios Financeiros (últimos 5 anos)
+            url_fmp = f"https://financialmodelingprep.com/api/v3/ratios/{ticker}?limit=5&apikey={fmp_key}"
+            resposta_fmp = requests.get(url_fmp, timeout=5)
+            
+            if resposta_fmp.status_code == 200:
+                dados_fmp = resposta_fmp.json()
                 
-                if not metrics.empty and not ratios.empty:
-                    pe_series = pd.to_numeric(metrics.loc['peRatio'], errors='coerce').dropna()
-                    pe_history_5y = pe_series.head(5)
-                    pe_ratio = float(pe_history_5y.iloc[0]) if not pe_history_5y.empty else 0
-                    pe_min_5y = float(pe_history_5y.min()) if not pe_history_5y.empty else 0
+                # Se devolveu uma lista com dados
+                if isinstance(dados_fmp, list) and len(dados_fmp) > 0:
+                    # Extrai todos os P/E válidos dos últimos 5 anos e filtra zeros/nulos
+                    pe_historico = [ano.get('priceEarningsRatio', 0) for ano in dados_fmp if ano.get('priceEarningsRatio') is not None and ano.get('priceEarningsRatio') > 0]
                     
-                    peg_series = pd.to_numeric(ratios.loc['priceEarningsToGrowthRatio'], errors='coerce').dropna()
-                    peg_ratio = float(peg_series.iloc[0]) if not peg_series.empty else 0
+                    if pe_historico:
+                        pe_min_5y = float(min(pe_historico))
+                        pe_ratio = float(pe_historico[0]) # O P/E do último relatório anual fechado
+                    else:
+                        pe_ratio, pe_min_5y = 0, 0
+                        
+                    # Extrai o PEG Ratio mais recente
+                    peg_ratio = float(dados_fmp[0].get('priceEarningsToGrowthRatio') or 0)
                 else:
-                    raise ValueError("FMP retornou dados vazios")
+                    raise ValueError("FMP devolveu dados vazios (Ativo não suportado ou erro na API)")
             else:
-                raise ValueError("Chave FMP não configurada")
+                raise ValueError(f"Erro HTTP da FMP: {resposta_fmp.status_code}")
 
         except Exception as e:
-            # 2. Se a FMP falhar (limite excedido, sem chave, etc), ativa o Yahoo Finance como Backup
-            print(f"Fallback para Yahoo Finance ativado para {ticker}: {e}")
+            # FALLBACK DE EMERGÊNCIA (YAHOO FINANCE)
+            print(f"Fallback para Yahoo Finance ativado para {ticker}. Motivo: {e}")
             try:
                 info = yf.Ticker(ticker).info
                 pe_ratio = info.get('forwardPE') or info.get('trailingPE') or 0
                 peg_ratio = info.get('pegRatio') or 0
-                pe_min_5y = pe_ratio * 0.6 if pe_ratio > 0 else 0  # Proxy matemático de segurança
+                pe_min_5y = pe_ratio * 0.6 if pe_ratio > 0 else 0  # Os tais -40% matemáticos
             except:
                 pe_ratio, pe_min_5y, peg_ratio = 0, 0, 0
         # ----------------------------------------
