@@ -681,47 +681,51 @@ def api_sniper(ticker, timeframe):
         except Exception:
             preco_oficial = float(df_diario['Close'].iloc[-1]) if not df_diario.empty else float(df['Close'].iloc[-1])
 
-        # --- EXTRAÇÃO DO VALUATION RISK (PEDIDO DIRETO FMP -> FALLBACK YF) ---
+        # --- EXTRAÇÃO DO VALUATION RISK (MOTOR YFINANCE AVANÇADO) ---
         try:
-            fmp_key = os.environ.get("FMP_API_KEY")
-            if not fmp_key:
-                raise ValueError("Chave FMP não encontrada no .env")
-
-            # Faz o pedido direto ao endpoint gratuito de Rácios Financeiros (últimos 5 anos)
-            url_fmp = f"https://financialmodelingprep.com/api/v3/ratios/{ticker}?limit=5&apikey={fmp_key}"
-            resposta_fmp = requests.get(url_fmp, timeout=5)
+            tk = yf.Ticker(ticker)
+            info = tk.info
+            pe_ratio = info.get('forwardPE') or info.get('trailingPE') or 0
+            peg_ratio = info.get('pegRatio') or 0
             
-            if resposta_fmp.status_code == 200:
-                dados_fmp = resposta_fmp.json()
-                
-                # Se devolveu uma lista com dados
-                if isinstance(dados_fmp, list) and len(dados_fmp) > 0:
-                    # Extrai todos os P/E válidos dos últimos 5 anos e filtra zeros/nulos
-                    pe_historico = [ano.get('priceEarningsRatio', 0) for ano in dados_fmp if ano.get('priceEarningsRatio') is not None and ano.get('priceEarningsRatio') > 0]
-                    
-                    if pe_historico:
-                        pe_min_5y = float(min(pe_historico))
-                        pe_ratio = float(pe_historico[0]) # O P/E do último relatório anual fechado
-                    else:
-                        pe_ratio, pe_min_5y = 0, 0
+            pe_min_5y = 0
+            if pe_ratio > 0:
+                try:
+                    # 1. Obter o histórico de Lucros (EPS) reportados à SEC
+                    inc = tk.income_stmt
+                    eps_history = None
+                    if not inc.empty:
+                        if 'Diluted EPS' in inc.index:
+                            eps_history = inc.loc['Diluted EPS'].dropna()
+                        elif 'Basic EPS' in inc.index:
+                            eps_history = inc.loc['Basic EPS'].dropna()
+                            
+                    if eps_history is not None and len(eps_history) > 0:
+                        # 2. Puxar preços mensais dos últimos 5 anos (60 linhas, processamento rápido)
+                        hist = tk.history(period="5y", interval="1mo")
                         
-                    # Extrai o PEG Ratio mais recente
-                    peg_ratio = float(dados_fmp[0].get('priceEarningsToGrowthRatio') or 0)
-                else:
-                    raise ValueError("FMP devolveu dados vazios (Ativo não suportado ou erro na API)")
-            else:
-                raise ValueError(f"Erro HTTP da FMP: {resposta_fmp.status_code}")
-
-        except Exception as e:
-            # FALLBACK DE EMERGÊNCIA (YAHOO FINANCE)
-            print(f"Fallback para Yahoo Finance ativado para {ticker}. Motivo: {e}")
-            try:
-                info = yf.Ticker(ticker).info
-                pe_ratio = info.get('forwardPE') or info.get('trailingPE') or 0
-                peg_ratio = info.get('pegRatio') or 0
-                pe_min_5y = pe_ratio * 0.6 if pe_ratio > 0 else 0  # Os tais -40% matemáticos
-            except:
-                pe_ratio, pe_min_5y, peg_ratio = 0, 0, 0
+                        pe_historicos = []
+                        # 3. Cruzar o pior preço de cada ano com o lucro real desse ano
+                        for data_eps, eps_val in eps_history.items():
+                            if eps_val > 0:
+                                ano = data_eps.year
+                                precos_ano = hist[hist.index.year == ano]
+                                if not precos_ano.empty:
+                                    preco_min_ano = precos_ano['Low'].min()
+                                    pe_historicos.append(preco_min_ano / eps_val)
+                        
+                        if pe_historicos:
+                            pe_min_5y = min(pe_historicos)
+                            
+                        # Filtro de sanidade para anomalias estatísticas
+                        if pe_min_5y <= 0 or pe_min_5y > pe_ratio:
+                            pe_min_5y = pe_ratio * 0.6
+                    else:
+                        pe_min_5y = pe_ratio * 0.6
+                except:
+                    pe_min_5y = pe_ratio * 0.6
+        except:
+            pe_ratio, pe_min_5y, peg_ratio = 0, 0, 0
         # ----------------------------------------
         
         # Compressão 4H
