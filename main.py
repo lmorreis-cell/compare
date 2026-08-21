@@ -3,6 +3,8 @@ import json
 import requests
 import glob
 import yfinance as yf
+import fundamentalanalysis as fa
+import pandas as pd
 from dotenv import load_dotenv
 from functools import wraps
 from flask_caching import Cache
@@ -679,12 +681,37 @@ def api_sniper(ticker, timeframe):
         except Exception:
             preco_oficial = float(df_diario['Close'].iloc[-1]) if not df_diario.empty else float(df['Close'].iloc[-1])
 
-        # --- EXTRAÇÃO DO VALUATION RISK (P/E) ---
+        # --- EXTRAÇÃO DO VALUATION RISK (FMP -> FALLBACK YF) ---
         try:
-            info = yf.Ticker(ticker).info
-            pe_ratio = info.get('forwardPE') or info.get('trailingPE') or 0
-        except:
-            pe_ratio = 0
+            fmp_key = os.environ.get("FMP_API_KEY")
+            if fmp_key:
+                # 1. Tenta extrair pela Financial Modeling Prep
+                metrics = fa.key_metrics(ticker, fmp_key, period="annual")
+                ratios = fa.financial_ratios(ticker, fmp_key, period="annual")
+                
+                if not metrics.empty and not ratios.empty:
+                    pe_series = pd.to_numeric(metrics.loc['peRatio'], errors='coerce').dropna()
+                    pe_history_5y = pe_series.head(5)
+                    pe_ratio = float(pe_history_5y.iloc[0]) if not pe_history_5y.empty else 0
+                    pe_min_5y = float(pe_history_5y.min()) if not pe_history_5y.empty else 0
+                    
+                    peg_series = pd.to_numeric(ratios.loc['priceEarningsToGrowthRatio'], errors='coerce').dropna()
+                    peg_ratio = float(peg_series.iloc[0]) if not peg_series.empty else 0
+                else:
+                    raise ValueError("FMP retornou dados vazios")
+            else:
+                raise ValueError("Chave FMP não configurada")
+
+        except Exception as e:
+            # 2. Se a FMP falhar (limite excedido, sem chave, etc), ativa o Yahoo Finance como Backup
+            print(f"Fallback para Yahoo Finance ativado para {ticker}: {e}")
+            try:
+                info = yf.Ticker(ticker).info
+                pe_ratio = info.get('forwardPE') or info.get('trailingPE') or 0
+                peg_ratio = info.get('pegRatio') or 0
+                pe_min_5y = pe_ratio * 0.6 if pe_ratio > 0 else 0  # Proxy matemático de segurança
+            except:
+                pe_ratio, pe_min_5y, peg_ratio = 0, 0, 0
         # ----------------------------------------
         
         # Compressão 4H
@@ -839,6 +866,9 @@ def api_sniper(ticker, timeframe):
             "rsi": f"{rsi_atual:.1f}",
             "atr": f"{atr_14:.2f}",
             "pe_ratio": round(pe_ratio, 2) if pe_ratio else 0,
+            "peg_ratio": round(peg_ratio, 2) if peg_ratio else 0,  
+            "pe_min_5y": round(pe_min_5y, 2) if pe_min_5y else 0,
+            
             # --- NOVAS VARIÁVEIS A ENVIAR ---
             "dist_m50": f"{dist_m50:+.1f}%",
             "cor_m50": "#5cb85c" if dist_m50 > 0 else "#d9534f",
