@@ -778,7 +778,7 @@ def api_sniper(ticker, timeframe):
         # -----------------------------------------------------
 
 
-        # --- NOVA INJEÇÃO: LOGÓTIPO FMP, EARNINGS, INSIDERS, TARGETS E NEWS ---
+        # --- NOVA INJEÇÃO: LOGÓTIPO FMP E EXTRAS YFINANCE (TARGETS, NEWS, INSIDERS) ---
         logo_url = ""
         earnings_warning = ""
         insider_signal = "Sem dados recentes"
@@ -787,57 +787,62 @@ def api_sniper(ticker, timeframe):
         news_data = []
         
         import datetime
+        import pandas as pd
         hoje = datetime.date.today()
         
+        # 1. Puxar Logótipo (FMP - O único endpoint puramente gratuito e estável)
         try:
             fmp_key = os.environ.get("FMP_API_KEY")
             if fmp_key:
-                # 1. Puxar Logótipo (FMP)
                 url_profile = f"https://financialmodelingprep.com/stable/profile?symbol={ticker}&apikey={fmp_key}"
                 resp_profile = requests.get(url_profile, timeout=5)
                 if resp_profile.status_code == 200:
                     dados_profile = resp_profile.json()
                     if isinstance(dados_profile, list) and len(dados_profile) > 0:
                         logo_url = dados_profile[0].get('image', '')
-                
-                # 2. Puxar Price Targets de Wall Street
-                url_pt = f"https://financialmodelingprep.com/api/v4/price-target-consensus?symbol={ticker}&apikey={fmp_key}"
-                resp_pt = requests.get(url_pt, timeout=5)
-                if resp_pt.status_code == 200 and resp_pt.json():
-                    pt_data = resp_pt.json()[0]
-                    target_consensus = pt_data.get('targetConsensus', 0)
-                    if target_consensus > 0 and fecho_atual > 0:
-                        target_upside = ((target_consensus / fecho_atual) - 1) * 100
+        except Exception as e:
+            print(f"Erro Logotipo FMP: {e}")
 
-                # 3. Puxar Insider Trading (Últimas 15 transações de Executivos)
-                url_insider = f"https://financialmodelingprep.com/api/v4/insider-trading?symbol={ticker}&limit=15&apikey={fmp_key}"
-                resp_insider = requests.get(url_insider, timeout=5)
-                if resp_insider.status_code == 200 and resp_insider.json():
-                    compras = sum(1 for t in resp_insider.json() if t.get('transactionType') in ['P-Purchase', 'P'])
-                    vendas = sum(1 for t in resp_insider.json() if t.get('transactionType') in ['S-Sale', 'S'])
-                    if compras > vendas * 2:
+        # A partir daqui, usamos o objeto 'tk' (yfinance) já criado no topo para evitar bloqueios de APIs externas
+        try:
+            # 2. Price Targets de Wall Street (YF)
+            target_consensus = info.get('targetMeanPrice', 0)
+            if target_consensus > 0 and fecho_atual > 0:
+                target_upside = ((target_consensus / fecho_atual) - 1) * 100
+
+            # 3. Notícias (YF)
+            raw_news = tk.news
+            if raw_news:
+                for n in raw_news[:3]:
+                    # Converte o timestamp Unix da notícia para data legível
+                    data_pub = datetime.datetime.fromtimestamp(n.get('providerPublishTime', 0)).strftime('%Y-%m-%d')
+                    news_data.append({"title": n.get('title'), "url": n.get('link'), "date": data_pub})
+
+            # 4. Insider Trading (YF)
+            insiders = tk.insider_transactions
+            if insiders is not None and not insiders.empty:
+                # Isolar apenas transações quantificáveis na coluna Shares
+                if 'Shares' in insiders.columns:
+                    shares = pd.to_numeric(insiders['Shares'], errors='coerce').dropna()
+                    compras = len(shares[shares > 0])
+                    vendas = len(shares[shares < 0])
+                    
+                    if compras == 0 and vendas == 0:
+                        pass # Mantém o "Sem dados recentes"
+                    elif compras > vendas * 2:
                         insider_signal = f"Acumulação Forte ({compras}C / {vendas}V)"
                     elif vendas > compras * 2:
                         insider_signal = f"Distribuição Forte ({vendas}V / {compras}C)"
                     else:
-                        insider_signal = f"Fluxo Neutro ({compras}C / {vendas}V)"
-
-                # 4. Puxar Últimas 3 Notícias Relevantes
-                url_news = f"https://financialmodelingprep.com/api/v3/stock_news?tickers={ticker}&limit=3&apikey={fmp_key}"
-                resp_news = requests.get(url_news, timeout=5)
-                if resp_news.status_code == 200:
-                    news_data = [{"title": n.get('title'), "url": n.get('url'), "date": n.get('publishedDate')[:10]} for n in resp_news.json()]
-
+                        insider_signal = f"Fluxo Misto ({compras}C / {vendas}V)"
         except Exception as e:
-            print(f"Erro na extração FMP Avançada para {ticker}: {e}")
+            print(f"Erro YF Extras para {ticker}: {e}")
 
         # 5. Puxar Próximos Resultados (Motor Duplo: YF -> FMP)
         data_resultados = None
         try:
-            tk = yf.Ticker(ticker)
             ed = tk.get_earnings_dates(limit=10)
             if ed is not None and not ed.empty:
-                import pandas as pd
                 hoje_ts = pd.Timestamp(hoje)
                 if ed.index.tz is not None:
                     ed.index = ed.index.tz_localize(None)
