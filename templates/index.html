@@ -1205,66 +1205,91 @@
             `; // <--- AQUI ESTAVA O ERRO! Faltava fechar a string HTML.
 
             // ==========================================
-// MOTOR NLG AVANÇADO: VALUATION & FUNDAMENTAL GRAVITY
-// ==========================================
-let peTag = "";
-let nlgValuation = "";
-let corValuation = "";
+            // MOTOR NLG AVANÇADO: VALUATION & FUNDAMENTAL GRAVITY
+            // ==========================================
+            let peTag = "";
+            let nlgValuation = "";
+            let corValuation = "";
 
-// Variáveis vindas do Python (Exemplo)
-const peAtual = dados.pe_ratio;
-const peMinimo = dados.pe_min_5y; // Ex: 12 (O mínimo do Metaverso)
-const pegRatio = dados.peg_ratio; 
-const quedaBearish = ((peAtual - peMinimo) / peAtual) * 100; // % de queda até ao suporte fundamental
+            const peAtual = dados.pe_ratio;
+            const peMinimo = dados.pe_min_5y; 
+            const pegRatio = dados.peg_ratio; 
+            const quedaBearish = peAtual > 0 ? ((peAtual - peMinimo) / peAtual) * 100 : 0; 
 
-if (peAtual <= 0) {
-    peTag = "EMPRESA COM PREJUÍZOS (N/A)";
-    corValuation = "#8b949e";
-    nlgValuation = `O ativo opera com lucros inconsistentes ou negativos. A negociação assenta em pura especulação técnica ou expectativas futuras não materializadas. <strong>Risco Máximo:</strong> Sem suporte fundamental.`;
-} 
-else {
-    // AVALIAÇÃO DA CONSISTÊNCIA DE CRESCIMENTO (Filtro Anti-Cíclicas)
-    let textoCrescimento = "";
-    if (pegRatio > 0 && pegRatio < 1.2) {
-        textoCrescimento = `O EPS esperado apresenta um crescimento consistente e atrativo face ao múltiplo atual. Não se trata de uma cíclica em armadilha de valor.`;
-    } else if (pegRatio > 2.0) {
-        textoCrescimento = `Cuidado: O crescimento dos lucros projetado não justifica o múltiplo atual. Risco de contração típico de empresas sobre-esticadas ou cíclicas no topo do ciclo (ex: semicondutores).`;
-    }
+            if (peAtual <= 0) {
+                peTag = "EMPRESA COM PREJUÍZOS (N/A)";
+                corValuation = "#8b949e";
+                nlgValuation = `O ativo opera com lucros inconsistentes ou negativos. A negociação assenta em pura especulação técnica ou expectativas futuras não materializadas. <strong>Risco Máximo:</strong> Sem suporte fundamental.`;
+            } 
+            else {
+                let textoCrescimento = "";
+                if (pegRatio > 0 && pegRatio <= 1.5) {
+                    textoCrescimento = `O EPS apresenta crescimento consistente (${pegRatio}). Não é uma armadilha de valor cíclica.`;
+                } else if (pegRatio > 1.5) {
+                    textoCrescimento = `Cuidado: O crescimento (PEG ${pegRatio}) não justifica o múltiplo. Risco de contração típico de topos de ciclo.`;
+                } else {
+                    textoCrescimento = `Dados de crescimento (PEG) indisponíveis ou inconsistentes.`;
+                }
 
-    // AVALIAÇÃO HISTÓRICA DO MÚLTIPLO (Racional do Luís)
-    if (peAtual <= peMinimo * 1.15) { 
-        // P/E está perto (15%) dos mínimos históricos
-        peTag = "ZONA DE SUPORTE FUNDAMENTAL (COMPRESSÃO HISTÓRICA)";
-        corValuation = "#5cb85c"; // Verde
-        nlgValuation = `<strong>O Racional:</strong> O Forward P/E atual (${peAtual}x) encontra-se comprimido, transacionando muito próximo dos seus mínimos históricos (${peMinimo}x). O mercado já precificou o pessimismo.<br>
-        <strong>Consistência:</strong> ${textoCrescimento}<br>
-        <strong>Risco Máximo (Cenário Super Bearish):</strong> Se o ativo colapsar até à sua base de avaliação absoluta histórica (${peMinimo}x), o preço sofreria uma contração técnica máxima de <strong>-${quedaBearish.toFixed(1)}%</strong>. O risco/recompensa de <i>Longs</i> é estatisticamente favorável, desde que apoiado na base do canal técnico.`;
-    
-    } else if (peAtual > peMinimo * 2) {
-        // P/E está esticado face ao histórico
-        peTag = "AVALIAÇÃO PRÉMIO / RISCO DE CONTRAÇÃO";
-        corValuation = "#d9534f"; // Vermelho
-        nlgValuation = `<strong>O Racional:</strong> O múltiplo (${peAtual}x) está severamente esticado face à sua média histórica (Mínimo foi ${peMinimo}x). Estão a precificar perfeição.<br>
-        <strong>Consistência:</strong> ${textoCrescimento}<br>
-        <strong>Risco Máximo (Cenário Super Bearish):</strong> Num evento de liquidação ou falha de *guidance*, o regresso ao P/E base histórico implicaria uma violenta quebra de <strong>-${quedaBearish.toFixed(1)}%</strong> no preço. Exige gestão de risco implacável e preferência por canais ascendentes validados.`;
-    } else {
-        peTag = "FAIR VALUE / AVALIAÇÃO NEUTRA";
-        corValuation = "#f0ad4e"; // Laranja
-        nlgValuation = `<strong>O Racional:</strong> O ativo negoceia numa zona de avaliação de equilíbrio histórico. A direção será inteiramente ditada pela ação de preço e liquidez técnica.<br>
-        <strong>Risco Máximo (Cenário Super Bearish):</strong> Risco de regressão aos mínimos fundamentais na ordem dos <strong>-${quedaBearish.toFixed(1)}%</strong>.`;
-    }
-}
+                if (peMinimo > 0 && peAtual <= peMinimo * 1.20) { 
+                    peTag = "SUPORTE FUNDAMENTAL (COMPRESSÃO HISTÓRICA)";
+                    corValuation = "#5cb85c";
+                    nlgValuation = `<strong>O Racional:</strong> O P/E atual (${peAtual}x) está comprimido, transacionando próximo dos mínimos a 5 anos (${peMinimo}x). O mercado já precificou o pessimismo.<br>
+                    <strong>Consistência:</strong> ${textoCrescimento}<br>
+                    <strong>Risco Máximo (Cenário Super Bearish):</strong> Se colapsar até à base absoluta histórica, o preço sofreria uma contração de <strong>-${quedaBearish.toFixed(1)}%</strong>. Risco/recompensa favorável se apoiado em suporte técnico.`;
+                
+                } else if (peMinimo > 0 && peAtual > peMinimo * 2) {
+                    peTag = "AVALIAÇÃO PRÉMIO / RISCO DE CONTRAÇÃO";
+                    corValuation = "#d9534f";
+                    nlgValuation = `<strong>O Racional:</strong> O múltiplo (${peAtual}x) está severamente esticado face ao mínimo histórico (${peMinimo}x). Estão a precificar perfeição.<br>
+                    <strong>Consistência:</strong> ${textoCrescimento}<br>
+                    <strong>Risco Máximo (Cenário Super Bearish):</strong> Num evento de liquidação, o regresso ao P/E base implicaria uma violenta quebra de <strong>-${quedaBearish.toFixed(1)}%</strong> no preço.`;
+                } else {
+                    peTag = "FAIR VALUE / AVALIAÇÃO NEUTRA";
+                    corValuation = "#f0ad4e";
+                    nlgValuation = `<strong>O Racional:</strong> O ativo negoceia numa zona de equilíbrio histórico. A direção será ditada pela ação de preço técnica.<br>
+                    <strong>Risco Máximo (Cenário Super Bearish):</strong> Risco de regressão aos mínimos fundamentais: <strong>-${quedaBearish.toFixed(1)}%</strong>.`;
+                }
+            }
+
+            // REABRE A INJEÇÃO DO BLOCO HTML NA BLUEPRINT (Com o "html +=")
+            html += `
+            <h4 style="margin-top: 35px; color: #121212; text-transform: uppercase; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px; position: relative; z-index: 51;">
+                ⚖️ Valuation Risk & Fundamental Gravity
+            </h4>
+            
+            <div style="background: #1c1e24; border: 1px solid #30363d; border-radius: 6px; padding: 20px; margin-bottom: 25px; display: flex; gap: 25px; align-items: center; flex-wrap: wrap; position: relative; z-index: 51;">
+                
+                <div style="min-width: 180px; text-align: center; border-right: 1px solid #30363d; padding-right: 20px;">
+                    <span class="sniper-tt" style="color: #8b949e; font-size: 11px; text-transform: uppercase; font-weight: bold; margin-bottom: 8px; display: block;">
+                        Forward P/E Ratio
+                        <span class="sniper-tt-text" style="width: 250px;">
+                            <strong style="color: #4da6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Múltiplo de Avaliação</strong>
+                            Mede quantos anos demoraria a empresa a pagar o preço atual da ação.
+                        </span>
+                    </span>
+                    <div style="font-size: 32px; font-weight: 900; color: ${corValuation}; line-height: 1;">
+                        ${peAtual > 0 ? peAtual + 'x' : 'N/A'}
+                    </div>
+                    <div style="margin-top: 8px; font-size: 10px; font-weight: bold; color: ${corValuation}; background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 4px;">
+                        ${peTag}
+                    </div>
+                </div>
+
+                <div style="flex: 1; font-size: 13px; line-height: 1.6; color: #c9d1d9;">
+                    ${nlgValuation}
+                </div>
+            </div>
             
             <h4 style="margin-top: 0; color: #121212; text-transform: uppercase; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Trade Idea & Execution</h4>
             
-            <!-- CALCULADORA DE POSITION SIZING -->
             <div style="background: #1c1e24; border: 1px solid #30363d; border-radius: 6px; padding: 12px 15px; margin-bottom: 20px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
                 
                 <span class="sniper-tt" style="border-bottom: 1px dotted #8b949e; cursor: help; color: #8b949e; font-weight: bold; font-size: 13px;">
                     🧮 Position Sizing
                     <span class="sniper-tt-text" style="width: 320px; z-index: 1000; bottom: 150%;">
                         <strong style="color: #4da6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Gestão de Risco</strong>
-                        Calcula o número exato de ações a comprar para que, se o teu Stop Loss for atingido, a tua perda financeira seja estritamente igual ao risco definido (ex: perderes apenas 1% da tua banca). Isto blinda a tua carteira contra a ruína, ancorando o tamanho do lote à volatilidade real do ativo.
+                        Calcula o número exato de ações a comprar para proteger a carteira.
                     </span>
                 </span>
                 
@@ -1280,60 +1305,7 @@ else {
                 
                 <div id="calc-resultado" style="width: 100%; margin-top: 10px; display: none; gap: 20px;"></div>
             </div>
-            
-            <div style="display: flex; gap: 20px;">
-                
-                <!-- COLUNA 1: BULL PLAN -->
-                <div style="flex: 1; background: #eafaf1; border: 1px solid #c3e6cb; border-radius: 6px; padding: 15px; display: flex; flex-direction: column;">
-                    <h4 style="margin-top: 0; color: #2b542c; font-size: 16px; margin-bottom: 15px;">📈 Bull Plan</h4>
-                    <div style="font-size: 13px; line-height: 1.8; color: #121212; flex-grow: 1;">
-                        <span style="color: #d9534f; font-weight: 900;">🎯 PT</span> ${bull_pts}<br>
-                        <span style="color: #0275d8; font-weight: 900;">🛡️ Stop</span> Below ${dados.bull_plan.stop}<br>
-                        <span class="sniper-tt">
-                            ⚖️ <strong style="color: ${cor_rr_bull};">R:R ${dados.bull_plan.rr}</strong>
-                            <span class="sniper-tt-text" style="width: 250px;">
-                                <strong style="color: #4da6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Risco / Recompensa</strong>
-                                Se a cor for verde (Rácio &gt; 1:2), a recompensa paga pelo risco. Rácio vermelho invalida matematicamente a entrada a longo prazo.
-                            </span>
-                        </span>
-                    </div>
-                    <div style="margin-top: 15px; font-size: 12px; color: #3c763d; background: #dff0d8; padding: 10px; border-radius: 4px; line-height: 1.5;">
-                        ⚡ <strong>Confirmation requires:</strong> ${dados.bull_plan.entrada} com expansão de volume.
-                    </div>
-                </div>
-
-                <!-- COLUNA 2: BEAR PLAN -->
-                <div style="flex: 1; background: #fdf2f2; border: 1px solid #f5c6cb; border-radius: 6px; padding: 15px; display: flex; flex-direction: column;">
-                    <h4 style="margin-top: 0; color: #843534; font-size: 16px; margin-bottom: 15px;">📉 Bear Plan</h4>
-                    <div style="font-size: 13px; line-height: 1.8; color: #121212; flex-grow: 1;">
-                        <span style="color: #d9534f; font-weight: 900;">🎯 PT</span> ${bear_pts}<br>
-                        <span style="color: #0275d8; font-weight: 900;">🛡️ Stop</span> Above ${dados.bear_plan.stop}<br>
-                        <span class="sniper-tt">
-                            ⚖️ <strong style="color: ${cor_rr_bear};">R:R ${dados.bear_plan.rr}</strong>
-                            <span class="sniper-tt-text" style="width: 250px;">
-                                <strong style="color: #4da6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Risco / Recompensa</strong>
-                                O primeiro alvo tem de justificar o tamanho do teu Stop. Rituais de risco invertidos destroem qualquer carteira.
-                            </span>
-                        </span>
-                    </div>
-                    <div style="margin-top: 15px; font-size: 12px; color: #a94442; background: #f2dede; padding: 10px; border-radius: 4px; line-height: 1.5;">
-                        ⚡ <strong>Confirmation requires:</strong> ${dados.bear_plan.entrada} evidenciando falha estrutural.
-                    </div>
-                </div>
-
-            </div>
-
-            <!-- BOTÃO DE BACKTEST NA BASE -->
-            <div style="margin-top: 30px; text-align: center; position: relative; z-index: 51;">
-                <button onclick="executarBacktest('${dados.ticker}')" style="background: #2ea043; color: white; border: 1px solid #3fb950; padding: 10px 24px; border-radius: 6px; font-weight: bold; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s; box-shadow: 0 4px 12px rgba(46, 160, 67, 0.3);">
-                    ⚙️ Validar Setup no Histórico (Executar Backtest 5A)
-                </button>
-            </div>
-
-            <!-- GAVETA INVISÍVEL DO BACKTEST -->
-            <div id="gaveta-backtest" style="display: none; margin-top: 20px; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 20px; box-shadow: inset 0 0 15px rgba(0,0,0,0.5); position: relative; z-index: 51;">
-            </div>
-        `;
+            `;
 
         container.innerHTML = html;
             document.getElementById('loading').style.display = 'none';
