@@ -796,8 +796,8 @@ def api_sniper(ticker, timeframe):
                 else:
                     print(f"FMP Erro Profile: HTTP {resp_profile.status_code}")
                 
-                # 2. Puxar Próximos Resultados (Earnings)
-                url_earn = f"https://financialmodelingprep.com/api/v3/earning_calendar?symbol={ticker}&apikey={fmp_key}"
+                # 2. Puxar Próximos Resultados (Endpoint Histórico FMP - Sem Limites Temporais)
+                url_earn = f"https://financialmodelingprep.com/api/v3/historical/earning_calendar/{ticker}?apikey={fmp_key}"
                 resp_earn = requests.get(url_earn, timeout=5)
                 
                 if resp_earn.status_code == 200:
@@ -806,8 +806,11 @@ def api_sniper(ticker, timeframe):
                     dados_earn = resp_earn.json()
                     
                     if isinstance(dados_earn, list):
+                        # Filtra apenas datas do futuro
                         futuros = [e for e in dados_earn if e.get('date', '') >= hoje.strftime('%Y-%m-%d')]
+                        
                         if futuros:
+                            # Ordena cronologicamente e saca o mais próximo
                             futuros.sort(key=lambda x: x['date'])
                             prox_data_str = futuros[0]['date']
                             prox_data_obj = datetime.datetime.strptime(prox_data_str, '%Y-%m-%d').date()
