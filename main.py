@@ -156,7 +156,26 @@ from Radar import calcular_radar_momentum_v2, comparar_ativos
 
 
 
-
+@app.route('/api/market_movers')
+@cache.cached(timeout=300) # Atualiza a cada 5 minutos para não esgotar a API
+def api_market_movers():
+    fmp_key = os.environ.get("FMP_API_KEY")
+    if not fmp_key:
+        return jsonify({"erro": "Chave FMP não encontrada no servidor."}), 400
+    
+    try:
+        # A FMP permite extrair estes dados do mercado americano gratuitamente
+        gainers = requests.get(f"https://financialmodelingprep.com/api/v3/stock_market/gainers?apikey={fmp_key}", timeout=5).json()[:5]
+        losers = requests.get(f"https://financialmodelingprep.com/api/v3/stock_market/losers?apikey={fmp_key}", timeout=5).json()[:5]
+        actives = requests.get(f"https://financialmodelingprep.com/api/v3/stock_market/actives?apikey={fmp_key}", timeout=5).json()[:5]
+        
+        return jsonify({
+            "gainers": gainers,
+            "losers": losers,
+            "actives": actives
+        })
+    except Exception as e:
+        return jsonify({"erro": f"Falha na API da FMP: {str(e)}"}), 500
 
 
 @app.route('/api/analisar')
@@ -377,9 +396,7 @@ def ferramenta_interativa():
 @app.route('/api/comparar/<ticker1>/<ticker2>')
 @cache.cached(timeout=300) 
 def api_comparar(ticker1, ticker2):
-    # ==========================================================
     # BARREIRA: Bloqueia Criptomoedas no Duelo de Ações
-    # ==========================================================
     if "-" in ticker1 or "-" in ticker2:
         return jsonify({"erro": "Ativo Inválido! Usa o 'Laboratório de Ativos Digitais' mais abaixo para comparar criptomoedas."}), 400
         
@@ -387,8 +404,30 @@ def api_comparar(ticker1, ticker2):
     
     if df_comparacao.empty:
         return jsonify({"erro": "Não foi possível obter dados para um ou ambos os tickers."}), 400
-        
-    return jsonify(df_comparacao.to_dict(orient='records'))
+    
+    # Converte para dicionário para podermos injetar dados extra
+    dados = df_comparacao.to_dict(orient='records')
+    
+    # --- INJEÇÃO: PRICE TARGETS DE WALL STREET (Via Yahoo Finance Gratuito) ---
+    for ativo in dados:
+        try:
+            tk = yf.Ticker(ativo['Ticker'])
+            target = tk.info.get('targetMeanPrice', 0)
+            preco_atual = float(ativo['Preço'])
+            
+            if target > 0 and preco_atual > 0:
+                upside = ((target / preco_atual) - 1) * 100
+                ativo['WallSt Target'] = f"${target:.2f}"
+                ativo['WallSt Upside'] = f"{upside:+.1f}%"
+            else:
+                ativo['WallSt Target'] = "N/A"
+                ativo['WallSt Upside'] = "N/A"
+        except:
+            ativo['WallSt Target'] = "N/A"
+            ativo['WallSt Upside'] = "N/A"
+    # -------------------------------------------------------------------------
+            
+    return jsonify(dados)
 
 @app.route('/api/comparar_cripto/<ticker1>/<ticker2>')
 @cache.cached(timeout=300) 
