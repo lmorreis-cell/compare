@@ -286,15 +286,36 @@
 
     <!-- SEPARADOR 1: RADAR GLOBAL -->
     <div id="tab-radar" class="tab-content active">
+        
         <div style="background-color: #1c1e24; border: 1px solid #30363d; border-left: 4px solid #f28b24; padding: 15px; border-radius: 8px; margin-bottom: 20px; margin-top: 15px;">
             <p style="margin: 0; font-size: 11px; font-weight: bold; color: #c9d1d9;">Sincronização de Dados (Delay Intencional)</p>
             <p style="margin: 5px 0 0 0; font-size: 11px; color: #8b949e; line-height: 1.4;">Os dados processados neste painel operam com um ciclo de atualização tático de 5 minutos. Este desfasamento temporal não é uma anomalia, mas sim uma medida arquitetural de segurança para evitar limites de estrangulamento (<em>Rate Limiting</em>) e bloqueios de IP por parte das fontes e APIs financeiras. Este ciclo garante a estabilidade e disponibilidade ininterrupta do motor quantitativo para todos os membros da comunidade simultaneamente.</p>
         </div>
         
-        <!-- BOTÃO AZUL CORRIGIDO E FUNCIONAL -->
-        <button id="btn-atualizar" onclick="iniciarAtualizacao()" style="background: #007bff; color: white; border: none; padding: 12px; font-size: 14px; font-weight: bold; border-radius: 6px; width: 100%; cursor: pointer; box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3); transition: opacity 0.2s;">
-            EXECUTAR ANÁLISE DE MERCADO
-        </button><p></p>
+        <button id="btn-atualizar" onclick="executarAnalise()" style="background: #007bff; color: white; border: none; padding: 12px; font-size: 14px; font-weight: bold; border-radius: 6px; width: 100%; cursor: pointer; box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3); transition: opacity 0.2s; margin-bottom: 25px;">
+            EXECUTAR RADAR MACRO & SINAIS DE ENTRADA
+        </button>
+
+        <!-- NOVO: TERMÓMETROS INTRADIÁRIOS (MARKET MOVERS) -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h3 style="margin: 0; font-size: 14px; color: #f0f2f5; text-transform: uppercase;">
+                <span class="dica-edu">
+                    🌡️ Pulsação da Sessão Americana (Ao Vivo)
+                    <span class="dica-texto" style="width: 320px;">
+                        <strong style="color: #58a6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Market Movers</strong>
+                        Identifica os ativos com maior afluxo ou fuga de liquidez institucional no próprio dia. Ajuda a descortinar rotações setoriais violentas antes destas aparecerem nos gráficos diários.
+                    </span>
+                </span>
+            </h3>
+            <button onclick="carregarMarketMovers()" style="background: transparent; color: #58a6ff; border: 1px solid #30363d; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer; transition: background 0.2s;">Sincronizar Termómetro</button>
+        </div>
+
+        <div id="loading-movers" style="display: none; text-align: center; color: #8b949e; font-size: 12px; margin-bottom: 20px;">A calibrar termómetros...</div>
+
+        <div id="painel-movers" style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 30px;">
+            <!-- O Javascript vai injetar as 3 colunas aqui -->
+        </div>
+
     </div>
 
     <!-- SEPARADOR 2: AÇÕES E ETFs -->
@@ -1609,6 +1630,20 @@
                                 <td>RSI (14 Dias)</td>
                                 <td>${t1['RSI (14)']}</td>
                                 <td>${t2['RSI (14)']}</td>
+                            </tr>
+                            <!-- NOVA LINHA INJETADA AQUI -->
+                            <tr>
+                                <td>
+                                    <span class="sniper-tt" style="color: #333; border-bottom: 1px dotted #8b949e;">
+                                        Consenso Wall St. (Price Target)
+                                        <span class="sniper-tt-text" style="width: 250px; bottom: 120%;">
+                                            <strong style="color: #e3b341; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Expectativa Institucional</strong>
+                                            Serve apenas para aferir se o mercado está excessivamente otimista com um dos ativos. Um 'Upside' gigantesco num ativo em queda livre é frequentemente uma armadilha de valor (Value Trap) não atualizada pelos bancos.
+                                        </span>
+                                    </span>
+                                </td>
+                                <td>${t1['WallSt Target']} <span style="font-size: 11px; color: ${parseFloat(t1['WallSt Upside']) > 0 ? '#2b542c' : '#843534'};">(${t1['WallSt Upside']})</span></td>
+                                <td>${t2['WallSt Target']} <span style="font-size: 11px; color: ${parseFloat(t2['WallSt Upside']) > 0 ? '#2b542c' : '#843534'};">(${t2['WallSt Upside']})</span></td>
                             </tr>
                         </tbody>
                     </table>
@@ -3164,6 +3199,66 @@
         
         atualizarCofre(); 
     }
+    async function carregarMarketMovers() {
+        const painel = document.getElementById('painel-movers');
+        const loading = document.getElementById('loading-movers');
+        
+        painel.innerHTML = '';
+        loading.style.display = 'block';
+
+        try {
+            const resposta = await fetch('/api/market_movers');
+            const dados = await resposta.json();
+            
+            loading.style.display = 'none';
+
+            if (dados.erro) {
+                painel.innerHTML = `<div style="width:100%; text-align:center; color:#d9534f; font-size:13px;">⚠️ Erro ao carregar termómetros: ${dados.erro}</div>`;
+                return;
+            }
+
+            const gerarLista = (titulo, items, corGeral) => {
+                let html = `
+                <div style="flex: 1; min-width: 220px; background: #161b22; border: 1px solid #30363d; border-top: 3px solid ${corGeral}; border-radius: 6px; padding: 15px;">
+                    <h4 style="margin: 0 0 15px 0; color: #c9d1d9; font-size: 12px; text-transform: uppercase; text-align: center;">${titulo}</h4>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">`;
+                
+                items.forEach(item => {
+                    let corPercentagem = item.changesPercentage > 0 ? '#5cb85c' : (item.changesPercentage < 0 ? '#d9534f' : '#8b949e');
+                    let sinal = item.changesPercentage > 0 ? '+' : '';
+                    
+                    html += `
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed #30363d; padding-bottom: 5px;">
+                            <strong style="color: #58a6ff; font-size: 13px; font-family: monospace; cursor: pointer;" title="${item.name}" onclick="document.getElementById('tab-acoes').click(); document.getElementById('sniper-ticker').value='${item.symbol}'; gerarBlueprintSniper();">${item.symbol}</strong>
+                            <div style="text-align: right;">
+                                <div style="color: #f0f2f5; font-size: 12px; font-weight: bold;">$${item.price.toFixed(2)}</div>
+                                <div style="color: ${corPercentagem}; font-size: 10px; font-weight: bold;">${sinal}${item.changesPercentage.toFixed(2)}%</div>
+                            </div>
+                        </div>`;
+                });
+                
+                html += `</div></div>`;
+                return html;
+            };
+
+            let htmlCompleto = "";
+            if (dados.gainers && dados.gainers.length > 0) htmlCompleto += gerarLista("🚀 Top Gainers", dados.gainers, "#5cb85c");
+            if (dados.losers && dados.losers.length > 0) htmlCompleto += gerarLista("🩸 Top Losers", dados.losers, "#d9534f");
+            if (dados.actives && dados.actives.length > 0) htmlCompleto += gerarLista("🔥 Most Active (Volume)", dados.actives, "#e3b341");
+
+            painel.innerHTML = htmlCompleto;
+
+        } catch (erro) {
+            loading.style.display = 'none';
+            painel.innerHTML = `<div style="width:100%; text-align:center; color:#d9534f; font-size:13px;">⚠️ Falha na comunicação com a API FMP.</div>`;
+        }
+    }
+
+    // Auto-carregar os Termómetros quando a página inicia
+    document.addEventListener('DOMContentLoaded', () => {
+        carregarMarketMovers();
+        renderizarHistorico();
+    });
 </script>
 
 </body>
