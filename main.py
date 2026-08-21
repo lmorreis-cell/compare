@@ -778,9 +778,14 @@ def api_sniper(ticker, timeframe):
         # -----------------------------------------------------
 
 
-        # --- NOVA INJEÇÃO: LOGÓTIPO FMP E RADAR DE EARNINGS HÍBRIDO ---
+        # --- NOVA INJEÇÃO: LOGÓTIPO FMP, EARNINGS, INSIDERS, TARGETS E NEWS ---
         logo_url = ""
         earnings_warning = ""
+        insider_signal = "Sem dados recentes"
+        target_consensus = 0
+        target_upside = 0
+        news_data = []
+        
         import datetime
         hoje = datetime.date.today()
         
@@ -790,37 +795,59 @@ def api_sniper(ticker, timeframe):
                 # 1. Puxar Logótipo (FMP)
                 url_profile = f"https://financialmodelingprep.com/stable/profile?symbol={ticker}&apikey={fmp_key}"
                 resp_profile = requests.get(url_profile, timeout=5)
-                
                 if resp_profile.status_code == 200:
                     dados_profile = resp_profile.json()
                     if isinstance(dados_profile, list) and len(dados_profile) > 0:
                         logo_url = dados_profile[0].get('image', '')
-        except Exception as e:
-            print(f"Erro Logotipo FMP: {e}")
+                
+                # 2. Puxar Price Targets de Wall Street
+                url_pt = f"https://financialmodelingprep.com/api/v4/price-target-consensus?symbol={ticker}&apikey={fmp_key}"
+                resp_pt = requests.get(url_pt, timeout=5)
+                if resp_pt.status_code == 200 and resp_pt.json():
+                    pt_data = resp_pt.json()[0]
+                    target_consensus = pt_data.get('targetConsensus', 0)
+                    if target_consensus > 0 and fecho_atual > 0:
+                        target_upside = ((target_consensus / fecho_atual) - 1) * 100
 
-        # 2. Puxar Próximos Resultados (Motor Duplo: YF -> FMP)
+                # 3. Puxar Insider Trading (Últimas 15 transações de Executivos)
+                url_insider = f"https://financialmodelingprep.com/api/v4/insider-trading?symbol={ticker}&limit=15&apikey={fmp_key}"
+                resp_insider = requests.get(url_insider, timeout=5)
+                if resp_insider.status_code == 200 and resp_insider.json():
+                    compras = sum(1 for t in resp_insider.json() if t.get('transactionType') in ['P-Purchase', 'P'])
+                    vendas = sum(1 for t in resp_insider.json() if t.get('transactionType') in ['S-Sale', 'S'])
+                    if compras > vendas * 2:
+                        insider_signal = f"Acumulação Forte ({compras}C / {vendas}V)"
+                    elif vendas > compras * 2:
+                        insider_signal = f"Distribuição Forte ({vendas}V / {compras}C)"
+                    else:
+                        insider_signal = f"Fluxo Neutro ({compras}C / {vendas}V)"
+
+                # 4. Puxar Últimas 3 Notícias Relevantes
+                url_news = f"https://financialmodelingprep.com/api/v3/stock_news?tickers={ticker}&limit=3&apikey={fmp_key}"
+                resp_news = requests.get(url_news, timeout=5)
+                if resp_news.status_code == 200:
+                    news_data = [{"title": n.get('title'), "url": n.get('url'), "date": n.get('publishedDate')[:10]} for n in resp_news.json()]
+
+        except Exception as e:
+            print(f"Erro na extração FMP Avançada para {ticker}: {e}")
+
+        # 5. Puxar Próximos Resultados (Motor Duplo: YF -> FMP)
         data_resultados = None
-        
         try:
-            # Tentativa 1: Yahoo Finance (Sempre atualizado com estimativas)
             tk = yf.Ticker(ticker)
             ed = tk.get_earnings_dates(limit=10)
             if ed is not None and not ed.empty:
                 import pandas as pd
                 hoje_ts = pd.Timestamp(hoje)
-                
-                # Garantir que removemos os fusos horários (Timezones) para não dar erro
                 if ed.index.tz is not None:
                     ed.index = ed.index.tz_localize(None)
-                    
                 ed_futuras = ed[ed.index >= hoje_ts]
                 if not ed_futuras.empty:
                     data_resultados = ed_futuras.index.min().date()
         except Exception as e:
-            print(f"Aviso YF Earnings: {e}")
+            pass
 
         try:
-            # Tentativa 2: FMP Fallback (Se o YF falhar por algum motivo)
             if data_resultados is None and fmp_key:
                 url_earn = f"https://financialmodelingprep.com/api/v3/historical/earning_calendar/{ticker}?apikey={fmp_key}"
                 resp_earn = requests.get(url_earn, timeout=5)
@@ -832,9 +859,9 @@ def api_sniper(ticker, timeframe):
                             futuros.sort(key=lambda x: x['date'])
                             data_resultados = datetime.datetime.strptime(futuros[0]['date'], '%Y-%m-%d').date()
         except Exception as e:
-            print(f"Aviso FMP Earnings: {e}")
+            pass
 
-        # 3. Construção do Motor de Alerta de Volatilidade
+        # Construção do Motor de Alerta de Volatilidade
         if data_resultados is not None:
             dias_restantes = (data_resultados - hoje).days
             prox_data_str = data_resultados.strftime('%Y-%m-%d')
@@ -842,7 +869,6 @@ def api_sniper(ticker, timeframe):
                 earnings_warning = f"⚠️ ALERTA DE RISCO: Apresentação de Resultados em {dias_restantes} dias ({prox_data_str}). A volatilidade anulará suportes técnicos."
             else:
                 earnings_warning = f"📅 Próximos Resultados: {prox_data_str} (faltam {dias_restantes} dias)"
-        # -----------------------------------------------------
         # -----------------------------------------------------
      
         
@@ -955,6 +981,10 @@ def api_sniper(ticker, timeframe):
             # --- FMP VARIAVEIS ---
             "logo_url": logo_url,
             "earnings_warning": earnings_warning,
+            "insider_signal": insider_signal,
+            "target_consensus": target_consensus,
+            "target_upside": f"{target_upside:+.1f}%",
+            "news_data": news_data,
             
             # --- NOVAS VARIÁVEIS A ENVIAR ---
             "dist_m50": f"{dist_m50:+.1f}%",
