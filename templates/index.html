@@ -1341,30 +1341,79 @@
                 </div>
                 ` : ''}
             
-            <h4 style="margin-top: 0; color: #121212; text-transform: uppercase; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Trade Idea & Execution</h4>
-            
-            <div style="background: #1c1e24; border: 1px solid #30363d; border-radius: 6px; padding: 12px 15px; margin-bottom: 20px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+            <h4 style="margin-top: 0; color: #121212; text-transform: uppercase; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px; position: relative; z-index: 51;">Trade Idea & Execution</h4>
                 
-                <span class="sniper-tt" style="border-bottom: 1px dotted #8b949e; cursor: help; color: #8b949e; font-weight: bold; font-size: 13px;">
-                    🧮 Position Sizing
-                    <span class="sniper-tt-text" style="width: 320px; z-index: 1000; bottom: 150%;">
-                        <strong style="color: #4da6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Gestão de Risco</strong>
-                        Calcula o número exato de ações a comprar para proteger a carteira.
+                <div style="background: #1c1e24; border: 1px solid #30363d; border-radius: 6px; padding: 12px 15px; margin-bottom: 20px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap; position: relative; z-index: 51;">
+                    
+                    <span class="sniper-tt" style="border-bottom: 1px dotted #8b949e; cursor: help; color: #8b949e; font-weight: bold; font-size: 13px;">
+                        🧮 Position Sizing
+                        <span class="sniper-tt-text" style="width: 320px; z-index: 1000; bottom: 150%;">
+                            <strong style="color: #4da6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Gestão de Risco Matemática</strong>
+                            Calcula o número exato de ações a comprar para proteger a carteira.
+                        </span>
                     </span>
-                </span>
-                
-                <input type="number" id="calc-banca" placeholder="Banca Total (€/$)" class="input-moderno" style="max-width: 140px; padding: 8px; font-size: 13px;">
-                
-                <div style="display: flex; align-items: center; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; overflow: hidden; padding-left: 12px;">
-                    <span style="color: #8b949e; font-size: 13px; white-space: nowrap; font-weight: bold;">Risco:</span>
-                    <input type="number" id="calc-risco" value="1" step="0.1" style="background: transparent; border: none; color: #c9d1d9; padding: 8px; font-size: 14px; width: 45px; text-align: center; outline: none; font-weight: bold;">
-                    <span style="color: #8b949e; font-size: 13px; padding-right: 12px; font-weight: bold;">%</span>
+                    
+                    <input type="number" id="calc-banca" placeholder="Banca Total (€/$)" class="input-moderno" style="max-width: 140px; padding: 8px; font-size: 13px;">
+                    
+                    <div style="display: flex; align-items: center; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; overflow: hidden; padding-left: 12px;">
+                        <span style="color: #8b949e; font-size: 13px; white-space: nowrap; font-weight: bold;">Risco:</span>
+                        <input type="number" id="calc-risco" value="1" step="0.1" style="background: transparent; border: none; color: #c9d1d9; padding: 8px; font-size: 14px; width: 45px; text-align: center; outline: none; font-weight: bold;">
+                        <span style="color: #8b949e; font-size: 13px; padding-right: 12px; font-weight: bold;">%</span>
+                    </div>
+
+                    <button onclick="calcularLotesSniper(${dados.resistencias[0]}, ${dados.suportes[0]}, ${dados.bull_plan.stop}, ${dados.bear_plan.stop})" class="btn-moderno btn-azul" style="padding: 8px 15px; font-size: 12px;">Calcular Exposição</button>
+                    
+                    <div id="calc-resultado" style="width: 100%; margin-top: 10px; display: none; gap: 20px;"></div>
                 </div>
 
-                <button onclick="calcularLotesSniper(${dados.resistencias[0]}, ${dados.suportes[0]}, ${dados.bull_plan.stop}, ${dados.bear_plan.stop})" class="btn-moderno btn-azul" style="padding: 8px 15px; font-size: 12px;">Calcular Exposição</button>
-                
-                <div id="calc-resultado" style="width: 100%; margin-top: 10px; display: none; gap: 20px;"></div>
-            </div>
+                <div style="display: flex; gap: 20px; position: relative; z-index: 51;">
+                    <div style="flex: 1; background: #eafaf1; border: 1px solid #c3e6cb; border-radius: 6px; padding: 15px; display: flex; flex-direction: column;">
+                        <h4 style="margin-top: 0; color: #2b542c; font-size: 16px; margin-bottom: 15px;">📈 Bull Plan</h4>
+                        <div style="font-size: 13px; line-height: 1.8; color: #121212; flex-grow: 1;">
+                            <span style="color: #d9534f; font-weight: 900;">🎯 PT</span> ${bull_pts}<br>
+                            <span style="color: #0275d8; font-weight: 900;">🛡️ Stop</span> Below ${dados.bull_plan.stop}<br>
+                            <span class="sniper-tt">
+                                ⚖️ <strong style="color: ${cor_rr_bull};">R:R ${dados.bull_plan.rr}</strong>
+                                <span class="sniper-tt-text" style="width: 250px;">
+                                    <strong style="color: #4da6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Risco / Recompensa</strong>
+                                    Se a cor for verde (Rácio &gt; 1:2), a recompensa paga pelo risco. Rácio vermelho invalida matematicamente a entrada a longo prazo.
+                                </span>
+                            </span>
+                        </div>
+                        <div style="margin-top: 15px; font-size: 12px; color: #3c763d; background: #dff0d8; padding: 10px; border-radius: 4px; line-height: 1.5;">
+                            ⚡ <strong>Confirmation requires:</strong> ${dados.bull_plan.entrada} com expansão de volume.
+                        </div>
+                    </div>
+
+                    <div style="flex: 1; background: #fdf2f2; border: 1px solid #f5c6cb; border-radius: 6px; padding: 15px; display: flex; flex-direction: column;">
+                        <h4 style="margin-top: 0; color: #843534; font-size: 16px; margin-bottom: 15px;">📉 Bear Plan</h4>
+                        <div style="font-size: 13px; line-height: 1.8; color: #121212; flex-grow: 1;">
+                            <span style="color: #d9534f; font-weight: 900;">🎯 PT</span> ${bear_pts}<br>
+                            <span style="color: #0275d8; font-weight: 900;">🛡️ Stop</span> Above ${dados.bear_plan.stop}<br>
+                            <span class="sniper-tt">
+                                ⚖️ <strong style="color: ${cor_rr_bear};">R:R ${dados.bear_plan.rr}</strong>
+                                <span class="sniper-tt-text" style="width: 250px;">
+                                    <strong style="color: #4da6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Risco / Recompensa</strong>
+                                    O primeiro alvo tem de justificar o tamanho do teu Stop. Rituais de risco invertidos destroem qualquer carteira.
+                                </span>
+                            </span>
+                        </div>
+                        <div style="margin-top: 15px; font-size: 12px; color: #a94442; background: #f2dede; padding: 10px; border-radius: 4px; line-height: 1.5;">
+                            ⚡ <strong>Confirmation requires:</strong> ${dados.bear_plan.entrada} evidenciando falha estrutural.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BOTÃO DE BACKTEST NA BASE -->
+                <div style="margin-top: 30px; text-align: center; position: relative; z-index: 51;">
+                    <button onclick="executarBacktest('${dados.ticker}')" style="background: #2ea043; color: white; border: 1px solid #3fb950; padding: 10px 24px; border-radius: 6px; font-weight: bold; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s; box-shadow: 0 4px 12px rgba(46, 160, 67, 0.3);">
+                        ⚙️ Validar Setup no Histórico (Executar Backtest 5A)
+                    </button>
+                </div>
+
+                <!-- GAVETA INVISÍVEL DO BACKTEST -->
+                <div id="gaveta-backtest" style="display: none; margin-top: 20px; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 20px; box-shadow: inset 0 0 15px rgba(0,0,0,0.5); position: relative; z-index: 51;">
+                </div>
             `;
 
         container.innerHTML = html;
