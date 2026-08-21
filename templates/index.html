@@ -1326,20 +1326,20 @@
             </div>
 
             <!-- BLOCO 4: MATRIZ DE NOTÍCIAS (SENTIMENTO) -->
-            ${dados.news_data && dados.news_data.length > 0 ? `
-            <div style="background: #e9ecef; border-left: 4px solid #8a94a8; border-radius: 4px; padding: 15px; margin-bottom: 25px; position: relative; z-index: 51;">
-                <span class="sniper-tt" style="color: #121212; font-size: 12px; text-transform: uppercase; font-weight: bold; margin-bottom: 10px; display: block;">
-                    📰 Fluxo de Sentimento Noticioso
-                    <span class="sniper-tt-text" style="width: 280px;">
-                        <strong style="color: #4da6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Reação vs Ruído</strong>
-                        Notícias são ruído algorítmico, o gráfico é a realidade. O objetivo desta lista não é operar o rumor, mas perceber o contexto de um <i>gap</i> recente ou se um rompimento de resistência teve ignição noticiosa ou se foi puramente técnico.
+                ${dados.news_data && dados.news_data.length > 0 ? `
+                <div style="background: #e9ecef; border-left: 4px solid #8a94a8; border-radius: 4px; padding: 15px; margin-bottom: 25px; position: relative; z-index: 51;">
+                    <span class="sniper-tt" style="color: #121212; font-size: 12px; text-transform: uppercase; font-weight: bold; margin-bottom: 10px; display: block;">
+                        📰 Fluxo de Sentimento Noticioso
+                        <span class="sniper-tt-text" style="width: 280px;">
+                            <strong style="color: #4da6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Reação vs Ruído</strong>
+                            Notícias são ruído algorítmico, o gráfico é a realidade. O objetivo desta lista não é operar o rumor, mas perceber o contexto de um <i>gap</i> recente ou se um rompimento de resistência teve ignição noticiosa ou se foi puramente técnico.
+                        </span>
                     </span>
-                </span>
-                <ul style="margin: 0; padding-left: 20px; font-size: 12px; color: #333;">
-                    ${dados.news_data.map(n => `<li style="margin-bottom: 5px;">[${n.date}] <a href="${n.url}" target="_blank" style="color: #0275d8; text-decoration: none;">${n.title}</a></li>`).join('')}
-                </ul>
-            </div>
-            ` : ''}
+                    <ul style="margin: 0; padding-left: 20px; font-size: 12px; color: #333;">
+                        ${dados.news_data.map(n => `<li style="margin-bottom: 5px;">[${n.date}] <a href="${n.url}" target="_blank" style="color: #0275d8; text-decoration: none;">${n.title}</a></li>`).join('')}
+                    </ul>
+                </div>
+                ` : ''}
             
             <h4 style="margin-top: 0; color: #121212; text-transform: uppercase; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Trade Idea & Execution</h4>
             
