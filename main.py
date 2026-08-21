@@ -777,6 +777,44 @@ def api_sniper(ticker, timeframe):
         except: perf_3m = 0
         # -----------------------------------------------------
 
+
+        # --- NOVA INJEÇÃO FMP: LOGÓTIPO E RADAR DE EARNINGS ---
+        logo_url = ""
+        earnings_warning = ""
+        
+        try:
+            fmp_key = os.environ.get("FMP_API_KEY")
+            if fmp_key:
+                # 1. Puxar Logótipo (Endpoint Profile)
+                resp_profile = requests.get(f"https://financialmodelingprep.com/api/v3/profile/{ticker}?apikey={fmp_key}", timeout=3)
+                if resp_profile.status_code == 200 and resp_profile.json():
+                    logo_url = resp_profile.json()[0].get('image', '')
+                
+                # 2. Puxar Próximos Resultados (Endpoint Earnings Calendar)
+                import datetime
+                hoje = datetime.date.today()
+                resp_earn = requests.get(f"https://financialmodelingprep.com/api/v3/earning_calendar?symbol={ticker}&apikey={fmp_key}", timeout=3)
+                
+                if resp_earn.status_code == 200 and resp_earn.json():
+                    # Filtra apenas os resultados de hoje para a frente
+                    futuros = [e for e in resp_earn.json() if e.get('date', '') >= hoje.strftime('%Y-%m-%d')]
+                    
+                    if futuros:
+                        # Ordena para garantir que apanhamos o mais próximo
+                        futuros.sort(key=lambda x: x['date'])
+                        prox_data_str = futuros[0]['date']
+                        prox_data_obj = datetime.datetime.strptime(prox_data_str, '%Y-%m-%d').date()
+                        dias_restantes = (prox_data_obj - hoje).days
+                        
+                        # Motor de Gestão de Risco
+                        if dias_restantes <= 7:
+                            earnings_warning = f"⚠️ ALERTA DE RISCO: Apresentação de Resultados em {dias_restantes} dias ({prox_data_str}). A volatilidade anulará suportes técnicos."
+                        else:
+                            earnings_warning = f"📅 Próximos Resultados: {prox_data_str} (faltam {dias_restantes} dias)"
+        except Exception as e:
+            print(f"Erro na FMP (Logo/Earnings) para {ticker}: {e}")
+        # -----------------------------------------------------
+        
         # --- 1. MATEMÁTICA DE COMPRESSÃO (BOLLINGER BANDS) E VOLUME ---
         df['SMA_20'] = df['Close'].rolling(window=20).mean()
         df['STD_20'] = df['Close'].rolling(window=20).std()
@@ -882,6 +920,10 @@ def api_sniper(ticker, timeframe):
             "pe_ratio": round(pe_ratio, 2) if pe_ratio else 0,
             "peg_ratio": round(peg_ratio, 2) if peg_ratio else 0,  
             "pe_min_5y": round(pe_min_5y, 2) if pe_min_5y else 0,
+
+            # --- FMP VARIAVEIS ---
+            "logo_url": logo_url,
+            "earnings_warning": earnings_warning,
             
             # --- NOVAS VARIÁVEIS A ENVIAR ---
             "dist_m50": f"{dist_m50:+.1f}%",
