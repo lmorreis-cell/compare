@@ -778,14 +778,16 @@ def api_sniper(ticker, timeframe):
         # -----------------------------------------------------
 
 
-        # --- NOVA INJEÇÃO FMP: LOGÓTIPO E RADAR DE EARNINGS ---
+        # --- NOVA INJEÇÃO: LOGÓTIPO FMP E RADAR DE EARNINGS HÍBRIDO ---
         logo_url = ""
         earnings_warning = ""
+        import datetime
+        hoje = datetime.date.today()
         
         try:
             fmp_key = os.environ.get("FMP_API_KEY")
             if fmp_key:
-                # 1. Puxar Logótipo (Usando a rota "stable" exigida no email)
+                # 1. Puxar Logótipo (FMP)
                 url_profile = f"https://financialmodelingprep.com/stable/profile?symbol={ticker}&apikey={fmp_key}"
                 resp_profile = requests.get(url_profile, timeout=5)
                 
@@ -793,38 +795,54 @@ def api_sniper(ticker, timeframe):
                     dados_profile = resp_profile.json()
                     if isinstance(dados_profile, list) and len(dados_profile) > 0:
                         logo_url = dados_profile[0].get('image', '')
-                else:
-                    print(f"FMP Erro Profile: HTTP {resp_profile.status_code}")
+        except Exception as e:
+            print(f"Erro Logotipo FMP: {e}")
+
+        # 2. Puxar Próximos Resultados (Motor Duplo: YF -> FMP)
+        data_resultados = None
+        
+        try:
+            # Tentativa 1: Yahoo Finance (Sempre atualizado com estimativas)
+            tk = yf.Ticker(ticker)
+            ed = tk.get_earnings_dates(limit=10)
+            if ed is not None and not ed.empty:
+                import pandas as pd
+                hoje_ts = pd.Timestamp(hoje)
                 
-                # 2. Puxar Próximos Resultados (Endpoint Histórico FMP - Sem Limites Temporais)
+                # Garantir que removemos os fusos horários (Timezones) para não dar erro
+                if ed.index.tz is not None:
+                    ed.index = ed.index.tz_localize(None)
+                    
+                ed_futuras = ed[ed.index >= hoje_ts]
+                if not ed_futuras.empty:
+                    data_resultados = ed_futuras.index.min().date()
+        except Exception as e:
+            print(f"Aviso YF Earnings: {e}")
+
+        try:
+            # Tentativa 2: FMP Fallback (Se o YF falhar por algum motivo)
+            if data_resultados is None and fmp_key:
                 url_earn = f"https://financialmodelingprep.com/api/v3/historical/earning_calendar/{ticker}?apikey={fmp_key}"
                 resp_earn = requests.get(url_earn, timeout=5)
-                
                 if resp_earn.status_code == 200:
-                    import datetime
-                    hoje = datetime.date.today()
                     dados_earn = resp_earn.json()
-                    
                     if isinstance(dados_earn, list):
-                        # Filtra apenas datas do futuro
                         futuros = [e for e in dados_earn if e.get('date', '') >= hoje.strftime('%Y-%m-%d')]
-                        
                         if futuros:
-                            # Ordena cronologicamente e saca o mais próximo
                             futuros.sort(key=lambda x: x['date'])
-                            prox_data_str = futuros[0]['date']
-                            prox_data_obj = datetime.datetime.strptime(prox_data_str, '%Y-%m-%d').date()
-                            dias_restantes = (prox_data_obj - hoje).days
-                            
-                            # Motor de Alerta de Volatilidade
-                            if dias_restantes <= 7:
-                                earnings_warning = f"⚠️ ALERTA DE RISCO: Apresentação de Resultados em {dias_restantes} dias ({prox_data_str}). A volatilidade anulará suportes técnicos."
-                            else:
-                                earnings_warning = f"📅 Próximos Resultados: {prox_data_str} (faltam {dias_restantes} dias)"
-                else:
-                    print(f"FMP Erro Earnings: HTTP {resp_earn.status_code}")
+                            data_resultados = datetime.datetime.strptime(futuros[0]['date'], '%Y-%m-%d').date()
         except Exception as e:
-            print(f"Exceção no bloco FMP para {ticker}: {e}")
+            print(f"Aviso FMP Earnings: {e}")
+
+        # 3. Construção do Motor de Alerta de Volatilidade
+        if data_resultados is not None:
+            dias_restantes = (data_resultados - hoje).days
+            prox_data_str = data_resultados.strftime('%Y-%m-%d')
+            if dias_restantes <= 7:
+                earnings_warning = f"⚠️ ALERTA DE RISCO: Apresentação de Resultados em {dias_restantes} dias ({prox_data_str}). A volatilidade anulará suportes técnicos."
+            else:
+                earnings_warning = f"📅 Próximos Resultados: {prox_data_str} (faltam {dias_restantes} dias)"
+        # -----------------------------------------------------
         # -----------------------------------------------------
      
         
