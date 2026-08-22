@@ -1427,12 +1427,12 @@ def webhook_duelo():
 
 if __name__ == "__main__":
     # Verifica se a variável PORT existe (o Discloud cria isto automaticamente)
-    porta = int(os.environ.get("PORT", 8080))
     if "PORT" in os.environ:
-        # Ambiente Cloud (Produção)
+        # Ambiente Cloud (Produção): Usa o motor profissional Waitress
         porta = int(os.environ.get("PORT"))
-        app.run(host="0.0.0.0", port=porta)
+        from waitress import serve
+        print(f"[*] A iniciar servidor de produção WSGI na porta {porta}...")
+        serve(app, host="0.0.0.0", port=porta)
     else:
-        # Ambiente Local (O teu PC)
-        # Mantém a porta 5000 e ativa o reinício automático (debug)
+        # Ambiente Local (O teu PC): Usa o motor de testes do Flask
         app.run(debug=True, port=5000)
