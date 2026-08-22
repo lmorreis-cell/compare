@@ -157,25 +157,43 @@ from Radar import calcular_radar_momentum_v2, comparar_ativos
 
 
 @app.route('/api/market_movers')
-@cache.cached(timeout=300) # Atualiza a cada 5 minutos para não esgotar a API
+@cache.cached(timeout=300) # Atualiza a cada 5 minutos
 def api_market_movers():
-    fmp_key = os.environ.get("FMP_API_KEY")
-    if not fmp_key:
-        return jsonify({"erro": "Chave FMP não encontrada no servidor."}), 400
-    
     try:
-        # A FMP permite extrair estes dados do mercado americano gratuitamente
-        gainers = requests.get(f"https://financialmodelingprep.com/api/v3/stock_market/gainers?apikey={fmp_key}", timeout=5).json()[:5]
-        losers = requests.get(f"https://financialmodelingprep.com/api/v3/stock_market/losers?apikey={fmp_key}", timeout=5).json()[:5]
-        actives = requests.get(f"https://financialmodelingprep.com/api/v3/stock_market/actives?apikey={fmp_key}", timeout=5).json()[:5]
+        # Disfarçamos o nosso servidor como um browser normal para não sermos bloqueados pelo Yahoo
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36'}
+        
+        def buscar_yf(scr_id):
+            # Acesso direto à API oculta do Yahoo Finance
+            url = f"https://query1.finance.yahoo.com/v1/finance/screener/predefined/saved?formatted=false&lang=en-US&region=US&scrIds={scr_id}&count=5"
+            resp = requests.get(url, headers=headers, timeout=5)
+            
+            if resp.status_code == 200:
+                dados = resp.json()
+                quotes = dados.get('finance', {}).get('result', [])[0].get('quotes', [])
+                
+                # Traduzimos o formato do Yahoo para o formato exato que o teu ecrã já está à espera
+                return [{
+                    "symbol": q.get('symbol'),
+                    "name": q.get('shortName', q.get('symbol')),
+                    "price": q.get('regularMarketPrice', 0),
+                    "changesPercentage": q.get('regularMarketChangePercent', 0)
+                } for q in quotes]
+            return []
+
+        # Extrai os três pilares do mercado
+        gainers = buscar_yf("day_gainers")
+        losers = buscar_yf("day_losers")
+        actives = buscar_yf("most_actives")
         
         return jsonify({
             "gainers": gainers,
             "losers": losers,
             "actives": actives
         })
+        
     except Exception as e:
-        return jsonify({"erro": f"Falha na API da FMP: {str(e)}"}), 500
+        return jsonify({"erro": f"Falha na API do Yahoo Finance: {str(e)}"}), 500
 
 
 @app.route('/api/analisar')
