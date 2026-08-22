@@ -1124,7 +1124,7 @@ def api_screener_paginado(universo, estrategia, lote):
     elif universo == 'ndx':
         caminho = 'ndx.txt'
     elif universo == 'cripto':
-        tickers = ['BTC-USD', 'ETH-USD', 'SOL-USD', 'BNB-USD', 'XRP-USD', 'ADA-USD', 'AVAX-USD', 'DOGE-USD', 'DOT-USD', 'LINK-USD', 'MATIC-USD']
+        tickers = ['BTC-USD', 'ETH-USD', 'SOL-USD', 'BNB-USD', 'XRP-USD', 'ADA-USD', 'AVAX-USD', 'DOGE-USD', 'DOT-USD', 'LINK-USD', 'POL-USD']
         caminho = None
     else:
         return jsonify({"erro": "Universo inválido."}), 400
