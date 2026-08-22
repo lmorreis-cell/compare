@@ -485,12 +485,20 @@ def api_breadth():
                 if fecho_atual > ema50:
                     bull_count += 1
                     
-        vix_atual = dados['^VIX'].dropna().iloc[-1] if '^VIX' in dados.columns else 0
+        # Extracção do VIX e cálculo da variação percentual diária
+        vix_atual = 0
+        vix_pct = 0
+        if '^VIX' in dados.columns and not dados['^VIX'].dropna().empty:
+            vix_serie = dados['^VIX'].dropna()
+            vix_atual = float(vix_serie.iloc[-1])
+            if len(vix_serie) >= 2:
+                vix_pct = float(((vix_serie.iloc[-1] / vix_serie.iloc[-2]) - 1) * 100)
         
         return jsonify({
             "bull_count": bull_count,
             "total_setores": len(setores),
-            "vix": float(vix_atual)
+            "vix": vix_atual,
+            "vix_pct": vix_pct
         })
     except Exception as e:
         return jsonify({"erro": str(e)}), 500
