@@ -3,7 +3,6 @@ import json
 import requests
 import glob
 import yfinance as yf
-import fundamentalanalysis as fa
 import pandas as pd
 from dotenv import load_dotenv
 from functools import wraps
