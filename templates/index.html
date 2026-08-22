@@ -312,10 +312,9 @@
 
         <div id="loading-movers" style="display: none; text-align: center; color: #8b949e; font-size: 12px; margin-bottom: 20px;">A calibrar termómetros...</div>
 
-        <div id="painel-movers" style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 30px;">
+        <div id="painel-movers" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px;">
             <!-- O Javascript vai injetar as 3 colunas aqui -->
         </div>
-
     </div>
 
     <!-- SEPARADOR 2: AÇÕES E ETFs -->
@@ -3217,11 +3216,11 @@
                 return;
             }
 
-            const gerarLista = (titulo, items, corGeral) => {
+            cconst gerarLista = (titulo, items, corGeral) => {
                 let html = `
-                <div style="flex: 1; min-width: 220px; background: #161b22; border: 1px solid #30363d; border-top: 3px solid ${corGeral}; border-radius: 6px; padding: 15px;">
-                    <h4 style="margin: 0 0 15px 0; color: #c9d1d9; font-size: 12px; text-transform: uppercase; text-align: center;">${titulo}</h4>
-                    <div style="display: flex; flex-direction: column; gap: 8px;">`;
+                <div style="background: #161b22; border: 1px solid #30363d; border-top: 3px solid ${corGeral}; border-radius: 6px; padding: 10px;">
+                    <h4 style="margin: 0 0 10px 0; color: #c9d1d9; font-size: 11px; text-transform: uppercase; text-align: center;">${titulo}</h4>
+                    <div style="display: flex; flex-direction: column; gap: 6px;">`;
                 
                 items.forEach(item => {
                     let corPercentagem = item.changesPercentage > 0 ? '#5cb85c' : (item.changesPercentage < 0 ? '#d9534f' : '#8b949e');
