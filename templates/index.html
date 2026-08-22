@@ -256,14 +256,16 @@
     <!-- Biblioteca Plotly.js para gráficos interativos -->
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js" charset="utf-8"></script>
 </head>
-<body position: relative;>
-<!-- BOTÃO DE RETORNO AO MENU -->
-<div style="position: absolute; top: 20px; left: 20px; z-index: 1000;">
-    <a href="/" style="background: #232d3f; color: #d7dce6; padding: 8px 16px; border-radius: 4px; text-decoration: none; font-size: 13px; font-weight: bold; border: 1px solid #2d333b; display: inline-flex; align-items: center; gap: 6px; transition: background 0.2s;">
-        ← Voltar ao Portal
-    </a>
-</div>
+<body>
 <div class="container">
+    
+    <!-- BOTÃO DE RETORNO AO MENU (Agora ancorado à grelha central) -->
+    <div style="margin-top: 10px; margin-bottom: -10px; display: flex; justify-content: flex-start; position: relative; z-index: 1000;">
+        <a href="/" style="background: #232d3f; color: #d7dce6; padding: 8px 16px; border-radius: 4px; text-decoration: none; font-size: 13px; font-weight: bold; border: 1px solid #2d333b; display: inline-flex; align-items: center; gap: 6px; transition: background 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">
+            ← Voltar ao Portal
+        </a>
+    </div>
+
     <div class="terminal-global">
         
         <h1 class="titulo-terminal">
