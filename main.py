@@ -901,15 +901,14 @@ def api_sniper(ticker, timeframe):
             # 4. Insider Trading (YF - Correção de Análise Semântica)
             insiders = tk.insider_transactions
             if insiders is not None and not insiders.empty:
-                # O YF devolve as ações sempre como positivas.
-                # Vamos converter as primeiras 15 linhas para texto e procurar o que eles realmente fizeram (Buy vs Sale).
-                textos = insiders.head(15).astype(str).apply(lambda x: ' '.join(x), axis=1).str.lower()
+                # Conversão blindada item a item: garante que mesmo números ou células vazias (NaN/floats) viram texto
+                textos = insiders.head(15).apply(lambda x: ' '.join(str(v) for v in x), axis=1).str.lower()
                 
                 compras = len(textos[textos.str.contains('buy|purchase|award')])
                 vendas = len(textos[textos.str.contains('sell|sale|disposition')])
                 
                 if compras == 0 and vendas == 0:
-                    pass # Mantém o alerta "Sem dados recentes"
+                    pass # Mantém o "Sem dados recentes"
                 elif compras >= vendas * 2 and compras > 0:
                     insider_signal = f"Acumulação Forte ({compras}C / {vendas}V)"
                 elif vendas >= compras * 2 and vendas > 0:
