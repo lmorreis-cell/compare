@@ -2363,7 +2363,11 @@
             scoreUI.innerText = `${dados.bull_count}/${dados.total_setores}`;
             scoreUI.style.color = racio > 50 ? '#5cb85c' : '#d9534f';
             barraUI.style.width = `${racio}%`;
-            vixUI.innerText = dados.vix.toFixed(2);
+            // Dinâmica visual do VIX (Cor base do número e cor da variação percentual)
+            let corVixPct = dados.vix_pct > 0 ? '#5cb85c' : (dados.vix_pct < 0 ? '#d9534f' : '#8b949e');
+            let sinalVixPct = dados.vix_pct > 0 ? '+' : '';
+            
+            vixUI.innerHTML = `${dados.vix.toFixed(2)} <span style="font-size: 14px; color: ${corVixPct}; margin-left: 5px;">(${sinalVixPct}${dados.vix_pct.toFixed(2)}%)</span>`;
             vixUI.style.color = dados.vix > 20 ? '#d9534f' : '#5cb85c';
 
             // 2. MOTOR NLG (Tradução Educacional dos Dados)
