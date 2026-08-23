@@ -1317,16 +1317,61 @@ def api_screener_paginado(universo, estrategia, lote):
 
                 fecho_atual = float(df['Close'].iloc[-1])
                 
+                # 1. AVALIAÇÃO TÉCNICA (O que já tinhas)
+                passou_filtro = False
+                metrica_tec = ""
+                
                 if estrategia == 'pullback':
                     if fecho_atual > df['SMA200'].iloc[-1] and fecho_atual > df['EMA50'].iloc[-1]:
                         if abs(fecho_atual - df['EMA20'].iloc[-1]) / fecho_atual < 0.015: 
-                            resultados.append({"ticker": ticker, "preco": fecho_atual, "metricas": f"RSI: {df['RSI'].iloc[-1]:.1f} | Base de Suporte (EMA 20)"})
+                            passou_filtro = True
+                            metrica_tec = f"RSI: {df['RSI'].iloc[-1]:.1f} | Base de Suporte (EMA 20)"
                 elif estrategia == 'squeeze':
                     if df['BB_Width'].iloc[-1] < df['BB_Width'].quantile(0.10):
-                        resultados.append({"ticker": ticker, "preco": fecho_atual, "metricas": f"Risco de Explosão | Largura BB Histórica: {df['BB_Width'].iloc[-1]*100:.1f}%"})
+                        passou_filtro = True
+                        metrica_tec = f"Risco de Explosão | Largura BB: {df['BB_Width'].iloc[-1]*100:.1f}%"
                 elif estrategia == 'oversold':
                     if df['RSI'].iloc[-1] < 30 and fecho_atual < df['BB_Lower'].iloc[-1]:
-                        resultados.append({"ticker": ticker, "preco": fecho_atual, "metricas": f"Capitulação | RSI Extremo: {df['RSI'].iloc[-1]:.1f} | Abaixo Banda Inf."})
+                        passou_filtro = True
+                        metrica_tec = f"Capitulação | RSI Extremo: {df['RSI'].iloc[-1]:.1f}"
+
+                # 2. AVALIAÇÃO FUNDAMENTAL (Só executa se passar no teste técnico)
+                if passou_filtro:
+                    alertas_fund = []
+                    
+                    if universo != 'cripto': # Cripto não tem EPS ou Cash Flow
+                        try:
+                            info = yf.Ticker(ticker).info
+                            eps = info.get('trailingEps', 0)
+                            fcf = info.get('freeCashflow', 0)
+                            peg = info.get('pegRatio', 0)
+                            
+                            # Filtros de Qualidade Institucional
+                            if eps is None or eps < 0:
+                                alertas_fund.append("EPS Negativo")
+                            if fcf is None or fcf < 0:
+                                alertas_fund.append("Cash Flow Destrutivo")
+                            if peg is None or peg > 2 or peg < 0:
+                                alertas_fund.append("PEG Especulativo/Negativo")
+                        except:
+                            alertas_fund.append("Dados Incompletos")
+                            
+                    # 3. EMPACOTAMENTO DA INFORMAÇÃO
+                    is_toxic = len(alertas_fund) > 0
+                    if universo == 'cripto':
+                        tags_html = ""
+                    elif is_toxic:
+                        tags_html = " | ".join(alertas_fund)
+                    else:
+                        tags_html = "Fundamentos Sólidos"
+
+                    resultados.append({
+                        "ticker": ticker, 
+                        "preco": fecho_atual, 
+                        "metricas": metrica_tec,
+                        "fundamentos": tags_html,
+                        "is_toxic": is_toxic
+                    })
             except:
                 continue 
         
