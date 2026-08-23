@@ -851,11 +851,12 @@
     // UTILITÁRIOS GERAIS
     // ==========================================
     function formatarMarketCap(valor) {
-        if (!valor || valor === 0) return "N/A";
-        if (valor >= 1e12) return (valor / 1e12).toFixed(2) + "T";
-        if (valor >= 1e9) return (valor / 1e9).toFixed(2) + "B";
-        if (valor >= 1e6) return (valor / 1e6).toFixed(2) + "M";
-        return valor.toString();
+        let num = parseFloat(valor); // Força a conversão para número
+        if (isNaN(num) || num === 0) return "N/A";
+        if (num >= 1e12) return (num / 1e12).toFixed(2) + "T";
+        if (num >= 1e9) return (num / 1e9).toFixed(2) + "B";
+        if (num >= 1e6) return (num / 1e6).toFixed(2) + "M";
+        return num.toString();
     }
     async function executarAnalise() {
         document.getElementById('ferramentas-tabela').style.display = 'none';
