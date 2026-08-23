@@ -1081,39 +1081,39 @@
                 <div style="border-bottom: 2px solid #121212; padding-bottom: 15px; margin-bottom: 20px; position: relative; z-index: 51;">
                     
                     <!-- LINHA 1: IDENTIDADE E FERRAMENTAS EXTERNAS -->
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; flex-wrap: wrap; gap: 15px;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; gap: 15px;">
                         
                         <!-- BLOCO ESQUERDO ENRIQUECIDO: Logótipo, Ticker e Metadados -->
-                        <div style="display: flex; align-items: center; gap: 15px;">
-                            ${dados.logo_url ? `<img src="${dados.logo_url}" alt="${dados.ticker}" style="width: 55px; height: 55px; border-radius: 12px; background: #fff; padding: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.15);">` : ''}
+                        <div style="display: flex; align-items: center; gap: 15px; flex: 1; min-width: 0;">
+                            ${dados.logo_url ? `<img src="${dados.logo_url}" alt="${dados.ticker}" style="width: 55px; height: 55px; border-radius: 12px; background: #fff; padding: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); flex-shrink: 0;">` : ''}
                             
-                            <div style="display: flex; flex-direction: column; align-items: flex-start;">
+                            <div style="display: flex; flex-direction: column; align-items: flex-start; min-width: 0;">
                                 <div style="display: flex; align-items: baseline; gap: 10px;">
                                     <h2 style="margin: 0; font-size: 32px; font-weight: 900; letter-spacing: -1px; text-transform: uppercase;">${dados.ticker}</h2>
-                                    <span class="sniper-tt" style="color: #8b949e; font-size: 13px; font-weight: bold;">
+                                    <span class="sniper-tt" style="color: #8b949e; font-size: 13px; font-weight: bold; white-space: nowrap;">
                                         ${dados.exchange}
-                                        <span class="sniper-tt-text" style="width: 180px;">Bolsa de Valores oficial.</span>
+                                        <span class="sniper-tt-text" style="width: 180px; white-space: normal;">Bolsa de Valores oficial.</span>
                                     </span>
                                 </div>
                                 
                                 <div style="display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap;">
-                                    <span class="sniper-tt" style="background: #1c1e24; color: #c9d1d9; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; border: 1px solid #30363d;">
+                                    <span class="sniper-tt" style="background: #1c1e24; color: #c9d1d9; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; border: 1px solid #30363d; white-space: nowrap;">
                                         📁 ${dados.setor}
-                                        <span class="sniper-tt-text" style="width: 250px;">
+                                        <span class="sniper-tt-text" style="width: 250px; white-space: normal;">
                                             <strong style="color: #4da6ff; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Setor de Atividade</strong>
                                             Cruza isto com o <i>Market Breadth</i>. Se a saúde estrutural estiver em queda mas este setor estiver a subir, tens <i>Alpha</i>. Se estiver tudo vermelho, abdica do trade.
                                         </span>
                                     </span>
                                     
-                                    <span class="sniper-tt" style="background: #1c1e24; color: #c9d1d9; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; border: 1px solid #30363d;">
+                                    <span class="sniper-tt" style="background: #1c1e24; color: #c9d1d9; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; border: 1px solid #30363d; white-space: nowrap;">
                                         ⚖️ Cap: ${formatarMarketCap(dados.mkt_cap)}
-                                        <span class="sniper-tt-text" style="width: 280px;">
+                                        <span class="sniper-tt-text" style="width: 280px; white-space: normal;">
                                             <strong style="color: #4da6ff; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Capitalização (Market Cap)</strong>
                                             Define a vulnerabilidade à manipulação. Uma <i>Mega-Cap</i> respeita rigorosamente as zonas de Suporte/Resistência. Uma <i>Micro-Cap</i> destrói alvos e ignora o gráfico.
                                         </span>
                                     </span>
 
-                                    <span style="background: #121212; color: #fff; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 11px; letter-spacing: 1px; border: 1px solid #333;">
+                                    <span style="background: #121212; color: #fff; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 11px; letter-spacing: 1px; border: 1px solid #333; white-space: nowrap;">
                                         Cotação: $${dados.preco}
                                     </span>
                                 </div>
@@ -1122,10 +1122,10 @@
                         
                         <!-- BLOCO DIREITO: Ações Externas -->
                         <div style="display: flex; gap: 10px; align-items: center; padding-top: 5px; flex-shrink: 0;">
-                            <a href="https://www.tradingview.com/chart/?symbol=${dados.ticker}" target="_blank" style="background: #232d3f; color: #d7dce6; border: 1px solid #30363d; padding: 6px 12px; border-radius: 4px; font-weight: bold; font-size: 12px; text-decoration: none; display: flex; align-items: center; gap: 5px; transition: background 0.2s;">
+                            <a href="https://www.tradingview.com/chart/?symbol=${dados.ticker}" target="_blank" style="background: #232d3f; color: #d7dce6; border: 1px solid #30363d; padding: 6px 12px; border-radius: 4px; font-weight: bold; font-size: 12px; text-decoration: none; display: flex; align-items: center; gap: 5px; transition: background 0.2s; white-space: nowrap;">
                                 Abrir Gráfico 📈
                             </a>
-                            <button onclick="transmitirAlertaDiscord()" style="background: #5865F2; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 5px; box-shadow: 0 2px 5px rgba(88,101,242,0.4);">
+                            <button onclick="transmitirAlertaDiscord()" style="background: #5865F2; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 5px; box-shadow: 0 2px 5px rgba(88,101,242,0.4); white-space: nowrap;">
                                 Transmitir Alerta 📡
                             </button>
                         </div>
