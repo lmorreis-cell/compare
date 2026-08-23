@@ -194,7 +194,8 @@ def api_ticker_tape():
             resp = requests.get(url, headers=headers, timeout=3)
             if resp.status_code == 200:
                 quotes = resp.json().get('finance', {}).get('result', [])[0].get('quotes', [])
-                return [{"ticker": q.get('symbol'), "preco": q.get('regularMarketPrice', 0), "var": q.get('regularMarketChangePercent', 0)}] for q in quotes]
+                
+                return [{"ticker": q.get('symbol'), "preco": q.get('regularMarketPrice', 0), "var": q.get('regularMarketChangePercent', 0)} for q in quotes]
             return []
 
         gainers = buscar_yf_movers("day_gainers")
