@@ -157,12 +157,15 @@ from Radar import calcular_radar_momentum_v2, comparar_ativos
 @cache.cached(timeout=120) # Cache de 2 minutos para poupar recursos
 def api_ticker_tape():
     import yfinance as yf
-    # Cabaz base do Ticker Tape: Índices, Cripto e proxies correlacionados
-    tickers = ["^GSPC", "^IXIC", "BTC-USD", "ETH-USD", "BMNR", "EURUSD=X", "GC=F", "CL=F"]
+    import requests
+    
     resultados = []
     
+    # 1. CABAZ BASE MACRO (Europa, States, Matérias-Primas, Cripto)
+    tickers_base = ["^GSPC", "^IXIC", "^GDAXI", "^STOXX50E", "BTC-USD", "ETH-USD", "GC=F", "CL=F"]
+    
     try:
-        for t in tickers:
+        for t in tickers_base:
             tk = yf.Ticker(t)
             preco = tk.fast_info.get('lastPrice', 0)
             prev_close = tk.fast_info.get('previousClose', 1) 
@@ -170,20 +173,44 @@ def api_ticker_tape():
             if preco > 0:
                 var_pct = ((preco / prev_close) - 1) * 100
                 
-                # Mapeamento estético para o Frontend
+                # Nomes limpos para a interface
                 nome = t
                 if t == "^GSPC": nome = "S&P 500"
                 if t == "^IXIC": nome = "NASDAQ"
-                if t == "EURUSD=X": nome = "EUR/USD"
+                if t == "^GDAXI": nome = "DAX 40"
+                if t == "^STOXX50E": nome = "EURO STOXX 50"
                 if t == "GC=F": nome = "OURO"
                 if t == "CL=F": nome = "PETRÓLEO"
                 
-                resultados.append({"ticker": nome, "preco": preco, "var": var_pct})
-                
-        return jsonify(resultados)
+                resultados.append({"ticker": nome, "preco": preco, "var": var_pct, "tipo": "macro"})
     except Exception as e:
-        print(f"Erro no Ticker Tape: {e}")
-        return jsonify([])
+        print(f"Erro no Ticker Tape (Base): {e}")
+
+    # 2. TOP GAINERS E LOSERS (Reaproveita a ligação à API oculta do Yahoo Finance)
+    try:
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36'}
+        def buscar_yf_movers(scr_id):
+            url = f"https://query1.finance.yahoo.com/v1/finance/screener/predefined/saved?formatted=false&lang=en-US&region=US&scrIds={scr_id}&count=5"
+            resp = requests.get(url, headers=headers, timeout=3)
+            if resp.status_code == 200:
+                quotes = resp.json().get('finance', {}).get('result', [])[0].get('quotes', [])
+                return [{"ticker": q.get('symbol'), "preco": q.get('regularMarketPrice', 0), "var": q.get('regularMarketChangePercent', 0)}] for q in quotes]
+            return []
+
+        gainers = buscar_yf_movers("day_gainers")
+        for g in gainers:
+            g[0]["tipo"] = "gainer"
+            resultados.append(g[0])
+
+        losers = buscar_yf_movers("day_losers")
+        for l in losers:
+            l[0]["tipo"] = "loser"
+            resultados.append(l[0])
+
+    except Exception as e:
+        print(f"Erro no Ticker Tape (Movers): {e}")
+        
+    return jsonify(resultados)
 
 @app.route('/api/market_movers')
 @cache.cached(timeout=300) # Atualiza a cada 5 minutos
