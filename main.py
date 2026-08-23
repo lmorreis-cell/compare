@@ -560,48 +560,77 @@ def api_breadth():
     except Exception as e:
         return jsonify({"erro": str(e)}), 500
 
-@app.route('/api/backtest/<ticker>')
+@app.route('/api/backtest/<ticker>/<estrategia>')
 @cache.cached(timeout=3600) # Mantém em memória durante 1 hora
-def api_backtest(ticker):
+def api_backtest(ticker, estrategia):
     import yfinance as yf
     import numpy as np
     
     try:
-        # Puxa 5 anos de história
         df = yf.Ticker(ticker).history(period="5y", interval="1d")
         if df.empty or len(df) < 50:
             return jsonify({"erro": "Histórico insuficiente para simulação de 5 anos."}), 400
             
-        # Estratégia Tática (Breakout da Média de 20 dias - Trend Following)
+        # 1. Cálculo de todos os Indicadores necessários
         df['EMA20'] = df['Close'].ewm(span=20, adjust=False).mean()
-        df['Sinal'] = np.where(df['Close'] > df['EMA20'], 1, 0) # 1 se comprado, 0 se líquido
-        df['Retorno_Diario'] = df['Close'].pct_change()
+        df['SMA20'] = df['Close'].rolling(window=20).mean()
+        df['STD20'] = df['Close'].rolling(window=20).std()
+        df['BB_Lower'] = df['SMA20'] - (df['STD20'] * 2)
         
-        # O retorno da estratégia no dia T é o sinal do dia T-1 multiplicado pelo retorno de T
+        delta = df['Close'].diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+        rs = gain / loss
+        df['RSI'] = 100 - (100 / (1 + rs))
+        
+        # 2. Máquina de Estados (A Estratégia Escolhida)
+        df['Sinal'] = 0
+        nome_estrategia = ""
+        
+        if estrategia == 'reversion_rsi':
+            # Compra pânico (RSI < 30), Vende no ressalto (RSI > 50)
+            df.loc[df['RSI'] < 30, 'Sinal'] = 1
+            df.loc[df['RSI'] > 50, 'Sinal'] = -1
+            df['Sinal'] = df['Sinal'].replace(0, np.nan).ffill().fillna(0)
+            df['Sinal'] = np.where(df['Sinal'] == 1, 1, 0)
+            nome_estrategia = "Mean Reversion (RSI < 30)"
+            
+        elif estrategia == 'bb_dip':
+            # Compra exaustão da Banda Inferior, Vende na regressão à Média 20
+            df.loc[df['Close'] < df['BB_Lower'], 'Sinal'] = 1
+            df.loc[df['Close'] > df['SMA20'], 'Sinal'] = -1
+            df['Sinal'] = df['Sinal'].replace(0, np.nan).ffill().fillna(0)
+            df['Sinal'] = np.where(df['Sinal'] == 1, 1, 0)
+            nome_estrategia = "Bollinger Dip (Caça Fundos)"
+            
+        else: # trend_ema20 (Default)
+            df['Sinal'] = np.where(df['Close'] > df['EMA20'], 1, 0)
+            nome_estrategia = "Trend Following (EMA 20)"
+
+        # 3. Execução da Simulação Algorítmica
+        df['Retorno_Diario'] = df['Close'].pct_change()
         df['Retorno_Estrategia'] = df['Sinal'].shift(1) * df['Retorno_Diario']
         
-        # Cálculo de Capital e Drawdown (Gestão de Risco)
+        # Gestão de Risco e Drawdown
         capital_inicial = 10000
         df['Capital'] = capital_inicial * (1 + df['Retorno_Estrategia']).cumprod()
         df['Pico'] = df['Capital'].cummax()
         df['Drawdown'] = (df['Capital'] - df['Pico']) / df['Pico']
         max_dd = df['Drawdown'].min() * 100
         
-        # Identificação de Trades 
         df['Mudanca'] = df['Sinal'].diff()
-        total_trades = len(df[df['Mudanca'] == 1]) # Contagem de vezes que comprou
+        total_trades = len(df[df['Mudanca'] == 1]) 
         
-        # Win Rate (Dias positivos vs Dias negativos enquanto comprado)
         dias_ganho = len(df[(df['Sinal'].shift(1) == 1) & (df['Retorno_Diario'] > 0)])
         dias_perda = len(df[(df['Sinal'].shift(1) == 1) & (df['Retorno_Diario'] < 0)])
         win_rate = (dias_ganho / (dias_ganho + dias_perda) * 100) if (dias_ganho + dias_perda) > 0 else 0
         
-        # Rentabilidade: Estratégia vs Buy & Hold
         retorno_total = ((df['Capital'].iloc[-1] - capital_inicial) / capital_inicial) * 100
         retorno_bh = ((df['Close'].iloc[-1] - df['Close'].iloc[0]) / df['Close'].iloc[0]) * 100
         
         return jsonify({
             "ticker": ticker.upper(),
+            "estrategia_nome": nome_estrategia,
             "win_rate": f"{win_rate:.1f}",
             "total_trades": total_trades,
             "max_dd": f"{max_dd:.1f}",
