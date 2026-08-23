@@ -195,19 +195,18 @@ def api_ticker_tape():
             resp = requests.get(url, headers=headers, timeout=3)
             if resp.status_code == 200:
                 quotes = resp.json().get('finance', {}).get('result', [])[0].get('quotes', [])
-                
                 return [{"ticker": q.get('symbol'), "preco": q.get('regularMarketPrice', 0), "var": q.get('regularMarketChangePercent', 0)} for q in quotes]
             return []
 
         gainers = buscar_yf_movers("day_gainers")
         for g in gainers:
-            g[0]["tipo"] = "gainer"
-            resultados.append(g[0])
+            g["tipo"] = "gainer"
+            resultados.append(g)
 
         losers = buscar_yf_movers("day_losers")
         for l in losers:
-            l[0]["tipo"] = "loser"
-            resultados.append(l[0])
+            l["tipo"] = "loser"
+            resultados.append(l)
 
     except Exception as e:
         print(f"Erro no Ticker Tape (Movers): {e}")
