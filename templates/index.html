@@ -3405,17 +3405,29 @@
                 dados.forEach(item => {
                     let cor = item.var >= 0 ? '#5cb85c' : '#d9534f';
                     let sinal = item.var >= 0 ? '+' : '';
+                    let icone = '';
+                    let estiloTicker = 'color: #c9d1d9;';
+                    
+                    // Injeta ícones e cores diferentes para destacar as anomalias
+                    if (item.tipo === 'gainer') {
+                        icone = '🚀 ';
+                        estiloTicker = 'color: #5cb85c;';
+                    }
+                    if (item.tipo === 'loser') {
+                        icone = '🩸 ';
+                        estiloTicker = 'color: #d9534f;';
+                    }
                     
                     html += `
                         <div class="ticker-item">
-                            <span style="color: #c9d1d9;">${item.ticker}</span> 
+                            <span style="${estiloTicker}">${icone}${item.ticker}</span> 
                             <span style="color: #fff; margin-left: 5px;">$${item.preco.toFixed(2)}</span> 
                             <span style="color: ${cor}; margin-left: 5px;">(${sinal}${item.var.toFixed(2)}%)</span>
                             <span style="color: #30363d; margin-left: 20px;">|</span>
                         </div>`;
                 });
                 
-                // Duplica o conteúdo para garantir o efeito de looping contínuo (Marquee)
+                // Duplica o conteúdo para garantir o efeito de looping contínuo
                 document.getElementById('ticker-content').innerHTML = html + html; 
                 document.getElementById('ticker-tape').style.display = 'block';
             }
@@ -3443,7 +3455,7 @@
     }
     .ticker-move {
         display: inline-block;
-        animation: ticker 40s linear infinite; /* Aumentei para 40s para ser mais legível */
+        animation: ticker 60s linear infinite; /* Aumentei para 60s para ser mais legível */
     }
     .ticker-move:hover {
         animation-play-state: paused; /* Para a fita quando o utilizador quer ler um valor */
