@@ -258,6 +258,14 @@
 </head>
 <body>
 <div class="container">
+    <!-- BANNER DE ALERTA / STATUS (Invisível por defeito, ativado via JS ou HTML manual) -->
+    <div id="banner-global" style="display: flex; background: #d9534f; color: white; padding: 12px 20px; align-items: center; justify-content: space-between; font-size: 13px; font-weight: bold; border-radius: 6px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(217, 83, 79, 0.4); z-index: 100;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 18px;">⚠️</span>
+            <span id="texto-alerta">Aviso do Sistema: O motor de cotações FMP reporta instabilidade na rede. O sistema de redundância (YFinance) está ativo.</span>
+        </div>
+        <button onclick="this.parentElement.style.display='none'" style="background: rgba(0,0,0,0.2); border: none; color: white; cursor: pointer; font-weight: bold; padding: 4px 10px; border-radius: 4px; transition: background 0.2s;">✕</button>
+    </div>
     
     <!-- BOTÃO DE RETORNO AO MENU (Agora ancorado à grelha central) -->
     <div style="margin-top: 10px; margin-bottom: -10px; display: flex; justify-content: flex-start; position: relative; z-index: 1000;">
@@ -3353,8 +3361,82 @@
     document.addEventListener('DOMContentLoaded', () => {
         carregarMarketMovers();
         renderizarHistorico();
+        iniciarTickerTape();
     });
+
+    async function iniciarTickerTape() {
+        try {
+            const resposta = await fetch('/api/ticker_tape');
+            const dados = await resposta.json();
+            
+            if (dados.length > 0) {
+                let html = '';
+                dados.forEach(item => {
+                    let cor = item.var >= 0 ? '#5cb85c' : '#d9534f';
+                    let sinal = item.var >= 0 ? '+' : '';
+                    
+                    html += `
+                        <div class="ticker-item">
+                            <span style="color: #c9d1d9;">${item.ticker}</span> 
+                            <span style="color: #fff; margin-left: 5px;">$${item.preco.toFixed(2)}</span> 
+                            <span style="color: ${cor}; margin-left: 5px;">(${sinal}${item.var.toFixed(2)}%)</span>
+                            <span style="color: #30363d; margin-left: 20px;">|</span>
+                        </div>`;
+                });
+                
+                // Duplica o conteúdo para garantir o efeito de looping contínuo (Marquee)
+                document.getElementById('ticker-content').innerHTML = html + html; 
+                document.getElementById('ticker-tape').style.display = 'block';
+            }
+        } catch (erro) {
+            console.error("Falha a carregar o Ticker Tape:", erro);
+        }
+    }
 </script>
 
+    
+<!-- CSS e Estrutura do Ticker Tape -->
+    <style>
+        .ticker-wrap {
+            width: 100%;
+            overflow: hidden;
+            background-color: #0d1117;
+            border-top: 1px solid #30363d;
+            padding: 8px 0;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            z-index: 9999;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.5);
+        }
+        .ticker-move {
+            display: inline-block;
+            white-space: nowrap;
+            padding-right: 100%;
+            animation: ticker 35s linear infinite;
+        }
+        .ticker-move:hover {
+            animation-play-state: paused; /* Para o ticker quando passas o rato */
+        }
+        .ticker-item {
+            display: inline-block;
+            padding: 0 25px;
+            font-size: 12px;
+            font-weight: bold;
+            font-family: 'Consolas', 'Courier New', monospace;
+            color: #8b949e;
+        }
+        @keyframes ticker {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-100%); }
+        }
+    </style>
+
+    <div class="ticker-wrap" id="ticker-tape" style="display: none;">
+        <div class="ticker-move" id="ticker-content">
+            <!-- O Javascript injeta os dados de mercado aqui -->
+        </div>
+    </div>
+    
 </body>
 </html>
