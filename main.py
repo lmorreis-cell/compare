@@ -1071,6 +1071,12 @@ def api_sniper(ticker, timeframe):
             "target_consensus": target_consensus,
             "target_upside": f"{target_upside:+.1f}%",
             "news_data": news_data,
+
+            # Adiciona estas variáveis ao pacote JSON existente
+            "setor": setor,
+            "mkt_cap": mkt_cap,
+            "exchange": exchange,
+            "net_margin": f"{fmp_net_margin:.1f}%" if fmp_net_margin != 0 else "N/A",
             
             # --- NOVAS VARIÁVEIS A ENVIAR ---
             "dist_m50": f"{dist_m50:+.1f}%",
