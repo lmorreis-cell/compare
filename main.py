@@ -738,12 +738,57 @@ def api_sniper(ticker, timeframe):
         if df.empty:
             return jsonify({"erro": "Sem dados para este ativo."}), 404
             
-        # Âncora do Leilão Oficial
-        df_diario = yf.Ticker(ticker).history(period="5d", interval="1d").dropna(subset=['Close'])
-        try:
-            preco_oficial = float(yf.Ticker(ticker).fast_info['lastPrice'])
-        except Exception:
-            preco_oficial = float(df_diario['Close'].iloc[-1]) if not df_diario.empty else float(df['Close'].iloc[-1])
+        # --- 1. COTAÇÃO AO VIVO (Redundância FMP -> YFinance) ---
+        fmp_key = os.environ.get("FMP_API_KEY")
+        preco_oficial = 0
+        
+        if fmp_key:
+            try:
+                url_quote = f"https://financialmodelingprep.com/stable/quote?symbol={ticker}&apikey={fmp_key}"
+                resp_quote = requests.get(url_quote, timeout=2) # Timeout agressivo para não bloquear o servidor
+                if resp_quote.status_code == 200 and resp_quote.json():
+                    preco_oficial = float(resp_quote.json()[0].get('price', 0))
+            except Exception as e:
+                print(f"Erro Cotação FMP: {e} - A comutar para YFinance.")
+                
+        # Fallback YFinance se o FMP falhar ou estoirar o limite
+        if preco_oficial == 0:
+            df_diario = yf.Ticker(ticker).history(period="5d", interval="1d").dropna(subset=['Close'])
+            try:
+                preco_oficial = float(yf.Ticker(ticker).fast_info['lastPrice'])
+            except:
+                preco_oficial = float(df_diario['Close'].iloc[-1]) if not df_diario.empty else float(df['Close'].iloc[-1])
+
+
+        # --- 2. PERFIL INSTITUCIONAL ENRIQUECIDO (FMP) ---
+        logo_url, setor, mkt_cap, exchange = "", "Desconhecido", 0, ""
+        if fmp_key:
+            try:
+                url_profile = f"https://financialmodelingprep.com/stable/profile?symbol={ticker}&apikey={fmp_key}"
+                resp_profile = requests.get(url_profile, timeout=2)
+                if resp_profile.status_code == 200 and resp_profile.json():
+                    p = resp_profile.json()[0]
+                    logo_url = p.get('image', '')
+                    setor = p.get('sector', 'Desconhecido')
+                    mkt_cap = p.get('mktCap', 0)
+                    exchange = p.get('exchangeShortName', '')
+            except:
+                pass
+
+
+        # --- 3. INCOME STATEMENT & MARGENS (FMP -> YFinance) ---
+        fmp_net_margin = 0
+        if fmp_key:
+            try:
+                url_inc = f"https://financialmodelingprep.com/stable/income-statement?symbol={ticker}&apikey={fmp_key}"
+                resp_inc = requests.get(url_inc, timeout=2)
+                if resp_inc.status_code == 200 and resp_inc.json():
+                    receita = resp_inc.json()[0].get('revenue', 0)
+                    lucro = resp_inc.json()[0].get('netIncome', 0)
+                    if receita > 0:
+                        fmp_net_margin = (lucro / receita) * 100
+            except:
+                pass
 
         # --- EXTRAÇÃO DO VALUATION RISK (MOTOR YFINANCE AVANÇADO) ---
         try:
@@ -842,8 +887,8 @@ def api_sniper(ticker, timeframe):
         # -----------------------------------------------------
 
 
-        # --- NOVA INJEÇÃO: LOGÓTIPO FMP E EXTRAS YFINANCE (TARGETS, NEWS, INSIDERS) ---
-        logo_url = ""
+        # --- NOVA INJEÇÃO: FMP E EXTRAS YFINANCE (TARGETS, NEWS, INSIDERS) ---
+        
         earnings_warning = ""
         insider_signal = "Sem dados recentes"
         target_consensus = 0
@@ -853,20 +898,7 @@ def api_sniper(ticker, timeframe):
         import datetime
         import pandas as pd
         hoje = datetime.date.today()
-        
-        # 1. Puxar Logótipo (FMP - O único endpoint puramente gratuito e estável)
-        try:
-            fmp_key = os.environ.get("FMP_API_KEY")
-            if fmp_key:
-                url_profile = f"https://financialmodelingprep.com/stable/profile?symbol={ticker}&apikey={fmp_key}"
-                resp_profile = requests.get(url_profile, timeout=5)
-                if resp_profile.status_code == 200:
-                    dados_profile = resp_profile.json()
-                    if isinstance(dados_profile, list) and len(dados_profile) > 0:
-                        logo_url = dados_profile[0].get('image', '')
-        except Exception as e:
-            print(f"Erro Logotipo FMP: {e}")
-
+                
         # A partir daqui, usamos o objeto 'tk' (yfinance) já criado no topo para evitar bloqueios de APIs externas
         try:
             # 2. Price Targets de Wall Street (YF)
