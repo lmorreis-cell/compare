@@ -760,20 +760,35 @@ def api_sniper(ticker, timeframe):
                 preco_oficial = float(df_diario['Close'].iloc[-1]) if not df_diario.empty else float(df['Close'].iloc[-1])
 
 
-        # --- 2. PERFIL INSTITUCIONAL ENRIQUECIDO (FMP) ---
+        # --- 2. PERFIL INSTITUCIONAL ENRIQUECIDO (FMP -> YFinance) ---
         logo_url, setor, mkt_cap, exchange = "", "Desconhecido", 0, ""
+        
+        # Tentativa 1: FMP (Procurando várias chaves possíveis do JSON)
         if fmp_key:
             try:
                 url_profile = f"https://financialmodelingprep.com/stable/profile?symbol={ticker}&apikey={fmp_key}"
                 resp_profile = requests.get(url_profile, timeout=2)
                 if resp_profile.status_code == 200 and resp_profile.json():
                     p = resp_profile.json()[0]
-                    logo_url = p.get('image', '')
+                    logo_url = p.get('image', p.get('logo', ''))
                     setor = p.get('sector', 'Desconhecido')
-                    mkt_cap = p.get('mktCap', 0)
-                    exchange = p.get('exchangeShortName', '')
-            except:
+                    mkt_cap = float(p.get('mktCap', p.get('marketCap', 0)))
+                    exchange = p.get('exchangeShortName', p.get('exchange', ''))
+            except Exception as e:
                 pass
+
+        # Tentativa 2 (Redundância): YFinance
+        # O objeto tk = yf.Ticker(ticker) já é criado no início da tua função
+        try:
+            tk = yf.Ticker(ticker)
+            if mkt_cap == 0 or mkt_cap is None:
+                mkt_cap = float(tk.info.get('marketCap', 0))
+            if setor == "Desconhecido" or setor == "":
+                setor = tk.info.get('sector', 'Desconhecido')
+            if exchange == "":
+                exchange = tk.info.get('exchange', '')
+        except:
+            pass
 
 
         # --- 3. INCOME STATEMENT & MARGENS (FMP -> YFinance) ---
