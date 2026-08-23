@@ -153,7 +153,37 @@ from Regime import avaliar_regime_mercado
 from MeanReversion import calcular_radar_reversao
 from Radar import calcular_radar_momentum_v2, comparar_ativos
 
-
+@app.route('/api/ticker_tape')
+@cache.cached(timeout=120) # Cache de 2 minutos para poupar recursos
+def api_ticker_tape():
+    import yfinance as yf
+    # Cabaz base do Ticker Tape: Índices, Cripto e proxies correlacionados
+    tickers = ["^GSPC", "^IXIC", "BTC-USD", "ETH-USD", "BMNR", "EURUSD=X", "GC=F", "CL=F"]
+    resultados = []
+    
+    try:
+        for t in tickers:
+            tk = yf.Ticker(t)
+            preco = tk.fast_info.get('lastPrice', 0)
+            prev_close = tk.fast_info.get('previousClose', 1) 
+            
+            if preco > 0:
+                var_pct = ((preco / prev_close) - 1) * 100
+                
+                # Mapeamento estético para o Frontend
+                nome = t
+                if t == "^GSPC": nome = "S&P 500"
+                if t == "^IXIC": nome = "NASDAQ"
+                if t == "EURUSD=X": nome = "EUR/USD"
+                if t == "GC=F": nome = "OURO"
+                if t == "CL=F": nome = "PETRÓLEO"
+                
+                resultados.append({"ticker": nome, "preco": preco, "var": var_pct})
+                
+        return jsonify(resultados)
+    except Exception as e:
+        print(f"Erro no Ticker Tape: {e}")
+        return jsonify([])
 
 @app.route('/api/market_movers')
 @cache.cached(timeout=300) # Atualiza a cada 5 minutos
