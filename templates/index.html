@@ -377,9 +377,13 @@
     <h3 class="painel-titulo">Duelo Manual de Ativos</h3>
     
     <div class="linha-inputs">
-        <input type="text" id="input-t1" class="input-moderno" placeholder="Ex: JMT.LS">
+        <input type="text" id="input-t1" class="input-moderno" list="lista-sugestoes-t1" placeholder="Ex: Microsoft" oninput="pesquisarTickerInteligente(this, 'lista-sugestoes-t1')">
+        <datalist id="lista-sugestoes-t1"></datalist>
+        
         <span class="texto-vs">VS</span>
-        <input type="text" id="input-t2" class="input-moderno" placeholder="Ex: NVG.LS">
+        
+        <input type="text" id="input-t2" class="input-moderno" list="lista-sugestoes-t2" placeholder="Ex: Google" oninput="pesquisarTickerInteligente(this, 'lista-sugestoes-t2')">
+        <datalist id="lista-sugestoes-t2"></datalist>
         <button onclick="compararTickersManual()" class="btn-moderno btn-laranja">Comparar</button>
     </div>
 </div>
@@ -389,7 +393,14 @@
     <h3 class="painel-titulo">🎯 Gerador de Blueprints (Sniper Trades)</h3>
     
     <div class="linha-inputs">
-        <input type="text" id="sniper-ticker" class="input-moderno" placeholder="Ex: SPY" style="max-width: 300px;">
+        <span class="dica-edu" style="flex: 1; max-width: 300px;">
+            <input type="text" id="sniper-ticker" class="input-moderno" list="lista-sugestoes-sniper" placeholder="Nome da empresa ou Ticker (Ex: Apple)" style="width: 100%; box-sizing: border-box;" oninput="pesquisarTickerInteligente(this, 'lista-sugestoes-sniper')">
+            <datalist id="lista-sugestoes-sniper"></datalist>
+            <span class="dica-texto" style="width: 250px;">
+                <strong style="color: #4da6ff; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Motor Preditivo FMP</strong>
+                Escreve o nome da empresa e o algoritmo pesquisa a paridade oficial e a bolsa correspondente em tempo real. Poupas tempo e evitas falhas por <i>typos</i>.
+            </span>
+        </span>
         <select id="sniper-tf" class="input-moderno" style="max-width: 200px; cursor: pointer;">
             <option value="1d">Diário (1D)</option>
             <option value="4h">Intradiário (4H)</option>
@@ -858,6 +869,44 @@
         if (num >= 1e6) return (num / 1e6).toFixed(2) + "M";
         return num.toString();
     }
+
+    // ==========================================
+    // MOTOR DE PESQUISA INTELIGENTE (AUTOCOMPLETE)
+    // ==========================================
+    let temporizadorPesquisa;
+
+    async function pesquisarTickerInteligente(inputElemento, datalistId) {
+        clearTimeout(temporizadorPesquisa); // Cancela a pesquisa anterior se o utilizador ainda estiver a escrever
+        
+        const query = inputElemento.value.trim();
+        const datalist = document.getElementById(datalistId);
+        
+        // Só pesquisa se tiver pelo menos 2 letras
+        if (query.length < 2) {
+            return;
+        }
+
+        // Aguarda 400 milissegundos após o utilizador parar de escrever
+        temporizadorPesquisa = setTimeout(async () => {
+            try {
+                const resposta = await fetch(`/api/search/${encodeURIComponent(query)}`);
+                const dados = await resposta.json();
+                
+                datalist.innerHTML = ''; // Limpa as sugestões antigas
+                
+                dados.forEach(ativo => {
+                    const opcao = document.createElement('option');
+                    // O valor inserido no input será o Ticker, mas o utilizador vê o nome da empresa
+                    opcao.value = ativo.symbol;
+                    opcao.textContent = `${ativo.name} (${ativo.exchange})`;
+                    datalist.appendChild(opcao);
+                });
+            } catch (erro) {
+                console.error("Erro na pesquisa preditiva:", erro);
+            }
+        }, 400); 
+    }
+    
     async function executarAnalise() {
         document.getElementById('ferramentas-tabela').style.display = 'none';
         document.getElementById('sniper-resultado').style.display = 'none';
