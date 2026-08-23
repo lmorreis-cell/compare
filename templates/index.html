@@ -847,6 +847,16 @@
 </div> <!-- ✔️ NOVO: FECHA A CAIXA DO TERMINAL GLOBAL AQUI -->
     
 <script>
+    // ==========================================
+    // UTILITÁRIOS GERAIS
+    // ==========================================
+    function formatarMarketCap(valor) {
+        if (!valor || valor === 0) return "N/A";
+        if (valor >= 1e12) return (valor / 1e12).toFixed(2) + "T";
+        if (valor >= 1e9) return (valor / 1e9).toFixed(2) + "B";
+        if (valor >= 1e6) return (valor / 1e6).toFixed(2) + "M";
+        return valor.toString();
+    }
     async function executarAnalise() {
         document.getElementById('ferramentas-tabela').style.display = 'none';
         document.getElementById('sniper-resultado').style.display = 'none';
@@ -1072,11 +1082,41 @@
                     <!-- LINHA 1: IDENTIDADE E FERRAMENTAS EXTERNAS -->
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 15px;">
                         
-                        <!-- BLOCO ESQUERDO: Logótipo, Ticker e Preço -->
-                        <div style="display: flex; align-items: center; gap: 15px;">
-                            ${dados.logo_url ? `<img src="${dados.logo_url}" alt="${dados.ticker}" style="width: 45px; height: 45px; border-radius: 8px; background: #fff; padding: 3px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">` : ''}
-                            <h2 style="margin: 0; font-size: 32px; font-weight: 900; letter-spacing: -1px; text-transform: uppercase;">${dados.ticker}</h2>
-                            <span style="background: #121212; color: #fff; padding: 5px 12px; border-radius: 4px; font-weight: bold; font-size: 13px; letter-spacing: 1px;">TF: ${dados.timeframe} | COTAÇÃO: $${dados.preco}</span>
+                        <!-- BLOCO ESQUERDO ENRIQUECIDO: Logótipo, Ticker e Metadados -->
+                        <div style="display: flex; align-items: center; gap: 20px;">
+                            ${dados.logo_url ? `<img src="${dados.logo_url}" alt="${dados.ticker}" style="width: 55px; height: 55px; border-radius: 12px; background: #fff; padding: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.15);">` : ''}
+                            
+                            <div style="display: flex; flex-direction: column; align-items: flex-start;">
+                                <div style="display: flex; align-items: baseline; gap: 10px;">
+                                    <h2 style="margin: 0; font-size: 32px; font-weight: 900; letter-spacing: -1px; text-transform: uppercase;">${dados.ticker}</h2>
+                                    <span class="sniper-tt" style="color: #8b949e; font-size: 13px; font-weight: bold;">
+                                        ${dados.exchange}
+                                        <span class="sniper-tt-text" style="width: 180px;">Bolsa de Valores oficial.</span>
+                                    </span>
+                                </div>
+                                
+                                <div style="display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap;">
+                                    <span class="sniper-tt" style="background: #1c1e24; color: #c9d1d9; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; border: 1px solid #30363d;">
+                                        📁 ${dados.setor}
+                                        <span class="sniper-tt-text" style="width: 250px;">
+                                            <strong style="color: #4da6ff; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Setor de Atividade</strong>
+                                            Cruza isto com o <i>Market Breadth</i>. Se a saúde estrutural estiver em queda mas este setor estiver a subir, tens <i>Alpha</i>. Se estiver tudo vermelho, abdica do trade.
+                                        </span>
+                                    </span>
+                                    
+                                    <span class="sniper-tt" style="background: #1c1e24; color: #c9d1d9; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; border: 1px solid #30363d;">
+                                        ⚖️ Cap: ${formatarMarketCap(dados.mkt_cap)}
+                                        <span class="sniper-tt-text" style="width: 280px;">
+                                            <strong style="color: #4da6ff; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Capitalização (Market Cap)</strong>
+                                            Define a vulnerabilidade à manipulação. Uma <i>Mega-Cap</i> respeita rigorosamente as zonas de Suporte/Resistência. Uma <i>Micro-Cap</i> destrói alvos e ignora o gráfico mediante qualquer ruído de liquidez.
+                                        </span>
+                                    </span>
+
+                                    <span style="background: #121212; color: #fff; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 11px; letter-spacing: 1px; border: 1px solid #333;">
+                                        Cotação: $${dados.preco}
+                                    </span>
+                                </div>
+                            </div>
                         </div>
                         
                         <!-- BLOCO DIREITO: Ações Externas -->
