@@ -162,7 +162,7 @@ def api_ticker_tape():
     resultados = []
     
     # 1. CABAZ BASE MACRO (Europa, States, Matérias-Primas, Cripto)
-    tickers_base = ["^GSPC", "^IXIC", "^GDAXI", "^STOXX50E", "BTC-USD", "ETH-USD", "GC=F", "CL=F"]
+    tickers_base = ["^GSPC", "^IXIC", "^GDAXI", "^STOXX50E", "PSI20.LS", "BTC-USD", "ETH-USD", "GC=F", "CL=F"]
     
     try:
         for t in tickers_base:
@@ -179,6 +179,7 @@ def api_ticker_tape():
                 if t == "^IXIC": nome = "NASDAQ"
                 if t == "^GDAXI": nome = "DAX 40"
                 if t == "^STOXX50E": nome = "EURO STOXX 50"
+                if t == "PSI20.LS": nome = "PSI 20"  # <--- ADICIONA ESTA LINHA
                 if t == "GC=F": nome = "OURO"
                 if t == "CL=F": nome = "PETRÓLEO"
                 
