@@ -1346,30 +1346,47 @@ def api_screener_paginado(universo, estrategia, lote):
                             fcf = info.get('freeCashflow', 0)
                             peg = info.get('pegRatio', 0)
                             
-                            # Filtros de Qualidade Institucional
+                            # Formatação e Injeção de Valores
                             if eps is None or eps < 0:
-                                alertas_fund.append("EPS Negativo")
+                                val_eps = f"${eps:.2f}" if eps is not None else "N/A"
+                                alertas_fund.append({
+                                    "tipo": "EPS Negativo", 
+                                    "desc": f"A empresa destrói valor operacional. O Lucro por Ação (EPS) atual é de {val_eps}."
+                                })
+                                
                             if fcf is None or fcf < 0:
-                                alertas_fund.append("Cash Flow Destrutivo")
+                                # Função para converter números gigantes em M ou B
+                                def formata_caixa(v):
+                                    if v is None: return "N/A"
+                                    if abs(v) >= 1e9: return f"${v/1e9:.2f}B"
+                                    if abs(v) >= 1e6: return f"${v/1e6:.2f}M"
+                                    return f"${v:.2f}"
+                                
+                                alertas_fund.append({
+                                    "tipo": "Cash Flow Destrutivo", 
+                                    "desc": f"Queima de caixa ativa. O Free Cash Flow está negativo em {formata_caixa(fcf)}. A sobrevivência pode exigir diluição de capital."
+                                })
+                                
                             if peg is None or peg > 2 or peg < 0:
-                                alertas_fund.append("PEG Especulativo/Negativo")
+                                val_peg = f"{peg:.2f}" if peg is not None else "N/A"
+                                alertas_fund.append({
+                                    "tipo": "PEG Especulativo", 
+                                    "desc": f"Múltiplo de crescimento (PEG) em {val_peg}. Valores > 2.0 indicam que a cotação está inflacionada face ao crescimento real estimado."
+                                })
                         except:
-                            alertas_fund.append("Dados Incompletos")
+                            alertas_fund.append({
+                                "tipo": "Dados Ocultos", 
+                                "desc": "O algoritmo não conseguiu extrair a métrica financeira (N/A). Avaliação fundamental no escuro."
+                            })
                             
                     # 3. EMPACOTAMENTO DA INFORMAÇÃO
                     is_toxic = len(alertas_fund) > 0
-                    if universo == 'cripto':
-                        tags_html = ""
-                    elif is_toxic:
-                        tags_html = " | ".join(alertas_fund)
-                    else:
-                        tags_html = "Fundamentos Sólidos"
 
                     resultados.append({
                         "ticker": ticker, 
                         "preco": fecho_atual, 
                         "metricas": metrica_tec,
-                        "fundamentos": tags_html,
+                        "fundamentos": alertas_fund, # Agora envia uma lista de dicionários!
                         "is_toxic": is_toxic
                     })
             except:
