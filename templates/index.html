@@ -1081,10 +1081,10 @@
                 <div style="border-bottom: 2px solid #121212; padding-bottom: 15px; margin-bottom: 20px; position: relative; z-index: 51;">
                     
                     <!-- LINHA 1: IDENTIDADE E FERRAMENTAS EXTERNAS -->
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 15px;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; flex-wrap: wrap; gap: 15px;">
                         
                         <!-- BLOCO ESQUERDO ENRIQUECIDO: Logótipo, Ticker e Metadados -->
-                        <div style="display: flex; align-items: center; gap: 20px;">
+                        <div style="display: flex; align-items: center; gap: 15px;">
                             ${dados.logo_url ? `<img src="${dados.logo_url}" alt="${dados.ticker}" style="width: 55px; height: 55px; border-radius: 12px; background: #fff; padding: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.15);">` : ''}
                             
                             <div style="display: flex; flex-direction: column; align-items: flex-start;">
@@ -1109,7 +1109,7 @@
                                         ⚖️ Cap: ${formatarMarketCap(dados.mkt_cap)}
                                         <span class="sniper-tt-text" style="width: 280px;">
                                             <strong style="color: #4da6ff; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Capitalização (Market Cap)</strong>
-                                            Define a vulnerabilidade à manipulação. Uma <i>Mega-Cap</i> respeita rigorosamente as zonas de Suporte/Resistência. Uma <i>Micro-Cap</i> destrói alvos e ignora o gráfico mediante qualquer ruído de liquidez.
+                                            Define a vulnerabilidade à manipulação. Uma <i>Mega-Cap</i> respeita rigorosamente as zonas de Suporte/Resistência. Uma <i>Micro-Cap</i> destrói alvos e ignora o gráfico.
                                         </span>
                                     </span>
 
@@ -1121,7 +1121,7 @@
                         </div>
                         
                         <!-- BLOCO DIREITO: Ações Externas -->
-                        <div style="display: flex; gap: 10px; align-items: center;">
+                        <div style="display: flex; gap: 10px; align-items: center; padding-top: 5px; flex-shrink: 0;">
                             <a href="https://www.tradingview.com/chart/?symbol=${dados.ticker}" target="_blank" style="background: #232d3f; color: #d7dce6; border: 1px solid #30363d; padding: 6px 12px; border-radius: 4px; font-weight: bold; font-size: 12px; text-decoration: none; display: flex; align-items: center; gap: 5px; transition: background 0.2s;">
                                 Abrir Gráfico 📈
                             </a>
