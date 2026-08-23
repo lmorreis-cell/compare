@@ -703,6 +703,36 @@ def api_universo():
 
     return jsonify(resultado_final)
 
+@app.route('/api/search/<query>')
+@cache.cached(timeout=3600, key_prefix=lambda: f"search_{request.view_args['query']}")
+def api_search_ticker(query):
+    # Proteção para não fazer pesquisas vazias ou de 1 letra
+    if len(query) < 2:
+        return jsonify([])
+        
+    fmp_key = os.environ.get("FMP_API_KEY")
+    resultados = []
+    
+    if fmp_key:
+        try:
+            # O endpoint revelado no email do FMP
+            url = f"https://financialmodelingprep.com/stable/search-name?query={query}&apikey={fmp_key}"
+            resp = requests.get(url, timeout=2)
+            
+            if resp.status_code == 200:
+                dados = resp.json()
+                # Vamos limitar a 5 resultados para não poluir o ecrã
+                for ativo in dados[:5]:
+                    resultados.append({
+                        "symbol": ativo.get("symbol", ""),
+                        "name": ativo.get("name", ""),
+                        "exchange": ativo.get("exchangeShortName", "")
+                    })
+        except Exception as e:
+            print(f"Erro na pesquisa FMP: {e}")
+            
+    return jsonify(resultados)
+
 @app.route('/api/sniper/<ticker>/<timeframe>')
 @cache.cached(timeout=300) 
 def api_sniper(ticker, timeframe):
