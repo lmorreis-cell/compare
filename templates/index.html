@@ -258,11 +258,11 @@
 </head>
 <body>
 <div class="container">
-    <!-- BANNER DE ALERTA / STATUS (Invisível por defeito, ativado via JS ou HTML manual) -->
-    <div id="banner-global" style="display: flex; background: #d9534f; color: white; padding: 12px 20px; align-items: center; justify-content: space-between; font-size: 13px; font-weight: bold; border-radius: 6px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(217, 83, 79, 0.4); z-index: 100;">
+    <!-- BANNER DE ALERTA MACRO DINÂMICO (Invisível por defeito) -->
+    <div id="banner-global" style="display: none; background: #d9534f; color: white; padding: 12px 20px; align-items: center; justify-content: space-between; font-size: 13px; font-weight: bold; border-radius: 6px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.4); z-index: 100;">
         <div style="display: flex; align-items: center; gap: 10px;">
-            <span style="font-size: 18px;">⚠️</span>
-            <span id="texto-alerta">Aviso do Sistema: O motor de cotações FMP reporta instabilidade na rede. O sistema de redundância (YFinance) está ativo.</span>
+            <span id="icone-alerta" style="font-size: 18px;">⚠️</span>
+            <span id="texto-alerta">...</span>
         </div>
         <button onclick="this.parentElement.style.display='none'" style="background: rgba(0,0,0,0.2); border: none; color: white; cursor: pointer; font-weight: bold; padding: 4px 10px; border-radius: 4px; transition: background 0.2s;">✕</button>
     </div>
@@ -2498,6 +2498,36 @@
             nlgUI.innerHTML = "💡 " + textoBreadth + textoVix;
             nlgUI.style.borderLeftColor = corBorda;
             nlgUI.style.display = 'block';
+
+            // ==========================================
+            // MOTOR DO BANNER GLOBAL DINÂMICO
+            // ==========================================
+            const banner = document.getElementById('banner-global');
+            const textoBanner = document.getElementById('texto-alerta');
+            const iconeBanner = document.getElementById('icone-alerta');
+    
+            if (dados.vix > 25) {
+                // Alerta de Pânico (VIX Alto)
+                banner.style.background = '#d9534f';
+                iconeBanner.innerText = '🌋';
+                textoBanner.innerHTML = `ALERTA DE VOLATILIDADE: VIX em nível crítico (${dados.vix.toFixed(2)}). Reduz o tamanho das posições e alarga os Stop-Losses. Risco severo de ruído intradiário.`;
+                banner.style.display = 'flex';
+            } else if (dados.bull_count <= 2) {
+                // Alerta de Capitulação Institucional
+                banner.style.background = '#d9534f';
+                iconeBanner.innerText = '🩸';
+                textoBanner.innerHTML = `CAPITULAÇÃO DE MERCADO: Apenas ${dados.bull_count} em ${dados.total_setores} setores suportam a tendência de alta. Foca-te em preservação de capital e posições curtas (Shorts).`;
+                banner.style.display = 'flex';
+            } else if (dados.bull_count >= 10) {
+                // Alerta de Euforia (Trend Following agressivo)
+                banner.style.background = '#5cb85c'; 
+                iconeBanner.innerText = '🚀';
+                textoBanner.innerHTML = `EUFORIA INSTITUCIONAL: ${dados.bull_count} em ${dados.total_setores} setores em tendência de alta. Oportunidade ideal para Trend Following agressivo e Breakouts.`;
+                banner.style.display = 'flex';
+            } else {
+                // Dia normal de mercado: O banner esconde-se para não chatear
+                banner.style.display = 'none'; 
+                }
             
         } catch(erro) {
             scoreUI.innerText = "Erro";
@@ -3362,6 +3392,7 @@
         carregarMarketMovers();
         renderizarHistorico();
         iniciarTickerTape();
+        carregarBreadth();
     });
 
     async function iniciarTickerTape() {
