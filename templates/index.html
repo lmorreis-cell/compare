@@ -3427,47 +3427,48 @@
 
     
 <!-- CSS e Estrutura do Ticker Tape -->
-    <style>
-        .ticker-wrap {
-            width: 100%;
-            overflow: hidden;
-            background-color: #0d1117;
-            border-top: 1px solid #30363d;
-            padding: 8px 0;
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            z-index: 9999;
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.5);
-        }
-        .ticker-move {
-            display: inline-block;
-            white-space: nowrap;
-            padding-right: 100%;
-            animation: ticker 35s linear infinite;
-        }
-        .ticker-move:hover {
-            animation-play-state: paused; /* Para o ticker quando passas o rato */
-        }
-        .ticker-item {
-            display: inline-block;
-            padding: 0 25px;
-            font-size: 12px;
-            font-weight: bold;
-            font-family: 'Consolas', 'Courier New', monospace;
-            color: #8b949e;
-        }
-        @keyframes ticker {
-            0% { transform: translateX(0); }
-            100% { transform: translateX(-100%); }
-        }
-    </style>
+<style>
+    .ticker-wrap {
+        width: 100%;
+        overflow: hidden;
+        background-color: #0d1117;
+        border-top: 1px solid #30363d;
+        padding: 8px 0;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        z-index: 9999;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.5);
+        white-space: nowrap; /* Garante que tudo fica numa só linha */
+    }
+    .ticker-move {
+        display: inline-block;
+        animation: ticker 40s linear infinite; /* Aumentei para 40s para ser mais legível */
+    }
+    .ticker-move:hover {
+        animation-play-state: paused; /* Para a fita quando o utilizador quer ler um valor */
+    }
+    .ticker-item {
+        display: inline-block;
+        padding: 0 25px;
+        font-size: 12px;
+        font-weight: bold;
+        font-family: 'Consolas', 'Courier New', monospace;
+        color: #8b949e;
+    }
+    
+    /* O truque do Loop Perfeito: Desliza metade (50%) e recomeça invisivelmente */
+    @keyframes ticker {
+        0% { transform: translateX(0); }
+        100% { transform: translateX(-50%); } 
+    }
+</style>
 
-    <div class="ticker-wrap" id="ticker-tape" style="display: none;">
-        <div class="ticker-move" id="ticker-content">
-            <!-- O Javascript injeta os dados de mercado aqui -->
-        </div>
+<div class="ticker-wrap" id="ticker-tape" style="display: none;">
+    <div class="ticker-move" id="ticker-content">
+        <!-- O Javascript injeta os dados de mercado aqui -->
     </div>
+</div>
     
 </body>
 </html>
