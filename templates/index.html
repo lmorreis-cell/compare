@@ -619,25 +619,36 @@
             </div>
         </div>
 
-        <!-- BOTÕES DE CONTROLO DE BACKUP LOCAL (JSON) -->
+        <!-- BOTÕES DE CONTROLO DE BACKUP LOCAL (JSON) E IMPORTAÇÃO DE LOTE (CSV) -->
         <div style="background-color: #1c1e24; border: 1px solid #30363d; border-radius: 8px; padding: 15px 20px; margin-bottom: 25px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 15px;">
             <div>
                 <span class="dica-edu" style="font-size: 13px; font-weight: bold; color: #f0f2f5;">
-                    💾 Segurança e Backup do Cofre
+                    💾 Gestão de Dados e Importação
                     <span class="dica-texto" style="width: 320px;">
-                        <strong style="color: #e3b341; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Soberania Total de Dados</strong>
-                        Como os dados são teus e residem no teu dispositivo, podes exportar o histórico do teu Ledger a qualquer momento para um ficheiro local no teu computador. Se mudares de browser ou limpares o cache, basta importares o ficheiro de volta para restaurar o estado exato da tua contabilidade.
+                        <strong style="color: #e3b341; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">CSV vs JSON</strong>
+                        Usa o <strong>JSON</strong> para fazer backups integrais da tua conta. Para importar transações em massa (CSV), descarrega primeiro o ficheiro modelo do portal, preenche com os teus dados da corretora e importa de volta.
                     </span>
                 </span>
             </div>
             
-            <div style="display: flex; gap: 10px; align-items: center;">
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <!-- NOVO: Botão para descarregar o Template Modelo -->
+                <button onclick="descarregarModeloCSV()" class="btn-moderno" style="background: transparent; color: #8b949e; border: 1px dashed #30363d; padding: 8px 14px; font-size: 12px; cursor: pointer; transition: all 0.2s;">
+                    📄 Descarregar Modelo CSV
+                </button>
+
+                <label class="btn-moderno" style="background: #007bff; color: white; border: none; padding: 8px 14px; font-size: 12px; cursor: pointer; display: inline-flex; align-items: center; box-shadow: 0 2px 5px rgba(0,123,255,0.3);">
+                    ➕ Importar Trades (CSV) <input type="file" accept=".csv" onchange="importarTradesCSV(event)" style="display: none;">
+                </label>
+
+                <div style="border-left: 1px solid #30363d; height: 20px; margin: 0 5px;"></div>
+
                 <button onclick="exportarCofreJSON()" class="btn-moderno" style="background: #238636; color: white; border: none; padding: 8px 14px; font-size: 12px;">
-                    📥 Exportar Backup (JSON)
+                    📥 Exportar (JSON)
                 </button>
                 
                 <label class="btn-moderno" style="background: #21262d; color: #58a6ff; border: 1px solid #30363d; padding: 8px 14px; font-size: 12px; cursor: pointer; display: inline-flex; align-items: center;">
-                    📤 Importar Backup <input type="file" id="input-importar-cofre" accept=".json" onchange="importarCofreJSON(event)" style="display: none;">
+                    📤 Restaurar (JSON) <input type="file" id="input-importar-cofre" accept=".json" onchange="importarCofreJSON(event)" style="display: none;">
                 </label>
             </div>
         </div>
@@ -3330,6 +3341,150 @@
         leitor.readAsText(ficheiro);
     }
 
+    // ==========================================
+    // MOTOR DE IMPORTAÇÃO EM MASSA (CSV) - STANDARD
+    // ==========================================
+    function importarTradesCSV(event) {
+        const ficheiro = event.target.files[0];
+        if (!ficheiro) return;
+
+        const leitor = new FileReader();
+        leitor.onload = function(e) {
+            const texto = e.target.result;
+            const linhas = texto.split('\n');
+
+            let tradesImportados = 0;
+            let erros = 0;
+
+            // O ciclo começa no 1 para ignorar o cabeçalho do CSV
+            for (let i = 1; i < linhas.length; i++) {
+                const linha = linhas[i].trim();
+                if (!linha) continue; // Ignora linhas em branco no final do ficheiro
+
+                const colunas = linha.split(',');
+                if (colunas.length < 9) {
+                    erros++;
+                    continue; 
+                }
+
+                // Mapeamento rígido das colunas do teu ficheiro modelo
+                const data = colunas[0].trim();
+                const tipo = colunas[1].trim().toUpperCase();
+                const carteira = colunas[2].trim();
+                const ticker = colunas[3].trim().toUpperCase();
+                const qtd = parseFloat(colunas[4]);
+                const precoOriginal = parseFloat(colunas[5]);
+                const custoOriginal = parseFloat(colunas[6]);
+                const moeda = colunas[7].trim().toUpperCase();
+                let cambio = parseFloat(colunas[8]);
+
+                if (isNaN(qtd) || isNaN(precoOriginal)) {
+                    erros++;
+                    continue;
+                }
+                if (isNaN(cambio) || cambio <= 0 || moeda === 'EUR') {
+                    cambio = 1.0;
+                }
+
+                // ==========================================
+                // MOTOR FIFO PARA CÁLCULO DE PNL
+                // ==========================================
+                let custoEUR = custoOriginal / cambio;
+
+                if (tipo === 'COMPRA') {
+                    let precoBaseEUR = precoOriginal / cambio;
+                    let precoEfetivoEUR = precoBaseEUR + (custoEUR / qtd);
+                    let precoEfetivoOriginal = precoOriginal + (custoOriginal / qtd);
+
+                    cofreAbertas.push({
+                        id: Date.now() + i, // ID único sequencial
+                        data: data,
+                        carteira: carteira,
+                        ticker: ticker,
+                        qtdInicial: qtd,
+                        qtdRestante: qtd,
+                        precoCompraOriginal: precoEfetivoOriginal,
+                        precoCompraEUR: precoEfetivoEUR,
+                        moeda: moeda,
+                        cambio: cambio
+                    });
+                    tradesImportados++;
+
+                } else if (tipo === 'VENDA') {
+                    let lotesDisponiveis = cofreAbertas.filter(l => l.ticker === ticker && l.carteira === carteira && l.qtdRestante > 0);
+                    let qtdTotalEmArmazem = lotesDisponiveis.reduce((sum, l) => sum + l.qtdRestante, 0);
+                    
+                    if (qtd > qtdTotalEmArmazem) {
+                        console.warn(`Venda na linha ${i+1} ignorada: Quantidade (${qtd}) excede o armazém (${qtdTotalEmArmazem}).`);
+                        erros++;
+                        continue;
+                    }
+
+                    let lucroTradeEUR = 0;
+                    let qtdParaVender = qtd;
+                    let detalhesCasamento = [];
+                    let precoVendaEUR = precoOriginal / cambio;
+                    let pnlEscaloes = { sub1: 0, sub2: 0, sub5: 0, sub8: 0, plus8: 0 };
+
+                    // O algoritmo FIFO consome os lotes antigos 
+                    for (let lote of lotesDisponiveis) {
+                        if (qtdParaVender === 0) break;
+
+                        let qtdDesteLote = Math.min(qtdParaVender, lote.qtdRestante);
+                        let pnlParcialEUR = (precoVendaEUR - lote.precoCompraEUR) * qtdDesteLote;
+                        let diasDetencao = (new Date(data) - new Date(lote.data)) / (1000 * 3600 * 24);
+
+                        if (diasDetencao < 365) pnlEscaloes.sub1 += pnlParcialEUR;
+                        else if (diasDetencao < 730) pnlEscaloes.sub2 += pnlParcialEUR;
+                        else if (diasDetencao < 1825) pnlEscaloes.sub5 += pnlParcialEUR;
+                        else if (diasDetencao < 2920) pnlEscaloes.sub8 += pnlParcialEUR;
+                        else pnlEscaloes.plus8 += pnlParcialEUR;
+                        
+                        lote.qtdRestante -= qtdDesteLote;
+                        qtdParaVender -= qtdDesteLote;
+                        lucroTradeEUR += pnlParcialEUR;
+
+                        let simbolo = lote.moeda === 'USD' ? '$' : '€';
+                        detalhesCasamento.push(`${simbolo}${lote.precoCompraOriginal.toFixed(2)}`);
+                    }
+
+                    lucroTradeEUR -= custoEUR;
+                    pnlEscaloes.sub1 -= custoEUR; 
+
+                    cofreFechadas.push({
+                        id: Date.now() + i,
+                        data: data,
+                        carteira: carteira,
+                        ticker: ticker,
+                        qtdVendida: qtd,
+                        pnlEUR: lucroTradeEUR,
+                        pnlEscaloes: pnlEscaloes,
+                        moeda: moeda,
+                        detalhes: detalhesCasamento.join(" + ")
+                    });
+                    tradesImportados++;
+                }
+            }
+
+            // Garante que o cofre fica ordenado cronologicamente após a importação
+            cofreAbertas.sort((a, b) => new Date(a.data) - new Date(b.data));
+            
+            // Grava na memória e atualiza a interface
+            localStorage.setItem('cofreAbertas', JSON.stringify(cofreAbertas));
+            localStorage.setItem('cofreFechadas', JSON.stringify(cofreFechadas));
+            atualizarCofre();
+
+            // Limpa o input para permitir importar o mesmo ficheiro novamente, se necessário
+            event.target.value = '';
+
+            let msg = `✅ Importação concluída!\n\n${tradesImportados} transações processadas com sucesso.`;
+            if (erros > 0) msg += `\n⚠️ Houve ${erros} linhas ignoradas (formato incorreto ou venda sem inventário prévio).`;
+            alert(msg);
+        };
+        
+        leitor.readAsText(ficheiro);
+    }
+    
     function controlarCampoCambio() {
         const moeda = document.getElementById('trade-moeda').value;
         const blocoCambio = document.getElementById('bloco-cambio');
@@ -3484,6 +3639,28 @@
         carregarBreadth();
     });
 
+    // ==========================================
+    // GERADOR DO MODELO CSV PARA UTILIZADORES
+    // ==========================================
+    function descarregarModeloCSV() {
+        const cabecalho = "Data,Tipo,Carteira,Ticker,Qtd,Preco,Custo,Moeda,Cambio\n";
+        const exemplo1 = "2023-01-10,COMPRA,XTB,NVDA,10,140.00,0.00,USD,1.08\n";
+        const exemplo2 = "2023-05-15,VENDA,Degiro,AAPL,5,180.50,1.20,USD,1.05\n";
+        
+        const conteudo = cabecalho + exemplo1 + exemplo2;
+        
+        const blob = new Blob([conteudo], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        
+        link.setAttribute("href", url);
+        link.setAttribute("download", "PortalBolsa_Modelo_Importacao.csv");
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+    
     async function iniciarTickerTape() {
         try {
             const resposta = await fetch('/api/ticker_tape');
