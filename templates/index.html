@@ -1526,6 +1526,29 @@
 
                 <!-- MENU E BOTÃO DE BACKTEST NA BASE -->
                 <div style="margin-top: 30px; display: flex; justify-content: center; align-items: center; gap: 15px; position: relative; z-index: 51; flex-wrap: wrap;">
+                    
+                    <!-- TOOLTIP EDUCACIONAL DO BACKTEST -->
+                    <span class="dica-edu" style="cursor: help; background: #1c1e24; border: 1px solid #30363d; padding: 10px; border-radius: 6px; display: flex; align-items: center; justify-content: center;">
+                        ℹ️ <span style="margin-left: 5px; font-size: 12px; color: #8b949e; font-weight: bold;">Lógica</span>
+                        <span class="dica-texto" style="width: 360px; bottom: 150%; z-index: 1000; text-transform: none; text-align: left; font-weight: normal; font-family: 'Segoe UI', sans-serif;">
+                            
+                            <strong style="color: #58a6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">📈 Trend Following (EMA 20)</strong>
+                            O clássico seguidor de tendência institucional. Funciona mal em mercados laterais, mas gera lucros massivos em Bull Markets.<br>
+                            <span style="color: #5cb85c;">• <strong>Entrada:</strong></span> Preço cruza e fecha acima da Média Móvel (EMA 20).<br>
+                            <span style="color: #d9534f;">• <strong>Saída:</strong></span> Preço quebra e fecha abaixo da EMA 20.<br><br>
+                            
+                            <strong style="color: #f28b24; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">🩸 Mean Reversion (RSI < 30)</strong>
+                            Tática de guerrilha para apanhar facas a cair. O objetivo não é casar com a ação, mas roubar um ressalto de curto prazo originado por <i>Short Covering</i>.<br>
+                            <span style="color: #5cb85c;">• <strong>Entrada:</strong></span> Pânico extremo. RSI(14) afunda abaixo de 30.<br>
+                            <span style="color: #d9534f;">• <strong>Saída:</strong></span> Ressalto à neutralidade. RSI(14) recupera os 50.<br><br>
+                            
+                            <strong style="color: #b388ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">🌋 Bollinger Dip (Caça Fundos)</strong>
+                            Captura a exaustão de volatilidade em quedas agudas e irracionais.<br>
+                            <span style="color: #5cb85c;">• <strong>Entrada:</strong></span> Preço perfura e fecha abaixo da Banda Inferior.<br>
+                            <span style="color: #d9534f;">• <strong>Saída:</strong></span> Regresso ao eixo central (Média Móvel Simples 20).
+                        </span>
+                    </span>
+
                     <select id="select-backtest" class="input-moderno" style="max-width: 250px; background: #1c1e24; border-color: #30363d;">
                         <option value="trend_ema20">Trend Following (EMA 20)</option>
                         <option value="reversion_rsi">Mean Reversion (RSI < 30)</option>
@@ -2378,6 +2401,29 @@
                 </div> 
                 <!-- MENU E BOTÃO DE BACKTEST NA BASE -->
                 <div style="margin-top: 30px; display: flex; justify-content: center; align-items: center; gap: 15px; position: relative; z-index: 51; flex-wrap: wrap;">
+                    
+                    <!-- TOOLTIP EDUCACIONAL DO BACKTEST -->
+                    <span class="dica-edu" style="cursor: help; background: #1c1e24; border: 1px solid #30363d; padding: 10px; border-radius: 6px; display: flex; align-items: center; justify-content: center;">
+                        ℹ️ <span style="margin-left: 5px; font-size: 12px; color: #8b949e; font-weight: bold;">Lógica</span>
+                        <span class="dica-texto" style="width: 360px; bottom: 150%; z-index: 1000; text-transform: none; text-align: left; font-weight: normal; font-family: 'Segoe UI', sans-serif;">
+                            
+                            <strong style="color: #58a6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">📈 Trend Following (EMA 20)</strong>
+                            O clássico seguidor de tendência institucional. Funciona mal em mercados laterais, mas gera lucros massivos em Bull Markets.<br>
+                            <span style="color: #5cb85c;">• <strong>Entrada:</strong></span> Preço cruza e fecha acima da Média Móvel (EMA 20).<br>
+                            <span style="color: #d9534f;">• <strong>Saída:</strong></span> Preço quebra e fecha abaixo da EMA 20.<br><br>
+                            
+                            <strong style="color: #f28b24; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">🩸 Mean Reversion (RSI < 30)</strong>
+                            Tática de guerrilha para apanhar facas a cair. O objetivo não é casar com a ação, mas roubar um ressalto de curto prazo originado por <i>Short Covering</i>.<br>
+                            <span style="color: #5cb85c;">• <strong>Entrada:</strong></span> Pânico extremo. RSI(14) afunda abaixo de 30.<br>
+                            <span style="color: #d9534f;">• <strong>Saída:</strong></span> Ressalto à neutralidade. RSI(14) recupera os 50.<br><br>
+                            
+                            <strong style="color: #b388ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">🌋 Bollinger Dip (Caça Fundos)</strong>
+                            Captura a exaustão de volatilidade em quedas agudas e irracionais.<br>
+                            <span style="color: #5cb85c;">• <strong>Entrada:</strong></span> Preço perfura e fecha abaixo da Banda Inferior.<br>
+                            <span style="color: #d9534f;">• <strong>Saída:</strong></span> Regresso ao eixo central (Média Móvel Simples 20).
+                        </span>
+                    </span>
+
                     <select id="select-backtest" class="input-moderno" style="max-width: 250px; background: #1c1e24; border-color: #30363d;">
                         <option value="trend_ema20">Trend Following (EMA 20)</option>
                         <option value="reversion_rsi">Mean Reversion (RSI < 30)</option>
@@ -2573,14 +2619,16 @@
             const vitoria = parseFloat(dados.win_rate) > 50;
             const gerouAlpha = parseFloat(dados.retorno_total) > parseFloat(dados.retorno_bh);
             
-            // Inteligência Textual (NLG)
+            // Inteligência Textual (NLG) Dinâmica
             let avaliacao = "";
+            let nomeEst = dados.estrategia_nome || "Estratégia";
+            
             if(gerouAlpha && vitoria) {
-                avaliacao = `<strong style="color: #5cb85c;">Estratégia com Expectativa Matemática Positiva.</strong> O modelo de <i>Trend Following</i> aplicado à ${ticker} bateu o mercado de forma passiva (Buy & Hold) reduzindo substancialmente a exposição temporal ao risco. A taxa de acerto valida o Setup atual.`;
+                avaliacao = `<strong style="color: #5cb85c;">Estratégia com Expectativa Matemática Positiva.</strong> O modelo de <i>${nomeEst}</i> aplicado à ${ticker} bateu o mercado de forma passiva (Buy & Hold) reduzindo substancialmente a exposição temporal ao risco. A taxa de acerto valida o Setup atual.`;
             } else if (!gerouAlpha && vitoria) {
                 avaliacao = `<strong style="color: #f0ad4e;">Proteção de Capital Ativa.</strong> O modelo teve um ganho inferior ao Buy & Hold passivo, mas protegeu a carteira contra o Max Drawdown severo, tirando o capital do mercado em períodos de distribuição. Setup tático sólido para controlo de risco.`;
             } else {
-                avaliacao = `<strong style="color: #d9534f;">Alerta de Ruído (Whipsaw).</strong> O perfil técnico da ${ticker} gerou muitos falsos rompimentos no histórico (Win Rate baixo). O ativo tem um comportamento errático face à EMA 20. Executa o Setup atual com tamanho de posição reduzido.`;
+                avaliacao = `<strong style="color: #d9534f;">Alerta de Ruído e Ineficácia.</strong> O perfil técnico da ${ticker} gerou muitos sinais falsos no histórico com este modelo. O ativo tem um comportamento errático e destrutivo face à tática de <i>${nomeEst}</i>. Evita esta abordagem ou reduz drasticamente o tamanho da posição.`;
             }
 
             // O HTML injetado na Gaveta, com Tooltips Educacionais
