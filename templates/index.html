@@ -2852,6 +2852,13 @@
         cofreBruto.sort((a, b) => new Date(a.data) - new Date(b.data));
 
         for (let evento of cofreBruto) {
+            
+            // PONTE DE COMPATIBILIDADE: Injeta trades antigos diretamente sem matemática FIFO
+            if (evento.tipo === 'MIGRACAO_FECHADA') {
+                cofreFechadas.push(evento.tradeAntigo);
+                continue;
+            }
+
             let custoEUR = evento.custoOriginal / evento.cambio;
             let precoBaseEUR = evento.precoOriginal / evento.cambio;
 
@@ -2860,7 +2867,7 @@
                 let precoEfetivoOriginal = evento.precoOriginal + (evento.custoOriginal / evento.qtd);
 
                 cofreAbertas.push({
-                    idOrigem: evento.id, // O elo de ligação ao Ledger
+                    idOrigem: evento.id, 
                     data: evento.data,
                     carteira: evento.carteira,
                     ticker: evento.ticker,
@@ -2907,7 +2914,7 @@
                     detalhesCasamento.push(`${simbolo}${lote.precoCompraOriginal.toFixed(2)}`);
                 }
 
-                lucroTradeEUR -= custoEUR; // Abate os custos da venda no lucro final
+                lucroTradeEUR -= custoEUR; 
                 pnlEscaloes.sub1 -= custoEUR; 
 
                 cofreFechadas.push({
@@ -2924,7 +2931,6 @@
             }
         }
 
-        // Grava as views na memória para carregamentos rápidos e desenha a UI
         localStorage.setItem('cofreAbertas', JSON.stringify(cofreAbertas));
         localStorage.setItem('cofreFechadas', JSON.stringify(cofreFechadas));
         atualizarCofre();
@@ -2995,6 +3001,12 @@
     function editarEventoBruto(idOrigem) {
         let evento = cofreBruto.find(ev => ev.id === idOrigem);
         if(!evento) return;
+
+        // NOVO BLOQUEIO DE SEGURANÇA
+        if (evento.tipo === 'MIGRACAO_FECHADA') {
+            alert("⚠️ Operação Bloqueada: Este é um trade histórico importado da versão antiga (V1.0). Não é possível editar a sua matemática base de forma rigorosa. Podes, no entanto, apagá-lo se necessário.");
+            return;
+        }
         
         let novaData = prompt("✏️ Data (Atualmente: " + evento.data + "):", evento.data);
         if(!novaData) return;
@@ -3447,7 +3459,7 @@
     }
 
     function importarCofreJSON(event) {
-        if (!confirm("⚠️ PERIGO: Restaurar este backup vai APAGAR o Ledger atual. Queres mesmo continuar?")) {
+        if (!confirm("⚠️ PERIGO: Restaurar um backup vai APAGAR o sistema atual. Queres mesmo continuar?")) {
             event.target.value = ''; 
             return; 
         }
@@ -3459,25 +3471,59 @@
             try {
                 const conteudo = JSON.parse(e.target.result);
                 
-                // Verifica se é o formato novo (versão 2.0 com o "bruto")
-                if (!conteudo.bruto) {
-                    throw new Error("Este JSON é da versão antiga (v1.0). Para transitar para a nova versão, tens de usar a importação por CSV.");
-                }
+                // DETETA SE É VERSÃO ANTIGA (V1.0) E EXECUTA A TRADUÇÃO
+                if (!conteudo.bruto && conteudo.abertas && conteudo.fechadas) {
+                    if(confirm("♻️ Detetado Backup Antigo (V1.0).\nO portal vai converter estes dados para o novo motor Ledger automaticamente. Continuar?")) {
+                        cofreBruto = []; // Limpa o ledger atual
+                        
+                        // 1. Converte Lotes Abertos em Compras no Ledger
+                        conteudo.abertas.forEach((lote, index) => {
+                            if (lote.qtdRestante > 0) {
+                                cofreBruto.push({
+                                    id: Date.now() + index,
+                                    data: lote.data,
+                                    tipo: 'COMPRA',
+                                    carteira: lote.carteira || 'Migração',
+                                    ticker: lote.ticker,
+                                    qtd: lote.qtdRestante, // Importamos apenas o que sobrou
+                                    precoOriginal: lote.precoCompraOriginal, // O custo já estava diluído na versão antiga
+                                    custoOriginal: 0, 
+                                    moeda: lote.moeda,
+                                    cambio: lote.cambio || 1.0
+                                });
+                            }
+                        });
 
-                if (confirm(`⚠️ Substituir os dados atuais pelo Ledger importado com ${conteudo.bruto.length} eventos registados?`)) {
-                    // Carrega o livro mestre
+                        // 2. Encapsula o Histórico Fechado na Ponte de Compatibilidade
+                        conteudo.fechadas.forEach((trade, index) => {
+                            trade.idOrigem = Date.now() + 10000 + index; // Atualiza o ID antigo para o novo standard
+                            cofreBruto.push({
+                                id: trade.idOrigem,
+                                data: trade.data,
+                                tipo: 'MIGRACAO_FECHADA',
+                                tradeAntigo: trade 
+                            });
+                        });
+                        
+                        localStorage.setItem('cofreBruto', JSON.stringify(cofreBruto));
+                        recalcularTudo();
+                        alert("✅ Migração para V2.0 concluída com sucesso! Podes retomar as tuas análises.");
+                    }
+                } 
+                // DETETA SE JÁ É VERSÃO NOVA (V2.0)
+                else if (conteudo.bruto) {
                     cofreBruto = conteudo.bruto;
                     localStorage.setItem('cofreBruto', JSON.stringify(cofreBruto));
-
-                    // Dispara a reconstrução total da interface e da matemática
                     recalcularTudo();
-                    
-                    alert("✅ Ledger Fiscal restaurado e recalculado com sucesso!");
+                    alert("✅ Ledger Fiscal restaurado com sucesso!");
+                } else {
+                    throw new Error("Formato de ficheiro JSON desconhecido ou corrompido.");
                 }
+
             } catch (erro) {
                 alert("❌ Erro ao ler o backup: " + erro.message);
             }
-            event.target.value = ''; // Limpa o input
+            event.target.value = '';
         };
         leitor.readAsText(ficheiro);
     }
