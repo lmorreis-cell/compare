@@ -2946,6 +2946,113 @@
     // ==========================================
     // FUNÇÕES PARA APAGAR REGISTOS (O TEU "UNDO")
     // ==========================================
+    // ==========================================
+    // FUNÇÕES DE EDIÇÃO RÁPIDA (METADADOS, PREÇOS E QUANTIDADES)
+    // ==========================================
+    function editarLoteAberto(id) {
+        let lote = cofreAbertas.find(l => l.id === id);
+        if(!lote) return;
+        
+        let novoTicker = prompt("✏️ Editar Ticker (Atualmente: " + lote.ticker + "):", lote.ticker);
+        if(novoTicker === null) return;
+        
+        let novaCarteira = prompt("✏️ Editar Carteira (Atualmente: " + lote.carteira + "):", lote.carteira);
+        if(novaCarteira === null) return;
+        
+        let novaData = prompt("✏️ Editar Data (Atualmente: " + lote.data + "):", lote.data);
+        if(novaData === null) return;
+
+        // EDIÇÃO DE QUANTIDADE COM PROTEÇÃO FIFO
+        let novaQtdStr = prompt("✏️ Editar Quantidade Inicial (Atualmente: " + lote.qtdInicial + " | Restante: " + lote.qtdRestante + "):\n\n⚠️ ALERTA FIFO: Se já vendeste parte deste lote, alterar a quantidade inicial afeta o inventário. Edita com cuidado.", lote.qtdInicial);
+        if(novaQtdStr === null) return;
+        
+        let novaQtd = parseFloat(novaQtdStr);
+        if(isNaN(novaQtd) || novaQtd <= 0) {
+            alert("⚠️ Quantidade inválida. A edição foi cancelada.");
+            return;
+        }
+
+        let novoPrecoStr = prompt("✏️ Editar Preço Compra Original (Atualmente: " + lote.precoCompraOriginal.toFixed(2) + "):", lote.precoCompraOriginal.toFixed(2));
+        if(novoPrecoStr === null) return;
+        
+        let novoPreco = parseFloat(novoPrecoStr);
+        if(isNaN(novoPreco) || novoPreco <= 0) {
+            alert("⚠️ Preço inválido. A edição foi cancelada.");
+            return;
+        }
+
+        // Aplicação de Metadados
+        lote.ticker = novoTicker.trim().toUpperCase();
+        lote.carteira = novaCarteira.trim();
+        lote.data = novaData.trim();
+        
+        // Ajuste Matemático da Quantidade
+        if(novaQtd !== lote.qtdInicial) {
+            let qtdJaVendida = lote.qtdInicial - lote.qtdRestante;
+            lote.qtdInicial = novaQtd;
+            lote.qtdRestante = novaQtd - qtdJaVendida;
+            
+            if (lote.qtdRestante < 0) {
+                alert("⚠️ Aviso do Motor FIFO: A nova quantidade inicial que inseriste é inferior ao que já vendeste deste lote no passado. O sistema ajustou a quantidade restante para 0 para não corromper o cálculo.");
+                lote.qtdRestante = 0;
+            }
+        }
+        
+        // Ajuste de Preço
+        if(novoPreco !== lote.precoCompraOriginal) {
+            lote.precoCompraOriginal = novoPreco;
+            lote.precoCompraEUR = novoPreco / lote.cambio;
+        }
+        
+        localStorage.setItem('cofreAbertas', JSON.stringify(cofreAbertas));
+        atualizarCofre();
+    }
+
+    function editarTradeFechado(id) {
+        let trade = cofreFechadas.find(t => t.id === id);
+        if(!trade) return;
+        
+        let novoTicker = prompt("✏️ Editar Ticker (Atualmente: " + trade.ticker + "):", trade.ticker);
+        if(novoTicker === null) return;
+        
+        let novaCarteira = prompt("✏️ Editar Carteira (Atualmente: " + trade.carteira + "):", trade.carteira);
+        if(novaCarteira === null) return;
+        
+        let novaData = prompt("✏️ Editar Data (Atualmente: " + trade.data + "):", trade.data);
+        if(novaData === null) return;
+
+        // EDIÇÃO DE QUANTIDADE (APENAS VISUAL)
+        let novaQtdStr = prompt("✏️ Editar Quantidade Vendida (Atualmente: " + trade.qtdVendida + "):\n\n⚠️ ALERTA FIFO: Alterar esta quantidade NÃO vai devolver nem remover unidades do teu armazém de compras automaticamente. Serve apenas como correção visual do relatório.", trade.qtdVendida);
+        if(novaQtdStr === null) return;
+        
+        let novaQtd = parseFloat(novaQtdStr);
+        if(isNaN(novaQtd) || novaQtd <= 0) {
+            alert("⚠️ Quantidade inválida. A edição foi cancelada.");
+            return;
+        }
+
+        let novoPnlStr = prompt("✏️ Editar Lucro/Prejuízo Líquido (Atualmente: " + trade.pnlEUR.toFixed(2) + "€):", trade.pnlEUR.toFixed(2));
+        if(novoPnlStr === null) return;
+
+        let novoPnl = parseFloat(novoPnlStr);
+        if(isNaN(novoPnl)) {
+            alert("⚠️ Valor inválido. A edição foi cancelada.");
+            return;
+        }
+
+        trade.ticker = novoTicker.trim().toUpperCase();
+        trade.carteira = novaCarteira.trim();
+        trade.data = novaData.trim();
+        trade.qtdVendida = novaQtd; 
+        
+        if(novoPnl !== trade.pnlEUR) {
+            trade.pnlEUR = novoPnl;
+            trade.pnlEscaloes = { sub1: novoPnl, sub2: 0, sub5: 0, sub8: 0, plus8: 0 };
+        }
+        
+        localStorage.setItem('cofreFechadas', JSON.stringify(cofreFechadas));
+        atualizarCofre();
+    }
     function apagarLoteAberto(id) {
         if(confirm("Eliminar este lote do armazém?")) {
             cofreAbertas = cofreAbertas.filter(lote => lote.id !== id);
@@ -3008,7 +3115,8 @@
                     <td style="padding: 12px; color: #8b949e; font-family: monospace;">${simbolo}${lote.precoCompraOriginal.toFixed(2)}</td>
                     <td style="padding: 12px; color: #58a6ff; font-weight: bold;">€${capitalExpostoEUR.toFixed(2)}</td>
                     <td style="padding: 12px; text-align: center;">
-                        <button onclick="apagarLoteAberto(${lote.id})" style="background: transparent; border: none; cursor: pointer; font-size: 14px;">🗑️</button>
+                        <button onclick="editarLoteAberto(${lote.id})" style="background: transparent; border: none; cursor: pointer; font-size: 14px; margin-right: 5px;" title="Editar">✏️</button>
+                        <button onclick="apagarLoteAberto(${lote.id})" style="background: transparent; border: none; cursor: pointer; font-size: 14px;" title="Apagar">🗑️</button>
                     </td>
                 </tr>
             `;
@@ -3039,7 +3147,8 @@
                     <td style="padding: 12px; color: #8b949e; font-weight: bold;">${trade.qtdVendida.toFixed(4)}</td>
                     <td style="padding: 12px; color: ${corPnl}; font-weight: 900;">${sinal}€${trade.pnlEUR.toFixed(2)}</td>
                     <td style="padding: 12px; text-align: center;">
-                        <button onclick="apagarTradeFechado(${trade.id})" style="background: transparent; border: none; cursor: pointer; font-size: 14px;">🗑️</button>
+                        <button onclick="editarTradeFechado(${trade.id})" style="background: transparent; border: none; cursor: pointer; font-size: 14px; margin-right: 5px;" title="Editar">✏️</button>
+                        <button onclick="apagarTradeFechado(${trade.id})" style="background: transparent; border: none; cursor: pointer; font-size: 14px;" title="Apagar">🗑️</button>
                     </td>
                 </tr>
             `;
