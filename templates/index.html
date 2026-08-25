@@ -2833,17 +2833,107 @@
     }
 
     // ==========================================
-    // MOTOR DO COFRE FISCAL E LEDGER (FIFO)
+    // MOTOR DO COFRE FISCAL E LEDGER (EVENT SOURCING / FIFO)
     // ==========================================
     
-    // 1. Carregar memória persistente ou criar vazia
-    let cofreAbertas = JSON.parse(localStorage.getItem('cofreAbertas')) || [];
-    let cofreFechadas = JSON.parse(localStorage.getItem('cofreFechadas')) || [];
+    // 1. O Ledger Imutável (A única fonte da verdade)
+    let cofreBruto = JSON.parse(localStorage.getItem('cofreBruto')) || [];
+    
+    // As "Views" derivadas (são reconstruídas do zero a cada alteração)
+    let cofreAbertas = [];
+    let cofreFechadas = [];
+
+    // O CÉREBRO: Reconstrói toda a contabilidade lendo o Ledger desde o dia 1
+    function recalcularTudo() {
+        cofreAbertas = [];
+        cofreFechadas = [];
+
+        // Garante que o processamento é rigorosamente cronológico
+        cofreBruto.sort((a, b) => new Date(a.data) - new Date(b.data));
+
+        for (let evento of cofreBruto) {
+            let custoEUR = evento.custoOriginal / evento.cambio;
+            let precoBaseEUR = evento.precoOriginal / evento.cambio;
+
+            if (evento.tipo === 'COMPRA') {
+                let precoEfetivoEUR = precoBaseEUR + (custoEUR / evento.qtd);
+                let precoEfetivoOriginal = evento.precoOriginal + (evento.custoOriginal / evento.qtd);
+
+                cofreAbertas.push({
+                    idOrigem: evento.id, // O elo de ligação ao Ledger
+                    data: evento.data,
+                    carteira: evento.carteira,
+                    ticker: evento.ticker,
+                    qtdInicial: evento.qtd,
+                    qtdRestante: evento.qtd,
+                    precoCompraOriginal: precoEfetivoOriginal,
+                    precoCompraEUR: precoEfetivoEUR,
+                    moeda: evento.moeda,
+                    cambio: evento.cambio
+                });
+
+            } else if (evento.tipo === 'VENDA') {
+                let lotesDisponiveis = cofreAbertas.filter(l => l.ticker === evento.ticker && l.carteira === evento.carteira && l.qtdRestante > 0);
+                let qtdTotalEmArmazem = lotesDisponiveis.reduce((sum, l) => sum + l.qtdRestante, 0);
+                
+                if (evento.qtd > qtdTotalEmArmazem) {
+                    console.warn(`[Motor FIFO] Venda de ${evento.qtd} ${evento.ticker} a ${evento.data} ignorada: inventário insuficiente.`);
+                    continue; 
+                }
+
+                let lucroTradeEUR = 0;
+                let qtdParaVender = evento.qtd;
+                let detalhesCasamento = [];
+                let pnlEscaloes = { sub1: 0, sub2: 0, sub5: 0, sub8: 0, plus8: 0 };
+
+                for (let lote of lotesDisponiveis) {
+                    if (qtdParaVender === 0) break;
+
+                    let qtdDesteLote = Math.min(qtdParaVender, lote.qtdRestante);
+                    let pnlParcialEUR = (precoBaseEUR - lote.precoCompraEUR) * qtdDesteLote;
+                    let diasDetencao = (new Date(evento.data) - new Date(lote.data)) / (1000 * 3600 * 24);
+
+                    if (diasDetencao < 365) pnlEscaloes.sub1 += pnlParcialEUR;
+                    else if (diasDetencao < 730) pnlEscaloes.sub2 += pnlParcialEUR;
+                    else if (diasDetencao < 1825) pnlEscaloes.sub5 += pnlParcialEUR;
+                    else if (diasDetencao < 2920) pnlEscaloes.sub8 += pnlParcialEUR;
+                    else pnlEscaloes.plus8 += pnlParcialEUR;
+                    
+                    lote.qtdRestante -= qtdDesteLote;
+                    qtdParaVender -= qtdDesteLote;
+                    lucroTradeEUR += pnlParcialEUR;
+
+                    let simbolo = lote.moeda === 'USD' ? '$' : '€';
+                    detalhesCasamento.push(`${simbolo}${lote.precoCompraOriginal.toFixed(2)}`);
+                }
+
+                lucroTradeEUR -= custoEUR; // Abate os custos da venda no lucro final
+                pnlEscaloes.sub1 -= custoEUR; 
+
+                cofreFechadas.push({
+                    idOrigem: evento.id,
+                    data: evento.data,
+                    carteira: evento.carteira,
+                    ticker: evento.ticker,
+                    qtdVendida: evento.qtd,
+                    pnlEUR: lucroTradeEUR,
+                    pnlEscaloes: pnlEscaloes,
+                    moeda: evento.moeda,
+                    detalhes: detalhesCasamento.join(" + ")
+                });
+            }
+        }
+
+        // Grava as views na memória para carregamentos rápidos e desenha a UI
+        localStorage.setItem('cofreAbertas', JSON.stringify(cofreAbertas));
+        localStorage.setItem('cofreFechadas', JSON.stringify(cofreFechadas));
+        atualizarCofre();
+    }
 
     function adicionarTrade() {
         const data = document.getElementById('trade-data').value;
         const tipo = document.getElementById('trade-tipo').value;
-        const carteira = document.getElementById('trade-carteira').value.trim(); // NOVO
+        const carteira = document.getElementById('trade-carteira').value.trim();
         const ticker = document.getElementById('trade-ticker').value.trim().toUpperCase();
         const qtd = parseFloat(document.getElementById('trade-qtd').value);
         const precoOriginal = parseFloat(document.getElementById('trade-preco').value);
@@ -2852,94 +2942,35 @@
         let cambio = parseFloat(document.getElementById('trade-cambio').value) || 1.0;
 
         if (!data || !ticker || !carteira || !qtd || !precoOriginal || qtd <= 0 || precoOriginal <= 0) {
-            alert("⚠️ Preenche todos os campos (incluindo a Carteira) corretamente.");
+            alert("⚠️ Preenche todos os campos obrigatórios.");
             return;
         }
 
         if (moeda === 'EUR') cambio = 1.0;
-        let custoEUR = custoOriginal / cambio;
 
-        if (tipo === 'COMPRA') {
-            let precoBaseEUR = precoOriginal / cambio;
-            let precoEfetivoEUR = precoBaseEUR + (custoEUR / qtd);
-            let precoEfetivoOriginal = precoOriginal + (custoOriginal / qtd);
+        // Injeta a Ordem Bruta no Ledger
+        cofreBruto.push({
+            id: Date.now(),
+            data: data,
+            tipo: tipo,
+            carteira: carteira,
+            ticker: ticker,
+            qtd: qtd,
+            precoOriginal: precoOriginal,
+            custoOriginal: custoOriginal,
+            moeda: moeda,
+            cambio: cambio
+        });
 
-            cofreAbertas.push({
-                id: Date.now(),
-                data: data,
-                carteira: carteira, // GRAVA A CARTEIRA
-                ticker: ticker,
-                qtdInicial: qtd,
-                qtdRestante: qtd,
-                precoCompraOriginal: precoEfetivoOriginal,
-                precoCompraEUR: precoEfetivoEUR,
-                moeda: moeda,
-                cambio: cambio
-            });
-            cofreAbertas.sort((a, b) => new Date(a.data) - new Date(b.data));
-        } 
-        else if (tipo === 'VENDA') {
-            // NOVO: O FIFO agora cruza Ticker + Carteira!
-            let lotesDisponiveis = cofreAbertas.filter(l => l.ticker === ticker && l.carteira === carteira && l.qtdRestante > 0);
-            
-            let qtdTotalEmArmazem = lotesDisponiveis.reduce((sum, l) => sum + l.qtdRestante, 0);
-            if (qtd > qtdTotalEmArmazem) {
-                alert(`⚠️ Liquidação Impossível: Só tens ${qtdTotalEmArmazem} unidades de ${ticker} na carteira [${carteira}].`);
-                return;
-            }
-
-            let lucroTradeEUR = 0;
-            let qtdParaVender = qtd;
-            let detalhesCasamento = [];
-            let precoVendaEUR = precoOriginal / cambio;
-            let pnlEscaloes = { sub1: 0, sub2: 0, sub5: 0, sub8: 0, plus8: 0 };
-
-            for (let lote of lotesDisponiveis) {
-                if (qtdParaVender === 0) break;
-
-                let qtdDesteLote = Math.min(qtdParaVender, lote.qtdRestante);
-                let pnlParcialEUR = (precoVendaEUR - lote.precoCompraEUR) * qtdDesteLote;
-                
-                let diasDetencao = (new Date(data) - new Date(lote.data)) / (1000 * 3600 * 24);
-
-                if (diasDetencao < 365) pnlEscaloes.sub1 += pnlParcialEUR;
-                else if (diasDetencao < 730) pnlEscaloes.sub2 += pnlParcialEUR;
-                else if (diasDetencao < 1825) pnlEscaloes.sub5 += pnlParcialEUR;
-                else if (diasDetencao < 2920) pnlEscaloes.sub8 += pnlParcialEUR;
-                else pnlEscaloes.plus8 += pnlParcialEUR;
-                
-                lote.qtdRestante -= qtdDesteLote;
-                qtdParaVender -= qtdDesteLote;
-                lucroTradeEUR += pnlParcialEUR;
-
-                let simbolo = lote.moeda === 'USD' ? '$' : '€';
-                detalhesCasamento.push(`${simbolo}${lote.precoCompraOriginal.toFixed(2)}`);
-            }
-
-            lucroTradeEUR -= custoEUR;
-            pnlEscaloes.sub1 -= custoEUR; 
-
-            cofreFechadas.push({
-                id: Date.now(),
-                data: data,
-                carteira: carteira, // GRAVA A CARTEIRA
-                ticker: ticker,
-                qtdVendida: qtd,
-                pnlEUR: lucroTradeEUR,
-                pnlEscaloes: pnlEscaloes,
-                moeda: moeda,
-                detalhes: detalhesCasamento.join(" + ")
-            });
-        }
-
-        localStorage.setItem('cofreAbertas', JSON.stringify(cofreAbertas));
-        localStorage.setItem('cofreFechadas', JSON.stringify(cofreFechadas));
+        localStorage.setItem('cofreBruto', JSON.stringify(cofreBruto));
         
+        // Limpa a UI
         document.getElementById('trade-qtd').value = '';
         document.getElementById('trade-preco').value = '';
         document.getElementById('trade-custo').value = '';
         
-        atualizarCofre();
+        // Dispara o recálculo global
+        recalcularTudo();
     }
 
     
@@ -2949,65 +2980,67 @@
     // ==========================================
     // FUNÇÕES DE EDIÇÃO RÁPIDA (METADADOS, PREÇOS E QUANTIDADES)
     // ==========================================
-    function editarLoteAberto(id) {
-        let lote = cofreAbertas.find(l => l.id === id);
-        if(!lote) return;
-        
-        let novoTicker = prompt("✏️ Editar Ticker (Atualmente: " + lote.ticker + "):", lote.ticker);
-        if(novoTicker === null) return;
-        
-        let novaCarteira = prompt("✏️ Editar Carteira (Atualmente: " + lote.carteira + "):", lote.carteira);
-        if(novaCarteira === null) return;
-        
-        let novaData = prompt("✏️ Editar Data (Atualmente: " + lote.data + "):", lote.data);
-        if(novaData === null) return;
 
-        // EDIÇÃO DE QUANTIDADE COM PROTEÇÃO FIFO
-        let novaQtdStr = prompt("✏️ Editar Quantidade Inicial (Atualmente: " + lote.qtdInicial + " | Restante: " + lote.qtdRestante + "):\n\n⚠️ ALERTA FIFO: Se já vendeste parte deste lote, alterar a quantidade inicial afeta o inventário. Edita com cuidado.", lote.qtdInicial);
-        if(novaQtdStr === null) return;
-        
-        let novaQtd = parseFloat(novaQtdStr);
-        if(isNaN(novaQtd) || novaQtd <= 0) {
-            alert("⚠️ Quantidade inválida. A edição foi cancelada.");
-            return;
+    // ==========================================
+    // EDITOR UNIVERSAL DO LEDGER (EVENT SOURCING)
+    // ==========================================
+    function apagarEventoBruto(idOrigem) {
+        if(confirm("⚠️ Eliminar este registo do livro mestre? O portal vai recalcular toda a tua contabilidade e impostos a partir do zero.")) {
+            cofreBruto = cofreBruto.filter(ev => ev.id !== idOrigem);
+            localStorage.setItem('cofreBruto', JSON.stringify(cofreBruto));
+            recalcularTudo();
         }
-
-        let novoPrecoStr = prompt("✏️ Editar Preço Compra Original (Atualmente: " + lote.precoCompraOriginal.toFixed(2) + "):", lote.precoCompraOriginal.toFixed(2));
-        if(novoPrecoStr === null) return;
-        
-        let novoPreco = parseFloat(novoPrecoStr);
-        if(isNaN(novoPreco) || novoPreco <= 0) {
-            alert("⚠️ Preço inválido. A edição foi cancelada.");
-            return;
-        }
-
-        // Aplicação de Metadados
-        lote.ticker = novoTicker.trim().toUpperCase();
-        lote.carteira = novaCarteira.trim();
-        lote.data = novaData.trim();
-        
-        // Ajuste Matemático da Quantidade
-        if(novaQtd !== lote.qtdInicial) {
-            let qtdJaVendida = lote.qtdInicial - lote.qtdRestante;
-            lote.qtdInicial = novaQtd;
-            lote.qtdRestante = novaQtd - qtdJaVendida;
-            
-            if (lote.qtdRestante < 0) {
-                alert("⚠️ Aviso do Motor FIFO: A nova quantidade inicial que inseriste é inferior ao que já vendeste deste lote no passado. O sistema ajustou a quantidade restante para 0 para não corromper o cálculo.");
-                lote.qtdRestante = 0;
-            }
-        }
-        
-        // Ajuste de Preço
-        if(novoPreco !== lote.precoCompraOriginal) {
-            lote.precoCompraOriginal = novoPreco;
-            lote.precoCompraEUR = novoPreco / lote.cambio;
-        }
-        
-        localStorage.setItem('cofreAbertas', JSON.stringify(cofreAbertas));
-        atualizarCofre();
     }
 
+    function editarEventoBruto(idOrigem) {
+        let evento = cofreBruto.find(ev => ev.id === idOrigem);
+        if(!evento) return;
+        
+        let novaData = prompt("✏️ Data (Atualmente: " + evento.data + "):", evento.data);
+        if(!novaData) return;
+        
+        let novaCarteira = prompt("✏️ Carteira (Atualmente: " + evento.carteira + "):", evento.carteira);
+        if(!novaCarteira) return;
+        
+        let novoTicker = prompt("✏️ Ticker (Atualmente: " + evento.ticker + "):", evento.ticker);
+        if(!novoTicker) return;
+
+        let novaQtdStr = prompt("✏️ Quantidade (Atualmente: " + evento.qtd + "):", evento.qtd);
+        if(!novaQtdStr) return;
+        let novaQtd = parseFloat(novaQtdStr);
+
+        let novoPrecoStr = prompt("✏️ Preço Original (Atualmente: " + evento.precoOriginal.toFixed(2) + "):", evento.precoOriginal.toFixed(2));
+        if(!novoPrecoStr) return;
+        let novoPreco = parseFloat(novoPrecoStr);
+
+        let novoCustoStr = prompt("✏️ Custos/Comissões Originais (Atualmente: " + evento.custoOriginal.toFixed(2) + "):", evento.custoOriginal.toFixed(2));
+        if(!novoCustoStr) return;
+        let novoCusto = parseFloat(novoCustoStr);
+
+        let novoCambioStr = prompt("✏️ Câmbio EUR/USD (Atualmente: " + evento.cambio + "):", evento.cambio);
+        if(!novoCambioStr) return;
+        let novoCambio = parseFloat(novoCambioStr);
+
+        if(isNaN(novaQtd) || isNaN(novoPreco) || isNaN(novoCusto) || isNaN(novoCambio)) {
+            alert("⚠️ Formato numérico inválido. Edição abortada.");
+            return;
+        }
+
+        // Aplica a mutação ao Ledger Mestre
+        evento.data = novaData.trim();
+        evento.carteira = novaCarteira.trim();
+        evento.ticker = novoTicker.trim().toUpperCase();
+        evento.qtd = novaQtd;
+        evento.precoOriginal = novoPreco;
+        evento.custoOriginal = novoCusto;
+        evento.cambio = novoCambio;
+
+        localStorage.setItem('cofreBruto', JSON.stringify(cofreBruto));
+        
+        // Re-executa toda a arquitetura FIFO
+        recalcularTudo();
+    }
+    
     function editarTradeFechado(id) {
         let trade = cofreFechadas.find(t => t.id === id);
         if(!trade) return;
@@ -3053,13 +3086,7 @@
         localStorage.setItem('cofreFechadas', JSON.stringify(cofreFechadas));
         atualizarCofre();
     }
-    function apagarLoteAberto(id) {
-        if(confirm("Eliminar este lote do armazém?")) {
-            cofreAbertas = cofreAbertas.filter(lote => lote.id !== id);
-            localStorage.setItem('cofreAbertas', JSON.stringify(cofreAbertas));
-            atualizarCofre();
-        }
-    }
+    
 
     function apagarTradeFechado(id) {
         if(confirm("Eliminar este trade do histórico?")) {
@@ -3115,8 +3142,8 @@
                     <td style="padding: 12px; color: #8b949e; font-family: monospace;">${simbolo}${lote.precoCompraOriginal.toFixed(2)}</td>
                     <td style="padding: 12px; color: #58a6ff; font-weight: bold;">€${capitalExpostoEUR.toFixed(2)}</td>
                     <td style="padding: 12px; text-align: center;">
-                        <button onclick="editarLoteAberto(${lote.id})" style="background: transparent; border: none; cursor: pointer; font-size: 14px; margin-right: 5px;" title="Editar">✏️</button>
-                        <button onclick="apagarLoteAberto(${lote.id})" style="background: transparent; border: none; cursor: pointer; font-size: 14px;" title="Apagar">🗑️</button>
+                        <button onclick="editarEventoBruto(${lote.idOrigem})" style="background: transparent; border: none; cursor: pointer; font-size: 14px; margin-right: 5px;" title="Editar no Ledger">✏️</button>
+                        <button onclick="apagarEventoBruto(${lote.idOrigem})" style="background: transparent; border: none; cursor: pointer; font-size: 14px;" title="Apagar do Ledger">🗑️</button>
                     </td>
                 </tr>
             `;
@@ -3147,8 +3174,8 @@
                     <td style="padding: 12px; color: #8b949e; font-weight: bold;">${trade.qtdVendida.toFixed(4)}</td>
                     <td style="padding: 12px; color: ${corPnl}; font-weight: 900;">${sinal}€${trade.pnlEUR.toFixed(2)}</td>
                     <td style="padding: 12px; text-align: center;">
-                        <button onclick="editarTradeFechado(${trade.id})" style="background: transparent; border: none; cursor: pointer; font-size: 14px; margin-right: 5px;" title="Editar">✏️</button>
-                        <button onclick="apagarTradeFechado(${trade.id})" style="background: transparent; border: none; cursor: pointer; font-size: 14px;" title="Apagar">🗑️</button>
+                        <button onclick="editarEventoBruto(${trade.idOrigem})" style="background: transparent; border: none; cursor: pointer; font-size: 14px; margin-right: 5px;" title="Editar no Ledger">✏️</button>
+                        <button onclick="apagarEventoBruto(${trade.idOrigem})" style="background: transparent; border: none; cursor: pointer; font-size: 14px;" title="Apagar do Ledger">🗑️</button>
                     </td>
                 </tr>
             `;
@@ -3403,26 +3430,26 @@
     // ==========================================
     
     function exportarCofreJSON() {
+        // Agora o Backup guarda a raiz dos dados (O Ledger Bruto)
         const dadosCofre = {
-            versao: "1.0",
+            versao: "2.0_Ledger",
             dataExportacao: new Date().toISOString(),
-            abertas: cofreAbertas,
-            fechadas: cofreFechadas
+            bruto: cofreBruto 
         };
 
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dadosCofre, null, 2));
         const downloadAnchor = document.createElement('a');
         downloadAnchor.setAttribute("href", dataStr);
-        downloadAnchor.setAttribute("download", "Cofre_Fiscal_Backup_" + new Date().toISOString().slice(0,10) + ".json");
+        downloadAnchor.setAttribute("download", "Ledger_Fiscal_Backup_" + new Date().toISOString().slice(0,10) + ".json");
         document.body.appendChild(downloadAnchor);
         downloadAnchor.click();
         downloadAnchor.remove();
     }
 
     function importarCofreJSON(event) {
-        if (!confirm("⚠️ PERIGO: Restaurar este backup vai APAGAR todos os trades que tens atualmente no sistema. Queres mesmo continuar?")) {
-            event.target.value = ''; // Limpa o input
-            return; // Pára a execução
+        if (!confirm("⚠️ PERIGO: Restaurar este backup vai APAGAR o Ledger atual. Queres mesmo continuar?")) {
+            event.target.value = ''; 
+            return; 
         }
         const ficheiro = event.target.files[0];
         if (!ficheiro) return;
@@ -3432,27 +3459,28 @@
             try {
                 const conteudo = JSON.parse(e.target.result);
                 
-                if (!conteudo.abertas || !conteudo.fechadas) {
-                    throw new Error("O formato do ficheiro JSON é inválido ou incompatível com o Ledger.");
+                // Verifica se é o formato novo (versão 2.0 com o "bruto")
+                if (!conteudo.bruto) {
+                    throw new Error("Este JSON é da versão antiga (v1.0). Para transitar para a nova versão, tens de usar a importação por CSV.");
                 }
 
-                if (confirm(`⚠️ Pretendes substituir os dados atuais do Cofre pelo conteúdo do ficheiro (${conteudo.abertas.length} lotes abertos, ${conteudo.fechadas.length} trades fechados)?`)) {
-                    cofreAbertas = conteudo.abertas;
-                    cofreFechadas = conteudo.fechadas;
+                if (confirm(`⚠️ Substituir os dados atuais pelo Ledger importado com ${conteudo.bruto.length} eventos registados?`)) {
+                    // Carrega o livro mestre
+                    cofreBruto = conteudo.bruto;
+                    localStorage.setItem('cofreBruto', JSON.stringify(cofreBruto));
 
-                    localStorage.setItem('cofreAbertas', JSON.stringify(cofreAbertas));
-                    localStorage.setItem('cofreFechadas', JSON.stringify(cofreFechadas));
-
-                    atualizarCofre();
-                    alert("✅ Cofre Fiscal restaurado com sucesso a partir do ficheiro local!");
+                    // Dispara a reconstrução total da interface e da matemática
+                    recalcularTudo();
+                    
+                    alert("✅ Ledger Fiscal restaurado e recalculado com sucesso!");
                 }
             } catch (erro) {
-                alert("❌ Erro ao ler o ficheiro de backup: " + erro.message);
+                alert("❌ Erro ao ler o backup: " + erro.message);
             }
+            event.target.value = ''; // Limpa o input
         };
         leitor.readAsText(ficheiro);
     }
-
     // ==========================================
     // MOTOR DE IMPORTAÇÃO EM MASSA (CSV) - STANDARD
     // ==========================================
@@ -3499,98 +3527,32 @@
                 }
 
                 // ==========================================
-                // MOTOR FIFO PARA CÁLCULO DE PNL
+                // INJEÇÃO DIRETA NO LEDGER BRUTO
                 // ==========================================
-                let custoEUR = custoOriginal / cambio;
+                cofreBruto.push({
+                    id: Date.now() + i, // ID único sequencial
+                    data: data,
+                    tipo: tipo,
+                    carteira: carteira,
+                    ticker: ticker,
+                    qtd: qtd,
+                    precoOriginal: precoOriginal,
+                    custoOriginal: custoOriginal,
+                    moeda: moeda,
+                    cambio: cambio
+                });
+                tradesImportados++;
+            } // Fim do loop for das linhas do CSV
 
-                if (tipo === 'COMPRA') {
-                    let precoBaseEUR = precoOriginal / cambio;
-                    let precoEfetivoEUR = precoBaseEUR + (custoEUR / qtd);
-                    let precoEfetivoOriginal = precoOriginal + (custoOriginal / qtd);
-
-                    cofreAbertas.push({
-                        id: Date.now() + i, // ID único sequencial
-                        data: data,
-                        carteira: carteira,
-                        ticker: ticker,
-                        qtdInicial: qtd,
-                        qtdRestante: qtd,
-                        precoCompraOriginal: precoEfetivoOriginal,
-                        precoCompraEUR: precoEfetivoEUR,
-                        moeda: moeda,
-                        cambio: cambio
-                    });
-                    tradesImportados++;
-
-                } else if (tipo === 'VENDA') {
-                    let lotesDisponiveis = cofreAbertas.filter(l => l.ticker === ticker && l.carteira === carteira && l.qtdRestante > 0);
-                    let qtdTotalEmArmazem = lotesDisponiveis.reduce((sum, l) => sum + l.qtdRestante, 0);
-                    
-                    if (qtd > qtdTotalEmArmazem) {
-                        console.warn(`Venda na linha ${i+1} ignorada: Quantidade (${qtd}) excede o armazém (${qtdTotalEmArmazem}).`);
-                        erros++;
-                        continue;
-                    }
-
-                    let lucroTradeEUR = 0;
-                    let qtdParaVender = qtd;
-                    let detalhesCasamento = [];
-                    let precoVendaEUR = precoOriginal / cambio;
-                    let pnlEscaloes = { sub1: 0, sub2: 0, sub5: 0, sub8: 0, plus8: 0 };
-
-                    // O algoritmo FIFO consome os lotes antigos 
-                    for (let lote of lotesDisponiveis) {
-                        if (qtdParaVender === 0) break;
-
-                        let qtdDesteLote = Math.min(qtdParaVender, lote.qtdRestante);
-                        let pnlParcialEUR = (precoVendaEUR - lote.precoCompraEUR) * qtdDesteLote;
-                        let diasDetencao = (new Date(data) - new Date(lote.data)) / (1000 * 3600 * 24);
-
-                        if (diasDetencao < 365) pnlEscaloes.sub1 += pnlParcialEUR;
-                        else if (diasDetencao < 730) pnlEscaloes.sub2 += pnlParcialEUR;
-                        else if (diasDetencao < 1825) pnlEscaloes.sub5 += pnlParcialEUR;
-                        else if (diasDetencao < 2920) pnlEscaloes.sub8 += pnlParcialEUR;
-                        else pnlEscaloes.plus8 += pnlParcialEUR;
-                        
-                        lote.qtdRestante -= qtdDesteLote;
-                        qtdParaVender -= qtdDesteLote;
-                        lucroTradeEUR += pnlParcialEUR;
-
-                        let simbolo = lote.moeda === 'USD' ? '$' : '€';
-                        detalhesCasamento.push(`${simbolo}${lote.precoCompraOriginal.toFixed(2)}`);
-                    }
-
-                    lucroTradeEUR -= custoEUR;
-                    pnlEscaloes.sub1 -= custoEUR; 
-
-                    cofreFechadas.push({
-                        id: Date.now() + i,
-                        data: data,
-                        carteira: carteira,
-                        ticker: ticker,
-                        qtdVendida: qtd,
-                        pnlEUR: lucroTradeEUR,
-                        pnlEscaloes: pnlEscaloes,
-                        moeda: moeda,
-                        detalhes: detalhesCasamento.join(" + ")
-                    });
-                    tradesImportados++;
-                }
-            }
-
-            // Garante que o cofre fica ordenado cronologicamente após a importação
-            cofreAbertas.sort((a, b) => new Date(a.data) - new Date(b.data));
+            localStorage.setItem('cofreBruto', JSON.stringify(cofreBruto));
             
-            // Grava na memória e atualiza a interface
-            localStorage.setItem('cofreAbertas', JSON.stringify(cofreAbertas));
-            localStorage.setItem('cofreFechadas', JSON.stringify(cofreFechadas));
-            atualizarCofre();
+            event.target.value = ''; // Limpa o input
+            
+            // Dispara o recálculo global
+            recalcularTudo();
 
-            // Limpa o input para permitir importar o mesmo ficheiro novamente, se necessário
-            event.target.value = '';
-
-            let msg = `✅ Importação concluída!\n\n${tradesImportados} transações processadas com sucesso.`;
-            if (erros > 0) msg += `\n⚠️ Houve ${erros} linhas ignoradas (formato incorreto ou venda sem inventário prévio).`;
+            let msg = `✅ Importação concluída!\n\n${tradesImportados} transações injetadas no Ledger.`;
+            if (erros > 0) msg += `\n⚠️ Houve ${erros} linhas ignoradas (formato incorreto).`;
             alert(msg);
         };
         
