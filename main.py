@@ -348,13 +348,66 @@ def dashboard_central():
     # Verifica se os IDs batem certo e ignora se estiverem vazios
     is_admin = (user_sess == admin_env) and (user_sess != "None") and (user_sess != "")
 
-    # Cria a etiqueta visual
+    # Cria a etiqueta visual com Dropdown de Presenças
     badge_admin = ""
     if is_admin:
         badge_admin = f"""
-        <div style="position: absolute; top: 20px; left: 20px; background: #f28b24; color: #121212; padding: 8px 15px; border-radius: 6px; font-size: 13px; font-weight: bold; box-shadow: 0 4px 12px rgba(242, 139, 36, 0.3); z-index: 1000;">
-            👑 Admin | {total_visitas} Acessos Globais
+        <div style="position: absolute; top: 20px; left: 20px; z-index: 1000; text-align: left;">
+            <div style="position: relative; display: inline-block;">
+                <button onclick="verOnline()" style="background: #f28b24; color: #121212; border: none; padding: 8px 15px; border-radius: 6px; font-size: 13px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 12px rgba(242, 139, 36, 0.3);">
+                    👑 Admin | {total_visitas} Acessos Globais
+                </button>
+                
+                <!-- A GAVETA SECRETA -->
+                <div id="caixa-online" style="display: none; position: absolute; top: 110%; left: 0; background: #1c1e24; border: 1px solid #30363d; border-radius: 6px; padding: 15px; width: 220px; box-shadow: 0 10px 25px rgba(0,0,0,0.8);">
+                    <h4 style="margin: 0 0 10px 0; color: #5cb85c; font-size: 12px; border-bottom: 1px solid #30363d; padding-bottom: 8px; text-transform: uppercase;">
+                        🟢 Em Tempo Real
+                    </h4>
+                    <ul id="lista-online" style="list-style: none; padding: 0; margin: 0; font-size: 13px; color: #c9d1d9; line-height: 1.8;">
+                    </ul>
+                </div>
+            </div>
         </div>
+
+        <script>
+            async function verOnline() {{
+                const caixa = document.getElementById('caixa-online');
+                const lista = document.getElementById('lista-online');
+                
+                if (caixa.style.display === 'block') {{
+                    caixa.style.display = 'none';
+                    return;
+                }}
+                
+                caixa.style.display = 'block';
+                lista.innerHTML = '<li style="color: #8b949e; font-size: 11px;">A varrer o servidor...</li>';
+                
+                try {{
+                    const resp = await fetch('/api/admin/online');
+                    if (!resp.ok) throw new Error("Sem permissão");
+                    
+                    const dados = await resp.json();
+                    
+                    if (dados.users.length === 0) {{
+                        lista.innerHTML = '<li style="color: #8b949e;">Ninguém online.</li>';
+                    }} else {{
+                        lista.innerHTML = dados.users.map(u => `<li>👤 <strong>${{u}}</strong></li>`).join('');
+                    }}
+                }} catch(e) {{
+                    lista.innerHTML = '<li style="color: #d9534f;">Acesso negado.</li>';
+                }}
+            }}
+
+            document.addEventListener('click', function(event) {{
+                const caixa = document.getElementById('caixa-online');
+                if (caixa && caixa.style.display === 'block') {{
+                    const botao = caixa.previousElementSibling;
+                    if (!caixa.contains(event.target) && event.target !== botao) {{
+                        caixa.style.display = 'none';
+                    }}
+                }}
+            }});
+        </script>
         """
 
     # 1. AS ETIQUETAS PARA OS ROBÔS DAS REDES SOCIAIS (OPEN GRAPH)
