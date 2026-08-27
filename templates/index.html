@@ -3210,7 +3210,8 @@
                         <span style="font-size: 10px; color: #8b949e; display: block;">${trade.data} • <span style="color: #e3b341;">[${nomeCarteira}]</span></span>
                     </td>
                     <td style="padding: 12px; color: #8b949e; font-weight: bold;">${qtdFormatadaFechada}</td>
-                    <td style="padding: 12px; color: ${corPnl}; font-weight: 900;">${sinal}€${trade.pnlEUR.toFixed(2)}</td>
+                    
+                    <td style="padding: 12px; color: ${corPnl}; font-weight: 900;">${sinal}€${Math.abs(trade.pnlEUR).toFixed(2)}</td>
                     
                     <!-- INJEÇÃO DO TRINCO VISUAL (white-space) -->
                     <td style="padding: 12px; text-align: center; white-space: nowrap; min-width: 75px;">
