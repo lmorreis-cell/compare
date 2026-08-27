@@ -641,7 +641,7 @@
                 <h4 style="margin: 0 0 8px 0; color: #e3b341; font-size: 13px;">💾 Backup de Segurança (JSON)</h4>
                 <p style="font-size: 11px; color: #8b949e; margin-bottom: 15px; line-height: 1.4;">Exporta uma cópia exata do teu portal. <strong style="color: #d9534f;">Atenção:</strong> Restaurar um ficheiro JSON apaga e substitui a base de dados atual.</p>
                 <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                    <button onclick="exportarCofreJSON()" class="btn-moderno" style="background: #238636; color: white; border: none; padding: 8px 14px; font-size: 12px;">
+                    <button id="btn-exportar-backup" onclick="exportarCofreJSON()" class="btn-moderno" style="background: #238636; color: white; border: none; padding: 8px 14px; font-size: 12px; transition: all 0.3s ease;">
                         📥 Exportar Backup
                     </button>
                     <label class="btn-moderno" style="background: #21262d; color: #d9534f; border: 1px solid #d9534f; padding: 8px 14px; font-size: 12px; cursor: pointer; display: inline-flex; align-items: center;">
@@ -2934,6 +2934,7 @@
         localStorage.setItem('cofreAbertas', JSON.stringify(cofreAbertas));
         localStorage.setItem('cofreFechadas', JSON.stringify(cofreFechadas));
         atualizarCofre();
+        sinalizarAlertaBackup();
     }
 
     function adicionarTrade() {
@@ -3438,10 +3439,41 @@
         }
     }
     // ==========================================
+    // SISTEMA DE SEGURANÇA E "DIRTY STATE"
+    // ==========================================
+    let backupPendente = false;
+
+    function sinalizarAlertaBackup() {
+        backupPendente = true;
+        const btn = document.getElementById('btn-exportar-backup');
+        if(btn) {
+            btn.style.background = '#d9534f'; // Fica vermelho alerta
+            btn.innerHTML = '⚠️ Backup Desatualizado (Exportar)';
+        }
+    }
+
+    function limparAlertaBackup() {
+        backupPendente = false;
+        const btn = document.getElementById('btn-exportar-backup');
+        if(btn) {
+            btn.style.background = '#238636'; // Volta a verde seguro
+            btn.innerHTML = '📥 Exportar Backup';
+        }
+    }
+
+    // Trava o utilizador se ele tentar fechar a página com alterações não exportadas
+    window.addEventListener('beforeunload', function (e) {
+        if (backupPendente) {
+            e.preventDefault();
+            e.returnValue = ''; // O texto exato é gerido pelo próprio browser por segurança
+        }
+    });
+    // ==========================================
     // MOTOR DE BACKUP LOCAL (EXPORTAR / IMPORTAR)
     // ==========================================
     
     function exportarCofreJSON() {
+        limparAlertaBackup(); // <--- INJETA ESTA LINHA AQUI
         // Agora o Backup guarda a raiz dos dados (O Ledger Bruto)
         const dadosCofre = {
             versao: "2.0_Ledger",
