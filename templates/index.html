@@ -287,7 +287,7 @@
             <button class="tab-btn" onclick="abrirSeparador(event, 'tab-cripto')">⚡ Criptoativos</button>
             <button class="tab-btn" onclick="abrirSeparador(event, 'tab-screener')">🦅 Screener Algorítmico</button>
             
-            <button class="tab-btn" onclick="abrirSeparador(event, 'tab-cofre'); setTimeout(atualizarCofre, 50);">🏛️ Cofre Fiscal</button>
+            <button class="tab-btn" onclick="abrirSeparador(event, 'tab-cofre'); setTimeout(atualizarCofre, 50); setTimeout(sincronizarPrecosLiveCofre, 100);">🏛️ Cofre Fiscal</button>
         </div>
 
     <!-- ==========================================
@@ -741,10 +741,10 @@
                     <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 0;">
                         <thead style="background: #161b22; color: #8b949e; text-align: left;">
                             <tr>
-                                <th style="padding: 10px; border-bottom: 1px solid #30363d;">Ticker</th>
-                                <th style="padding: 10px; border-bottom: 1px solid #30363d;">Qtd Restante</th>
-                                <th style="padding: 10px; border-bottom: 1px solid #30363d;">Preço Médio</th>
-                                <th style="padding: 10px; border-bottom: 1px solid #30363d;">Exposto</th>
+                                <th style="padding: 10px; border-bottom: 1px solid #30363d;">Ativo</th>
+                                <th style="padding: 10px; border-bottom: 1px solid #30363d; text-align: right;">Custo Base</th>
+                                <th style="padding: 10px; border-bottom: 1px solid #30363d; text-align: right;">Cotação Live</th>
+                                <th style="padding: 10px; border-bottom: 1px solid #30363d; text-align: right;">PnL Latente</th>
                                 <th style="padding: 10px; border-bottom: 1px solid #30363d; text-align: center;">Ação</th>
                             </tr>
                         </thead>
@@ -3134,29 +3134,46 @@
             let capitalExpostoEUR = lote.qtdRestante * lote.precoCompraEUR;
             exposicaoTotalEUR += capitalExpostoEUR;
 
-            // NOVO: Agrega o capital por ticker
             if (alocacaoTicker[lote.ticker]) {
                 alocacaoTicker[lote.ticker] += capitalExpostoEUR;
             } else {
                 alocacaoTicker[lote.ticker] = capitalExpostoEUR;
             }
             
-           
-            
             let simbolo = lote.moeda === 'USD' ? '$' : '€';
-            
             let nomeCarteira = lote.carteira || "Geral";
             carteirasUnicas.add(nomeCarteira);
 
+            // ==========================================
+            // MOTOR DE PNL LATENTE (AO VIVO)
+            // ==========================================
+            let precoMercadoOriginal = cachePrecosAtuais[lote.ticker] || lote.precoCompraOriginal; 
+            let cambioAtual = lote.moeda === 'USD' ? cacheCambioLive : 1.0;
+            let valorMercadoEUR = (lote.qtdRestante * precoMercadoOriginal) / cambioAtual; 
+            
+            let pnlLatenteEUR = valorMercadoEUR - capitalExpostoEUR;
+            let pnlLatentePct = capitalExpostoEUR > 0 ? (pnlLatenteEUR / capitalExpostoEUR) * 100 : 0;
+            
+            let corPnl = pnlLatenteEUR >= 0 ? '#5cb85c' : '#d9534f';
+            let sinalPnl = pnlLatenteEUR >= 0 ? '+' : '';
+
+            // Renderização estilo "Home Broker"
             tbodyAbertas.innerHTML += `
-                <tr style="border-bottom: 1px solid #30363d;">
+                <tr style="border-bottom: 1px solid #30363d; transition: background 0.2s;" onmouseover="this.style.background='#161b22'" onmouseout="this.style.background='transparent'">
                     <td style="padding: 12px; color: #c9d1d9;">
-                        <strong>${lote.ticker}</strong> 
-                        <span style="font-size: 10px; color: #8b949e; display: block;">${lote.data} • <span style="color: #e3b341;">[${nomeCarteira}]</span></span>
+                        <strong style="font-size: 14px; display: block; color: #fff;">${lote.ticker}</strong> 
+                        <span style="font-size: 11px; color: #8b949e;">${lote.qtdRestante.toFixed(4)} @ ${simbolo}${lote.precoCompraOriginal.toFixed(2)} • <span style="color: #e3b341;">[${nomeCarteira}]</span></span>
                     </td>
-                    <td style="padding: 12px; color: #8b949e; font-weight: bold;">${lote.qtdRestante.toFixed(4)}</td>
-                    <td style="padding: 12px; color: #8b949e; font-family: monospace;">${simbolo}${lote.precoCompraOriginal.toFixed(2)}</td>
-                    <td style="padding: 12px; color: #58a6ff; font-weight: bold;">€${capitalExpostoEUR.toFixed(2)}</td>
+                    <td style="padding: 12px; color: #8b949e; text-align: right; font-weight: bold;">
+                        €${capitalExpostoEUR.toFixed(2)}
+                    </td>
+                    <td style="padding: 12px; color: #f0f2f5; text-align: right; font-family: monospace; font-size: 13px;">
+                        ${simbolo}${precoMercadoOriginal.toFixed(2)}
+                    </td>
+                    <td style="padding: 12px; text-align: right;">
+                        <div style="color: ${corPnl}; font-weight: 900; font-size: 13px;">${sinalPnl}€${pnlLatenteEUR.toFixed(2)}</div>
+                        <div style="color: ${corPnl}; font-size: 11px; font-weight: bold;">${sinalPnl}${pnlLatentePct.toFixed(2)}%</div>
+                    </td>
                     <td style="padding: 12px; text-align: center;">
                         <button onclick="editarEventoBruto(${lote.idOrigem})" style="background: transparent; border: none; cursor: pointer; font-size: 14px; margin-right: 5px;" title="Editar no Ledger">✏️</button>
                         <button onclick="apagarEventoBruto(${lote.idOrigem})" style="background: transparent; border: none; cursor: pointer; font-size: 14px;" title="Apagar do Ledger">🗑️</button>
@@ -3732,6 +3749,36 @@
         
         atualizarCofre(); 
     }
+
+    // Sincroniza todas as cotações em background
+    async function sincronizarPrecosLiveCofre() {
+        let tickersAbertos = [...new Set(cofreAbertas.filter(l => l.qtdRestante > 0).map(l => l.ticker))];
+        if (tickersAbertos.length === 0) return;
+
+        // Puxa o câmbio
+        try {
+            let respCambio = await fetch(`/api/cotacao/EURUSD=X`);
+            if (respCambio.ok) {
+                let dadosCambio = await respCambio.json();
+                if (dadosCambio.preco) cacheCambioLive = dadosCambio.preco;
+            }
+        } catch(e) {}
+
+        // Puxa todos os tickers abertos em paralelo (para ser super rápido)
+        await Promise.all(tickersAbertos.map(async (t) => {
+            try {
+                let resposta = await fetch(`/api/cotacao/${t}`);
+                if (resposta.ok) {
+                    let dados = await resposta.json();
+                    if (dados.preco) cachePrecosAtuais[t] = dados.preco;
+                }
+            } catch(e) {}
+        }));
+
+        // Atualiza a UI com os novos preços
+        atualizarCofre(); 
+    }
+    
     async function carregarMarketMovers() {
         const painel = document.getElementById('painel-movers');
         const loading = document.getElementById('loading-movers');
