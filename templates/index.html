@@ -3785,6 +3785,7 @@
 
     // Auto-carregar os Termómetros quando a página inicia
     document.addEventListener('DOMContentLoaded', () => {
+        recalcularTudo();
         carregarMarketMovers();
         renderizarHistorico();
         iniciarTickerTape();
