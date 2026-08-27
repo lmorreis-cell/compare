@@ -29,7 +29,16 @@ def rastrear_atividade():
 @app.route('/api/admin/online')
 def get_online_users():
     """Devolve a lista de quem está online (Apenas para Admin)"""
-    if not session.get('is_admin'):
+    import os
+    
+    # 1. Puxa os IDs (O que está no sistema vs O teu ID atual)
+    admin_id_env = str(os.environ.get("ADMIN_USER_ID")).strip()
+    user_sess = str(session.get('user_id', '')).strip()
+    
+    # 2. Faz a mesma verificação blindada que o painel inicial usa
+    is_admin = (user_sess == admin_id_env) and (user_sess != "None") and (user_sess != "")
+    
+    if not is_admin:
         return jsonify({"erro": "Acesso negado. Apenas Admin."}), 403
         
     agora = datetime.now()
