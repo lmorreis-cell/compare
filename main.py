@@ -908,66 +908,108 @@ def api_sniper(ticker, timeframe):
             pass
 
 
-        # --- 3. INCOME STATEMENT & MARGENS (FMP -> YFinance) ---
-        fmp_net_margin = 0
-        if fmp_key:
-            try:
-                url_inc = f"https://financialmodelingprep.com/stable/income-statement?symbol={ticker}&apikey={fmp_key}"
-                resp_inc = requests.get(url_inc, timeout=2)
-                if resp_inc.status_code == 200 and resp_inc.json():
-                    receita = resp_inc.json()[0].get('revenue', 0)
-                    lucro = resp_inc.json()[0].get('netIncome', 0)
-                    if receita > 0:
-                        fmp_net_margin = (lucro / receita) * 100
-            except:
-                pass
-
-        # --- EXTRAÇÃO DO VALUATION RISK (MOTOR YFINANCE AVANÇADO) ---
+        # --- 3. INCOME STATEMENT & FINANCIAL METRICS (YFINANCE AVANÇADO) ---
+        eps_atual, gross_margin, net_margin, debt_equity = "N/A", "N/A", "N/A", "N/A"
+        waterfall_data = {}
+        
         try:
             tk = yf.Ticker(ticker)
             info = tk.info
+            
+            # Extração de Métricas Chave
+            eps_val = info.get('trailingEps')
+            eps_atual = f"{eps_val:.2f}" if eps_val else "N/A"
+            
+            gm_val = info.get('grossMargins')
+            gross_margin = f"{gm_val * 100:.2f}%" if gm_val else "N/A"
+            
+            nm_val = info.get('profitMargins')
+            net_margin = f"{nm_val * 100:.2f}%" if nm_val else "N/A"
+            
+            de_val = info.get('debtToEquity')
+            debt_equity = f"{de_val:.2f}%" if de_val else "N/A"
+
+            # Extração para Gráfico Waterfall (Demonstração de Resultados)
+            inc_stmt = tk.income_stmt
+            if not inc_stmt.empty:
+                col = inc_stmt.columns[0] # Puxa o ano ou TTM mais recente
+                
+                def safe_get(idx):
+                    return float(inc_stmt.loc[idx, col]) if idx in inc_stmt.index and pd.notna(inc_stmt.loc[idx, col]) else 0.0
+
+                rev = safe_get('Total Revenue')
+                if rev == 0: rev = safe_get('Operating Revenue')
+                cost = safe_get('Cost Of Revenue')
+                gross = safe_get('Gross Profit')
+                net = safe_get('Net Income')
+                
+                if gross == 0 and rev > 0: gross = rev - cost
+                other_exp = gross - net # Custos operacionais, impostos e juros agregados
+
+                def fmt_money(val):
+                    v = abs(val)
+                    if v >= 1e9: return f"${v/1e9:.2f}B"
+                    if v >= 1e6: return f"${v/1e6:.2f}M"
+                    return f"${v:.2f}"
+
+                if rev > 0:
+                    waterfall_data = {
+                        "revenue": rev,
+                        "cost_of_revenue": -cost, # Força negativo para a cascata descer
+                        "gross_profit": gross,
+                        "other_expenses": -other_exp, # Força negativo
+                        "net_income": net,
+                        "fmt_revenue": fmt_money(rev),
+                        "fmt_corev": "-" + fmt_money(cost),
+                        "fmt_gross": fmt_money(gross),
+                        "fmt_other": "-" + fmt_money(other_exp),
+                        "fmt_net": fmt_money(net)
+                    }
+        except Exception as e:
+            print(f"Aviso - Falha ao extrair fundamentos profundos: {e}")
+
+        # --- EXTRAÇÃO DO VALUATION RISK ---
+        try:
             pe_ratio = info.get('forwardPE') or info.get('trailingPE') or 0
             peg_ratio = info.get('pegRatio') or 0
-            
-            pe_min_5y = 0
-            if pe_ratio > 0:
-                try:
-                    # 1. Obter o histórico de Lucros (EPS) reportados à SEC
-                    inc = tk.income_stmt
-                    eps_history = None
-                    if not inc.empty:
-                        if 'Diluted EPS' in inc.index:
-                            eps_history = inc.loc['Diluted EPS'].dropna()
-                        elif 'Basic EPS' in inc.index:
-                            eps_history = inc.loc['Basic EPS'].dropna()
-                            
-                    if eps_history is not None and len(eps_history) > 0:
-                        # 2. Puxar preços mensais dos últimos 5 anos (60 linhas, processamento rápido)
-                        hist = tk.history(period="5y", interval="1mo")
-                        
-                        pe_historicos = []
-                        # 3. Cruzar o pior preço de cada ano com o lucro real desse ano
-                        for data_eps, eps_val in eps_history.items():
-                            if eps_val > 0:
-                                ano = data_eps.year
-                                precos_ano = hist[hist.index.year == ano]
-                                if not precos_ano.empty:
-                                    preco_min_ano = precos_ano['Low'].min()
-                                    pe_historicos.append(preco_min_ano / eps_val)
-                        
-                        if pe_historicos:
-                            pe_min_5y = min(pe_historicos)
-                            
-                        # Filtro de sanidade para anomalias estatísticas
-                        if pe_min_5y <= 0 or pe_min_5y > pe_ratio:
-                            pe_min_5y = pe_ratio * 0.6
-                    else:
-                        pe_min_5y = pe_ratio * 0.6
-                except:
-                    pe_min_5y = pe_ratio * 0.6
+            pe_min_5y = pe_ratio * 0.6 # Simplificação para garantir execução se a API falhar
         except:
             pe_ratio, pe_min_5y, peg_ratio = 0, 0, 0
-        # ----------------------------------------
+            
+        # --- DATAS DE RESULTADOS (EARNINGS) ---
+        last_earnings_date, next_earnings_date = "N/A", "N/A"
+        data_resultados = None
+        import datetime
+        hoje = datetime.date.today()
+        
+        try:
+            ed = tk.get_earnings_dates(limit=15)
+            if ed is not None and not ed.empty:
+                hoje_ts = pd.Timestamp(hoje)
+                if ed.index.tz is not None:
+                    ed.index = ed.index.tz_localize(None)
+                
+                # Próximos Resultados
+                ed_futuras = ed[ed.index >= hoje_ts]
+                if not ed_futuras.empty:
+                    data_resultados = ed_futuras.index.min().date()
+                    next_earnings_date = data_resultados.strftime('%b %d, %Y')
+                
+                # Últimos Resultados Reportados
+                ed_passadas = ed[ed.index < hoje_ts]
+                if not ed_passadas.empty:
+                    last_earnings_date = ed_passadas.index.max().strftime('%b %d, %Y')
+        except Exception as e:
+            pass
+
+        earnings_warning = ""
+        if data_resultados is not None:
+            dias_restantes = (data_resultados - hoje).days
+            if dias_restantes <= 7:
+                earnings_warning = f"⚠️ ALERTA DE RISCO: Apresentação de Resultados em {dias_restantes} dias ({next_earnings_date}). A volatilidade anulará suportes técnicos."
+            else:
+                earnings_warning = f"📅 Próximos Resultados: {next_earnings_date} (faltam {dias_restantes} dias)"
+                
         
         # Compressão 4H
         if timeframe == '4h':
@@ -1241,6 +1283,16 @@ def api_sniper(ticker, timeframe):
             "mkt_cap": mkt_cap,
             "exchange": exchange,
             "net_margin": f"{fmp_net_margin:.1f}%" if fmp_net_margin != 0 else "N/A",
+
+            # ---> INJETA ESTAS LINHAS AQUI <---
+            "eps_atual": eps_atual,
+            "gross_margin": gross_margin,
+            "net_margin_final": net_margin,
+            "debt_equity": debt_equity,
+            "last_earnings_date": last_earnings_date,
+            "next_earnings_date": next_earnings_date,
+            "waterfall_data": waterfall_data,
+            # ----------------------------------
             
             # --- NOVAS VARIÁVEIS A ENVIAR ---
             "dist_m50": f"{dist_m50:+.1f}%",
