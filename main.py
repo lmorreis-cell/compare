@@ -17,21 +17,47 @@ app = Flask(__name__)
 # ==========================================
 # MOTOR DE PRESENÇAS (ADMIN RADAR)
 # ==========================================
+import os
+import json
+from datetime import datetime, timedelta
+
+ARQUIVO_ACESSOS = "historico_acessos.json"
 utilizadores_ativos = {}
+
+# 1. Arranque: Carrega a memória antiga do disco se o servidor tiver reiniciado
+if os.path.exists(ARQUIVO_ACESSOS):
+    try:
+        with open(ARQUIVO_ACESSOS, 'r') as f:
+            dados = json.load(f)
+            # Reverte o formato de texto guardado no JSON para "relógio" interno do Python
+            for user, data_str in dados.items():
+                utilizadores_ativos[user] = datetime.fromisoformat(data_str)
+    except Exception:
+        pass
 
 @app.before_request
 def rastrear_atividade():
-    """Sempre que qualquer utilizador faz um clique/pedido, atualiza o relógio dele."""
+    """Atualiza a presença. Escreve no disco apenas de 60 em 60s para não estrangular o servidor."""
     if 'discord_user' in session: 
         nome = session['discord_user'].get('username', 'Membro')
-        utilizadores_ativos[nome] = datetime.now()
+        agora = datetime.now()
+        
+        ultima_vez = utilizadores_ativos.get(nome)
+        utilizadores_ativos[nome] = agora
+        
+        # Só grava no JSON se for o primeiro clique do dia ou se já passou 1 minuto desde a última gravação
+        if ultima_vez is None or (agora - ultima_vez).total_seconds() > 60:
+            try:
+                with open(ARQUIVO_ACESSOS, 'w') as f:
+                    # Converte a data para texto (ISO) para o JSON conseguir gravar
+                    dados_serializaveis = {u: d.isoformat() for u, d in utilizadores_ativos.items()}
+                    json.dump(dados_serializaveis, f)
+            except Exception:
+                pass
 
 @app.route('/api/admin/online')
 def get_online_users():
     """Devolve a lista de quem está online e o histórico recente (Apenas Admin)"""
-    import os
-    from datetime import datetime, timedelta
-    
     admin_id_env = str(os.environ.get("ADMIN_USER_ID")).strip()
     user_sess = str(session.get('user_id', '')).strip()
     
@@ -46,14 +72,13 @@ def get_online_users():
     lista_online = []
     lista_offline = []
     
-    # Ordena a lista de utilizadores do mais recente para o mais antigo
+    # Ordena cronologicamente: do clique mais recente para o mais antigo
     utilizadores_ordenados = sorted(utilizadores_ativos.items(), key=lambda x: x[1], reverse=True)
     
     for utilizador, ultima_vez in utilizadores_ordenados:
         if ultima_vez > limite_inatividade:
             lista_online.append(utilizador)
         else:
-            # Já não apagamos o utilizador. Calculamos quanto tempo passou!
             diff = agora - ultima_vez
             dias = diff.days
             segundos = diff.seconds
@@ -71,8 +96,9 @@ def get_online_users():
             
     return jsonify({
         "online": lista_online,
-        "offline": lista_offline[:100] # Mostramos os 10 últimos para a gaveta não ficar gigante
+        "offline": lista_offline[:10] # Envia apenas os últimos 10 para a gaveta não ficar gigante
     })
+# ==========================================
 
 
 # ==========================================
