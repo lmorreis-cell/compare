@@ -1295,7 +1295,7 @@ def api_sniper(ticker, timeframe):
             "mkt_cap": mkt_cap,
             "exchange": exchange,
             
-            "net_margin": net_margin,
+           
 
             # ---> INJETA ESTAS LINHAS AQUI <---
             "eps_atual": eps_atual,
