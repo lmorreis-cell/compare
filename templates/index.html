@@ -1075,26 +1075,16 @@
             return;
         }
 
-        // ---------------------------------------------------------
-        // NOVO: BARREIRA DE SEGURANÇA (BLOQUEIA CRIPTOS NAS AÇÕES)
-        // ---------------------------------------------------------
         if (ticker.includes('-')) {
             alert("⚠️ Criptoativo Detetado!\n\nPara analisares criptomoedas (como " + ticker + "), utiliza o 'Laboratório de Ativos Digitais' mais abaixo, que possui um motor calibrado para mercados 24/7.");
             return;
         }
-        // ---------------------------------------------------------
 
-        
-    
-
-        // --- ADICIONA ESTAS LINHAS AQUI ---
-        // Limpa e oculta outras caixas de resultados que possam estar abertas na página
-        const resultadoManual = document.getElementById('resultado'); // Substitui pelo ID real da caixa do Duelo, se for diferente
+        const resultadoManual = document.getElementById('resultado'); 
         if (resultadoManual) resultadoManual.style.display = 'none';
         
-        const radarMomentum = document.getElementById('relatorio-nlg'); // Substitui pelo ID real do Radar, se aplicável
+        const radarMomentum = document.getElementById('relatorio-nlg'); 
         if (radarMomentum) radarMomentum.style.display = 'none';
-        // ---------------------------------
 
         document.getElementById('loading').style.display = 'block';
         document.getElementById('sniper-resultado').style.display = 'none';
@@ -1109,7 +1099,6 @@
                 return;
             }
 
-            // Grava os dados na memória do browser para o botão de partilha usar depois
             window.blueprintAtual = dados;
             guardarHistorico('sniper', dados.ticker, null, dados.timeframe);
 
@@ -1125,18 +1114,59 @@
             const rr_bear_val = parseFloat(dados.bear_plan.rr.split(':')[1]);
             const cor_rr_bear = rr_bear_val >= 2.0 ? '#843534' : '#d9534f'; 
 
-                        
-            // 1. ÂNCORA OBRIGATÓRIA
             container.style.position = 'relative'; 
 
-            // Motor do Escudo SVG Invisível
             const svgOverlay = "data:image/svg+xml;charset=utf-8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><text x="50%" y="50%" transform="rotate(-35 200 150)" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="900" fill="rgba(18, 18, 18, 0.10)">Partilha de Ideias - Luís Reis</text></svg>');
+
+            // Valuation Motor
+            let peTag = "";
+            let nlgValuation = "";
+            let corValuation = "";
+
+            const peAtual = dados.pe_ratio;
+            const peMinimo = dados.pe_min_5y; 
+            const pegRatio = dados.peg_ratio; 
+            const quedaBearish = peAtual > 0 ? ((peAtual - peMinimo) / peAtual) * 100 : 0; 
+
+            if (peAtual <= 0) {
+                peTag = "EMPRESA COM PREJUÍZOS (N/A)";
+                corValuation = "#8b949e";
+                nlgValuation = `O ativo opera com lucros inconsistentes ou negativos. A negociação assenta em pura especulação técnica ou expectativas futuras não materializadas. <strong>Risco Máximo:</strong> Sem suporte fundamental.`;
+            } else {
+                let textoCrescimento = "";
+                if (pegRatio > 0 && pegRatio <= 1.5) {
+                    textoCrescimento = `O EPS apresenta crescimento consistente (${pegRatio}). Não é uma armadilha de valor cíclica.`;
+                } else if (pegRatio > 1.5) {
+                    textoCrescimento = `Cuidado: O crescimento (PEG ${pegRatio}) não justifica o múltiplo. Risco de contração típico de topos de ciclo.`;
+                } else {
+                    textoCrescimento = `Dados de crescimento (PEG) indisponíveis ou inconsistentes.`;
+                }
+
+                if (peMinimo > 0 && peAtual <= peMinimo * 1.20) { 
+                    peTag = "SUPORTE FUNDAMENTAL (COMPRESSÃO HISTÓRICA)";
+                    corValuation = "#5cb85c";
+                    nlgValuation = `<strong>O Racional:</strong> O P/E atual (${peAtual}x) está comprimido, transacionando próximo dos mínimos a 5 anos (${peMinimo}x). O mercado já precificou o pessimismo.<br>
+                    <strong>Consistência:</strong> ${textoCrescimento}<br>
+                    <strong>Risco Máximo (Cenário Super Bearish):</strong> Se colapsar até à base absoluta histórica, o preço sofreria uma contração de <strong>-${quedaBearish.toFixed(1)}%</strong>. Risco/recompensa favorável se apoiado em suporte técnico.`;
+                } else if (peMinimo > 0 && peAtual > peMinimo * 2) {
+                    peTag = "AVALIAÇÃO PRÉMIO / RISCO DE CONTRAÇÃO";
+                    corValuation = "#d9534f";
+                    nlgValuation = `<strong>O Racional:</strong> O múltiplo (${peAtual}x) está severamente esticado face ao mínimo histórico (${peMinimo}x). Estão a precificar perfeição.<br>
+                    <strong>Consistência:</strong> ${textoCrescimento}<br>
+                    <strong>Risco Máximo (Cenário Super Bearish):</strong> Num evento de liquidação, o regresso ao P/E base implicaria uma violenta quebra de <strong>-${quedaBearish.toFixed(1)}%</strong> no preço.`;
+                } else {
+                    peTag = "FAIR VALUE / AVALIAÇÃO NEUTRA";
+                    corValuation = "#f0ad4e";
+                    nlgValuation = `<strong>O Racional:</strong> O ativo negoceia numa zona de equilíbrio histórico. A direção será ditada pela ação de preço técnica.<br>
+                    <strong>Consistência:</strong> ${textoCrescimento}<br>
+                    <strong>Risco Máximo (Cenário Super Bearish):</strong> Risco de regressão aos mínimos fundamentais: <strong>-${quedaBearish.toFixed(1)}%</strong>.`;
+                }
+            }
 
             let html = `
                 <!-- ESCUDO DE PROPRIEDADE INTELECTUAL -->
                 <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 50; pointer-events: none; background-image: url('${svgOverlay}'); background-repeat: repeat;"></div>
                 
-                <!-- CSS EXCLUSIVO DAS TOOLTIPS -->
                 <style>
                     .sniper-tt { position: relative; display: inline-block; cursor: help; border-bottom: 1px dotted #121212; }
                     .sniper-tt .sniper-tt-text { visibility: hidden; width: 260px; background-color: #1a1a1a; color: #f0f2f5; text-align: left; border-radius: 6px; padding: 12px; position: absolute; z-index: 100; bottom: 130%; left: 50%; transform: translateX(-50%); opacity: 0; transition: opacity 0.2s; font-size: 12px; line-height: 1.5; font-weight: normal; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
@@ -1145,14 +1175,9 @@
                 </style>
 
                 <div style="border-bottom: 2px solid #121212; padding-bottom: 15px; margin-bottom: 20px; position: relative; z-index: 51;">
-                    
-                    <!-- LINHA 1: IDENTIDADE E FERRAMENTAS EXTERNAS -->
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; gap: 15px;">
-                        
-                        <!-- BLOCO ESQUERDO ENRIQUECIDO: Logótipo, Ticker e Metadados -->
                         <div style="display: flex; align-items: center; gap: 15px; flex: 1; min-width: 0;">
                             ${dados.logo_url ? `<img src="${dados.logo_url}" alt="${dados.ticker}" style="width: 55px; height: 55px; border-radius: 12px; background: #fff; padding: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); flex-shrink: 0;">` : ''}
-                            
                             <div style="display: flex; flex-direction: column; align-items: flex-start; min-width: 0;">
                                 <div style="display: flex; align-items: baseline; gap: 10px;">
                                     <h2 style="margin: 0; font-size: 32px; font-weight: 900; letter-spacing: -1px; text-transform: uppercase;">${dados.ticker}</h2>
@@ -1161,7 +1186,6 @@
                                         <span class="sniper-tt-text" style="width: 180px; white-space: normal;">Bolsa de Valores oficial.</span>
                                     </span>
                                 </div>
-                                
                                 <div style="display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap;">
                                     <span class="sniper-tt" style="background: #1c1e24; color: #c9d1d9; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; border: 1px solid #30363d; white-space: nowrap;">
                                         📁 ${dados.setor}
@@ -1170,7 +1194,6 @@
                                             Cruza isto com o <i>Market Breadth</i>. Se a saúde estrutural estiver em queda mas este setor estiver a subir, tens <i>Alpha</i>. Se estiver tudo vermelho, abdica do trade.
                                         </span>
                                     </span>
-                                    
                                     <span class="sniper-tt" style="background: #1c1e24; color: #c9d1d9; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; border: 1px solid #30363d; white-space: nowrap;">
                                         ⚖️ Cap: ${formatarMarketCap(dados.mkt_cap)}
                                         <span class="sniper-tt-text" style="width: 280px; white-space: normal;">
@@ -1178,15 +1201,12 @@
                                             Define a vulnerabilidade à manipulação. Uma <i>Mega-Cap</i> respeita rigorosamente as zonas de Suporte/Resistência. Uma <i>Micro-Cap</i> destrói alvos e ignora o gráfico.
                                         </span>
                                     </span>
-
                                     <span style="background: #121212; color: #fff; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 11px; letter-spacing: 1px; border: 1px solid #333; white-space: nowrap;">
                                         Cotação: $${dados.preco}
                                     </span>
                                 </div>
                             </div>
                         </div>
-                        
-                        <!-- BLOCO DIREITO: Ações Externas -->
                         <div style="display: flex; gap: 10px; align-items: center; padding-top: 5px; flex-shrink: 0;">
                             <a href="https://www.tradingview.com/chart/?symbol=${dados.ticker}" target="_blank" style="background: #232d3f; color: #d7dce6; border: 1px solid #30363d; padding: 6px 12px; border-radius: 4px; font-weight: bold; font-size: 12px; text-decoration: none; display: flex; align-items: center; gap: 5px; transition: background 0.2s; white-space: nowrap;">
                                 Abrir Gráfico 📈
@@ -1197,13 +1217,11 @@
                         </div>
                     </div>
                     
-                    <!-- ALERTA DE EARNINGS FMP -->
                     ${dados.earnings_warning ? `
                     <div style="background-color: ${dados.earnings_warning.includes('ALERTA') ? '#d9534f' : '#1c1e24'}; border-left: 4px solid ${dados.earnings_warning.includes('ALERTA') ? '#fff' : '#58a6ff'}; color: ${dados.earnings_warning.includes('ALERTA') ? '#fff' : '#c9d1d9'}; padding: 10px 15px; border-radius: 4px; font-size: 13px; font-weight: bold; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
                         ${dados.earnings_warning}
                     </div>` : ''}
                     
-                    <!-- LINHA 2: PAINEL DE MOMENTUM (RSI / ATR) -->
                     <div style="font-size: 13px; color: #333;">
                         <span class="sniper-tt" style="margin-right: 20px;">
                             <strong>RSI (14):</strong> ${dados.rsi}
@@ -1223,12 +1241,7 @@
                     </div>
                 </div>
 
-                <div style="display: flex; gap: 30px; margin-bottom: 25px;">
-
-
-
-                
-                    <!-- COLUNA ESQUERDA: NÍVEIS E RAIO-X -->
+                <div style="display: flex; gap: 30px; margin-bottom: 25px; position: relative; z-index: 51;">
                     <div style="flex: 1;">
                         <h4 style="margin-top: 0; color: #121212; text-transform: uppercase; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Key Levels</h4>
                         <div style="margin-bottom: 15px;">
@@ -1240,9 +1253,7 @@
                             <span style="font-family: monospace; font-size: 14px; font-weight: bold;">$ ${resist_str}</span>
                         </div>
 
-                        <!-- NOVO: PAINEL DE RAIO-X GRAVITACIONAL PARA PREENCHER O ESPAÇO -->
                         <h4 style="margin-top: 35px; color: #121212; text-transform: uppercase; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Raio-X Dinâmico</h4>
-                        
                         <div style="font-size: 13px; line-height: 1.8; color: #121212;">
                             <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed #ddd; padding-bottom: 4px; margin-bottom: 4px;">
                                 <span class="sniper-tt">
@@ -1254,7 +1265,6 @@
                                 </span>
                                 <strong style="color: ${dados.cor_m50};">${dados.dist_m50}</strong>
                             </div>
-
                             <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed #ddd; padding-bottom: 4px; margin-bottom: 4px;">
                                 <span class="sniper-tt">
                                     <strong>Vs. Média 200 (L/P):</strong>
@@ -1265,7 +1275,6 @@
                                 </span>
                                 <strong style="color: ${dados.cor_m200};">${dados.dist_m200}</strong>
                             </div>
-
                             <div style="display: flex; justify-content: space-between;">
                                 <span class="sniper-tt">
                                     <strong>Topo Absoluto:</strong>
@@ -1278,14 +1287,7 @@
                             </div>
                         </div>
 
-                        
-                    
-                    <!-- MATRIZ DE MOMENTUM PARA FECHAR O ESPAÇO -->
                         <h4 style="margin-top: 35px; color: #121212; text-transform: uppercase; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Momentum Matrix</h4>
-
-                        
-                        
-                        
                         <div style="font-size: 13px; line-height: 1.8; color: #121212;">
                             <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed #ddd; padding-bottom: 4px; margin-bottom: 4px;">
                                 <span class="sniper-tt">
@@ -1297,7 +1299,6 @@
                                 </span>
                                 <strong style="color: ${dados.cor_1w};">${dados.perf_1w}</strong>
                             </div>
-
                             <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed #ddd; padding-bottom: 4px; margin-bottom: 4px;">
                                 <span class="sniper-tt">
                                     <strong>1 Mês:</strong>
@@ -1308,7 +1309,6 @@
                                 </span>
                                 <strong style="color: ${dados.cor_1m};">${dados.perf_1m}</strong>
                             </div>
-
                             <div style="display: flex; justify-content: space-between;">
                                 <span class="sniper-tt">
                                     <strong>3 Meses:</strong>
@@ -1320,233 +1320,117 @@
                                 <strong style="color: ${dados.cor_3m};">${dados.perf_3m}</strong>
                             </div>
                         </div>
-                    </div> <!-- FIM DA COLUNA ESQUERDA -->
-
-
-
-                    
+                    </div>
 
                     <div style="flex: 1.5; display: flex; flex-direction: column; gap: 15px;">
                         <div style="background: #e9ecef; padding: 15px; border-radius: 4px; border-left: 4px solid #8a94a8;">
                             <h4 style="margin-top: 0; color: #121212; text-transform: uppercase; font-size: 14px;">Sniper Notes</h4>
                             <p style="margin: 0; font-size: 13px; line-height: 1.6; color: #333; text-align: justify;">
-                                ${dados.notas} <!-- O HTML gerado pelo Python com as Dicas entra aqui! -->
+                                ${dados.notas}
                             </p>
                         </div>
-                        
                         ${dados.dados_grafico ? `
                         <div style="border: 1px solid #ccc; border-radius: 4px; overflow: hidden; background: #f0f2f5; padding-top: 10px;">
                             <div id="plotly-sniper" style="width: 100%; height: 350px;"></div>
                         </div>` : ''}
                     </div>
                 </div>
-            `; // <--- AQUI ESTAVA O ERRO! Faltava fechar a string HTML.
 
-            // NOVO: Renderiza o gráfico Waterfall se os dados existirem
-            if (dados.waterfall_data && Object.keys(dados.waterfall_data).length > 0) {
-                var w_data = [{
-                    type: "waterfall",
-                    orientation: "v",
-                    measure: ["absolute", "relative", "total", "relative", "total"],
-                    x: ["Revenue", "Cost of Revenue", "Gross Profit", "Other Expenses", "Earnings"],
-                    textposition: "outside",
-                    text: [
-                        dados.waterfall_data.fmt_revenue,
-                        dados.waterfall_data.fmt_corev,
-                        dados.waterfall_data.fmt_gross,
-                        dados.waterfall_data.fmt_other,
-                        dados.waterfall_data.fmt_net
-                    ],
-                    y: [
-                        dados.waterfall_data.revenue,
-                        dados.waterfall_data.cost_of_revenue,
-                        dados.waterfall_data.gross_profit,
-                        dados.waterfall_data.other_expenses,
-                        dados.waterfall_data.net_income
-                    ],
-                    connector: { line: { color: "#30363d", width: 1 } },
-                    increasing: { marker: { color: "#58a6ff" } }, // Azul para Revenue (Entrada)
-                    decreasing: { marker: { color: "#d9534f" } }, // Vermelho para Despesas (Saídas)
-                    totals: { marker: { color: "#2ea043" } }      // Verde para Lucros (Totais)
-                }];
-
-                var w_layout = {
-                    margin: { l: 40, r: 20, t: 20, b: 30 },
-                    paper_bgcolor: 'rgba(0,0,0,0)',
-                    plot_bgcolor: 'rgba(0,0,0,0)',
-                    font: { color: '#8b949e', size: 11, family: 'Segoe UI' },
-                    xaxis: { showgrid: false },
-                    yaxis: { showgrid: true, gridcolor: '#30363d', zeroline: true, zerolinecolor: '#8b949e' },
-                    showlegend: false
-                };
-
-                Plotly.newPlot('plotly-waterfall', w_data, w_layout, {responsive: true, displayModeBar: false});
-            }
-    
-            // ==========================================
-            // MOTOR NLG AVANÇADO: VALUATION & FUNDAMENTAL GRAVITY
-            // ==========================================
-            let peTag = "";
-            let nlgValuation = "";
-            let corValuation = "";
-
-            const peAtual = dados.pe_ratio;
-            const peMinimo = dados.pe_min_5y; 
-            const pegRatio = dados.peg_ratio; 
-            const quedaBearish = peAtual > 0 ? ((peAtual - peMinimo) / peAtual) * 100 : 0; 
-
-            if (peAtual <= 0) {
-                peTag = "EMPRESA COM PREJUÍZOS (N/A)";
-                corValuation = "#8b949e";
-                nlgValuation = `O ativo opera com lucros inconsistentes ou negativos. A negociação assenta em pura especulação técnica ou expectativas futuras não materializadas. <strong>Risco Máximo:</strong> Sem suporte fundamental.`;
-            } 
-            else {
-                let textoCrescimento = "";
-                if (pegRatio > 0 && pegRatio <= 1.5) {
-                    textoCrescimento = `O EPS apresenta crescimento consistente (${pegRatio}). Não é uma armadilha de valor cíclica.`;
-                } else if (pegRatio > 1.5) {
-                    textoCrescimento = `Cuidado: O crescimento (PEG ${pegRatio}) não justifica o múltiplo. Risco de contração típico de topos de ciclo.`;
-                } else {
-                    textoCrescimento = `Dados de crescimento (PEG) indisponíveis ou inconsistentes.`;
-                }
-
-                if (peMinimo > 0 && peAtual <= peMinimo * 1.20) { 
-                    peTag = "SUPORTE FUNDAMENTAL (COMPRESSÃO HISTÓRICA)";
-                    corValuation = "#5cb85c";
-                    nlgValuation = `<strong>O Racional:</strong> O P/E atual (${peAtual}x) está comprimido, transacionando próximo dos mínimos a 5 anos (${peMinimo}x). O mercado já precificou o pessimismo.<br>
-                    <strong>Consistência:</strong> ${textoCrescimento}<br>
-                    <strong>Risco Máximo (Cenário Super Bearish):</strong> Se colapsar até à base absoluta histórica, o preço sofreria uma contração de <strong>-${quedaBearish.toFixed(1)}%</strong>. Risco/recompensa favorável se apoiado em suporte técnico.`;
-                
-                } else if (peMinimo > 0 && peAtual > peMinimo * 2) {
-                    peTag = "AVALIAÇÃO PRÉMIO / RISCO DE CONTRAÇÃO";
-                    corValuation = "#d9534f";
-                    nlgValuation = `<strong>O Racional:</strong> O múltiplo (${peAtual}x) está severamente esticado face ao mínimo histórico (${peMinimo}x). Estão a precificar perfeição.<br>
-                    <strong>Consistência:</strong> ${textoCrescimento}<br>
-                    <strong>Risco Máximo (Cenário Super Bearish):</strong> Num evento de liquidação, o regresso ao P/E base implicaria uma violenta quebra de <strong>-${quedaBearish.toFixed(1)}%</strong> no preço.`;
-                } else {
-                    peTag = "FAIR VALUE / AVALIAÇÃO NEUTRA";
-                    corValuation = "#f0ad4e";
-                    nlgValuation = `<strong>O Racional:</strong> O ativo negoceia numa zona de equilíbrio histórico. A direção será ditada pela ação de preço técnica.<br>
-                    <strong>Consistência:</strong> ${textoCrescimento}<br>
-                    <strong>Risco Máximo (Cenário Super Bearish):</strong> Risco de regressão aos mínimos fundamentais: <strong>-${quedaBearish.toFixed(1)}%</strong>.`;
-                }
-                
-            }
-
-            // REABRE A INJEÇÃO DO BLOCO HTML NA BLUEPRINT (Com o "html +=")
-            html += `
-            
-            <!-- INJEÇÃO DA GAVETA EARNINGS & REVENUE -->
-            ${dados.waterfall_data && Object.keys(dados.waterfall_data).length > 0 ? `
-            <h4 style="margin-top: 35px; color: #121212; text-transform: uppercase; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px; position: relative; z-index: 51;">
-                📊 Earnings & Revenue
-            </h4>
-            <div style="display: flex; gap: 20px; margin-bottom: 25px; flex-wrap: wrap; position: relative; z-index: 51;">
-                
-                <!-- Gráfico Waterfall -->
-                <div style="flex: 2; min-width: 350px; background: #1c1e24; border: 1px solid #30363d; border-radius: 6px; padding: 15px;">
-                    <div id="plotly-waterfall" style="width: 100%; height: 250px;"></div>
-                </div>
-                
-                <!-- Métricas Core -->
-                <div style="flex: 1; min-width: 250px; background: #1c1e24; border: 1px solid #30363d; border-radius: 6px; padding: 20px; color: #c9d1d9; display: flex; flex-direction: column;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 25px; font-size: 12px; border-bottom: 1px solid #30363d; padding-bottom: 15px;">
-                        <div>
-                            <span style="color:#8b949e">Last Reported Earnings</span><br>
-                            <strong style="color:#fff; font-size: 14px;">${dados.last_earnings_date}</strong>
+                <!-- INJEÇÃO DA GAVETA EARNINGS & REVENUE -->
+                ${dados.waterfall_data && Object.keys(dados.waterfall_data).length > 0 ? `
+                <h4 style="margin-top: 35px; color: #121212; text-transform: uppercase; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px; position: relative; z-index: 51;">
+                    📊 Earnings & Revenue
+                </h4>
+                <div style="display: flex; gap: 20px; margin-bottom: 25px; flex-wrap: wrap; position: relative; z-index: 51;">
+                    <div style="flex: 2; min-width: 350px; background: #1c1e24; border: 1px solid #30363d; border-radius: 6px; padding: 15px;">
+                        <div id="plotly-waterfall" style="width: 100%; height: 250px;"></div>
+                    </div>
+                    <div style="flex: 1; min-width: 250px; background: #1c1e24; border: 1px solid #30363d; border-radius: 6px; padding: 20px; color: #c9d1d9; display: flex; flex-direction: column;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 25px; font-size: 12px; border-bottom: 1px solid #30363d; padding-bottom: 15px;">
+                            <div>
+                                <span style="color:#8b949e">Last Reported Earnings</span><br>
+                                <strong style="color:#fff; font-size: 14px;">${dados.last_earnings_date}</strong>
+                            </div>
+                            <div style="text-align: right;">
+                                <span style="color:#8b949e">Next Earnings Date</span><br>
+                                <strong style="color:#fff; font-size: 14px;">${dados.next_earnings_date}</strong>
+                            </div>
                         </div>
-                        <div style="text-align: right;">
-                            <span style="color:#8b949e">Next Earnings Date</span><br>
-                            <strong style="color:#fff; font-size: 14px;">${dados.next_earnings_date}</strong>
+                        <div style="border-bottom: 1px dashed #30363d; padding: 10px 0; display: flex; justify-content: space-between; font-size: 13px;">
+                            <span style="color:#8b949e">Earnings per share (EPS)</span> 
+                            <strong style="color:#fff;">${dados.eps_atual}</strong>
+                        </div>
+                        <div style="border-bottom: 1px dashed #30363d; padding: 10px 0; display: flex; justify-content: space-between; font-size: 13px;">
+                            <span style="color:#8b949e">Gross Margin</span> 
+                            <strong style="color:#fff;">${dados.gross_margin}</strong>
+                        </div>
+                        <div style="border-bottom: 1px dashed #30363d; padding: 10px 0; display: flex; justify-content: space-between; font-size: 13px;">
+                            <span style="color:#8b949e">Net Profit Margin</span> 
+                            <strong style="color:#fff;">${dados.net_margin_final}</strong>
+                        </div>
+                        <div style="padding: 10px 0; display: flex; justify-content: space-between; font-size: 13px;">
+                            <span style="color:#8b949e">Debt/Equity Ratio</span> 
+                            <strong style="color:#fff;">${dados.debt_equity}</strong>
                         </div>
                     </div>
-                    
-                    <div style="border-bottom: 1px dashed #30363d; padding: 10px 0; display: flex; justify-content: space-between; font-size: 13px;">
-                        <span style="color:#8b949e">Earnings per share (EPS)</span> 
-                        <strong style="color:#fff;">${dados.eps_atual}</strong>
-                    </div>
-                    <div style="border-bottom: 1px dashed #30363d; padding: 10px 0; display: flex; justify-content: space-between; font-size: 13px;">
-                        <span style="color:#8b949e">Gross Margin</span> 
-                        <strong style="color:#fff;">${dados.gross_margin}</strong>
-                    </div>
-                    <div style="border-bottom: 1px dashed #30363d; padding: 10px 0; display: flex; justify-content: space-between; font-size: 13px;">
-                        <span style="color:#8b949e">Net Profit Margin</span> 
-                        <strong style="color:#fff;">${dados.net_margin_final}</strong>
-                    </div>
-                    <div style="padding: 10px 0; display: flex; justify-content: space-between; font-size: 13px;">
-                        <span style="color:#8b949e">Debt/Equity Ratio</span> 
-                        <strong style="color:#fff;">${dados.debt_equity}</strong>
-                    </div>
                 </div>
-            </div>
-            ` : ''}
+                ` : ''}
 
-            <h4 style="margin-top: 35px; color: #121212; text-transform: uppercase; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px; position: relative; z-index: 51;">
-                ⚖️ Fundamental Gravity & Institutional Flow
-            </h4>
-            
-            <div style="display: flex; gap: 20px; margin-bottom: 25px; flex-wrap: wrap; position: relative; z-index: 51;">
-
-            
-            <div style="display: flex; gap: 20px; margin-bottom: 25px; flex-wrap: wrap; position: relative; z-index: 51;">
-                
-                <!-- BLOCO 1: VALUATION RISK -->
-                <div style="flex: 1; min-width: 250px; background: #1c1e24; border: 1px solid #30363d; border-radius: 6px; padding: 20px;">
-                    <span class="sniper-tt" style="color: #8b949e; font-size: 11px; text-transform: uppercase; font-weight: bold; margin-bottom: 10px; display: block;">
-                        Forward P/E Ratio
-                        <span class="sniper-tt-text" style="width: 250px;">
-                            <strong style="color: #4da6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">A Lei da Gravidade</strong>
-                            O múltiplo de avaliação atual. Ações com P/E acima de 30 exigem execução técnica perfeita; ações abaixo da sua média de 5 anos oferecem margem de segurança.
+                <h4 style="margin-top: 35px; color: #121212; text-transform: uppercase; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px; position: relative; z-index: 51;">
+                    ⚖️ Fundamental Gravity & Institutional Flow
+                </h4>
+                <div style="display: flex; gap: 20px; margin-bottom: 25px; flex-wrap: wrap; position: relative; z-index: 51;">
+                    <div style="flex: 1; min-width: 250px; background: #1c1e24; border: 1px solid #30363d; border-radius: 6px; padding: 20px;">
+                        <span class="sniper-tt" style="color: #8b949e; font-size: 11px; text-transform: uppercase; font-weight: bold; margin-bottom: 10px; display: block;">
+                            Forward P/E Ratio
+                            <span class="sniper-tt-text" style="width: 250px;">
+                                <strong style="color: #4da6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">A Lei da Gravidade</strong>
+                                O múltiplo de avaliação atual. Ações com P/E acima de 30 exigem execução técnica perfeita; ações abaixo da sua média de 5 anos oferecem margem de segurança.
+                            </span>
                         </span>
-                    </span>
-                    <div style="font-size: 28px; font-weight: 900; color: ${corValuation}; line-height: 1;">
-                        ${peAtual > 0 ? peAtual + 'x' : 'N/A'}
+                        <div style="font-size: 28px; font-weight: 900; color: ${corValuation}; line-height: 1;">
+                            ${peAtual > 0 ? peAtual + 'x' : 'N/A'}
+                        </div>
+                        <div style="margin-top: 5px; font-size: 10px; font-weight: bold; color: ${corValuation};">${peTag}</div>
+                        <div style="margin-top: 10px; font-size: 12px; line-height: 1.5; color: #8b949e; border-top: 1px dashed #30363d; padding-top: 10px;">
+                            ${nlgValuation}
+                        </div>
                     </div>
-                    <div style="margin-top: 5px; font-size: 10px; font-weight: bold; color: ${corValuation};">${peTag}</div>
-                    <div style="margin-top: 10px; font-size: 12px; line-height: 1.5; color: #8b949e; border-top: 1px dashed #30363d; padding-top: 10px;">
-                        ${nlgValuation}
-                    </div>
-                </div>
-
-                <!-- BLOCO 2: WALL STREET TARGETS -->
-                <div style="flex: 1; min-width: 250px; background: #1c1e24; border: 1px solid #30363d; border-radius: 6px; padding: 20px;">
-                    <span class="sniper-tt" style="color: #8b949e; font-size: 11px; text-transform: uppercase; font-weight: bold; margin-bottom: 10px; display: block;">
-                        Wall St. Consensus
-                        <span class="sniper-tt-text" style="width: 280px;">
-                            <strong style="color: #e3b341; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">O Ponto Cego dos Analistas</strong>
-                            Média dos preços-alvo traçados pelos bancos de investimento. <strong>Não operes com base nisto.</strong> Os analistas têm um enviesamento crónico para a compra (Sell-Side Bias) e cortam alvos tarde demais. Usa isto apenas como confluência para saberes se o teu PT Técnico não excede a euforia dos institucionais.
+                    <div style="flex: 1; min-width: 250px; background: #1c1e24; border: 1px solid #30363d; border-radius: 6px; padding: 20px;">
+                        <span class="sniper-tt" style="color: #8b949e; font-size: 11px; text-transform: uppercase; font-weight: bold; margin-bottom: 10px; display: block;">
+                            Wall St. Consensus
+                            <span class="sniper-tt-text" style="width: 280px;">
+                                <strong style="color: #e3b341; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">O Ponto Cego dos Analistas</strong>
+                                Média dos preços-alvo traçados pelos bancos de investimento. Não operes com base nisto. Os analistas têm um enviesamento crónico para a compra (Sell-Side Bias) e cortam alvos tarde demais.
+                            </span>
                         </span>
-                    </span>
-                    <div style="font-size: 28px; font-weight: 900; color: #e3b341; line-height: 1;">
-                        $${dados.target_consensus}
+                        <div style="font-size: 28px; font-weight: 900; color: #e3b341; line-height: 1;">
+                            $${dados.target_consensus}
+                        </div>
+                        <div style="margin-top: 5px; font-size: 10px; font-weight: bold; color: ${parseFloat(dados.target_upside) > 0 ? '#5cb85c' : '#d9534f'};">
+                            PROJEÇÃO: ${dados.target_upside}
+                        </div>
+                        <div style="margin-top: 10px; font-size: 12px; line-height: 1.5; color: #8b949e; border-top: 1px dashed #30363d; padding-top: 10px;">
+                            Compara este valor com os teus PTs técnicos. Se o teu PT tático exceder largamente este consenso, o teu <i>Take Profit</i> pode estar demasiado otimista num mercado que já atingiu o teto das estimativas.
+                        </div>
                     </div>
-                    <div style="margin-top: 5px; font-size: 10px; font-weight: bold; color: ${parseFloat(dados.target_upside) > 0 ? '#5cb85c' : '#d9534f'};">
-                        PROJEÇÃO: ${dados.target_upside}
-                    </div>
-                    <div style="margin-top: 10px; font-size: 12px; line-height: 1.5; color: #8b949e; border-top: 1px dashed #30363d; padding-top: 10px;">
-                        Compara este valor com os teus PTs técnicos. Se o teu PT tático exceder largamente este consenso, o teu <i>Take Profit</i> pode estar demasiado otimista num mercado que já atingiu o teto das estimativas.
-                    </div>
-                </div>
-
-                <!-- BLOCO 3: INSIDER TRADING -->
-                <div style="flex: 1; min-width: 250px; background: #1c1e24; border: 1px solid #30363d; border-radius: 6px; padding: 20px;">
-                    <span class="sniper-tt" style="color: #8b949e; font-size: 11px; text-transform: uppercase; font-weight: bold; margin-bottom: 10px; display: block;">
-                        Insider Flow (SEC Form 4)
-                        <span class="sniper-tt-text" style="width: 280px;">
-                            <strong style="color: #b388ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">O Rasto do Dinheiro</strong>
-                            Executivos vendem ações por dezenas de motivos (pagar impostos, divórcios, diversificar). No entanto, <strong>só compram por um motivo:</strong> acreditam que a ação vai subir. Ignora sinais fracos de venda, mas foca-te em Sinais de "Acumulação Forte" como um excelente selo de garantia.
+                    <div style="flex: 1; min-width: 250px; background: #1c1e24; border: 1px solid #30363d; border-radius: 6px; padding: 20px;">
+                        <span class="sniper-tt" style="color: #8b949e; font-size: 11px; text-transform: uppercase; font-weight: bold; margin-bottom: 10px; display: block;">
+                            Insider Flow (SEC Form 4)
+                            <span class="sniper-tt-text" style="width: 280px;">
+                                <strong style="color: #b388ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">O Rasto do Dinheiro</strong>
+                                Executivos vendem ações por dezenas de motivos (pagar impostos, divórcios, diversificar). No entanto, só compram por um motivo: acreditam que a ação vai subir.
+                            </span>
                         </span>
-                    </span>
-                    <div style="font-size: 16px; font-weight: 900; color: ${dados.insider_signal.includes('Acumulação') ? '#5cb85c' : dados.insider_signal.includes('Distribuição') ? '#d9534f' : '#b388ff'}; line-height: 1.2;">
-                        ${dados.insider_signal}
-                    </div>
-                    <div style="margin-top: 10px; font-size: 12px; line-height: 1.5; color: #8b949e; border-top: 1px dashed #30363d; padding-top: 10px;">
-                        Mapeamento das últimas 15 transações de administração. Um <i>Bull Plan</i> técnico ganha validação assimétrica quando acompanhado de um regime de acumulação de executivos na base de um canal.
+                        <div style="font-size: 16px; font-weight: 900; color: ${dados.insider_signal.includes('Acumulação') ? '#5cb85c' : dados.insider_signal.includes('Distribuição') ? '#d9534f' : '#b388ff'}; line-height: 1.2;">
+                            ${dados.insider_signal}
+                        </div>
+                        <div style="margin-top: 10px; font-size: 12px; line-height: 1.5; color: #8b949e; border-top: 1px dashed #30363d; padding-top: 10px;">
+                            Mapeamento das últimas 15 transações de administração. Um <i>Bull Plan</i> técnico ganha validação assimétrica quando acompanhado de um regime de acumulação de executivos na base de um canal.
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- BLOCO 4: MATRIZ DE NOTÍCIAS (SENTIMENTO) -->
                 ${dados.news_data && dados.news_data.length > 0 ? `
                 <div style="background: #e9ecef; border-left: 4px solid #8a94a8; border-radius: 4px; padding: 15px; margin-bottom: 25px; position: relative; z-index: 51;">
                     <span class="sniper-tt" style="color: #121212; font-size: 12px; text-transform: uppercase; font-weight: bold; margin-bottom: 10px; display: block;">
@@ -1562,10 +1446,8 @@
                 </div>
                 ` : ''}
             
-            <h4 style="margin-top: 0; color: #121212; text-transform: uppercase; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px; position: relative; z-index: 51;">Trade Idea & Execution</h4>
-                
+                <h4 style="margin-top: 0; color: #121212; text-transform: uppercase; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px; position: relative; z-index: 51;">Trade Idea & Execution</h4>
                 <div style="background: #1c1e24; border: 1px solid #30363d; border-radius: 6px; padding: 12px 15px; margin-bottom: 20px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap; position: relative; z-index: 51;">
-                    
                     <span class="sniper-tt" style="border-bottom: 1px dotted #8b949e; cursor: help; color: #8b949e; font-weight: bold; font-size: 13px;">
                         🧮 Position Sizing
                         <span class="sniper-tt-text" style="width: 320px; z-index: 1000; bottom: 150%;">
@@ -1573,17 +1455,13 @@
                             Calcula o número exato de ações a comprar para proteger a carteira.
                         </span>
                     </span>
-                    
                     <input type="number" id="calc-banca" placeholder="Banca Total (€/$)" class="input-moderno" style="max-width: 140px; padding: 8px; font-size: 13px;">
-                    
                     <div style="display: flex; align-items: center; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; overflow: hidden; padding-left: 12px;">
                         <span style="color: #8b949e; font-size: 13px; white-space: nowrap; font-weight: bold;">Risco:</span>
                         <input type="number" id="calc-risco" value="1" step="0.1" style="background: transparent; border: none; color: #c9d1d9; padding: 8px; font-size: 14px; width: 45px; text-align: center; outline: none; font-weight: bold;">
                         <span style="color: #8b949e; font-size: 13px; padding-right: 12px; font-weight: bold;">%</span>
                     </div>
-
                     <button onclick="calcularLotesSniper(${dados.resistencias[0]}, ${dados.suportes[0]}, ${dados.bull_plan.stop}, ${dados.bear_plan.stop})" class="btn-moderno btn-azul" style="padding: 8px 15px; font-size: 12px;">Calcular Exposição</button>
-                    
                     <div id="calc-resultado" style="width: 100%; margin-top: 10px; display: none; gap: 20px;"></div>
                 </div>
 
@@ -1596,7 +1474,6 @@
                             <span class="sniper-tt">
                                 ⚖️ <strong style="color: ${cor_rr_bull};">R:R ${dados.bull_plan.rr}</strong>
                                 <span class="sniper-tt-text" style="width: 250px;">
-                                    <strong style="color: #4da6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Risco / Recompensa</strong>
                                     Se a cor for verde (Rácio &gt; 1:2), a recompensa paga pelo risco. Rácio vermelho invalida matematicamente a entrada a longo prazo.
                                 </span>
                             </span>
@@ -1614,7 +1491,6 @@
                             <span class="sniper-tt">
                                 ⚖️ <strong style="color: ${cor_rr_bear};">R:R ${dados.bear_plan.rr}</strong>
                                 <span class="sniper-tt-text" style="width: 250px;">
-                                    <strong style="color: #4da6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Risco / Recompensa</strong>
                                     O primeiro alvo tem de justificar o tamanho do teu Stop. Rituais de risco invertidos destroem qualquer carteira.
                                 </span>
                             </span>
@@ -1625,28 +1501,16 @@
                     </div>
                 </div>
 
-                <!-- MENU E BOTÃO DE BACKTEST NA BASE -->
                 <div style="margin-top: 30px; display: flex; justify-content: center; align-items: center; gap: 15px; position: relative; z-index: 51; flex-wrap: wrap;">
-                    
-                    <!-- TOOLTIP EDUCACIONAL DO BACKTEST -->
                     <span class="dica-edu" style="cursor: help; background: #1c1e24; border: 1px solid #30363d; padding: 10px; border-radius: 6px; display: flex; align-items: center; justify-content: center;">
                         ℹ️ <span style="margin-left: 5px; font-size: 12px; color: #8b949e; font-weight: bold;">Lógica</span>
                         <span class="dica-texto" style="width: 360px; bottom: 150%; z-index: 1000; text-transform: none; text-align: left; font-weight: normal; font-family: 'Segoe UI', sans-serif;">
-                            
                             <strong style="color: #58a6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">📈 Trend Following (EMA 20)</strong>
                             O clássico seguidor de tendência institucional. Funciona mal em mercados laterais, mas gera lucros massivos em Bull Markets.<br>
-                            <span style="color: #5cb85c;">• <strong>Entrada:</strong></span> Preço cruza e fecha acima da Média Móvel (EMA 20).<br>
-                            <span style="color: #d9534f;">• <strong>Saída:</strong></span> Preço quebra e fecha abaixo da EMA 20.<br><br>
-                            
-                            <strong style="color: #f28b24; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">🩸 Mean Reversion (RSI < 30)</strong>
+                            <strong style="color: #f28b24; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px; margin-top: 10px;">🩸 Mean Reversion (RSI < 30)</strong>
                             Tática de guerrilha para apanhar facas a cair. O objetivo não é casar com a ação, mas roubar um ressalto de curto prazo originado por <i>Short Covering</i>.<br>
-                            <span style="color: #5cb85c;">• <strong>Entrada:</strong></span> Pânico extremo. RSI(14) afunda abaixo de 30.<br>
-                            <span style="color: #d9534f;">• <strong>Saída:</strong></span> Ressalto à neutralidade. RSI(14) recupera os 50.<br><br>
-                            
-                            <strong style="color: #b388ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">🌋 Bollinger Dip (Caça Fundos)</strong>
+                            <strong style="color: #b388ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px; margin-top: 10px;">🌋 Bollinger Dip (Caça Fundos)</strong>
                             Captura a exaustão de volatilidade em quedas agudas e irracionais.<br>
-                            <span style="color: #5cb85c;">• <strong>Entrada:</strong></span> Preço perfura e fecha abaixo da Banda Inferior.<br>
-                            <span style="color: #d9534f;">• <strong>Saída:</strong></span> Regresso ao eixo central (Média Móvel Simples 20).
                         </span>
                     </span>
 
@@ -1660,23 +1524,19 @@
                         ⚙️ Executar Backtest 5A
                     </button>
                 </div>
-
-                <!-- GAVETA INVISÍVEL DO BACKTEST -->
+                
                 <div id="gaveta-backtest" style="display: none; margin-top: 20px; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 20px; box-shadow: inset 0 0 15px rgba(0,0,0,0.5); position: relative; z-index: 51;">
                 </div>
             `;
 
-        // 1. PRIMEIRO: Cola o HTML no ecrã (cria as "telas" em branco)
             container.innerHTML = html;
             document.getElementById('loading').style.display = 'none';
             container.style.display = 'block';
 
-            // 2. SEGUNDO: Desenha o Gráfico Principal (Preço e Volume)
             if (dados.dados_grafico && dados.dados_grafico.datas.length > 0) {
                 desenharGraficoPlotly(dados.dados_grafico);
             }
 
-            // 3. TERCEIRO: Desenha o Gráfico Waterfall (Se a empresa tiver receitas)
             if (dados.waterfall_data && Object.keys(dados.waterfall_data).length > 0) {
                 var w_data = [{
                     type: "waterfall",
@@ -1699,9 +1559,9 @@
                         dados.waterfall_data.net_income
                     ],
                     connector: { line: { color: "#30363d", width: 1 } },
-                    increasing: { marker: { color: "#58a6ff" } }, // Azul para Revenue (Entrada)
-                    decreasing: { marker: { color: "#d9534f" } }, // Vermelho para Despesas (Saídas)
-                    totals: { marker: { color: "#2ea043" } }      // Verde para Lucros (Totais)
+                    increasing: { marker: { color: "#58a6ff" } },
+                    decreasing: { marker: { color: "#d9534f" } },
+                    totals: { marker: { color: "#2ea043" } }
                 }];
 
                 var w_layout = {
@@ -2235,7 +2095,7 @@
 
 
     async function gerarBlueprintCripto() {
-        const ticker = document.getElementById('sniper-cripto-ticker').value.trim().toUpperCase();
+        const ticker = document.getElementById('sniper-cripto-ticker').value.trim();
         const tf = document.getElementById('sniper-cripto-tf').value;
         
         if (!ticker) {
@@ -2243,29 +2103,21 @@
             return;
         }
 
-        // ---------------------------------------------------------
-        // NOVO: BARREIRA DE SEGURANÇA CRIPTO-NATIVA
-        // Garante que o ticker tem a sintaxe de paridade do Yahoo Finance
-        // ---------------------------------------------------------
         if (!ticker.includes('-')) {
             alert("⚠️ Formato de Criptoativo Inválido!\n\nNo ecossistema do Yahoo Finance, as criptomoedas exigem o par fiduciário.\nExperimenta escrever: " + ticker + "-USD");
             return;
         }
-        // ---------------------------------------------------------
 
         const resultadoManual = document.getElementById('resultado');
         if (resultadoManual) resultadoManual.style.display = 'none';
-        
-    
-        document.getElementById('resultado').style.display = 'none';
         const radarMomentum = document.getElementById('relatorio-nlg');
         if (radarMomentum) radarMomentum.style.display = 'none';
 
         document.getElementById('loading').style.display = 'block';
-        document.getElementById('sniper-resultado').style.display = 'none';
+        const container = document.getElementById('sniper-resultado');
+        container.style.display = 'none';
 
         try {
-            // Nota: Chama o NOVO endpoint que acabámos de criar no Python
             const resposta = await fetch(`/api/sniper_cripto/${ticker}/${tf}`);
             const dados = await resposta.json();
 
@@ -2276,25 +2128,187 @@
             }
 
             window.blueprintAtual = dados;
-            guardarHistorico('sniper_cripto', dados.ticker, null, dados.timeframe);
+            guardarHistorico('sniper_cripto', dados.ticker, null, dados.timeframe.toLowerCase());
 
-            // Reaproveita o motor gráfico que criaste para o Sniper normal (reutilização de código)
-            const container = document.getElementById('sniper-resultado');
-            
-            // Re-renderizamos o HTML do Sniper (podes usar exatamente o mesmo HTML template literal 
-            // que usas na função gerarBlueprintSniper normal, a estrutura JSON é compatível!)
-            
-            // Para brevidade, podes invocar a renderização visual reaproveitando o código que 
-            // constrói as divs "Trade Idea", "Key Levels", mas com cores néon adaptadas.
-            // Executamos a mesma injeção do Sniper TradFi para maximizar estabilidade:
-            gerarInterfaceBlueprint(container, dados); 
-            
+            const suportes_str = dados.suportes.join(" → ");
+            const resist_str = dados.resistencias.join(" → ");
+            const bull_pts = dados.bull_plan.pt.join(" → ");
+            const bear_pts = dados.bear_plan.pt.join(" → ");
+
+            const rr_bull_val = parseFloat(dados.bull_plan.rr.split(':')[1]);
+            const cor_rr_bull = rr_bull_val >= 2.0 ? '#2b542c' : '#d9534f'; 
+
+            const rr_bear_val = parseFloat(dados.bear_plan.rr.split(':')[1]);
+            const cor_rr_bear = rr_bear_val >= 2.0 ? '#843534' : '#d9534f'; 
+
+            container.style.position = 'relative'; 
+
+            const svgOverlay = "data:image/svg+xml;charset=utf-8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><text x="50%" y="50%" transform="rotate(-35 200 150)" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="900" fill="rgba(18, 18, 18, 0.10)">Partilha de Ideias - Luís Reis</text></svg>');
+
+            let html = `
+                <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 50; pointer-events: none; background-image: url('${svgOverlay}'); background-repeat: repeat;"></div>
+                
+                <style>
+                    .sniper-tt { position: relative; display: inline-block; cursor: help; border-bottom: 1px dotted #121212; }
+                    .sniper-tt .sniper-tt-text { visibility: hidden; width: 260px; background-color: #1a1a1a; color: #f0f2f5; text-align: left; border-radius: 6px; padding: 12px; position: absolute; z-index: 1000; bottom: 130%; left: 50%; transform: translateX(-50%); opacity: 0; transition: opacity 0.2s; font-size: 12px; line-height: 1.5; font-weight: normal; box-shadow: 0 5px 15px rgba(0,0,0,0.3); white-space: normal !important;}
+                    .sniper-tt .sniper-tt-text::after { content: ""; position: absolute; top: 100%; left: 50%; margin-left: -6px; border-width: 6px; border-style: solid; border-color: #1a1a1a transparent transparent transparent; }
+                    .sniper-tt:hover .sniper-tt-text { visibility: visible; opacity: 1; }
+                </style>
+
+                <div style="border-bottom: 2px solid #121212; padding-bottom: 15px; margin-bottom: 20px; position: relative; z-index: 51;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 15px;">
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <h2 style="margin: 0; font-size: 32px; font-weight: 900; letter-spacing: -1px; text-transform: uppercase; color: #b388ff;">${dados.ticker}</h2>
+                            <span style="background: #121212; color: #fff; padding: 5px 12px; border-radius: 4px; font-weight: bold; font-size: 13px; letter-spacing: 1px;">TF: ${dados.timeframe} | COTAÇÃO: $${dados.preco}</span>
+                        </div>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <a href="https://www.tradingview.com/chart/?symbol=${dados.ticker.replace('-USD', '')}USDT" target="_blank" style="background: #232d3f; color: #d7dce6; border: 1px solid #30363d; padding: 6px 12px; border-radius: 4px; font-weight: bold; font-size: 12px; text-decoration: none; display: flex; align-items: center; gap: 5px; transition: background 0.2s;">
+                                Abrir Gráfico 📈
+                            </a>
+                            <button onclick="transmitirAlertaDiscord()" style="background: #5865F2; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 5px; box-shadow: 0 2px 5px rgba(88,101,242,0.4);">
+                                Transmitir Alerta 📡
+                            </button>
+                        </div>
+                    </div>
+                    <div style="font-size: 13px; color: #333;">
+                        <span class="sniper-tt" style="margin-right: 20px;">
+                            <strong>RSI (14):</strong> ${dados.rsi}
+                            <span class="sniper-tt-text">
+                                <strong style="color: #b388ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Relative Strength Index</strong>
+                                Em mercados cripto, o RSI pode manter-se sobrecomprado (>70) ou sobrevendido (<30) durante dias num ciclo parabólico. Avaliar sempre a divergência face ao preço.
+                            </span>
+                        </span>
+                        <span class="sniper-tt">
+                            <strong>Volatilidade (ATR):</strong> $${dados.atr}
+                            <span class="sniper-tt-text">
+                                <strong style="color: #b388ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Average True Range</strong>
+                                Amplitude base de ruído. Fundamental para colocar stops fora do alcance das 'wicks' (pavios) dos market makers que caçam liquidez alavancada.
+                            </span>
+                        </span>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 30px; margin-bottom: 25px; position: relative; z-index: 51;">
+                    <div style="flex: 1;">
+                        <h4 style="margin-top: 0; color: #121212; text-transform: uppercase; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Key Levels</h4>
+                        <div style="margin-bottom: 15px;">
+                            <span style="color: #d9534f; font-weight: bold; font-size: 13px;">Support</span><br>
+                            <span style="font-family: monospace; font-size: 14px; font-weight: bold;">$ ${suportes_str}</span>
+                        </div>
+                        <div>
+                            <span style="color: #5cb85c; font-weight: bold; font-size: 13px;">Resistance</span><br>
+                            <span style="font-family: monospace; font-size: 14px; font-weight: bold;">$ ${resist_str}</span>
+                        </div>
+                    </div>
+
+                    <div style="flex: 1.5; display: flex; flex-direction: column; gap: 15px;">
+                        <div style="background: #e9ecef; padding: 15px; border-radius: 4px; border-left: 4px solid #b388ff;">
+                            <h4 style="margin-top: 0; color: #121212; text-transform: uppercase; font-size: 14px;">Sniper Notes</h4>
+                            <p style="margin: 0; font-size: 13px; line-height: 1.6; color: #333; text-align: justify;">
+                                ${dados.notas} 
+                            </p>
+                        </div>
+                        ${dados.dados_grafico ? `
+                        <div style="border: 1px solid #ccc; border-radius: 4px; overflow: hidden; background: #f0f2f5; padding-top: 10px;">
+                            <div id="plotly-sniper-cripto" style="width: 100%; height: 350px;"></div>
+                        </div>` : ''}
+                    </div>
+                </div>
+
+                <h4 style="margin-top: 0; color: #121212; text-transform: uppercase; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px; position: relative; z-index: 51;">Execution Logic</h4>
+                
+                <div style="background: #1c1e24; border: 1px solid #30363d; border-radius: 6px; padding: 12px 15px; margin-bottom: 20px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap; position: relative; z-index: 51;">
+                    <span class="sniper-tt" style="border-bottom: 1px dotted #8b949e; cursor: help; color: #8b949e; font-weight: bold; font-size: 13px;">
+                        🧮 Position Sizing
+                        <span class="sniper-tt-text" style="width: 320px; z-index: 1000; bottom: 150%;">
+                            <strong style="color: #4da6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Gestão de Risco Matemática</strong>
+                            Calcula a exposição exata para o teu Spot ou Derivativos. Previne a liquidação limitando a perda matemática ao risco inserido se o pavio atingir o teu Stop Loss.
+                        </span>
+                    </span>
+                    <input type="number" id="calc-banca" placeholder="Banca Total (€/$)" class="input-moderno" style="max-width: 140px; padding: 8px; font-size: 13px;">
+                    <div style="display: flex; align-items: center; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; overflow: hidden; padding-left: 12px;">
+                        <span style="color: #8b949e; font-size: 13px; white-space: nowrap; font-weight: bold;">Risco:</span>
+                        <input type="number" id="calc-risco" value="1" step="0.1" style="background: transparent; border: none; color: #c9d1d9; padding: 8px; font-size: 14px; width: 45px; text-align: center; outline: none; font-weight: bold;">
+                        <span style="color: #8b949e; font-size: 13px; padding-right: 12px; font-weight: bold;">%</span>
+                    </div>
+                    <button onclick="calcularLotesSniper(${dados.resistencias[0]}, ${dados.suportes[0]}, ${dados.bull_plan.stop}, ${dados.bear_plan.stop})" class="btn-moderno btn-roxo" style="padding: 8px 15px; font-size: 12px;">Calcular Exposição</button>
+                    <div id="calc-resultado" style="width: 100%; margin-top: 10px; display: none; gap: 20px;"></div>
+                </div>
+                
+                <div style="display: flex; gap: 20px; position: relative; z-index: 51;">
+                    <div style="flex: 1; background: #eafaf1; border: 1px solid #c3e6cb; border-radius: 6px; padding: 15px; display: flex; flex-direction: column;">
+                        <h4 style="margin-top: 0; color: #2b542c; font-size: 16px; margin-bottom: 15px;">📈 Bull Plan</h4>
+                        <div style="font-size: 13px; line-height: 1.8; color: #121212; flex-grow: 1;">
+                            <span style="color: #d9534f; font-weight: 900;">🎯 PT</span> ${bull_pts}<br>
+                            <span style="color: #0275d8; font-weight: 900;">🛡️ Stop</span> Below ${dados.bull_plan.stop}<br>
+                            <span class="sniper-tt">
+                                ⚖️ <strong style="color: ${cor_rr_bull};">R:R ${dados.bull_plan.rr}</strong>
+                                <span class="sniper-tt-text" style="width: 250px;">
+                                    Se o rácio for verde, a entrada compensa o risco de volatilidade cripto.
+                                </span>
+                            </span>
+                        </div>
+                        <div style="margin-top: 15px; font-size: 12px; color: #3c763d; background: #dff0d8; padding: 10px; border-radius: 4px; line-height: 1.5;">
+                            ⚡ <strong>Confirmation requires:</strong> ${dados.bull_plan.entrada} com expansão de volume no fecho da vela.
+                        </div>
+                    </div>
+
+                    <div style="flex: 1; background: #fdf2f2; border: 1px solid #f5c6cb; border-radius: 6px; padding: 15px; display: flex; flex-direction: column;">
+                        <h4 style="margin-top: 0; color: #843534; font-size: 16px; margin-bottom: 15px;">📉 Bear Plan</h4>
+                        <div style="font-size: 13px; line-height: 1.8; color: #121212; flex-grow: 1;">
+                            <span style="color: #d9534f; font-weight: 900;">🎯 PT</span> ${bear_pts}<br>
+                            <span style="color: #0275d8; font-weight: 900;">🛡️ Stop</span> Above ${dados.bear_plan.stop}<br>
+                            <span class="sniper-tt">
+                                ⚖️ <strong style="color: ${cor_rr_bear};">R:R ${dados.bear_plan.rr}</strong>
+                                <span class="sniper-tt-text" style="width: 250px;">
+                                    No curto prazo, a liquidação dos Longs suporta alvos mais ambiciosos no Bear Plan.
+                                </span>
+                            </span>
+                        </div>
+                        <div style="margin-top: 15px; font-size: 12px; color: #a94442; background: #f2dede; padding: 10px; border-radius: 4px; line-height: 1.5;">
+                            ⚡ <strong>Confirmation requires:</strong> ${dados.bear_plan.entrada} com aceleração de quebra de suporte.
+                        </div>
+                    </div>
+                </div> 
+                
+                <div style="margin-top: 30px; display: flex; justify-content: center; align-items: center; gap: 15px; position: relative; z-index: 51; flex-wrap: wrap;">
+                    <span class="dica-edu" style="cursor: help; background: #1c1e24; border: 1px solid #30363d; padding: 10px; border-radius: 6px; display: flex; align-items: center; justify-content: center;">
+                        ℹ️ <span style="margin-left: 5px; font-size: 12px; color: #8b949e; font-weight: bold;">Lógica</span>
+                        <span class="dica-texto" style="width: 360px; bottom: 150%; z-index: 1000; text-transform: none; text-align: left; font-weight: normal; font-family: 'Segoe UI', sans-serif;">
+                            <strong style="color: #58a6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">📈 Trend Following (EMA 20)</strong>
+                            O clássico seguidor de tendência institucional. Funciona mal em mercados laterais, mas gera lucros massivos em Bull Markets.<br>
+                            <strong style="color: #f28b24; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px; margin-top: 10px;">🩸 Mean Reversion (RSI < 30)</strong>
+                            Tática de guerrilha para apanhar facas a cair. O objetivo não é casar com a ação, mas roubar um ressalto de curto prazo originado por <i>Short Covering</i>.<br>
+                            <strong style="color: #b388ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px; margin-top: 10px;">🌋 Bollinger Dip (Caça Fundos)</strong>
+                            Captura a exaustão de volatilidade em quedas agudas e irracionais.<br>
+                        </span>
+                    </span>
+
+                    <select id="select-backtest" class="input-moderno" style="max-width: 250px; background: #1c1e24; border-color: #30363d;">
+                        <option value="trend_ema20">Trend Following (EMA 20)</option>
+                        <option value="reversion_rsi">Mean Reversion (RSI < 30)</option>
+                        <option value="bb_dip">Bollinger Dip (Caça Fundos)</option>
+                    </select>
+                    
+                    <button onclick="executarBacktest('${dados.ticker}')" style="background: #b388ff; color: white; border: 1px solid #3fb950; padding: 10px 24px; border-radius: 6px; font-weight: bold; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s; box-shadow: 0 4px 12px rgba(46, 160, 67, 0.3);">
+                        ⚙️ Executar Backtest 5A
+                    </button>
+                </div>
+                
+                <div id="gaveta-backtest" style="display: none; margin-top: 20px; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 20px; box-shadow: inset 0 0 15px rgba(0,0,0,0.5); position: relative; z-index: 51;">
+                </div>
+            `;
+
+            container.innerHTML = html;
             document.getElementById('loading').style.display = 'none';
             container.style.display = 'block';
-            if (dados.dados_grafico) desenharGraficoPlotly(dados.dados_grafico);
+
+            if (dados.dados_grafico && dados.dados_grafico.datas.length > 0) {
+                desenharGraficoPlotly(dados.dados_grafico, 'plotly-sniper-cripto');
+            }
 
         } catch (erro) {
-            alert("A API Cripto colapsou ou o ticker não existe.");
+            alert("Erro Fatal Detetado: " + erro.message);
             document.getElementById('loading').style.display = 'none';
         }
     }
