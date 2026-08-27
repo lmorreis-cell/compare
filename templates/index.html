@@ -3154,7 +3154,8 @@
             let pnlLatentePct = capitalExpostoEUR > 0 ? (pnlLatenteEUR / capitalExpostoEUR) * 100 : 0;
             
             let corPnl = pnlLatenteEUR >= 0 ? '#5cb85c' : '#d9534f';
-            let sinalPnl = pnlLatenteEUR >= 0 ? '+' : '';
+            
+            let sinalPnl = pnlLatenteEUR >= 0 ? '+' : '-';
 
             // Renderização estilo "Home Broker"
             let qtdFormatada = parseFloat(lote.qtdRestante.toFixed(4)); // Limpa zeros inúteis
