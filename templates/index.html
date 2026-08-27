@@ -1559,7 +1559,8 @@
                         dados.waterfall_data.net_income
                     ],
                     connector: { line: { color: "#30363d", width: 1 } },
-                    // Substituímos as cores genéricas por um mapeamento exato barra a barra
+                    cliponaxis: false, // Permite que o texto transborde sem ser cortado
+                    // Mapeamento milimétrico das 5 cores exatas
                     marker: {
                         color: [
                             "#58a6ff", // 1. Revenue (Azul)
@@ -1572,7 +1573,7 @@
                 }];
 
                 var w_layout = {
-                    margin: { l: 40, r: 20, t: 35, b: 30 }, // <-- Aumentei o 't' (top) para 35 para dar espaço ao número
+                    margin: { l: 40, r: 20, t: 65, b: 30 }, // Subimos o teto (t) para 65 pixéis para caber o número!
                     paper_bgcolor: 'rgba(0,0,0,0)',
                     plot_bgcolor: 'rgba(0,0,0,0)',
                     font: { color: '#8b949e', size: 11, family: 'Segoe UI' },
@@ -1580,9 +1581,10 @@
                     yaxis: { showgrid: true, gridcolor: '#30363d', zeroline: true, zerolinecolor: '#8b949e' },
                     showlegend: false
                 };
+
                 Plotly.newPlot('plotly-waterfall', w_data, w_layout, {responsive: true, displayModeBar: false});
             }
-
+            
         } catch (erro) {
             alert("Erro Fatal Detetado: " + erro.message);
             document.getElementById('loading').style.display = 'none';
