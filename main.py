@@ -1354,6 +1354,69 @@ def api_sniper(ticker, timeframe):
         rr_bear = (suportes[0] - bear_pt1) / risco_bear if risco_bear > 0 else 0
 
         tendencia = "Alta" if ema_9 > ema_20 else "Baixa"
+
+        # ==========================================
+        # MOTOR DO RADAR FUNDAMENTAL (SIMPLY WALL ST STYLE)
+        # ==========================================
+        radar_scores = [0, 0, 0, 0, 0] # Value, Growth, Profitability, Health, Dividend
+        checklist = []
+        score_total = 0
+        
+        try:
+            # 1. VALUE (Avaliação)
+            if pe_ratio > 0 and pe_ratio < 15: radar_scores[0] = 5
+            elif pe_ratio >= 15 and pe_ratio < 30: radar_scores[0] = 3
+            elif pe_ratio >= 30: radar_scores[0] = 1
+            
+            passou_pe = pe_ratio > 0 and pe_ratio < 25
+            checklist.append({"texto": "P/E Ratio abaixo de 25x (Preço Justo)", "passou": passou_pe})
+            if passou_pe: score_total += 1
+
+            # 2. GROWTH (Crescimento via PEG ou Upside)
+            if peg_ratio > 0 and peg_ratio < 1.0: radar_scores[1] = 5
+            elif peg_ratio >= 1.0 and peg_ratio <= 2.0: radar_scores[1] = 3
+            else: radar_scores[1] = 1
+            
+            passou_crescimento = peg_ratio > 0 and peg_ratio < 1.5
+            checklist.append({"texto": "Crescimento de Lucros justifica o Múltiplo (PEG < 1.5)", "passou": passou_crescimento})
+            if passou_crescimento: score_total += 1
+
+            # 3. PROFITABILITY (Rentabilidade via Net Margin)
+            nm_valor = info.get('profitMargins', 0) * 100
+            if nm_valor > 20: radar_scores[2] = 5
+            elif nm_valor > 10: radar_scores[2] = 3
+            elif nm_valor > 0: radar_scores[2] = 2
+            else: radar_scores[2] = 0
+            
+            passou_margem = nm_valor > 10
+            checklist.append({"texto": "Margem Líquida Saudável (> 10%)", "passou": passou_margem})
+            if passou_margem: score_total += 1
+
+            # 4. HEALTH (Saúde via Dívida)
+            de_valor = info.get('debtToEquity', 999)
+            if de_valor < 50: radar_scores[3] = 5
+            elif de_valor < 100: radar_scores[3] = 3
+            elif de_valor < 200: radar_scores[3] = 1
+            else: radar_scores[3] = 0
+            
+            passou_divida = de_valor < 100
+            checklist.append({"texto": "Dívida Controlada (Debt/Equity < 100%)", "passou": passou_divida})
+            if passou_divida: score_total += 1
+
+            # 5. DIVIDENDOS
+            div_yield = info.get('dividendYield', 0)
+            if div_yield is not None:
+                div_yield = div_yield * 100
+                if div_yield > 4.0: radar_scores[4] = 5
+                elif div_yield > 2.0: radar_scores[4] = 3
+                elif div_yield > 0: radar_scores[4] = 1
+            
+            passou_wallst = float(target_upside) > 5 if target_consensus > 0 else False
+            checklist.append({"texto": "Preço abaixo do Alvo de Wall Street", "passou": passou_wallst})
+            if passou_wallst: score_total += 1
+            
+        except Exception as e:
+            print(f"Aviso - Falha ao calcular Radar Fundamental: {e}")
         
         # --- RESTAURO DAS NARRATIVAS (NLG) EDUCATIVAS ---
         if vol_atual > vol_medio * 1.5:
@@ -1436,6 +1499,10 @@ def api_sniper(ticker, timeframe):
             "cor_3m": "#5cb85c" if perf_3m > 0 else "#d9534f",
             
             "dados_grafico": dados_grafico,
+            
+            "radar_scores": radar_scores,
+            "checklist_fund": checklist,
+            "score_fund_total": score_total,
             
             "suportes": [f"{s:.2f}" for s in suportes],
             "resistencias": [f"{r:.2f}" for r in resistencias],
