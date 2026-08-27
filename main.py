@@ -1412,7 +1412,8 @@ def api_sniper(ticker, timeframe):
                 elif div_yield > 0: radar_scores[4] = 1
             
             passou_wallst = float(target_upside) > 5 if target_consensus > 0 else False
-            checklist.append({"texto": f"Preço abaixo do Alvo Wall St. | Upside: {target_upside}%", "passou": passou_wallst})
+            # Adicionado o :.1f para formatar o número com 1 casa decimal (ex: 33.9%)
+            checklist.append({"texto": f"Preço abaixo do Alvo Wall St. | Upside: {target_upside:.1f}%", "passou": passou_wallst})
             if passou_wallst: score_total += 1
             
         except Exception as e:
