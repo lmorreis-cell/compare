@@ -38,8 +38,10 @@ if os.path.exists(ARQUIVO_ACESSOS):
 @app.before_request
 def rastrear_atividade():
     """Atualiza a presença. Escreve no disco apenas de 60 em 60s para não estrangular o servidor."""
-    if 'discord_user' in session: 
-        nome = session['discord_user'].get('username', 'Membro')
+    nome = session.get('username')
+    
+    # Só regista se o utilizador já tiver um nome na sessão (já fez login)
+    if nome: 
         agora = datetime.now()
         
         ultima_vez = utilizadores_ativos.get(nome)
@@ -49,7 +51,6 @@ def rastrear_atividade():
         if ultima_vez is None or (agora - ultima_vez).total_seconds() > 60:
             try:
                 with open(ARQUIVO_ACESSOS, 'w') as f:
-                    # Converte a data para texto (ISO) para o JSON conseguir gravar
                     dados_serializaveis = {u: d.isoformat() for u, d in utilizadores_ativos.items()}
                     json.dump(dados_serializaveis, f)
             except Exception:
@@ -224,8 +225,11 @@ def callback_discord():
     # 4. Grava a "pulseira de acesso" no browser
     session['nivel_acesso'] = nivel
 
-    # NOVO: Grava também o teu ID de utilizador para te reconhecer como Admin
-    session['user_id'] = r_membro.json().get('user', {}).get('id')
+    # NOVO: Extrai e grava os dados reais do utilizador
+    dados_user = r_membro.json().get('user', {})
+    session['user_id'] = dados_user.get('id')
+    # Tenta apanhar o nome global, se não tiver, apanha o username normal
+    session['username'] = dados_user.get('global_name') or dados_user.get('username') or 'Membro'
     
     return redirect(url_for('dashboard_central'))
 
