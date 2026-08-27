@@ -4,6 +4,7 @@ import requests
 import glob
 import yfinance as yf
 import pandas as pd
+from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from functools import wraps
 from flask_caching import Cache
@@ -12,6 +13,42 @@ from flask import Flask, render_template, jsonify, request, Response, send_file,
 load_dotenv()
 
 app = Flask(__name__)
+
+# ==========================================
+# MOTOR DE PRESENÇAS (ADMIN RADAR)
+# ==========================================
+utilizadores_ativos = {}
+
+@app.before_request
+def rastrear_atividade():
+    """Sempre que qualquer utilizador faz um clique/pedido, atualiza o relógio dele."""
+    if 'discord_user' in session: 
+        nome = session['discord_user'].get('username', 'Membro')
+        utilizadores_ativos[nome] = datetime.now()
+
+@app.route('/api/admin/online')
+def get_online_users():
+    """Devolve a lista de quem está online (Apenas para Admin)"""
+    if not session.get('is_admin'):
+        return jsonify({"erro": "Acesso negado. Apenas Admin."}), 403
+        
+    agora = datetime.now()
+    limite_inatividade = agora - timedelta(minutes=5) 
+    
+    lista_online = []
+    
+    for utilizador, ultima_vez in list(utilizadores_ativos.items()):
+        if ultima_vez > limite_inatividade:
+            lista_online.append(utilizador)
+        else:
+            del utilizadores_ativos[utilizador] 
+            
+    return jsonify({
+        "total": len(lista_online),
+        "users": lista_online
+    })
+# ==========================================
+
 
 # ==========================================
 # MOTOR DE CACHE (PROTEÇÃO DE INFRAESTRUTURA)
