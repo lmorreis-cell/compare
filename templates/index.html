@@ -743,9 +743,8 @@
                             <tr>
                                 <th style="padding: 10px; border-bottom: 1px solid #30363d;">Ativo</th>
                                 <th style="padding: 10px; border-bottom: 1px solid #30363d; text-align: right;">Custo Base</th>
-                                <th style="padding: 10px; border-bottom: 1px solid #30363d; text-align: right;">Cotação Live</th>
-                                <th style="padding: 10px; border-bottom: 1px solid #30363d; text-align: right;">PnL Latente</th>
-                                <th style="padding: 10px; border-bottom: 1px solid #30363d; text-align: center;">Ação</th>
+                                <th style="padding: 10px; border-bottom: 1px solid #30363d; text-align: right;">Cotação & PnL</th>
+                                <th style="padding: 10px; border-bottom: 1px solid #30363d; text-align: center; width: 70px;">Ação</th>
                             </tr>
                         </thead>
                         <tbody id="tbody-abertas"></tbody>
@@ -3166,18 +3165,18 @@
                         <strong style="font-size: 14px; display: block; color: #fff;">${lote.ticker}</strong> 
                         <span style="font-size: 11px; color: #8b949e;">${qtdFormatada} @ ${simbolo}${lote.precoCompraOriginal.toFixed(2)} • <span style="color: #e3b341;">[${nomeCarteira}]</span></span>
                     </td>
-                    <td style="padding: 12px; color: #8b949e; text-align: right; font-weight: bold;">
+                    <td style="padding: 12px; color: #8b949e; text-align: right; font-weight: bold; vertical-align: middle;">
                         €${capitalExpostoEUR.toFixed(2)}
                     </td>
-                    <td style="padding: 12px; color: #f0f2f5; text-align: right; font-family: monospace; font-size: 13px;">
-                        ${simbolo}${precoMercadoOriginal.toFixed(2)}
+                    <td style="padding: 12px; text-align: right; vertical-align: middle;">
+                        <div style="color: #f0f2f5; font-family: monospace; font-size: 15px; font-weight: bold; margin-bottom: 3px;">
+                            ${simbolo}${precoMercadoOriginal.toFixed(2)}
+                        </div>
+                        <div style="color: ${corPnl}; font-size: 12px; font-weight: bold;">
+                            ${sinalPnl}€${Math.abs(pnlLatenteEUR).toFixed(2)} (${sinalPnl}${Math.abs(pnlLatentePct).toFixed(2)}%)
+                        </div>
                     </td>
-                    <td style="padding: 12px; text-align: right;">
-                        <div style="color: ${corPnl}; font-weight: 900; font-size: 13px;">${sinalPnl}€${pnlLatenteEUR.toFixed(2)}</div>
-                        <div style="color: ${corPnl}; font-size: 11px; font-weight: bold;">${sinalPnl}${pnlLatentePct.toFixed(2)}%</div>
-                    </td>
-                    <!-- INJEÇÃO DO TRINCO VISUAL (white-space) -->
-                    <td style="padding: 12px; text-align: center; white-space: nowrap; min-width: 75px;">
+                    <td style="padding: 12px; text-align: center; white-space: nowrap; width: 70px; vertical-align: middle;">
                         <button onclick="editarEventoBruto(${lote.idOrigem})" style="background: transparent; border: none; cursor: pointer; font-size: 14px; margin-right: 5px;" title="Editar no Ledger">✏️</button>
                         <button onclick="apagarEventoBruto(${lote.idOrigem})" style="background: transparent; border: none; cursor: pointer; font-size: 14px;" title="Apagar do Ledger">🗑️</button>
                     </td>
