@@ -1666,14 +1666,55 @@
                 </div>
             `;
 
-        container.innerHTML = html;
+        // 1. PRIMEIRO: Cola o HTML no ecrã (cria as "telas" em branco)
+            container.innerHTML = html;
             document.getElementById('loading').style.display = 'none';
-            
             container.style.display = 'block';
 
-            // NOVO: Renderiza o gráfico interativo se existirem dados
+            // 2. SEGUNDO: Desenha o Gráfico Principal (Preço e Volume)
             if (dados.dados_grafico && dados.dados_grafico.datas.length > 0) {
                 desenharGraficoPlotly(dados.dados_grafico);
+            }
+
+            // 3. TERCEIRO: Desenha o Gráfico Waterfall (Se a empresa tiver receitas)
+            if (dados.waterfall_data && Object.keys(dados.waterfall_data).length > 0) {
+                var w_data = [{
+                    type: "waterfall",
+                    orientation: "v",
+                    measure: ["absolute", "relative", "total", "relative", "total"],
+                    x: ["Revenue", "Cost of Revenue", "Gross Profit", "Other Expenses", "Earnings"],
+                    textposition: "outside",
+                    text: [
+                        dados.waterfall_data.fmt_revenue,
+                        dados.waterfall_data.fmt_corev,
+                        dados.waterfall_data.fmt_gross,
+                        dados.waterfall_data.fmt_other,
+                        dados.waterfall_data.fmt_net
+                    ],
+                    y: [
+                        dados.waterfall_data.revenue,
+                        dados.waterfall_data.cost_of_revenue,
+                        dados.waterfall_data.gross_profit,
+                        dados.waterfall_data.other_expenses,
+                        dados.waterfall_data.net_income
+                    ],
+                    connector: { line: { color: "#30363d", width: 1 } },
+                    increasing: { marker: { color: "#58a6ff" } }, // Azul para Revenue (Entrada)
+                    decreasing: { marker: { color: "#d9534f" } }, // Vermelho para Despesas (Saídas)
+                    totals: { marker: { color: "#2ea043" } }      // Verde para Lucros (Totais)
+                }];
+
+                var w_layout = {
+                    margin: { l: 40, r: 20, t: 20, b: 30 },
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    plot_bgcolor: 'rgba(0,0,0,0)',
+                    font: { color: '#8b949e', size: 11, family: 'Segoe UI' },
+                    xaxis: { showgrid: false },
+                    yaxis: { showgrid: true, gridcolor: '#30363d', zeroline: true, zerolinecolor: '#8b949e' },
+                    showlegend: false
+                };
+
+                Plotly.newPlot('plotly-waterfall', w_data, w_layout, {responsive: true, displayModeBar: false});
             }
 
         } catch (erro) {
