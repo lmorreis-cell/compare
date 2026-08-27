@@ -3158,11 +3158,13 @@
             let sinalPnl = pnlLatenteEUR >= 0 ? '+' : '';
 
             // Renderização estilo "Home Broker"
+            let qtdFormatada = parseFloat(lote.qtdRestante.toFixed(4)); // Limpa zeros inúteis
+            
             tbodyAbertas.innerHTML += `
                 <tr style="border-bottom: 1px solid #30363d; transition: background 0.2s;" onmouseover="this.style.background='#161b22'" onmouseout="this.style.background='transparent'">
                     <td style="padding: 12px; color: #c9d1d9;">
                         <strong style="font-size: 14px; display: block; color: #fff;">${lote.ticker}</strong> 
-                        <span style="font-size: 11px; color: #8b949e;">${lote.qtdRestante.toFixed(4)} @ ${simbolo}${lote.precoCompraOriginal.toFixed(2)} • <span style="color: #e3b341;">[${nomeCarteira}]</span></span>
+                        <span style="font-size: 11px; color: #8b949e;">${qtdFormatada} @ ${simbolo}${lote.precoCompraOriginal.toFixed(2)} • <span style="color: #e3b341;">[${nomeCarteira}]</span></span>
                     </td>
                     <td style="padding: 12px; color: #8b949e; text-align: right; font-weight: bold;">
                         €${capitalExpostoEUR.toFixed(2)}
@@ -3174,7 +3176,8 @@
                         <div style="color: ${corPnl}; font-weight: 900; font-size: 13px;">${sinalPnl}€${pnlLatenteEUR.toFixed(2)}</div>
                         <div style="color: ${corPnl}; font-size: 11px; font-weight: bold;">${sinalPnl}${pnlLatentePct.toFixed(2)}%</div>
                     </td>
-                    <td style="padding: 12px; text-align: center;">
+                    <!-- INJEÇÃO DO TRINCO VISUAL (white-space) -->
+                    <td style="padding: 12px; text-align: center; white-space: nowrap; min-width: 75px;">
                         <button onclick="editarEventoBruto(${lote.idOrigem})" style="background: transparent; border: none; cursor: pointer; font-size: 14px; margin-right: 5px;" title="Editar no Ledger">✏️</button>
                         <button onclick="apagarEventoBruto(${lote.idOrigem})" style="background: transparent; border: none; cursor: pointer; font-size: 14px;" title="Apagar do Ledger">🗑️</button>
                     </td>
@@ -3198,15 +3201,19 @@
             let nomeCarteira = trade.carteira || "Geral";
             carteirasUnicas.add(nomeCarteira);
             
+            let qtdFormatadaFechada = parseFloat(trade.qtdVendida.toFixed(4)); // Limpa zeros inúteis
+            
             tbodyFechadas.innerHTML += `
                 <tr style="border-bottom: 1px solid #30363d;">
                     <td style="padding: 12px; color: #c9d1d9;">
                         <strong>${trade.ticker}</strong> 
                         <span style="font-size: 10px; color: #8b949e; display: block;">${trade.data} • <span style="color: #e3b341;">[${nomeCarteira}]</span></span>
                     </td>
-                    <td style="padding: 12px; color: #8b949e; font-weight: bold;">${trade.qtdVendida.toFixed(4)}</td>
+                    <td style="padding: 12px; color: #8b949e; font-weight: bold;">${qtdFormatadaFechada}</td>
                     <td style="padding: 12px; color: ${corPnl}; font-weight: 900;">${sinal}€${trade.pnlEUR.toFixed(2)}</td>
-                    <td style="padding: 12px; text-align: center;">
+                    
+                    <!-- INJEÇÃO DO TRINCO VISUAL (white-space) -->
+                    <td style="padding: 12px; text-align: center; white-space: nowrap; min-width: 75px;">
                         <button onclick="editarEventoBruto(${trade.idOrigem})" style="background: transparent; border: none; cursor: pointer; font-size: 14px; margin-right: 5px;" title="Editar no Ledger">✏️</button>
                         <button onclick="apagarEventoBruto(${trade.idOrigem})" style="background: transparent; border: none; cursor: pointer; font-size: 14px;" title="Apagar do Ledger">🗑️</button>
                     </td>
