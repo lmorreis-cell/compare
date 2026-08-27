@@ -1282,51 +1282,43 @@ def api_sniper(ticker, timeframe):
             "peg_ratio": round(peg_ratio, 2) if peg_ratio else 0,  
             "pe_min_5y": round(pe_min_5y, 2) if pe_min_5y else 0,
 
-            # --- FMP VARIAVEIS ---
+            # --- FMP VARIAVEIS E METADADOS ---
             "logo_url": logo_url,
             "earnings_warning": earnings_warning,
             "insider_signal": insider_signal,
             "target_consensus": target_consensus,
             "target_upside": f"{target_upside:+.1f}%",
             "news_data": news_data,
-
-            # Adiciona estas variáveis ao pacote JSON existente
             "setor": setor,
             "mkt_cap": mkt_cap,
             "exchange": exchange,
             
-           
-
-            # ---> INJETA ESTAS LINHAS AQUI <---
+            # --- VARIÁVEIS DA CASCATA DE RESULTADOS ---
             "eps_atual": eps_atual,
             "gross_margin": gross_margin,
-            "net_margin_final": net_margin,
+            "net_margin_final": net_margin_final,
             "debt_equity": debt_equity,
             "last_earnings_date": last_earnings_date,
             "next_earnings_date": next_earnings_date,
             "waterfall_data": waterfall_data,
-            # ----------------------------------
             
-            # --- NOVAS VARIÁVEIS A ENVIAR ---
+            # --- RAIO-X GRAVITACIONAL E MOMENTUM ---
             "dist_m50": f"{dist_m50:+.1f}%",
             "cor_m50": "#5cb85c" if dist_m50 > 0 else "#d9534f",
             "dist_m200": f"{dist_m200:+.1f}%",
             "cor_m200": "#5cb85c" if dist_m200 > 0 else "#d9534f",
             "dist_max": f"{dist_max:+.1f}%",
-            # --------------------------------
-                        
-            # --- NOVAS VARIÁVEIS A ENVIAR ---
+            
             "perf_1w": f"{perf_1w:+.1f}%",
             "cor_1w": "#5cb85c" if perf_1w > 0 else "#d9534f",
             "perf_1m": f"{perf_1m:+.1f}%",
             "cor_1m": "#5cb85c" if perf_1m > 0 else "#d9534f",
             "perf_3m": f"{perf_3m:+.1f}%",
             "cor_3m": "#5cb85c" if perf_3m > 0 else "#d9534f",
-            # --------------------------------
-            "dados_grafico": dados_grafico,  # <--- NOVA VARIÁVEL AQUI
             
-            "suportes": [f"{s:.2f}" for s in suportes],
+            "dados_grafico": dados_grafico,
             
+            # --- TRADE PLANS ---
             "suportes": [f"{s:.2f}" for s in suportes],
             "resistencias": [f"{r:.2f}" for r in resistencias],
             "notas": nlg_notes,
@@ -1343,7 +1335,7 @@ def api_sniper(ticker, timeframe):
                 "rr": f"1:{rr_bear:.1f}"
             }
         })
-
+        
     except Exception as e:
         return jsonify({"erro": f"Falha na execução quantitativa: {str(e)}"}), 500
 
