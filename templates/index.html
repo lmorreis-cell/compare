@@ -2934,7 +2934,7 @@
         localStorage.setItem('cofreAbertas', JSON.stringify(cofreAbertas));
         localStorage.setItem('cofreFechadas', JSON.stringify(cofreFechadas));
         atualizarCofre();
-        sinalizarAlertaBackup();
+        
     }
 
     function adicionarTrade() {
@@ -2978,6 +2978,7 @@
         
         // Dispara o recálculo global
         recalcularTudo();
+        sinalizarAlertaBackup();
     }
 
     
@@ -2996,6 +2997,7 @@
             cofreBruto = cofreBruto.filter(ev => ev.id !== idOrigem);
             localStorage.setItem('cofreBruto', JSON.stringify(cofreBruto));
             recalcularTudo();
+            sinalizarAlertaBackup();
         }
     }
 
@@ -3052,6 +3054,7 @@
         
         // Re-executa toda a arquitetura FIFO
         recalcularTudo();
+        sinalizarAlertaBackup();
     }
     
     function editarTradeFechado(id) {
@@ -3628,6 +3631,7 @@
             
             // Dispara o recálculo global
             recalcularTudo();
+            sinalizarAlertaBackup();
 
             let msg = `✅ Importação concluída!\n\n${tradesImportados} transações injetadas no Ledger.`;
             if (erros > 0) msg += `\n⚠️ Houve ${erros} linhas ignoradas (formato incorreto).`;
