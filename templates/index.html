@@ -1559,13 +1559,20 @@
                         dados.waterfall_data.net_income
                     ],
                     connector: { line: { color: "#30363d", width: 1 } },
-                    increasing: { marker: { color: "#58a6ff" } },
-                    decreasing: { marker: { color: "#d9534f" } },
-                    totals: { marker: { color: "#2ea043" } }
+                    // Substituímos as cores genéricas por um mapeamento exato barra a barra
+                    marker: {
+                        color: [
+                            "#58a6ff", // 1. Revenue (Azul)
+                            "#d9534f", // 2. Cost (Vermelho)
+                            "#2ea043", // 3. Gross Profit (Verde)
+                            "#d9534f", // 4. Other Expenses (Vermelho)
+                            "#00ffcc"  // 5. Earnings (Ciano/Néon)
+                        ]
+                    }
                 }];
 
                 var w_layout = {
-                    margin: { l: 40, r: 20, t: 20, b: 30 },
+                    margin: { l: 40, r: 20, t: 35, b: 30 }, // <-- Aumentei o 't' (top) para 35 para dar espaço ao número
                     paper_bgcolor: 'rgba(0,0,0,0)',
                     plot_bgcolor: 'rgba(0,0,0,0)',
                     font: { color: '#8b949e', size: 11, family: 'Segoe UI' },
@@ -1573,7 +1580,6 @@
                     yaxis: { showgrid: true, gridcolor: '#30363d', zeroline: true, zerolinecolor: '#8b949e' },
                     showlegend: false
                 };
-
                 Plotly.newPlot('plotly-waterfall', w_data, w_layout, {responsive: true, displayModeBar: false});
             }
 
