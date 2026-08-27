@@ -791,34 +791,55 @@ def api_universo():
     return jsonify(resultado_final)
 
 @app.route('/api/search/<query>')
-@cache.cached(timeout=3600, key_prefix=lambda: f"search_{request.view_args['query']}")
-def api_search_ticker(query):
-    # Proteção para não fazer pesquisas vazias ou de 1 letra
-    if len(query) < 2:
-        return jsonify([])
-        
-    fmp_key = os.environ.get("FMP_API_KEY")
-    resultados = []
+def api_search(query):
+    import requests
+    from flask import jsonify
     
-    if fmp_key:
-        try:
-            # O endpoint revelado no email do FMP
-            url = f"https://financialmodelingprep.com/stable/search-name?query={query}&apikey={fmp_key}"
-            resp = requests.get(url, timeout=2)
+    try:
+        url = f"https://query2.finance.yahoo.com/v1/finance/search?q={query}&quotesCount=6&newsCount=0"
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+        resp = requests.get(url, headers=headers, timeout=3)
+        data = resp.json()
+        quotes = data.get('quotes', [])
+        
+        resultados = []
+        
+        # ---------------------------------------------------------
+        # NOVA REGRA TÁTICA: FORÇAR BOLSAS EUROPEIAS / PESQUISA EXATA
+        # ---------------------------------------------------------
+        if "." in query:
+            resultados.append({
+                "symbol": query.upper(),
+                "name": "Pesquisa Direta (Seleção Manual)",
+                "exchange": "Forçar Ticker"
+            })
             
-            if resp.status_code == 200:
-                dados = resp.json()
-                # Vamos limitar a 5 resultados para não poluir o ecrã
-                for ativo in dados[:5]:
-                    resultados.append({
-                        "symbol": ativo.get("symbol", ""),
-                        "name": ativo.get("name", ""),
-                        "exchange": ativo.get("exchangeShortName", "")
-                    })
-        except Exception as e:
-            print(f"Erro na pesquisa FMP: {e}")
-            
-    return jsonify(resultados)
+        for q in quotes:
+            # Filtra lixo e mostra apenas Ações, ETFs e Cripto
+            if 'quoteType' in q and q['quoteType'] in ['EQUITY', 'ETF', 'CRYPTOCURRENCY']:
+                simbolo = q.get('symbol', '')
+                nome = q.get('shortname', q.get('longname', 'Desconhecido'))
+                bolsa = q.get('exchDisp', '')
+                
+                resultados.append({
+                    "symbol": simbolo,
+                    "name": nome,
+                    "exchange": bolsa
+                })
+        
+        # Filtro de limpeza para remover tickers duplicados
+        vistos = set()
+        resultados_limpos = []
+        for r in resultados:
+            if r['symbol'] not in vistos:
+                vistos.add(r['symbol'])
+                resultados_limpos.append(r)
+                
+        return jsonify(resultados_limpos[:7])
+        
+    except Exception as e:
+        print(f"Erro na pesquisa preditiva: {e}")
+        return jsonify([])
 
 @app.route('/api/sniper/<ticker>/<timeframe>')
 @cache.cached(timeout=300) 
