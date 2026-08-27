@@ -28,14 +28,13 @@ def rastrear_atividade():
 
 @app.route('/api/admin/online')
 def get_online_users():
-    """Devolve a lista de quem está online (Apenas para Admin)"""
+    """Devolve a lista de quem está online e o histórico recente (Apenas Admin)"""
     import os
+    from datetime import datetime, timedelta
     
-    # 1. Puxa os IDs (O que está no sistema vs O teu ID atual)
     admin_id_env = str(os.environ.get("ADMIN_USER_ID")).strip()
     user_sess = str(session.get('user_id', '')).strip()
     
-    # 2. Faz a mesma verificação blindada que o painel inicial usa
     is_admin = (user_sess == admin_id_env) and (user_sess != "None") and (user_sess != "")
     
     if not is_admin:
@@ -45,18 +44,35 @@ def get_online_users():
     limite_inatividade = agora - timedelta(minutes=5) 
     
     lista_online = []
+    lista_offline = []
     
-    for utilizador, ultima_vez in list(utilizadores_ativos.items()):
+    # Ordena a lista de utilizadores do mais recente para o mais antigo
+    utilizadores_ordenados = sorted(utilizadores_ativos.items(), key=lambda x: x[1], reverse=True)
+    
+    for utilizador, ultima_vez in utilizadores_ordenados:
         if ultima_vez > limite_inatividade:
             lista_online.append(utilizador)
         else:
-            del utilizadores_ativos[utilizador] 
+            # Já não apagamos o utilizador. Calculamos quanto tempo passou!
+            diff = agora - ultima_vez
+            dias = diff.days
+            segundos = diff.seconds
+            horas = segundos // 3600
+            minutos = (segundos % 3600) // 60
+            
+            if dias > 0:
+                tempo_str = f"Há {dias} dia{'s' if dias > 1 else ''}"
+            elif horas > 0:
+                tempo_str = f"Há {horas} hora{'s' if horas > 1 else ''}"
+            else:
+                tempo_str = f"Há {minutos} min"
+                
+            lista_offline.append({"nome": utilizador, "tempo": tempo_str})
             
     return jsonify({
-        "total": len(lista_online),
-        "users": lista_online
+        "online": lista_online,
+        "offline": lista_offline[:100] # Mostramos os 10 últimos para a gaveta não ficar gigante
     })
-# ==========================================
 
 
 # ==========================================
@@ -357,7 +373,7 @@ def dashboard_central():
     # Verifica se os IDs batem certo e ignora se estiverem vazios
     is_admin = (user_sess == admin_env) and (user_sess != "None") and (user_sess != "")
 
-    # Cria a etiqueta visual com Dropdown de Presenças
+    # Cria a etiqueta visual com Dropdown de Presenças e Histórico
     badge_admin = ""
     if is_admin:
         badge_admin = f"""
@@ -367,13 +383,21 @@ def dashboard_central():
                     👑 Admin | {total_visitas} Acessos Globais
                 </button>
                 
-                <!-- A GAVETA SECRETA -->
-                <div id="caixa-online" style="display: none; position: absolute; top: 110%; left: 0; background: #1c1e24; border: 1px solid #30363d; border-radius: 6px; padding: 15px; width: 220px; box-shadow: 0 10px 25px rgba(0,0,0,0.8);">
+                <!-- A GAVETA SECRETA DIVIDIDA -->
+                <div id="caixa-online" style="display: none; position: absolute; top: 110%; left: 0; background: #1c1e24; border: 1px solid #30363d; border-radius: 6px; padding: 15px; width: 250px; box-shadow: 0 10px 25px rgba(0,0,0,0.8);">
+                    
                     <h4 style="margin: 0 0 10px 0; color: #5cb85c; font-size: 12px; border-bottom: 1px solid #30363d; padding-bottom: 8px; text-transform: uppercase;">
                         🟢 Em Tempo Real
                     </h4>
-                    <ul id="lista-online" style="list-style: none; padding: 0; margin: 0; font-size: 13px; color: #c9d1d9; line-height: 1.8;">
+                    <ul id="lista-online" style="list-style: none; padding: 0; margin: 0 0 15px 0; font-size: 13px; color: #c9d1d9; line-height: 1.8;">
                     </ul>
+                    
+                    <h4 style="margin: 0 0 10px 0; color: #8b949e; font-size: 12px; border-bottom: 1px solid #30363d; padding-bottom: 8px; text-transform: uppercase;">
+                        🕒 Últimos Acessos
+                    </h4>
+                    <ul id="lista-offline" style="list-style: none; padding: 0; margin: 0; font-size: 12px; color: #8b949e; line-height: 1.8;">
+                    </ul>
+
                 </div>
             </div>
         </div>
@@ -381,7 +405,8 @@ def dashboard_central():
         <script>
             async function verOnline() {{
                 const caixa = document.getElementById('caixa-online');
-                const lista = document.getElementById('lista-online');
+                const listaOn = document.getElementById('lista-online');
+                const listaOff = document.getElementById('lista-offline');
                 
                 if (caixa.style.display === 'block') {{
                     caixa.style.display = 'none';
@@ -389,7 +414,8 @@ def dashboard_central():
                 }}
                 
                 caixa.style.display = 'block';
-                lista.innerHTML = '<li style="color: #8b949e; font-size: 11px;">A varrer o servidor...</li>';
+                listaOn.innerHTML = '<li style="color: #8b949e; font-size: 11px;">A varrer servidor...</li>';
+                listaOff.innerHTML = '';
                 
                 try {{
                     const resp = await fetch('/api/admin/online');
@@ -397,13 +423,27 @@ def dashboard_central():
                     
                     const dados = await resp.json();
                     
-                    if (dados.users.length === 0) {{
-                        lista.innerHTML = '<li style="color: #8b949e;">Ninguém online.</li>';
+                    // 1. Injeta Pessoal Online
+                    if (dados.online.length === 0) {{
+                        listaOn.innerHTML = '<li style="color: #8b949e;">Ninguém online.</li>';
                     }} else {{
-                        lista.innerHTML = dados.users.map(u => `<li>👤 <strong>${{u}}</strong></li>`).join('');
+                        listaOn.innerHTML = dados.online.map(u => `<li>👤 <strong style="color: #fff;">${{u}}</strong></li>`).join('');
                     }}
+                    
+                    // 2. Injeta Pessoal Offline (Histórico)
+                    if (dados.offline.length === 0) {{
+                        listaOff.innerHTML = '<li>Sem histórico registado.</li>';
+                    }} else {{
+                        listaOff.innerHTML = dados.offline.map(u => `
+                            <li style="display: flex; justify-content: space-between; border-bottom: 1px dashed #30363d; padding: 2px 0;">
+                                <span>👤 ${{u.nome}}</span> 
+                                <span style="font-size: 10px; color: #58a6ff; font-weight: bold;">${{u.tempo}}</span>
+                            </li>
+                        `).join('');
+                    }}
+                    
                 }} catch(e) {{
-                    lista.innerHTML = '<li style="color: #d9534f;">Acesso negado.</li>';
+                    listaOn.innerHTML = '<li style="color: #d9534f;">Acesso negado.</li>';
                 }}
             }}
 
@@ -418,7 +458,7 @@ def dashboard_central():
             }});
         </script>
         """
-
+        
     # 1. AS ETIQUETAS PARA OS ROBÔS DAS REDES SOCIAIS (OPEN GRAPH)
     meta_tags = """
         <meta property="og:title" content="Portal Bolsa - partilha de ideias">
