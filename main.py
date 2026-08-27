@@ -898,6 +898,7 @@ def api_sniper(ticker, timeframe):
         except:
             pass
 
+        # --- NOVA CASCATA E MÉTRICAS FINANCEIRAS ---
         eps_atual, gross_margin, net_margin_final, debt_equity = "N/A", "N/A", "N/A", "N/A"
         waterfall_data = {}
         try:
@@ -960,13 +961,46 @@ def api_sniper(ticker, timeframe):
         except Exception as e:
             print(f"Aviso - Falha ao extrair fundamentos profundos: {e}")
 
+        # --- RESTAURO DO MOTOR AVANÇADO DE VALUATION (HISTÓRICO 5 ANOS) ---
         try:
             pe_ratio = info.get('forwardPE') or info.get('trailingPE') or 0
             peg_ratio = info.get('pegRatio') or 0
-            pe_min_5y = pe_ratio * 0.6 
+            
+            pe_min_5y = 0
+            if pe_ratio > 0:
+                try:
+                    inc = tk.income_stmt
+                    eps_history = None
+                    if not inc.empty:
+                        if 'Diluted EPS' in inc.index:
+                            eps_history = inc.loc['Diluted EPS'].dropna()
+                        elif 'Basic EPS' in inc.index:
+                            eps_history = inc.loc['Basic EPS'].dropna()
+                            
+                    if eps_history is not None and len(eps_history) > 0:
+                        hist = tk.history(period="5y", interval="1mo")
+                        pe_historicos = []
+                        for data_eps, eps_val in eps_history.items():
+                            if eps_val > 0:
+                                ano = data_eps.year
+                                precos_ano = hist[hist.index.year == ano]
+                                if not precos_ano.empty:
+                                    preco_min_ano = precos_ano['Low'].min()
+                                    pe_historicos.append(preco_min_ano / eps_val)
+                        
+                        if pe_historicos:
+                            pe_min_5y = min(pe_historicos)
+                            
+                        if pe_min_5y <= 0 or pe_min_5y > pe_ratio:
+                            pe_min_5y = pe_ratio * 0.6
+                    else:
+                        pe_min_5y = pe_ratio * 0.6
+                except:
+                    pe_min_5y = pe_ratio * 0.6
         except:
             pe_ratio, pe_min_5y, peg_ratio = 0, 0, 0
             
+        # --- EARNINGS ---
         last_earnings_date, next_earnings_date = "N/A", "N/A"
         data_resultados = None
         hoje = datetime.date.today()
@@ -988,6 +1022,23 @@ def api_sniper(ticker, timeframe):
                     last_earnings_date = ed_passadas.index.max().strftime('%b %d, %Y')
         except:
             pass
+
+        # --- RESTAURO DO FALLBACK FMP PARA EARNINGS ---
+        try:
+            if data_resultados is None and fmp_key:
+                url_earn = f"https://financialmodelingprep.com/api/v3/historical/earning_calendar/{ticker}?apikey={fmp_key}"
+                resp_earn = requests.get(url_earn, timeout=5)
+                if resp_earn.status_code == 200:
+                    dados_earn = resp_earn.json()
+                    if isinstance(dados_earn, list):
+                        futuros = [e for e in dados_earn if e.get('date', '') >= hoje.strftime('%Y-%m-%d')]
+                        if futuros:
+                            futuros.sort(key=lambda x: x['date'])
+                            data_resultados = datetime.datetime.strptime(futuros[0]['date'], '%Y-%m-%d').date()
+                            next_earnings_date = data_resultados.strftime('%b %d, %Y')
+        except Exception as e:
+            pass
+        # ----------------------------------------------
 
         earnings_warning = ""
         if data_resultados is not None:
@@ -1113,16 +1164,30 @@ def api_sniper(ticker, timeframe):
         rr_bear = (suportes[0] - bear_pt1) / risco_bear if risco_bear > 0 else 0
 
         tendencia = "Alta" if ema_9 > ema_20 else "Baixa"
-        if vol_atual > vol_medio * 1.5: txt_vol = "<span class='sniper-tt'><strong>🟢 Forte influxo de volume institucional</strong><span class='sniper-tt-text'>Anomalia de Liquidez.</span></span> detetado."
-        elif vol_atual < vol_medio * 0.6: txt_vol = "<span class='sniper-tt'><strong>🔴 Volume anémico.</strong><span class='sniper-tt-text'>Risco de falsos rompimentos.</span></span>"
-        else: txt_vol = "Volume transacionado dentro da normalidade estatística."
+        
+        # --- RESTAURO DAS NARRATIVAS (NLG) EDUCATIVAS ---
+        if vol_atual > vol_medio * 1.5:
+            txt_vol = "<span class='sniper-tt'><strong>🟢 Forte influxo de volume institucional</strong><span class='sniper-tt-text'><strong style='color:#4da6ff; font-size:13px; display:block; border-bottom:1px solid #333; padding-bottom:4px; margin-bottom:5px;'>Anomalia de Liquidez</strong>O volume atual excede em mais de 50% a média móvel das últimas 20 velas. Isto valida categoricamente a direção do preço, pois mãos fracas não conseguem gerar esta amplitude de transações.</span></span> detetado na sessão atual."
+        elif vol_atual < vol_medio * 0.6:
+            txt_vol = "<span class='sniper-tt'><strong>🔴 Volume anémico. Ausência de convicção</strong><span class='sniper-tt-text'><strong style='color:#d9534f; font-size:13px; display:block; border-bottom:1px solid #333; padding-bottom:4px; margin-bottom:5px;'>Aviso de Falso Breakout</strong>O mercado está a mover-se sem participação institucional. Rompimentos de resistência ou quebras de suporte com volume fraco são frequentemente armadilhas de liquidez (bull/bear traps).</span></span> (risco de falsos rompimentos)."
+        else:
+            txt_vol = "Volume transacionado dentro da normalidade estatística."
 
-        if bw_atual < bw_medio * 0.7: txt_bb = " <span class='sniper-tt'><strong>⚡ COMPRESSÃO EXTREMA (Squeeze):</strong><span class='sniper-tt-text'>As Bandas de Bollinger estreitaram. Mercado acumula energia.</span></span>"
-        elif fecho_atual > df['BB_Upper'].iloc[-1]: txt_bb = " O preço perfurou a Banda Superior."
-        elif fecho_atual < df['BB_Lower'].iloc[-1]: txt_bb = " O preço cota abaixo da Banda Inferior."
-        else: txt_bb = " Volatilidade contida nos eixos centrais."
+        if bw_atual < bw_medio * 0.7:
+            txt_bb = " <span class='sniper-tt'><strong>⚡ COMPRESSÃO EXTREMA (Squeeze):</strong><span class='sniper-tt-text'><strong style='color:#f28b24; font-size:13px; display:block; border-bottom:1px solid #333; padding-bottom:4px; margin-bottom:5px;'>Bollinger Squeeze</strong>As Bandas de Bollinger estreitaram drasticamente. O mercado está a acumular energia direcional. A história prova que períodos de letargia aguda antecedem movimentos explosivos iminentes. Prepara os gatilhos.</span></span> As bandas estão a estrangular o preço."
+        elif fecho_atual > df['BB_Upper'].iloc[-1]:
+            txt_bb = " O preço perfurou a Banda de Bollinger superior (Ruptura Estatística). Risco imediato de exaustão compradora."
+        elif fecho_atual < df['BB_Lower'].iloc[-1]:
+            txt_bb = " O preço cota abaixo da Banda de Bollinger inferior. Pressão vendedora anómala instalada."
+        else:
+            txt_bb = " Volatilidade contida nos eixos centrais."
 
-        nlg_notes = f"O ativo negoceia a {fecho_atual:.2f} ({timeframe}). Tendência tática de {tendencia}. Suporte crítico nos {suportes[0]:.2f}.<br><br>{txt_vol}{txt_bb}"
+        nlg_notes = (
+            f"O ativo encontra-se a negociar nos {fecho_atual:.2f} no gráfico de {timeframe}. "
+            f"A tendência tática é de {tendencia} (EMA 9 {'acima' if tendencia == 'Alta' else 'abaixo'} da EMA 20). "
+            f"O nível crítico de defesa algorítmica está nos {suportes[0]:.2f}.<br><br>"
+            f"{txt_vol}{txt_bb}"
+        )
 
         dados_grafico = {}
         try:
@@ -1201,7 +1266,6 @@ def api_sniper(ticker, timeframe):
 
     except Exception as e:
         return jsonify({"erro": f"Falha na execução quantitativa: {str(e)}"}), 500
-
 
 @app.route('/api/screener/<universo>/<estrategia>/<int:lote>')
 def api_screener_paginado(universo, estrategia, lote):
