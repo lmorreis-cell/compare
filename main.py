@@ -1282,7 +1282,8 @@ def api_sniper(ticker, timeframe):
             "setor": setor,
             "mkt_cap": mkt_cap,
             "exchange": exchange,
-            "net_margin": f"{fmp_net_margin:.1f}%" if fmp_net_margin != 0 else "N/A",
+            
+            "net_margin": net_margin,
 
             # ---> INJETA ESTAS LINHAS AQUI <---
             "eps_atual": eps_atual,
