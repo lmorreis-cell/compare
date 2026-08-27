@@ -1677,7 +1677,7 @@
             }
 
         } catch (erro) {
-            alert("Falha de comunicação com o servidor. A API pode estar sobrecarregada.");
+            alert("Erro Fatal Detetado: " + erro.message);
             document.getElementById('loading').style.display = 'none';
         }
     }
