@@ -825,11 +825,14 @@ def api_search_ticker(query):
 def api_sniper(ticker, timeframe):
     import numpy as np
     import yfinance as yf
+    import pandas as pd
+    import datetime
     import matplotlib
-    matplotlib.use('Agg') # Fundamental para não estoirar a RAM do servidor
+    matplotlib.use('Agg')
     import matplotlib.pyplot as plt
     import io
     import base64
+    import math
     
     if timeframe == '1d':
         periodo = "1y"
@@ -840,35 +843,28 @@ def api_sniper(ticker, timeframe):
     else:
         return jsonify({"erro": "Timeframe inválido."}), 400
 
-    # ==========================================================
-    # BARREIRA DE SEGURANÇA BACKEND (BLOQUEIA CRIPTO NAS AÇÕES)
-    # ==========================================================
     if "-" in ticker:
         return jsonify({"erro": "Ativo Inválido! Usa o 'Laboratório de Ativos Digitais' para analisar criptomoedas."}), 400
-    # ==========================================================
 
     try:
-        # Extração limpa e Filtro Anti-NaN europeu
         df = yf.Ticker(ticker).history(period=periodo, interval=intervalo)
         df = df.dropna(subset=['Close', 'High', 'Low'])
         
         if df.empty:
             return jsonify({"erro": "Sem dados para este ativo."}), 404
             
-        # --- 1. COTAÇÃO AO VIVO (Redundância FMP -> YFinance) ---
         fmp_key = os.environ.get("FMP_API_KEY")
         preco_oficial = 0
         
         if fmp_key:
             try:
                 url_quote = f"https://financialmodelingprep.com/stable/quote?symbol={ticker}&apikey={fmp_key}"
-                resp_quote = requests.get(url_quote, timeout=2) # Timeout agressivo para não bloquear o servidor
+                resp_quote = requests.get(url_quote, timeout=2)
                 if resp_quote.status_code == 200 and resp_quote.json():
                     preco_oficial = float(resp_quote.json()[0].get('price', 0))
-            except Exception as e:
-                print(f"Erro Cotação FMP: {e} - A comutar para YFinance.")
+            except:
+                pass
                 
-        # Fallback YFinance se o FMP falhar ou estoirar o limite
         if preco_oficial == 0:
             df_diario = yf.Ticker(ticker).history(period="5d", interval="1d").dropna(subset=['Close'])
             try:
@@ -876,11 +872,8 @@ def api_sniper(ticker, timeframe):
             except:
                 preco_oficial = float(df_diario['Close'].iloc[-1]) if not df_diario.empty else float(df['Close'].iloc[-1])
 
-
-        # --- 2. PERFIL INSTITUCIONAL ENRIQUECIDO (FMP -> YFinance) ---
         logo_url, setor, mkt_cap, exchange = "", "Desconhecido", 0, ""
         
-        # Tentativa 1: FMP (Procurando várias chaves possíveis do JSON)
         if fmp_key:
             try:
                 url_profile = f"https://financialmodelingprep.com/stable/profile?symbol={ticker}&apikey={fmp_key}"
@@ -891,11 +884,9 @@ def api_sniper(ticker, timeframe):
                     setor = p.get('sector', 'Desconhecido')
                     mkt_cap = float(p.get('mktCap', p.get('marketCap', 0)))
                     exchange = p.get('exchangeShortName', p.get('exchange', ''))
-            except Exception as e:
+            except:
                 pass
 
-        # Tentativa 2 (Redundância): YFinance
-        # O objeto tk = yf.Ticker(ticker) já é criado no início da tua função
         try:
             tk = yf.Ticker(ticker)
             if mkt_cap == 0 or mkt_cap is None:
@@ -907,18 +898,12 @@ def api_sniper(ticker, timeframe):
         except:
             pass
 
-
-        # --- 3. INCOME STATEMENT & FINANCIAL METRICS (YFINANCE AVANÇADO) ---
         eps_atual, gross_margin, net_margin_final, debt_equity = "N/A", "N/A", "N/A", "N/A"
         waterfall_data = {}
-        
-        import pandas as pd
-        
         try:
             tk = yf.Ticker(ticker)
             info = tk.info
             
-            # Extração de Métricas Chave
             eps_val = info.get('trailingEps')
             eps_atual = f"{eps_val:.2f}" if eps_val else "N/A"
             
@@ -931,28 +916,24 @@ def api_sniper(ticker, timeframe):
             de_val = info.get('debtToEquity')
             debt_equity = f"{de_val:.2f}%" if de_val else "N/A"
 
-            # Extração para Gráfico Waterfall (Demonstração de Resultados)
             inc_stmt = tk.income_stmt
             if inc_stmt.empty:
-                inc_stmt = tk.financials # Fallback de segurança
+                inc_stmt = tk.financials
                 
             if not inc_stmt.empty:
-                col = inc_stmt.columns[0] # Puxa o ano ou TTM mais recente
+                col = inc_stmt.columns[0] 
                 
-                # Motor de busca flexível (contorna as inconsistências do Yahoo)
                 def safe_get(chaves):
                     for k in chaves:
                         if k in inc_stmt.index and pd.notna(inc_stmt.loc[k, col]):
                             return float(inc_stmt.loc[k, col])
                     return 0.0
 
-                # Procura por múltiplas variações do nome da rubrica
                 rev = safe_get(['Total Revenue', 'Operating Revenue', 'Revenue'])
                 cost = safe_get(['Cost Of Revenue', 'Cost of Revenue', 'Total Operating Expenses'])
                 gross = safe_get(['Gross Profit', 'Total Gross Profit'])
                 net = safe_get(['Net Income', 'Net Income Common Stockholders', 'Net Income From Continuing Operations'])
                 
-                # Correção matemática se o Yahoo esconder a Margem Bruta
                 if gross == 0 and rev > 0: 
                     gross = rev - cost
                 other_exp = gross - net
@@ -966,7 +947,7 @@ def api_sniper(ticker, timeframe):
                 if rev > 0:
                     waterfall_data = {
                         "revenue": rev,
-                        "cost_of_revenue": -abs(cost), # Força negativo para a escada descer
+                        "cost_of_revenue": -abs(cost),
                         "gross_profit": gross,
                         "other_expenses": -abs(other_exp),
                         "net_income": net,
@@ -979,19 +960,15 @@ def api_sniper(ticker, timeframe):
         except Exception as e:
             print(f"Aviso - Falha ao extrair fundamentos profundos: {e}")
 
-        
-        # --- EXTRAÇÃO DO VALUATION RISK ---
         try:
             pe_ratio = info.get('forwardPE') or info.get('trailingPE') or 0
             peg_ratio = info.get('pegRatio') or 0
-            pe_min_5y = pe_ratio * 0.6 # Simplificação para garantir execução se a API falhar
+            pe_min_5y = pe_ratio * 0.6 
         except:
             pe_ratio, pe_min_5y, peg_ratio = 0, 0, 0
             
-        # --- DATAS DE RESULTADOS (EARNINGS) ---
         last_earnings_date, next_earnings_date = "N/A", "N/A"
         data_resultados = None
-        import datetime
         hoje = datetime.date.today()
         
         try:
@@ -1001,17 +978,15 @@ def api_sniper(ticker, timeframe):
                 if ed.index.tz is not None:
                     ed.index = ed.index.tz_localize(None)
                 
-                # Próximos Resultados
                 ed_futuras = ed[ed.index >= hoje_ts]
                 if not ed_futuras.empty:
                     data_resultados = ed_futuras.index.min().date()
                     next_earnings_date = data_resultados.strftime('%b %d, %Y')
                 
-                # Últimos Resultados Reportados
                 ed_passadas = ed[ed.index < hoje_ts]
                 if not ed_passadas.empty:
                     last_earnings_date = ed_passadas.index.max().strftime('%b %d, %Y')
-        except Exception as e:
+        except:
             pass
 
         earnings_warning = ""
@@ -1021,82 +996,56 @@ def api_sniper(ticker, timeframe):
                 earnings_warning = f"⚠️ ALERTA DE RISCO: Apresentação de Resultados em {dias_restantes} dias ({next_earnings_date}). A volatilidade anulará suportes técnicos."
             else:
                 earnings_warning = f"📅 Próximos Resultados: {next_earnings_date} (faltam {dias_restantes} dias)"
-                
-        
-        # Compressão 4H
+
         if timeframe == '4h':
             df = df.resample('4h').agg({
                 'Open': 'first', 'High': 'max', 'Low': 'min', 'Close': 'last', 'Volume': 'sum'
             }).dropna(subset=['Close', 'High', 'Low'])
             
-        # Injeção da Cotação Real
         df.loc[df.index[-1], 'Close'] = preco_oficial
         fecho_atual = preco_oficial
         
-        # --- NOVOS INDICADORES DE MOMENTUM ---
         df['PrevClose'] = df['Close'].shift(1)
         df['TR'] = df[['High', 'PrevClose']].max(axis=1) - df[['Low', 'PrevClose']].min(axis=1)
         atr_14 = float(df['TR'].rolling(window=14).mean().iloc[-1])
         
-        # Cálculo RSI (14)
         delta = df['Close'].diff()
         up = delta.clip(lower=0).ewm(com=13, adjust=False).mean()
         down = (-1 * delta.clip(upper=0)).ewm(com=13, adjust=False).mean()
         rs = up / down
         rsi_atual = float(100 - (100 / (1 + rs)).iloc[-1])
         
-        # ... (mantém o cálculo do ATR e RSI que já lá tens) ...
-        
         ema_9 = float(df['Close'].ewm(span=9, adjust=False).mean().iloc[-1])
         ema_20 = float(df['Close'].ewm(span=20, adjust=False).mean().iloc[-1])
 
-       # --- RAIO-X GRAVITACIONAL ---
         sma_50 = df['Close'].rolling(window=50).mean().iloc[-1]
         sma_200 = df['Close'].rolling(window=200).mean().iloc[-1]
         max_absoluto = df['High'].max()
 
-        import math
         dist_m50 = ((fecho_atual / sma_50) - 1) * 100 if not math.isnan(sma_50) else 0
         dist_m200 = ((fecho_atual / sma_200) - 1) * 100 if not math.isnan(sma_200) else 0
         dist_max = ((fecho_atual / max_absoluto) - 1) * 100 if not math.isnan(max_absoluto) else 0
 
-        # --- NOVA INJEÇÃO: MATRIZ DE MOMENTUM (VELOCIDADE) ---
-        try:
-            perf_1w = ((fecho_atual / float(df['Close'].iloc[-6])) - 1) * 100 if len(df) >= 6 else 0
+        try: perf_1w = ((fecho_atual / float(df['Close'].iloc[-6])) - 1) * 100 if len(df) >= 6 else 0
         except: perf_1w = 0
-        try:
-            perf_1m = ((fecho_atual / float(df['Close'].iloc[-22])) - 1) * 100 if len(df) >= 22 else 0
+        try: perf_1m = ((fecho_atual / float(df['Close'].iloc[-22])) - 1) * 100 if len(df) >= 22 else 0
         except: perf_1m = 0
-        try:
-            perf_3m = ((fecho_atual / float(df['Close'].iloc[-64])) - 1) * 100 if len(df) >= 64 else 0
+        try: perf_3m = ((fecho_atual / float(df['Close'].iloc[-64])) - 1) * 100 if len(df) >= 64 else 0
         except: perf_3m = 0
-        # -----------------------------------------------------
 
-
-        # --- NOVA INJEÇÃO: FMP E EXTRAS YFINANCE (TARGETS, NEWS, INSIDERS) ---
-        
-        earnings_warning = ""
         insider_signal = "Sem dados recentes"
         target_consensus = 0
         target_upside = 0
         news_data = []
         
-        import datetime
-        import pandas as pd
-        hoje = datetime.date.today()
-                
-        # A partir daqui, usamos o objeto 'tk' (yfinance) já criado no topo para evitar bloqueios de APIs externas
         try:
-            # 2. Price Targets de Wall Street (YF)
             target_consensus = info.get('targetMeanPrice', 0)
             if target_consensus > 0 and fecho_atual > 0:
                 target_upside = ((target_consensus / fecho_atual) - 1) * 100
 
-            # 3. Notícias (YF - Correção de Estrutura Dupla)
             raw_news = tk.news
             if raw_news:
                 for n in raw_news[:3]:
-                    # O YF muda o JSON frequentemente. Este código lê os dois formatos conhecidos.
                     if 'content' in n:
                         titulo = n['content'].get('title', 'Notícia Wall Street')
                         link = n['content'].get('canonicalUrl', n['content'].get('clickThroughUrl', '#'))
@@ -1106,91 +1055,36 @@ def api_sniper(ticker, timeframe):
                         link = n.get('link', '#')
                         pub_time = n.get('providerPublishTime', '')
 
-                    # Bloqueador do Erro 1969 (Unix Epoch 0)
                     if isinstance(pub_time, (int, float)) and pub_time > 0:
                         data_pub = datetime.datetime.fromtimestamp(pub_time).strftime('%Y-%m-%d')
                     elif isinstance(pub_time, str) and len(pub_time) >= 10:
                         data_pub = pub_time[:10]
                     else:
                         data_pub = hoje.strftime('%Y-%m-%d')
-
                     news_data.append({"title": titulo, "url": link, "date": data_pub})
 
-            # 4. Insider Trading (YF - Correção de Análise Semântica)
             insiders = tk.insider_transactions
             if insiders is not None and not insiders.empty:
-                # Conversão blindada item a item: garante que mesmo números ou células vazias (NaN/floats) viram texto
                 textos = insiders.head(15).apply(lambda x: ' '.join(str(v) for v in x), axis=1).str.lower()
-                
                 compras = len(textos[textos.str.contains('buy|purchase|award')])
                 vendas = len(textos[textos.str.contains('sell|sale|disposition')])
-                
-                if compras == 0 and vendas == 0:
-                    pass # Mantém o "Sem dados recentes"
-                elif compras >= vendas * 2 and compras > 0:
-                    insider_signal = f"Acumulação Forte ({compras}C / {vendas}V)"
-                elif vendas >= compras * 2 and vendas > 0:
-                    insider_signal = f"Distribuição Forte ({vendas}V / {compras}C)"
-                else:
-                    insider_signal = f"Fluxo Misto ({compras}C / {vendas}V)"
-
-        except Exception as e:
-            print(f"Erro YF Extras para {ticker}: {e}")
-
-        # 5. Puxar Próximos Resultados (Motor Duplo: YF -> FMP)
-        data_resultados = None
-        try:
-            ed = tk.get_earnings_dates(limit=10)
-            if ed is not None and not ed.empty:
-                hoje_ts = pd.Timestamp(hoje)
-                if ed.index.tz is not None:
-                    ed.index = ed.index.tz_localize(None)
-                ed_futuras = ed[ed.index >= hoje_ts]
-                if not ed_futuras.empty:
-                    data_resultados = ed_futuras.index.min().date()
-        except Exception as e:
+                if compras >= vendas * 2 and compras > 0: insider_signal = f"Acumulação Forte ({compras}C / {vendas}V)"
+                elif vendas >= compras * 2 and vendas > 0: insider_signal = f"Distribuição Forte ({vendas}V / {compras}C)"
+                elif compras > 0 or vendas > 0: insider_signal = f"Fluxo Misto ({compras}C / {vendas}V)"
+        except:
             pass
 
-        try:
-            if data_resultados is None and fmp_key:
-                url_earn = f"https://financialmodelingprep.com/api/v3/historical/earning_calendar/{ticker}?apikey={fmp_key}"
-                resp_earn = requests.get(url_earn, timeout=5)
-                if resp_earn.status_code == 200:
-                    dados_earn = resp_earn.json()
-                    if isinstance(dados_earn, list):
-                        futuros = [e for e in dados_earn if e.get('date', '') >= hoje.strftime('%Y-%m-%d')]
-                        if futuros:
-                            futuros.sort(key=lambda x: x['date'])
-                            data_resultados = datetime.datetime.strptime(futuros[0]['date'], '%Y-%m-%d').date()
-        except Exception as e:
-            pass
-
-        # Construção do Motor de Alerta de Volatilidade
-        if data_resultados is not None:
-            dias_restantes = (data_resultados - hoje).days
-            prox_data_str = data_resultados.strftime('%Y-%m-%d')
-            if dias_restantes <= 7:
-                earnings_warning = f"⚠️ ALERTA DE RISCO: Apresentação de Resultados em {dias_restantes} dias ({prox_data_str}). A volatilidade anulará suportes técnicos."
-            else:
-                earnings_warning = f"📅 Próximos Resultados: {prox_data_str} (faltam {dias_restantes} dias)"
-        # -----------------------------------------------------
-     
-        
-        # --- 1. MATEMÁTICA DE COMPRESSÃO (BOLLINGER BANDS) E VOLUME ---
         df['SMA_20'] = df['Close'].rolling(window=20).mean()
         df['STD_20'] = df['Close'].rolling(window=20).std()
         df['BB_Upper'] = df['SMA_20'] + (df['STD_20'] * 2)
         df['BB_Lower'] = df['SMA_20'] - (df['STD_20'] * 2)
-        # O "Band Width" mede a distância percentual entre as bandas
         df['Band_Width'] = (df['BB_Upper'] - df['BB_Lower']) / df['SMA_20']
         
         bw_atual = float(df['Band_Width'].iloc[-1])
         bw_medio = float(df['Band_Width'].tail(50).mean())
-        
         vol_atual = float(df['Volume'].iloc[-1])
         vol_medio = float(df['Volume'].tail(20).mean())
 
-        # --- 2. ALGORITMO DE SUPORTES E RESISTÊNCIAS (Auto-Leveling) ---
         highs = df['High'].rolling(window=10, center=True).max().dropna().unique()
         lows = df['Low'].rolling(window=10, center=True).min().dropna().unique()
         todos_niveis = sorted(list(set(highs).union(set(lows))))
@@ -1206,72 +1100,45 @@ def api_sniper(ticker, timeframe):
         if not suportes: suportes = [fecho_atual - atr_14, fecho_atual - (atr_14*2)]
         if not resistencias: resistencias = [fecho_atual + atr_14, fecho_atual + (atr_14*2)]
 
-        # --- 3. TRADE PLANS & MATEMÁTICA R:R ---
         bull_pt1 = fecho_atual + (1.5 * atr_14)
         bull_pt2 = fecho_atual + (3.0 * atr_14)
         bull_stop = fecho_atual - (1.0 * atr_14)
-        
         bear_pt1 = fecho_atual - (1.5 * atr_14)
         bear_pt2 = fecho_atual - (3.0 * atr_14)
         bear_stop = fecho_atual + (1.0 * atr_14)
 
         risco_bull = resistencias[0] - bull_stop
-        recompensa_bull = bull_pt1 - resistencias[0]
-        rr_bull = (recompensa_bull / risco_bull) if risco_bull > 0 else 0
-
+        rr_bull = (bull_pt1 - resistencias[0]) / risco_bull if risco_bull > 0 else 0
         risco_bear = bear_stop - suportes[0]
-        recompensa_bear = suportes[0] - bear_pt1
-        rr_bear = (recompensa_bear / risco_bear) if risco_bear > 0 else 0
+        rr_bear = (suportes[0] - bear_pt1) / risco_bear if risco_bear > 0 else 0
 
-        # --- 4. MOTOR NLG (NARRATIVA COMPORTAMENTAL COM TOOLTIPS) ---
         tendencia = "Alta" if ema_9 > ema_20 else "Baixa"
-        
-        # Auditoria de Volume
-        if vol_atual > vol_medio * 1.5:
-            txt_vol = "<span class='sniper-tt'><strong>🟢 Forte influxo de volume institucional</strong><span class='sniper-tt-text'><strong style='color:#4da6ff; font-size:13px; display:block; border-bottom:1px solid #333; padding-bottom:4px; margin-bottom:5px;'>Anomalia de Liquidez</strong>O volume atual excede em mais de 50% a média móvel das últimas 20 velas. Isto valida categoricamente a direção do preço, pois mãos fracas não conseguem gerar esta amplitude de transações.</span></span> detetado na sessão atual."
-        elif vol_atual < vol_medio * 0.6:
-            txt_vol = "<span class='sniper-tt'><strong>🔴 Volume anémico. Ausência de convicção</strong><span class='sniper-tt-text'><strong style='color:#d9534f; font-size:13px; display:block; border-bottom:1px solid #333; padding-bottom:4px; margin-bottom:5px;'>Aviso de Falso Breakout</strong>O mercado está a mover-se sem participação institucional. Rompimentos de resistência ou quebras de suporte com volume fraco são frequentemente armadilhas de liquidez (bull/bear traps).</span></span> (risco de falsos rompimentos)."
-        else:
-            txt_vol = "Volume transacionado dentro da normalidade estatística."
+        if vol_atual > vol_medio * 1.5: txt_vol = "<span class='sniper-tt'><strong>🟢 Forte influxo de volume institucional</strong><span class='sniper-tt-text'>Anomalia de Liquidez.</span></span> detetado."
+        elif vol_atual < vol_medio * 0.6: txt_vol = "<span class='sniper-tt'><strong>🔴 Volume anémico.</strong><span class='sniper-tt-text'>Risco de falsos rompimentos.</span></span>"
+        else: txt_vol = "Volume transacionado dentro da normalidade estatística."
 
-        # Auditoria de Volatilidade (Bandas de Bollinger)
-        if bw_atual < bw_medio * 0.7:
-            txt_bb = " <span class='sniper-tt'><strong>⚡ COMPRESSÃO EXTREMA (Squeeze):</strong><span class='sniper-tt-text'><strong style='color:#f28b24; font-size:13px; display:block; border-bottom:1px solid #333; padding-bottom:4px; margin-bottom:5px;'>Bollinger Squeeze</strong>As Bandas de Bollinger estreitaram drasticamente. O mercado está a acumular energia direcional. A história prova que períodos de letargia aguda antecedem movimentos explosivos iminentes. Prepara os gatilhos.</span></span> As bandas estão a estrangular o preço."
-        elif fecho_atual > df['BB_Upper'].iloc[-1]:
-            txt_bb = " O preço perfurou a Banda de Bollinger superior (Ruptura Estatística). Risco imediato de exaustão compradora."
-        elif fecho_atual < df['BB_Lower'].iloc[-1]:
-            txt_bb = " O preço cota abaixo da Banda de Bollinger inferior. Pressão vendedora anómala instalada."
-        else:
-            txt_bb = " Volatilidade contida nos eixos centrais."
+        if bw_atual < bw_medio * 0.7: txt_bb = " <span class='sniper-tt'><strong>⚡ COMPRESSÃO EXTREMA (Squeeze):</strong><span class='sniper-tt-text'>As Bandas de Bollinger estreitaram. Mercado acumula energia.</span></span>"
+        elif fecho_atual > df['BB_Upper'].iloc[-1]: txt_bb = " O preço perfurou a Banda Superior."
+        elif fecho_atual < df['BB_Lower'].iloc[-1]: txt_bb = " O preço cota abaixo da Banda Inferior."
+        else: txt_bb = " Volatilidade contida nos eixos centrais."
 
-        nlg_notes = (
-            f"O ativo encontra-se a negociar nos {fecho_atual:.2f} no gráfico de {timeframe}. "
-            f"A tendência tática é de {tendencia} (EMA 9 {'acima' if tendencia == 'Alta' else 'abaixo'} da EMA 20). "
-            f"O nível crítico de defesa algorítmica está nos {suportes[0]:.2f}.<br><br>"
-            f"{txt_vol}{txt_bb}"
-        )
+        nlg_notes = f"O ativo negoceia a {fecho_atual:.2f} ({timeframe}). Tendência tática de {tendencia}. Suporte crítico nos {suportes[0]:.2f}.<br><br>{txt_vol}{txt_bb}"
 
-        # --- 5. EXTRAÇÃO DE DADOS PARA GRÁFICO PLOTLY (FRONTEND) ---
         dados_grafico = {}
         try:
             hist_recente = df.tail(60)
-            
-            # Formata a data: se for 1D, mostra só dia; se for 4H/1H, mostra dia e hora
             formato_data = '%Y-%m-%d' if timeframe == '1d' else '%Y-%m-%d %H:%M'
-            
             dados_grafico = {
                 "datas": hist_recente.index.strftime(formato_data).tolist(),
                 "closes": hist_recente['Close'].round(2).tolist(),
                 "ema9": hist_recente['Close'].ewm(span=9).mean().round(2).tolist(),
                 "ema20": hist_recente['Close'].ewm(span=20).mean().round(2).tolist(),
                 "volumes": hist_recente['Volume'].tolist(),
-                # Lógica de cor: Vela verde = Volume verde, Vela vermelha = Volume vermelho
                 "cores_vol": ['#5cb85c' if hist_recente['Close'].iloc[i] >= hist_recente['Open'].iloc[i] else '#d9534f' for i in range(len(hist_recente))]
             }
         except Exception as e:
-            print(f"Erro a extrair dados do gráfico: {e}")
+            pass
 
-        # --- 6. EMPACOTAMENTO JSON ---
         return jsonify({
             "ticker": ticker.upper(),
             "timeframe": timeframe.upper(),
@@ -1282,7 +1149,6 @@ def api_sniper(ticker, timeframe):
             "peg_ratio": round(peg_ratio, 2) if peg_ratio else 0,  
             "pe_min_5y": round(pe_min_5y, 2) if pe_min_5y else 0,
 
-            # --- FMP VARIAVEIS E METADADOS ---
             "logo_url": logo_url,
             "earnings_warning": earnings_warning,
             "insider_signal": insider_signal,
@@ -1293,7 +1159,6 @@ def api_sniper(ticker, timeframe):
             "mkt_cap": mkt_cap,
             "exchange": exchange,
             
-            # --- VARIÁVEIS DA CASCATA DE RESULTADOS ---
             "eps_atual": eps_atual,
             "gross_margin": gross_margin,
             "net_margin_final": net_margin_final,
@@ -1302,7 +1167,6 @@ def api_sniper(ticker, timeframe):
             "next_earnings_date": next_earnings_date,
             "waterfall_data": waterfall_data,
             
-            # --- RAIO-X GRAVITACIONAL E MOMENTUM ---
             "dist_m50": f"{dist_m50:+.1f}%",
             "cor_m50": "#5cb85c" if dist_m50 > 0 else "#d9534f",
             "dist_m200": f"{dist_m200:+.1f}%",
@@ -1318,7 +1182,6 @@ def api_sniper(ticker, timeframe):
             
             "dados_grafico": dados_grafico,
             
-            # --- TRADE PLANS ---
             "suportes": [f"{s:.2f}" for s in suportes],
             "resistencias": [f"{r:.2f}" for r in resistencias],
             "notas": nlg_notes,
@@ -1335,7 +1198,7 @@ def api_sniper(ticker, timeframe):
                 "rr": f"1:{rr_bear:.1f}"
             }
         })
-        
+
     except Exception as e:
         return jsonify({"erro": f"Falha na execução quantitativa: {str(e)}"}), 500
 
