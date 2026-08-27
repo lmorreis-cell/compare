@@ -1369,7 +1369,7 @@ def api_sniper(ticker, timeframe):
             elif pe_ratio >= 30: radar_scores[0] = 1
             
             passou_pe = pe_ratio > 0 and pe_ratio < 25
-            checklist.append({"texto": "P/E Ratio abaixo de 25x (Preço Justo)", "passou": passou_pe})
+            checklist.append({"texto": f"P/E Ratio abaixo de 25x | Atual: {pe_ratio:.1f}x", "passou": passou_pe})
             if passou_pe: score_total += 1
 
             # 2. GROWTH (Crescimento via PEG ou Upside)
@@ -1378,7 +1378,7 @@ def api_sniper(ticker, timeframe):
             else: radar_scores[1] = 1
             
             passou_crescimento = peg_ratio > 0 and peg_ratio < 1.5
-            checklist.append({"texto": "Crescimento de Lucros justifica o Múltiplo (PEG < 1.5)", "passou": passou_crescimento})
+            checklist.append({"texto": f"Crescimento (PEG < 1.5) | Atual: {peg_ratio:.2f}", "passou": passou_crescimento})
             if passou_crescimento: score_total += 1
 
             # 3. PROFITABILITY (Rentabilidade via Net Margin)
@@ -1389,7 +1389,7 @@ def api_sniper(ticker, timeframe):
             else: radar_scores[2] = 0
             
             passou_margem = nm_valor > 10
-            checklist.append({"texto": "Margem Líquida Saudável (> 10%)", "passou": passou_margem})
+            checklist.append({"texto": f"Margem Líquida (> 10%) | Atual: {nm_valor:.1f}%", "passou": passou_margem})
             if passou_margem: score_total += 1
 
             # 4. HEALTH (Saúde via Dívida)
@@ -1400,10 +1400,10 @@ def api_sniper(ticker, timeframe):
             else: radar_scores[3] = 0
             
             passou_divida = de_valor < 100
-            checklist.append({"texto": "Dívida Controlada (Debt/Equity < 100%)", "passou": passou_divida})
+            checklist.append({"texto": f"Dívida Controlada (D/E < 100%) | Atual: {de_valor:.1f}%", "passou": passou_divida})
             if passou_divida: score_total += 1
 
-            # 5. DIVIDENDOS
+            # 5. DIVIDENDOS E WALL ST
             div_yield = info.get('dividendYield', 0)
             if div_yield is not None:
                 div_yield = div_yield * 100
@@ -1412,7 +1412,7 @@ def api_sniper(ticker, timeframe):
                 elif div_yield > 0: radar_scores[4] = 1
             
             passou_wallst = float(target_upside) > 5 if target_consensus > 0 else False
-            checklist.append({"texto": "Preço abaixo do Alvo de Wall Street", "passou": passou_wallst})
+            checklist.append({"texto": f"Preço abaixo do Alvo Wall St. | Upside: {target_upside}%", "passou": passou_wallst})
             if passou_wallst: score_total += 1
             
         except Exception as e:
