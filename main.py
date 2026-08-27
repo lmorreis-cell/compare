@@ -930,44 +930,54 @@ def api_sniper(ticker, timeframe):
             debt_equity = f"{de_val:.2f}%" if de_val else "N/A"
 
             # Extração para Gráfico Waterfall (Demonstração de Resultados)
-            inc_stmt = tk.income_stmt
-            if not inc_stmt.empty:
-                col = inc_stmt.columns[0] # Puxa o ano ou TTM mais recente
-                
-                def safe_get(idx):
-                    return float(inc_stmt.loc[idx, col]) if idx in inc_stmt.index and pd.notna(inc_stmt.loc[idx, col]) else 0.0
+            import pandas as pd  # <--- INJETA ESTA LINHA AQUI
+            try:
+                inc_stmt = tk.income_stmt
+                if inc_stmt.empty:
+                    inc_stmt = tk.financials # Fallback de segurança
+                    
+                if not inc_stmt.empty:
+                    col = inc_stmt.columns[0] # Puxa o ano ou TTM mais recente
+                    
+                    # Motor de busca flexível (contorna as inconsistências do Yahoo)
+                    def safe_get(chaves):
+                        for k in chaves:
+                            if k in inc_stmt.index and pd.notna(inc_stmt.loc[k, col]):
+                                return float(inc_stmt.loc[k, col])
+                        return 0.0
 
-                rev = safe_get('Total Revenue')
-                if rev == 0: rev = safe_get('Operating Revenue')
-                cost = safe_get('Cost Of Revenue')
-                gross = safe_get('Gross Profit')
-                net = safe_get('Net Income')
-                
-                if gross == 0 and rev > 0: gross = rev - cost
-                other_exp = gross - net # Custos operacionais, impostos e juros agregados
+                    # Procura por múltiplas variações do nome da rubrica
+                    rev = safe_get(['Total Revenue', 'Operating Revenue', 'Revenue'])
+                    cost = safe_get(['Cost Of Revenue', 'Cost of Revenue', 'Total Operating Expenses'])
+                    gross = safe_get(['Gross Profit', 'Total Gross Profit'])
+                    net = safe_get(['Net Income', 'Net Income Common Stockholders', 'Net Income From Continuing Operations'])
+                    
+                    # Correção matemática se o Yahoo esconder a Margem Bruta
+                    if gross == 0 and rev > 0: 
+                        gross = rev - cost
+                    other_exp = gross - net
 
-                def fmt_money(val):
-                    v = abs(val)
-                    if v >= 1e9: return f"${v/1e9:.2f}B"
-                    if v >= 1e6: return f"${v/1e6:.2f}M"
-                    return f"${v:.2f}"
+                    def fmt_money(val):
+                        v = abs(val)
+                        if v >= 1e9: return f"${v/1e9:.2f}B"
+                        if v >= 1e6: return f"${v/1e6:.2f}M"
+                        return f"${v:.2f}"
 
-                if rev > 0:
-                    waterfall_data = {
-                        "revenue": rev,
-                        "cost_of_revenue": -cost, # Força negativo para a cascata descer
-                        "gross_profit": gross,
-                        "other_expenses": -other_exp, # Força negativo
-                        "net_income": net,
-                        "fmt_revenue": fmt_money(rev),
-                        "fmt_corev": "-" + fmt_money(cost),
-                        "fmt_gross": fmt_money(gross),
-                        "fmt_other": "-" + fmt_money(other_exp),
-                        "fmt_net": fmt_money(net)
-                    }
-        except Exception as e:
-            print(f"Aviso - Falha ao extrair fundamentos profundos: {e}")
-
+                    if rev > 0:
+                        waterfall_data = {
+                            "revenue": rev,
+                            "cost_of_revenue": -abs(cost), # Força negativo para a escada descer
+                            "gross_profit": gross,
+                            "other_expenses": -abs(other_exp),
+                            "net_income": net,
+                            "fmt_revenue": fmt_money(rev),
+                            "fmt_corev": "-" + fmt_money(cost),
+                            "fmt_gross": fmt_money(gross),
+                            "fmt_other": "-" + fmt_money(other_exp),
+                            "fmt_net": fmt_money(net)
+                        }
+            except Exception as e:
+                print(f"Aviso - Falha ao extrair fundamentos profundos: {e}")
         # --- EXTRAÇÃO DO VALUATION RISK ---
         try:
             pe_ratio = info.get('forwardPE') or info.get('trailingPE') or 0
