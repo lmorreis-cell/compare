@@ -354,7 +354,8 @@ def api_rrg(mercado, window):
         benchmark = '^STOXX50E'
         setores = {
             'Tecnologia': 'EXSA.DE', 'Saúde': 'EXS3.DE', 'Finanças': 'EXS1.DE',
-            'Energia': 'EXH1.DE', 'Indústria': 'EXV8.DE', 'Bens Básicos': 'EXS2.DE',
+            'Energia Fóssil': 'EXH1.DE', 'Energia Limpa': 'IQQH.DE', # <-- Segmentação inserida
+            'Indústria': 'EXV8.DE', 'Bens Básicos': 'EXS2.DE',
             'Consumo Disc.': 'EXV3.DE', 'Materiais': 'EXV6.DE', 'Utilities': 'EXH9.DE',
             'Comunicações': 'EXV9.DE'
         }
@@ -362,7 +363,8 @@ def api_rrg(mercado, window):
         benchmark = '^GSPC'
         setores = {
             'Tecnologia': 'XLK', 'Saúde': 'XLV', 'Finanças': 'XLF',
-            'Energia': 'XLE', 'Cons. Disc.': 'XLY', 'Bens Básicos': 'XLP',
+            'Energia Fóssil': 'XLE', 'Energia Limpa': 'ICLN', # <-- Segmentação inserida
+            'Cons. Disc.': 'XLY', 'Bens Básicos': 'XLP',
             'Indústria': 'XLI', 'Materiais': 'XLB', 'Imobiliário': 'XLRE',
             'Utilities': 'XLU', 'Comunicações': 'XLC'
         }
@@ -1118,7 +1120,7 @@ def api_sniper(ticker, timeframe):
             except:
                 preco_oficial = float(df_diario['Close'].iloc[-1]) if not df_diario.empty else float(df['Close'].iloc[-1])
 
-        logo_url, setor, mkt_cap, exchange = "", "Desconhecido", 0, ""
+        logo_url, setor_final, mkt_cap, exchange = "", "Desconhecido", 0, ""
         
         if fmp_key:
             try:
@@ -1127,7 +1129,7 @@ def api_sniper(ticker, timeframe):
                 if resp_profile.status_code == 200 and resp_profile.json():
                     p = resp_profile.json()[0]
                     logo_url = p.get('image', p.get('logo', ''))
-                    setor = p.get('sector', 'Desconhecido')
+                    setor_final = p.get('sector', 'Desconhecido')
                     mkt_cap = float(p.get('mktCap', p.get('marketCap', 0)))
                     exchange = p.get('exchangeShortName', p.get('exchange', ''))
             except:
@@ -1135,12 +1137,22 @@ def api_sniper(ticker, timeframe):
 
         try:
             tk = yf.Ticker(ticker)
+            info = tk.info
+            
             if mkt_cap == 0 or mkt_cap is None:
-                mkt_cap = float(tk.info.get('marketCap', 0))
-            if setor == "Desconhecido" or setor == "":
-                setor = tk.info.get('sector', 'Desconhecido')
+                mkt_cap = float(info.get('marketCap', 0))
             if exchange == "":
-                exchange = tk.info.get('exchange', '')
+                exchange = info.get('exchange', '')
+                
+            # --- EXTRAÇÃO APRIMORADA (MACRO + MICRO) ---
+            setor_macro = info.get('sector', setor_final) # Usa o setor genérico da FMP como base se falhar
+            industria_micro = info.get('industry', 'N/A')
+            
+            if industria_micro != 'N/A' and industria_micro != setor_macro:
+                setor_final = f"{setor_macro} ({industria_micro})"
+            else:
+                setor_final = setor_macro
+                
         except:
             pass
 
