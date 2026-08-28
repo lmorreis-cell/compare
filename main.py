@@ -1530,7 +1530,8 @@ def api_sniper(ticker, timeframe):
             "target_consensus": target_consensus,
             "target_upside": f"{target_upside:+.1f}%",
             "news_data": news_data,
-            "setor": setor,
+            
+            "setor": setor_final,
             "mkt_cap": mkt_cap,
             "exchange": exchange,
             
