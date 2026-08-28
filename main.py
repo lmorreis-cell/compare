@@ -350,15 +350,20 @@ def api_rrg(mercado):
     import yfinance as yf
     import pandas as pd
 
+    # Dicionário institucional: Escolhe o Benchmark e os ETFs consoante o mercado
     if mercado == 'europa':
         benchmark = '^STOXX50E'
         setores = {
             'Tecnologia': 'EXSA.DE',
             'Saúde': 'EXS3.DE',
             'Finanças': 'EXS1.DE',
-            'Energia': 'EXS4.DE',
-            'Indústria': 'EXS5.DE',
-            'Bens Básicos': 'EXS2.DE'
+            'Energia': 'EXH1.DE',       # Corrigido (Oil & Gas)
+            'Indústria': 'EXV8.DE',     # Corrigido (Industrial Goods)
+            'Bens Básicos': 'EXS2.DE',
+            'Consumo Disc.': 'EXV3.DE', # Adicionado (Personal & Household)
+            'Materiais': 'EXV6.DE',     # Adicionado (Basic Resources)
+            'Utilities': 'EXH9.DE',     # Adicionado (Utilities)
+            'Comunicações': 'EXV9.DE'   # Adicionado (Telecom)
         }
     else:
         benchmark = '^GSPC'
@@ -368,7 +373,6 @@ def api_rrg(mercado):
             'Indústria': 'XLI', 'Materiais': 'XLB', 'Imobiliário': 'XLRE',
             'Utilities': 'XLU', 'Comunicações': 'XLC'
         }
-
     tickers = list(setores.values()) + [benchmark]
     
     try:
