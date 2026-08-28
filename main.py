@@ -344,26 +344,19 @@ def api_market_movers():
     except Exception as e:
         return jsonify({"erro": f"Falha na API do Yahoo Finance: {str(e)}"}), 500
 
-@app.route('/api/rrg/<mercado>')
+@app.route('/api/rrg/<mercado>/<int:window>')
 @cache.cached(timeout=3600)
-def api_rrg(mercado):
+def api_rrg(mercado, window):
     import yfinance as yf
     import pandas as pd
 
-    # Dicionário institucional: Escolhe o Benchmark e os ETFs consoante o mercado
     if mercado == 'europa':
         benchmark = '^STOXX50E'
         setores = {
-            'Tecnologia': 'EXSA.DE',
-            'Saúde': 'EXS3.DE',
-            'Finanças': 'EXS1.DE',
-            'Energia': 'EXH1.DE',       # Corrigido (Oil & Gas)
-            'Indústria': 'EXV8.DE',     # Corrigido (Industrial Goods)
-            'Bens Básicos': 'EXS2.DE',
-            'Consumo Disc.': 'EXV3.DE', # Adicionado (Personal & Household)
-            'Materiais': 'EXV6.DE',     # Adicionado (Basic Resources)
-            'Utilities': 'EXH9.DE',     # Adicionado (Utilities)
-            'Comunicações': 'EXV9.DE'   # Adicionado (Telecom)
+            'Tecnologia': 'EXSA.DE', 'Saúde': 'EXS3.DE', 'Finanças': 'EXS1.DE',
+            'Energia': 'EXH1.DE', 'Indústria': 'EXV8.DE', 'Bens Básicos': 'EXS2.DE',
+            'Consumo Disc.': 'EXV3.DE', 'Materiais': 'EXV6.DE', 'Utilities': 'EXH9.DE',
+            'Comunicações': 'EXV9.DE'
         }
     else:
         benchmark = '^GSPC'
@@ -373,15 +366,16 @@ def api_rrg(mercado):
             'Indústria': 'XLI', 'Materiais': 'XLB', 'Imobiliário': 'XLRE',
             'Utilities': 'XLU', 'Comunicações': 'XLC'
         }
+
     tickers = list(setores.values()) + [benchmark]
     
     try:
-        # Extrai os dados e substitui os vazios (feriados) pelo fecho anterior
-        df = yf.download(tickers, period="6mo", interval="1d", progress=False)['Close']
+        # Se a janela for trimestral (63), saca 1 ano de dados para a Média Móvel conseguir calcular bem
+        periodo_dw = "1y" if window == 63 else "6mo"
+        df = yf.download(tickers, period=periodo_dw, interval="1d", progress=False)['Close']
         df = df.ffill().bfill()
         
         resultados = []
-        window = 14 
 
         for nome, ticker in setores.items():
             if ticker in df.columns and benchmark in df.columns:
@@ -407,7 +401,6 @@ def api_rrg(mercado):
         return jsonify(resultados)
     except Exception as e:
         return jsonify({"erro": str(e)}), 500
-
 @app.route('/api/analisar')
 @cache.cached(timeout=300) # <-- ADICIONA ESTA LINHA AQUI
 def api_analisar():
