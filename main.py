@@ -345,12 +345,11 @@ def api_market_movers():
         return jsonify({"erro": f"Falha na API do Yahoo Finance: {str(e)}"}), 500
 
 @app.route('/api/rrg/<mercado>')
-@cache.cached(timeout=3600) # Cache de 1 hora. A rotação setorial é macro, não muda ao segundo.
+@cache.cached(timeout=3600)
 def api_rrg(mercado):
     import yfinance as yf
     import pandas as pd
 
-    # Dicionário institucional: Escolhe o Benchmark e os ETFs consoante o mercado
     if mercado == 'europa':
         benchmark = '^STOXX50E'
         setores = {
@@ -373,32 +372,25 @@ def api_rrg(mercado):
     tickers = list(setores.values()) + [benchmark]
     
     try:
-        # Descarrega os últimos 6 meses de dados para ter histórico suficiente para a Média Móvel
-        df = yf.download(tickers, period="6mo", interval="1d", progress=False)['Close'].dropna()
+        # Extrai os dados e substitui os vazios (feriados) pelo fecho anterior
+        df = yf.download(tickers, period="6mo", interval="1d", progress=False)['Close']
+        df = df.ffill().bfill()
         
         resultados = []
-        window = 14 # Janela tática de curto/médio prazo (14 dias úteis)
+        window = 14 
 
         for nome, ticker in setores.items():
             if ticker in df.columns and benchmark in df.columns:
-                
-                # 1. RS Base: Preço do Setor a dividir pelo Preço do Índice
                 rs = df[ticker] / df[benchmark]
-                
-                # 2. RS-Ratio (Eixo X): Quão forte está a RS face à sua própria Média?
-                # Usamos Z-Score simplificado e empurramos para uma base de 100
                 rs_ratio = 100 + ((rs - rs.rolling(window).mean()) / rs.rolling(window).std()) * 3
-                
-                # 3. RS-Momentum (Eixo Y): Qual é a velocidade/aceleração da Força Relativa?
                 rs_momentum = 100 + ((rs_ratio - rs_ratio.rolling(window).mean()) / rs_ratio.rolling(window).std()) * 3
 
                 if not pd.isna(rs_ratio.iloc[-1]) and not pd.isna(rs_momentum.iloc[-1]):
-                    # Classificação da Cor consoante o Quadrante Matemático
                     x, y = rs_ratio.iloc[-1], rs_momentum.iloc[-1]
-                    if x >= 100 and y >= 100: cor = '#5cb85c'   # Líderes (Verde)
-                    elif x >= 100 and y < 100: cor = '#e3b341'  # Enfraquecer (Amarelo)
-                    elif x < 100 and y < 100: cor = '#d9534f'   # Atrasados (Vermelho)
-                    else: cor = '#58a6ff'                       # A Melhorar (Azul)
+                    if x >= 100 and y >= 100: cor = '#5cb85c'   
+                    elif x >= 100 and y < 100: cor = '#e3b341'  
+                    elif x < 100 and y < 100: cor = '#d9534f'   
+                    else: cor = '#58a6ff'                       
 
                     resultados.append({
                         "setor": nome,
