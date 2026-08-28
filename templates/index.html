@@ -301,6 +301,65 @@
             <p style="margin: 0; font-size: 11px; font-weight: bold; color: #c9d1d9;">Sincronização de Dados (Delay Intencional)</p>
             <p style="margin: 5px 0 0 0; font-size: 11px; color: #8b949e; line-height: 1.4;">Os dados processados neste painel operam com um ciclo de atualização tático de 5 minutos. Este desfasamento temporal não é uma anomalia, mas sim uma medida arquitetural de segurança para evitar limites de estrangulamento (<em>Rate Limiting</em>) e bloqueios de IP por parte das fontes e APIs financeiras. Este ciclo garante a estabilidade e disponibilidade ininterrupta do motor quantitativo para todos os membros da comunidade simultaneamente.</p>
         </div>
+
+        <!-- ========================================== -->
+        <!-- NOVO: ROTAÇÃO SETORIAL INSTITUCIONAL (RRG) -->
+        <!-- ========================================== -->
+        <div style="background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin: 0; font-size: 14px; color: #f0f2f5; text-transform: uppercase;">
+                    <span class="dica-edu">
+                        🌀 Rotação Setorial Institucional (RRG)
+                        <span class="dica-texto" style="width: 380px;">
+                            <strong style="color: #58a6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Top-Down Analysis</strong>
+                            O capital institucional viaja no sentido dos ponteiros do relógio. A zona de Ouro é o quadrante AZUL (A Melhorar) a cruzar para VERDE (Líderes). Não adivinhes topos nem fundos: caça a liquidez nos setores que estão a acordar.
+                        </span>
+                    </span>
+                </h3>
+                
+                <div style="display: flex; gap: 5px; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 2px;">
+                    <button id="btn-rrg-usa" onclick="carregarRRG('usa')" style="background: #232d3f; color: #58a6ff; border: none; padding: 6px 14px; font-size: 11px; font-weight: bold; cursor: pointer; border-radius: 4px; transition: all 0.2s;">Wall Street (S&P 500)</button>
+                    <button id="btn-rrg-eu" onclick="carregarRRG('europa')" style="background: transparent; color: #8b949e; border: none; padding: 6px 14px; font-size: 11px; font-weight: bold; cursor: pointer; border-radius: 4px; transition: all 0.2s;">Europa (STOXX 50)</button>
+                </div>
+            </div>
+
+            <div id="loading-rrg" style="display: none; text-align: center; color: #8b949e; font-size: 12px; margin-bottom: 20px; font-weight: bold;">
+                📡 A mapear o fluxo de liquidez macro...
+            </div>
+
+            <!-- Gráfico Plotly -->
+            <div id="plotly-rrg" style="width: 100%; height: 350px;"></div>
+
+            <!-- Gaveta Educacional Embutida -->
+            <details style="margin-top: 15px; border-top: 1px dashed #30363d; padding-top: 15px; cursor: pointer; outline: none;">
+                <summary style="font-size: 12px; font-weight: bold; color: #8b949e; user-select: none;">▸ ANATOMIA DA ROTAÇÃO (Como ler este gráfico)</summary>
+                
+                <div style="margin-top: 15px; background: rgba(88, 166, 255, 0.05); border-left: 4px solid #58a6ff; padding: 15px; border-radius: 4px; font-size: 12px; line-height: 1.6; color: #c9d1d9; cursor: default;">
+                    <p style="margin-top: 0;">Num ciclo completo, o dinheiro flui perpetuamente da esquerda para a direita através de 4 fases geométricas:</p>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-top: 10px;">
+                        <div>
+                            <strong style="color: #5cb85c;">1. LÍDERES (Top-Right):</strong><br>
+                            Forte Momentum e Força Relativa alta. O setor está a esmagar o mercado base. A euforia mora aqui.
+                        </div>
+                        <div>
+                            <strong style="color: #e3b341;">2. A ENFRAQUECER (Bottom-Right):</strong><br>
+                            O preço ainda é alto (Força > 100), mas o Momentum quebrou. Os fundos pararam de comprar e estão a distribuir (vender) aos retalhistas.
+                        </div>
+                        <div>
+                            <strong style="color: #d9534f;">3. ATRASADOS (Bottom-Left):</strong><br>
+                            Capitulação total. Preço esmagado e sem tração. Capital totalmente drenado.
+                        </div>
+                        <div>
+                            <strong style="color: #58a6ff;">4. A MELHORAR (Top-Left):</strong><br>
+                            A Zona de Ouro. Ainda barato, mas o Momentum disparou repentinamente. O <i>Smart Money</i> começou a acumulação silenciosa.
+                        </div>
+                    </div>
+                </div>
+            </details>
+
+        </div>
         
         <button id="btn-atualizar" onclick="executarAnalise()" style="background: #007bff; color: white; border: none; padding: 12px; font-size: 14px; font-weight: bold; border-radius: 6px; width: 100%; cursor: pointer; box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3); transition: opacity 0.2s; margin-bottom: 25px;">
             EXECUTAR RADAR MACRO & SINAIS DE ENTRADA
@@ -4085,8 +4144,79 @@
         renderizarHistorico();
         iniciarTickerTape();
         carregarBreadth();
+        carregarRRG('usa');
     });
 
+    async function carregarRRG(mercado) {
+        // Trata os botões de alternância
+        document.getElementById('btn-rrg-usa').style.background = mercado === 'usa' ? '#232d3f' : 'transparent';
+        document.getElementById('btn-rrg-usa').style.color = mercado === 'usa' ? '#58a6ff' : '#8b949e';
+        document.getElementById('btn-rrg-eu').style.background = mercado === 'europa' ? '#232d3f' : 'transparent';
+        document.getElementById('btn-rrg-eu').style.color = mercado === 'europa' ? '#58a6ff' : '#8b949e';
+
+        const loading = document.getElementById('loading-rrg');
+        const chartDiv = document.getElementById('plotly-rrg');
+        
+        loading.style.display = 'block';
+        chartDiv.style.display = 'none';
+
+        try {
+            const resposta = await fetch(`/api/rrg/${mercado}`);
+            const dados = await resposta.json();
+            
+            if (dados.erro) throw new Error(dados.erro);
+
+            const rrgData = [{
+                type: 'scatter',
+                mode: 'markers+text',
+                x: dados.map(d => d.x),
+                y: dados.map(d => d.y),
+                text: dados.map(d => d.setor),
+                textposition: 'top right',
+                textfont: { size: 10, color: '#f0f2f5', weight: 'bold' },
+                marker: {
+                    size: 10,
+                    color: dados.map(d => d.cor),
+                    line: { width: 1, color: '#1c1e24' }
+                }
+            }];
+
+            const eixoBase = {
+                showgrid: true,
+                gridcolor: 'rgba(255, 255, 255, 0.05)',
+                zeroline: true,
+                zerolinecolor: 'rgba(255, 255, 255, 0.2)',
+                zerolinewidth: 2,
+                tickfont: { color: '#8b949e' }
+            };
+
+            const rrgLayout = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                margin: { l: 40, r: 40, t: 20, b: 40 },
+                xaxis: { ...eixoBase, range: [92, 108], title: { text: 'Força Relativa (RS-Ratio)', font: { size: 11, color: '#8b949e' } } },
+                yaxis: { ...eixoBase, range: [92, 108], title: { text: 'Momentum (RS-Mom)', font: { size: 11, color: '#8b949e' } } },
+                showlegend: false,
+                // Desenhar as caixas coloridas (Shape) no fundo do gráfico
+                shapes: [
+                    { type: 'rect', x0: 100, x1: 110, y0: 100, y1: 110, fillcolor: 'rgba(92, 184, 92, 0.05)', line: {width: 0} }, // Verde
+                    { type: 'rect', x0: 100, x1: 110, y0: 90, y1: 100, fillcolor: 'rgba(227, 179, 65, 0.05)', line: {width: 0} }, // Amarelo
+                    { type: 'rect', x0: 90, x1: 100, y0: 90, y1: 100, fillcolor: 'rgba(217, 83, 79, 0.05)', line: {width: 0} }, // Vermelho
+                    { type: 'rect', x0: 90, x1: 100, y0: 100, y1: 110, fillcolor: 'rgba(88, 166, 255, 0.05)', line: {width: 0} }  // Azul
+                ]
+            };
+
+            Plotly.newPlot('plotly-rrg', rrgData, rrgLayout, {responsive: true, displayModeBar: false});
+            
+            loading.style.display = 'none';
+            chartDiv.style.display = 'block';
+
+        } catch (erro) {
+            loading.style.display = 'none';
+            console.error("Falha ao desenhar RRG:", erro);
+        }
+    }
+    
     // ==========================================
     // GERADOR DO MODELO CSV PARA UTILIZADORES
     // ==========================================
