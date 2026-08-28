@@ -97,7 +97,7 @@ def get_online_users():
             
     return jsonify({
         "online": lista_online,
-        "offline": lista_offline[:10] # Envia apenas os últimos 10 para a gaveta não ficar gigante
+        "offline": lista_offline[:100] # Envia apenas os últimos 100 para a gaveta não ficar gigante
     })
 # ==========================================
 
