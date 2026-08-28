@@ -307,21 +307,34 @@
         <!-- ========================================== -->
         <div style="background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
             
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
                 <h3 style="margin: 0; font-size: 14px; color: #f0f2f5; text-transform: uppercase;">
                     <span class="dica-edu">
                         🌀 Rotação Setorial Institucional (RRG)
-                        <span class="dica-texto" style="width: 380px;">
+                        <span class="dica-texto" style="width: 380px; text-transform: none;">
                             <strong style="color: #58a6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Top-Down Analysis</strong>
                             O capital institucional viaja no sentido dos ponteiros do relógio. A zona de Ouro é o quadrante AZUL (A Melhorar) a cruzar para VERDE (Líderes). Não adivinhes topos nem fundos: caça a liquidez nos setores que estão a acordar.
                         </span>
                     </span>
                 </h3>
                 
-                <div style="display: flex; gap: 5px; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 2px;">
-                    <button id="btn-rrg-usa" onclick="carregarRRG('usa')" style="background: #232d3f; color: #58a6ff; border: none; padding: 6px 14px; font-size: 11px; font-weight: bold; cursor: pointer; border-radius: 4px; transition: all 0.2s;">Wall Street (S&P 500)</button>
-                    <button id="btn-rrg-eu" onclick="carregarRRG('europa')" style="background: transparent; color: #8b949e; border: none; padding: 6px 14px; font-size: 11px; font-weight: bold; cursor: pointer; border-radius: 4px; transition: all 0.2s;">Europa (STOXX 50)</button>
+                <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                    <div style="display: flex; gap: 5px; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 2px;">
+                        <button id="btn-rrg-usa" onclick="mudarMercadoRRG('usa')" style="background: #232d3f; color: #58a6ff; border: none; padding: 6px 14px; font-size: 11px; font-weight: bold; cursor: pointer; border-radius: 4px; transition: all 0.2s;">Wall Street</button>
+                        <button id="btn-rrg-eu" onclick="mudarMercadoRRG('europa')" style="background: transparent; color: #8b949e; border: none; padding: 6px 14px; font-size: 11px; font-weight: bold; cursor: pointer; border-radius: 4px; transition: all 0.2s;">Europa</button>
+                    </div>
+                    
+                    <div style="display: flex; gap: 5px; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 2px;">
+                        <button id="btn-rrg-14" onclick="mudarJanelaRRG(14)" style="background: #232d3f; color: #e3b341; border: none; padding: 6px 12px; font-size: 11px; font-weight: bold; cursor: pointer; border-radius: 4px; transition: all 0.2s;">14D</button>
+                        <button id="btn-rrg-21" onclick="mudarJanelaRRG(21)" style="background: transparent; color: #8b949e; border: none; padding: 6px 12px; font-size: 11px; font-weight: bold; cursor: pointer; border-radius: 4px; transition: all 0.2s;">21D</button>
+                        <button id="btn-rrg-63" onclick="mudarJanelaRRG(63)" style="background: transparent; color: #8b949e; border: none; padding: 6px 12px; font-size: 11px; font-weight: bold; cursor: pointer; border-radius: 4px; transition: all 0.2s;">63D</button>
+                    </div>
                 </div>
+            </div>
+
+            <!-- GAVETA EDUCACIONAL DINÂMICA -->
+            <div id="rrg-educacional" style="margin-bottom: 20px; font-size: 12px; color: #c9d1d9; background: rgba(227, 179, 65, 0.05); border-left: 4px solid #e3b341; padding: 12px 15px; border-radius: 4px; line-height: 1.6;">
+                <strong style='color:#e3b341;'>Lente Tática (14 Dias Úteis):</strong> O radar hiper-sensível. Capta reações imediatas da liquidez a notícias recentes. A rotação é agressiva e o gráfico é propício a falsos rompimentos. Ideal para <i>Swing Trades</i> curtos.
             </div>
 
             <div id="loading-rrg" style="display: none; text-align: center; color: #8b949e; font-size: 12px; margin-bottom: 20px; font-weight: bold;">
@@ -4144,16 +4157,54 @@
         renderizarHistorico();
         iniciarTickerTape();
         carregarBreadth();
-        carregarRRG('usa');
+        carregarRRG();
     });
 
-    async function carregarRRG(mercado) {
-        // Trata os botões de alternância
+    // Memória global do estado do Radar RRG
+    let rrgMercadoAtual = 'usa';
+    let rrgJanelaAtual = 14;
+
+    function mudarMercadoRRG(mercado) {
+        rrgMercadoAtual = mercado;
         document.getElementById('btn-rrg-usa').style.background = mercado === 'usa' ? '#232d3f' : 'transparent';
         document.getElementById('btn-rrg-usa').style.color = mercado === 'usa' ? '#58a6ff' : '#8b949e';
         document.getElementById('btn-rrg-eu').style.background = mercado === 'europa' ? '#232d3f' : 'transparent';
         document.getElementById('btn-rrg-eu').style.color = mercado === 'europa' ? '#58a6ff' : '#8b949e';
+        carregarRRG();
+    }
 
+    function mudarJanelaRRG(janela) {
+        rrgJanelaAtual = janela;
+        
+        // Trata os botões (apaga todos e pinta o ativo)
+        [14, 21, 63].forEach(j => {
+            const btn = document.getElementById(`btn-rrg-${j}`);
+            if (btn) {
+                btn.style.background = j === janela ? '#232d3f' : 'transparent';
+                btn.style.color = j === janela ? '#e3b341' : '#8b949e';
+            }
+        });
+
+        // Atualiza a Lógica Educacional
+        const textoEdu = document.getElementById('rrg-educacional');
+        if (janela === 14) {
+            textoEdu.innerHTML = "<strong style='color:#e3b341;'>Lente Tática (14 Dias Úteis):</strong> O radar hiper-sensível. Capta reações imediatas da liquidez a notícias recentes. A rotação é agressiva e propícia a ruído. Ideal para <i>Swing Trades</i> rápidos.";
+            textoEdu.style.borderLeftColor = "#e3b341";
+            textoEdu.style.background = "rgba(227, 179, 65, 0.05)";
+        } else if (janela === 21) {
+            textoEdu.innerHTML = "<strong style='color:#58a6ff;'>Lente Mensal (21 Dias Úteis):</strong> O equilíbrio perfeito. Filtra o ruído da semana passada, mas mantém agilidade suficiente para detetar o início de um novo ciclo setorial limpo. Ideal para análise primária.";
+            textoEdu.style.borderLeftColor = "#58a6ff";
+            textoEdu.style.background = "rgba(88, 166, 255, 0.05)";
+        } else if (janela === 63) {
+            textoEdu.innerHTML = "<strong style='color:#b388ff;'>Lente Institucional (1 Trimestre):</strong> A visão dos gigantes. Movimentos lentos, suaves e estruturais. Mostra para onde os grandes fundos estão a empurrar o capital a longo prazo. Ignora totalmente a volatilidade de curto prazo.";
+            textoEdu.style.borderLeftColor = "#b388ff";
+            textoEdu.style.background = "rgba(179, 136, 255, 0.05)";
+        }
+        
+        carregarRRG();
+    }
+
+    async function carregarRRG() {
         const loading = document.getElementById('loading-rrg');
         const chartDiv = document.getElementById('plotly-rrg');
         
@@ -4161,7 +4212,8 @@
         chartDiv.style.display = 'none';
 
         try {
-            const resposta = await fetch(`/api/rrg/${mercado}`);
+            // Agora invoca a API passando o Mercado e a Janela!
+            const resposta = await fetch(`/api/rrg/${rrgMercadoAtual}/${rrgJanelaAtual}`);
             const dados = await resposta.json();
             
             if (dados.erro) throw new Error(dados.erro);
@@ -4182,11 +4234,8 @@
             }];
 
             const eixoBase = {
-                showgrid: true,
-                gridcolor: 'rgba(255, 255, 255, 0.05)',
-                zeroline: true,
-                zerolinecolor: 'rgba(255, 255, 255, 0.2)',
-                zerolinewidth: 2,
+                showgrid: true, gridcolor: 'rgba(255, 255, 255, 0.05)',
+                zeroline: true, zerolinecolor: 'rgba(255, 255, 255, 0.2)', zerolinewidth: 2,
                 tickfont: { color: '#8b949e' }
             };
 
@@ -4197,12 +4246,11 @@
                 xaxis: { ...eixoBase, range: [92, 108], title: { text: 'Força Relativa (RS-Ratio)', font: { size: 11, color: '#8b949e' } } },
                 yaxis: { ...eixoBase, range: [92, 108], title: { text: 'Momentum (RS-Mom)', font: { size: 11, color: '#8b949e' } } },
                 showlegend: false,
-                // Desenhar as caixas coloridas (Shape) no fundo do gráfico
                 shapes: [
-                    { type: 'rect', x0: 100, x1: 110, y0: 100, y1: 110, fillcolor: 'rgba(92, 184, 92, 0.05)', line: {width: 0} }, // Verde
-                    { type: 'rect', x0: 100, x1: 110, y0: 90, y1: 100, fillcolor: 'rgba(227, 179, 65, 0.05)', line: {width: 0} }, // Amarelo
-                    { type: 'rect', x0: 90, x1: 100, y0: 90, y1: 100, fillcolor: 'rgba(217, 83, 79, 0.05)', line: {width: 0} }, // Vermelho
-                    { type: 'rect', x0: 90, x1: 100, y0: 100, y1: 110, fillcolor: 'rgba(88, 166, 255, 0.05)', line: {width: 0} }  // Azul
+                    { type: 'rect', x0: 100, x1: 110, y0: 100, y1: 110, fillcolor: 'rgba(92, 184, 92, 0.05)', line: {width: 0} },
+                    { type: 'rect', x0: 100, x1: 110, y0: 90, y1: 100, fillcolor: 'rgba(227, 179, 65, 0.05)', line: {width: 0} },
+                    { type: 'rect', x0: 90, x1: 100, y0: 90, y1: 100, fillcolor: 'rgba(217, 83, 79, 0.05)', line: {width: 0} },
+                    { type: 'rect', x0: 90, x1: 100, y0: 100, y1: 110, fillcolor: 'rgba(88, 166, 255, 0.05)', line: {width: 0} }
                 ]
             };
 
