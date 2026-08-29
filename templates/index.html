@@ -3150,6 +3150,11 @@
     let cofreAbertas = [];
     let cofreFechadas = [];
 
+    // Formata o preço para ter no mínimo 2 casas, mas escala até 5 se a ação exigir (ex: BCP.LS)
+    function formatarPreco(valor) {
+        return Number(valor).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 5, useGrouping: false });
+    }
+    
     // O CÉREBRO: Reconstrói toda a contabilidade lendo o Ledger desde o dia 1
     function recalcularTudo() {
         cofreAbertas = [];
@@ -3218,7 +3223,7 @@
                     lucroTradeEUR += pnlParcialEUR;
 
                     let simbolo = lote.moeda === 'USD' ? '$' : '€';
-                    detalhesCasamento.push(`${simbolo}${lote.precoCompraOriginal.toFixed(2)}`);
+                    detalhesCasamento.push(`${simbolo}${formatarPreco(lote.precoCompraOriginal)}`);
                 }
 
                 lucroTradeEUR -= custoEUR; 
@@ -3472,14 +3477,14 @@
                 <tr style="border-bottom: 1px solid #30363d; transition: background 0.2s;" onmouseover="this.style.background='#161b22'" onmouseout="this.style.background='transparent'">
                     <td style="padding: 12px; color: #c9d1d9;">
                         <strong style="font-size: 14px; display: block; color: #fff;">${lote.ticker}</strong> 
-                        <span style="font-size: 11px; color: #8b949e;">${qtdFormatada} @ ${simbolo}${lote.precoCompraOriginal.toFixed(2)} • <span style="color: #e3b341;">[${nomeCarteira}]</span></span>
+                        <span style="font-size: 11px; color: #8b949e;">${qtdFormatada} @ ${simbolo}${formatarPreco(lote.precoCompraOriginal)} • <span style="color: #e3b341;">[${nomeCarteira}]</span></span>
                     </td>
                     <td style="padding: 12px; color: #8b949e; text-align: right; font-weight: bold; vertical-align: middle;">
                         €${capitalExpostoEUR.toFixed(2)}
                     </td>
                     <td style="padding: 12px; text-align: right; vertical-align: middle;">
                         <div style="color: #f0f2f5; font-family: monospace; font-size: 15px; font-weight: bold; margin-bottom: 3px;">
-                            ${simbolo}${precoMercadoOriginal.toFixed(2)}
+                            ${simbolo}${formatarPreco(precoMercadoOriginal)}
                         </div>
                         <div style="color: ${corPnl}; font-size: 12px; font-weight: bold;">
                             ${sinalPnl}€${Math.abs(pnlLatenteEUR).toFixed(2)} (${sinalPnl}${Math.abs(pnlLatentePct).toFixed(2)}%)
