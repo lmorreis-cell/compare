@@ -885,7 +885,7 @@
             <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
                 <div style="display: flex; align-items: center; gap: 8px; background: #0d1117; padding: 6px 12px; border-radius: 6px; border: 1px solid #30363d;">
                     <span style="color: #8b949e; font-size: 11px; font-weight: bold; text-transform: uppercase;">Declarante:</span>
-                    <select id="irs-filtro-sujeito" class="input-moderno" style="padding: 2px 5px; font-size: 12px; border: none; background: transparent; cursor: pointer; color: #58a6ff; font-weight: bold; min-width: 140px;" onchange="sincronizarEstadoCivil(); processarSimulacaoIRS()">
+                    <select id="irs-filtro-sujeito" class="input-moderno" style="padding: 2px 5px; font-size: 12px; border: none; background: transparent; cursor: pointer; color: #58a6ff; font-weight: bold; min-width: 140px;" onchange="atualizarVisibilidadeIRS(); processarSimulacaoIRS()">
                         <option value="TODOS">Agregado (Conjunta)</option>
                         <option value="A">Apenas Sujeito A</option>
                         <option value="B">Apenas Sujeito B</option>
@@ -906,24 +906,17 @@
                 <p style="font-size: 12px; color: #8b949e; margin-bottom: 20px; line-height: 1.5;">Calcula se deves pagar os 28% (Taxa Liberatória) ou somar os lucros da bolsa aos teus rendimentos de trabalho (Taxa Marginal).</p>
                 
                 <div style="display: flex; flex-direction: column; gap: 12px; background: #0d1117; padding: 15px; border-radius: 6px; border: 1px solid #30363d;">
-                    
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <label style="font-size: 12px; color: #c9d1d9; font-weight: bold;">Estado Civil</label>
-                        <select id="irs-estado-civil" class="input-moderno" style="max-width: 150px; padding: 8px;" onchange="toggleSujeitoB(); processarSimulacaoIRS();">
-                            <option value="solteiro">Solteiro(a)</option>
-                            <option value="casado">Casado / Unido Facto</option>
-                        </select>
-                    </div>
 
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div id="bloco-sujeito-a" style="display: flex; justify-content: space-between; align-items: center;">
                         <label style="font-size: 12px; color: #c9d1d9; font-weight: bold;">Rendimento Bruto (Sujeito A)</label>
                         <input type="number" id="irs-rendimento-a" class="input-moderno" placeholder="€ Anual" style="max-width: 150px; padding: 8px;" oninput="processarSimulacaoIRS()">
                     </div>
 
-                    <div id="bloco-sujeito-b" style="display: none; justify-content: space-between; align-items: center;">
+                    <div id="bloco-sujeito-b" style="display: flex; justify-content: space-between; align-items: center;">
                         <label style="font-size: 12px; color: #c9d1d9; font-weight: bold;">Rendimento Bruto (Sujeito B)</label>
                         <input type="number" id="irs-rendimento-b" class="input-moderno" placeholder="€ Anual" style="max-width: 150px; padding: 8px;" oninput="processarSimulacaoIRS()">
                     </div>
+                    
                 </div>
 
                 <div id="resultado-irs" style="margin-top: 20px; display: none;">
@@ -4480,36 +4473,26 @@
     // ==========================================
     // MOTOR ASSISTENTE IRS & ENGLOBAMENTO
     // ==========================================
-    function sincronizarEstadoCivil() {
+    function atualizarVisibilidadeIRS() {
         const declarante = document.getElementById('irs-filtro-sujeito').value;
-        const selectEstado = document.getElementById('irs-estado-civil');
-        
-        // Se escolhe Agregado no topo, muda automaticamente para Casado em baixo
+        const blocoA = document.getElementById('bloco-sujeito-a');
+        const blocoB = document.getElementById('bloco-sujeito-b');
+        const inputA = document.getElementById('irs-rendimento-a');
+        const inputB = document.getElementById('irs-rendimento-b');
+
         if (declarante === 'TODOS') {
-            selectEstado.value = 'casado';
-        } else {
-            selectEstado.value = 'solteiro';
-        }
-        toggleSujeitoB(); // Dispara a animação da gaveta
-    }
-
-    function toggleSujeitoB() {
-        const estado = document.getElementById('irs-estado-civil').value;
-        document.getElementById('bloco-sujeito-b').style.display = estado === 'casado' ? 'flex' : 'none';
-        
-        if (estado === 'solteiro') {
-            document.getElementById('irs-rendimento-b').value = '';
-        }
-
-        // Faz o inverso: Se o utilizador mudar manualmente para Casado em baixo, muda o topo para Agregado
-        const filtroSuj = document.getElementById('irs-filtro-sujeito');
-        if (estado === 'casado' && filtroSuj.value !== 'TODOS') {
-            filtroSuj.value = 'TODOS';
-        } else if (estado === 'solteiro' && filtroSuj.value === 'TODOS') {
-            filtroSuj.value = 'A'; // Assume Sujeito A por defeito
+            blocoA.style.display = 'flex';
+            blocoB.style.display = 'flex';
+        } else if (declarante === 'A') {
+            blocoA.style.display = 'flex';
+            blocoB.style.display = 'none';
+            inputB.value = ''; // Limpa o valor para não estragar o cálculo do IRS
+        } else if (declarante === 'B') {
+            blocoA.style.display = 'none';
+            blocoB.style.display = 'flex';
+            inputA.value = ''; // Limpa o valor para não estragar o cálculo do IRS
         }
     }
-
     function carregarAnosIRS() {
         // Varre o cofre para extrair os anos em que houve vendas fechadas
         const anosSet = new Set();
@@ -4527,7 +4510,7 @@
             opt.textContent = ano;
             selectAno.appendChild(opt);
         });
-        
+        atualizarVisibilidadeIRS();
         processarSimulacaoIRS();
     }
 
@@ -4558,7 +4541,9 @@
         const anoAtivo = document.getElementById('irs-ano-fiscal').value;
         const brutoA = parseFloat(document.getElementById('irs-rendimento-a').value) || 0;
         const brutoB = parseFloat(document.getElementById('irs-rendimento-b').value) || 0;
-        const casado = document.getElementById('irs-estado-civil').value === 'casado';
+        
+        const declarante = document.getElementById('irs-filtro-sujeito').value;
+        const casado = declarante === 'TODOS';
         
                 
         // 1. Lê o filtro ESPECÍFICO do painel de IRS
