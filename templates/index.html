@@ -871,14 +871,14 @@
     <!-- SEPARADOR 4: ASSISTENTE IRS -->
     <div id="tab-irs" class="tab-content">
         
-        <!-- CABEÇALHO DO ANO FISCAL & DECLARANTE -->
+        <!-- CABEÇALHO DO ANO FISCAL & CONFIGURAÇÃO FISCAL -->
         <div style="background-color: #1c1e24; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
             <h3 style="margin: 0; color: #f0f2f5; font-size: 16px; text-transform: uppercase;">
                 <span class="dica-edu">
                     Auditoria Fiscal & Englobamento
                     <span class="dica-texto" style="width: 320px;">
                         <strong style="color: #58a6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Simulação Isolada</strong>
-                        Este motor foca-se exclusivamente no impacto das tuas transações de bolsa. Se tiveres outras mais-valias no ano (ex: venda de imóveis, criptoativos), deves usar o simulador oficial da AT, pois a exclusão de tributação altera as taxas marginais.
+                        Este motor foca-se exclusivamente nas mais-valias de bolsa.
                     </span>
                 </span>
             </h3>
@@ -894,6 +894,10 @@
                 <div style="display: flex; align-items: center; gap: 8px; background: #0d1117; padding: 6px 12px; border-radius: 6px; border: 1px solid #30363d;">
                     <span style="color: #8b949e; font-size: 11px; font-weight: bold; text-transform: uppercase;">Ano:</span>
                     <select id="irs-ano-fiscal" class="input-moderno" style="padding: 2px 5px; font-size: 12px; border: none; background: transparent; cursor: pointer; color: #fff; font-weight: bold; min-width: 70px;" onchange="processarSimulacaoIRS()"></select>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px; background: #0d1117; padding: 6px 12px; border-radius: 6px; border: 1px solid #30363d;" title="Valor do limite do último escalão do IRS para o ano em curso">
+                    <span style="color: #8b949e; font-size: 11px; font-weight: bold; text-transform: uppercase;">Lim. Último Escalão:</span>
+                    <input type="number" id="irs-limite-escalao" value="86634" class="input-moderno" style="width: 85px; padding: 2px 5px; font-size: 12px; text-align: right; font-weight: bold; color: #e3b341;" oninput="processarSimulacaoIRS()">
                 </div>
             </div>
         </div>
@@ -4544,9 +4548,8 @@
         const brutoA = parseFloat(document.getElementById('irs-rendimento-a').value) || 0;
         const brutoB = parseFloat(document.getElementById('irs-rendimento-b').value) || 0;
 
-        // --- CONSTANTE LEGAL (Lembrete para atualizar anualmente) ---
-        // Valor do último escalão de IRS em vigor (Ex: 81.199€ na tabela de 2024)
-        const LIMITE_ULTIMO_ESCALAO = 81199; 
+        // Leitura do limite do último escalão definido no campo do topo
+        const LIMITE_ULTIMO_ESCALAO = parseFloat(document.getElementById('irs-limite-escalao').value) || 86634; 
 
         // 1. Extrai o PnL puro do ano alvo
         let pnlTotalAno = 0;
@@ -4562,11 +4565,9 @@
                 
                 pnlTotalAno += trade.pnlEUR;
 
-                // Identifica se o trade tem menos de 365 dias recorrendo ao motor FIFO
                 if (trade.pnlEscaloes && trade.pnlEscaloes.sub1) {
                     pnlCurtoPrazoAno += trade.pnlEscaloes.sub1;
                 } else {
-                    // Fallback de segurança para histórico antigo importado
                     pnlCurtoPrazoAno += trade.pnlEUR;
                 }
                 
@@ -4617,17 +4618,20 @@
         document.getElementById('irs-custo-liberatoria').innerText = `€${impostoLiberatoria.toFixed(2)}`;
         document.getElementById('irs-custo-marginal').innerText = `€${impostoMarginal.toFixed(2)}`;
 
-        // --- VERIFICAÇÃO DE ENGLOBAMENTO OBRIGATÓRIO (LEI PT) ---
-        const isUltimoEscalao = rendimentoColetavelPorSujeito > LIMITE_ULTIMO_ESCALAO;
+        // --- VERIFICAÇÃO DE ENGLOBAMENTO OBRIGATÓRIO (CORRIGIDA) ---
+        // O rendimento coletável COM O ENGRENO/SOMA das mais-valias por sujeito
+        const rendimentoColetavelTotalComMaisValias = (rendimentoBase + pnlTotalAno) / numeroSujeitos;
+        
+        const isUltimoEscalao = rendimentoColetavelTotalComMaisValias > LIMITE_ULTIMO_ESCALAO;
         const temMaisValiasCurtoPrazo = pnlCurtoPrazoAno > 0;
         const englobamentoObrigatorio = isUltimoEscalao && temMaisValiasCurtoPrazo;
 
         const caixaVeredicto = document.getElementById('irs-veredicto');
         
         if (englobamentoObrigatorio) {
-            caixaVeredicto.style.borderLeftColor = "#8e44ad"; // Roxo para avisos legais
+            caixaVeredicto.style.borderLeftColor = "#8e44ad"; // Roxo legal
             caixaVeredicto.style.background = "rgba(142, 68, 173, 0.1)";
-            caixaVeredicto.innerHTML = `<strong style="color:#8e44ad;">⚖️ ENGLOBAMENTO OBRIGATÓRIO (Por Lei).</strong> O teu rendimento coletável (<strong>€${rendimentoColetavelPorSujeito.toFixed(2)}</strong>/sujeito) ultrapassa o último escalão de IRS definido no código (>${LIMITE_ULTIMO_ESCALAO}€) e o teu histórico deste ano possui ativos retidos há menos de 365 dias (Curto Prazo). A Autoridade Tributária obriga ao englobamento destas operações.`;
+            caixaVeredicto.innerHTML = `<strong style="color:#8e44ad;">⚖️ ENGLOBAMENTO OBRIGATÓRIO (Por Lei).</strong> O rendimento coletável total <strong>já com as mais-valias somadas</strong> (€${rendimentoColetavelTotalComMaisValias.toFixed(2)}/sujeito) ultrapassa o limite do último escalão (>${LIMITE_ULTIMO_ESCALAO}€) e existem ativos detidos há menos de 365 dias (Curto Prazo). A Autoridade Tributária obriga ao englobamento.`;
         } else if (impostoMarginal < impostoLiberatoria) {
             let poupanca = impostoLiberatoria - impostoMarginal;
             caixaVeredicto.style.borderLeftColor = "#5cb85c";
