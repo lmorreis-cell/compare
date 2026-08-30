@@ -4630,94 +4630,106 @@
         }
         uiResultado.style.display = 'block';
 
-        // --- MATEMÁTICA DO QUADRO DE APURAMENTO (AT) ---
+        // --- MATEMÁTICA DO TRABALHO BASE ---
         const rendimentoGlobalTrabalho = (declarante === 'TODOS' || declarante === 'A' ? brutoA : 0) + (declarante === 'TODOS' || declarante === 'B' ? brutoB : 0);
         const deducoesTotais = (declarante === 'TODOS' || declarante === 'A' ? dedA : 0) + (declarante === 'TODOS' || declarante === 'B' ? dedB : 0);
         const quociente = casado ? 2 : 1;
-        const rendimentoBaseTrabalho = Math.max(0, rendimentoGlobalTrabalho - deducoesTotais);
-        const coletaBaseSemBolsa = calcularImpostoAT(rendimentoBaseTrabalho / quociente) * quociente;
+        const trabBase = Math.max(0, rendimentoGlobalTrabalho - deducoesTotais);
+        const irsTrab = calcularImpostoAT(trabBase / quociente) * quociente;
 
-        // --- VERIFICAÇÃO DE ENGLOBAMENTO OBRIGATÓRIO (CORRIGIDA PELA LEI) ---
-        // A lei (Art 72 CIRS) apenas exige o englobamento se Trabalho + Curto Prazo exceder o escalão.
+        // --- VERIFICAÇÃO DE ENGLOBAMENTO OBRIGATÓRIO (ART. 72 CIRS) ---
         const rendimentoColetavelA = Math.max(0, brutoA - dedA + pnlCurtoPrazo['A']);
         const rendimentoColetavelB = Math.max(0, brutoB - dedB + pnlCurtoPrazo['B']);
-        
         const A_obriga = (rendimentoColetavelA > LIMITE_ULTIMO_ESCALAO) && (pnlCurtoPrazo['A'] > 0);
         const B_obriga = (rendimentoColetavelB > LIMITE_ULTIMO_ESCALAO) && (pnlCurtoPrazo['B'] > 0);
         const englobamentoObrigatorio = A_obriga || B_obriga;
 
-        let impostoMarginal, coletaEnglobada, rendimentoParaTaxa, rendimentoDemonstracao, globalDemonstracao;
-        let subTextoMarginal = "";
-        let subTextoApurada = "";
-        let importanciaApuradaTotal = 0; 
+        // --- CÁLCULO DOS TRÊS CENÁRIOS POSSÍVEIS ---
+        
+        // 1. Cenário Não Englobar (Taxa Liberatória 28%)
+        const fixoCP = curtoPrazoTotal * 0.28;
+        const fixoLP = longoPrazoTotal * 0.28;
+        const impostoBolsaFlat = fixoCP + fixoLP;
 
-        // Custo Base caso optes por NÃO englobar (Taxa Fixa para toda a carteira)
-        const impostoLiberatoria_CP = curtoPrazoTotal * 0.28;
-        const impostoLiberatoria_LP = longoPrazoTotal * 0.28;
-        const impostoLiberatoria = impostoLiberatoria_CP + impostoLiberatoria_LP;
-        const subTextoLiberatoria = `IRS Fixo CP: €${impostoLiberatoria_CP.toFixed(2)} + IRS Fixo LP: €${impostoLiberatoria_LP.toFixed(2)}`;
+        // 2. Cenário Englobamento Voluntário (Toda a Carteira)
+        const coletaEnglobadaAll = calcularImpostoAT((trabBase + pnlTotal) / quociente) * quociente;
+        const impostoBolsaMarginalTotal = Math.max(0, coletaEnglobadaAll - irsTrab);
+        // Proporção exata do peso do CP e LP para desagregar a fatura marginal
+        const margTotalCP = pnlTotal > 0 ? impostoBolsaMarginalTotal * (curtoPrazoTotal / pnlTotal) : 0;
+        const margTotalLP = pnlTotal > 0 ? impostoBolsaMarginalTotal * (longoPrazoTotal / pnlTotal) : 0;
+
+        // 3. Cenário Híbrido (Obrigatório por Lei: Marginaliza CP, 28% no LP)
+        const coletaHibrida = calcularImpostoAT((trabBase + curtoPrazoTotal) / quociente) * quociente;
+        const impostoMarginalApenasCP = Math.max(0, coletaHibrida - irsTrab);
+        const impostoBolsaHibrido = impostoMarginalApenasCP + fixoLP;
+
+        // --- APLICAÇÃO DO VEREDICTO AO ECRÃ ---
+        let impostoMarginalVisor, subMarginalVisor;
+        let demonGlobal, demonColetavel, demonApurada, subApuradaTexto;
 
         if (englobamentoObrigatorio) {
-            // MODELO HÍBRIDO LEGAL: Engloba SÓ o Curto Prazo. O Longo Prazo paga 28%.
-            rendimentoParaTaxa = (rendimentoBaseTrabalho + curtoPrazoTotal) / quociente;
-            coletaEnglobada = calcularImpostoAT(rendimentoParaTaxa) * quociente;
-            
-            const acrescimoTrabalho = Math.max(0, coletaEnglobada - coletaBaseSemBolsa); // O custo marginal do CP
-            
-            impostoMarginal = acrescimoTrabalho + impostoLiberatoria_LP;
-            importanciaApuradaTotal = coletaEnglobada + impostoLiberatoria_LP;
+            // OBRIGATÓRIO (HÍBRIDO): Demonstração reflete Trabalho + CP Englobado. LP é autônomo.
+            impostoMarginalVisor = impostoBolsaHibrido;
+            subMarginalVisor = `IRS Marg. (CP): €${impostoMarginalApenasCP.toFixed(2)} + IRS Fixo (LP): €${fixoLP.toFixed(2)}`;
 
-            globalDemonstracao = rendimentoGlobalTrabalho + curtoPrazoTotal;
-            rendimentoDemonstracao = rendimentoBaseTrabalho + curtoPrazoTotal;
+            demonGlobal = rendimentoGlobalTrabalho + curtoPrazoTotal; 
+            demonColetavel = trabBase + curtoPrazoTotal;
+            demonApurada = irsTrab + impostoBolsaHibrido; 
+            subApuradaTexto = `Trabalho: €${irsTrab.toFixed(2)} | Bolsa Marg. (CP): €${impostoMarginalApenasCP.toFixed(2)} | Bolsa Fixo (LP): €${fixoLP.toFixed(2)}`;
 
-            subTextoApurada = `Trabalho: €${coletaBaseSemBolsa.toFixed(2)} | Bolsa (Marg. CP): €${acrescimoTrabalho.toFixed(2)} | Bolsa (Aut. LP): €${impostoLiberatoria_LP.toFixed(2)}`;
-            subTextoMarginal = `IRS Marginal (CP): €${acrescimoTrabalho.toFixed(2)} + IRS Fixo (LP): €${impostoLiberatoria_LP.toFixed(2)}`;
+        } else if (impostoBolsaMarginalTotal < impostoBolsaFlat) {
+            // ENGLOBAR COMPENSA: Demonstração reflete Trabalho + Totalidade da Bolsa.
+            impostoMarginalVisor = impostoBolsaMarginalTotal;
+            subMarginalVisor = `IRS Marg. (CP): €${margTotalCP.toFixed(2)} + IRS Marg. (LP): €${margTotalLP.toFixed(2)}`;
+
+            demonGlobal = rendimentoGlobalTrabalho + pnlTotal;
+            demonColetavel = trabBase + pnlTotal;
+            demonApurada = irsTrab + impostoBolsaMarginalTotal; 
+            subApuradaTexto = `Trabalho: €${irsTrab.toFixed(2)} | Bolsa Marg. (CP): €${margTotalCP.toFixed(2)} | Bolsa Marg. (LP): €${margTotalLP.toFixed(2)}`;
+
         } else {
-            // ENGLOBAMENTO VOLUNTÁRIO: Para simular se compensa, a lei obriga a englobar TUDO.
-            rendimentoParaTaxa = (rendimentoBaseTrabalho + pnlTotal) / quociente;
-            coletaEnglobada = calcularImpostoAT(rendimentoParaTaxa) * quociente;
-            
-            const impostoAdicionalBolsaTotal = Math.max(0, coletaEnglobada - coletaBaseSemBolsa);
-            
-            impostoMarginal = impostoAdicionalBolsaTotal;
-            importanciaApuradaTotal = coletaEnglobada;
-            
-            globalDemonstracao = rendimentoGlobalTrabalho + pnlTotal;
-            rendimentoDemonstracao = rendimentoBaseTrabalho + pnlTotal;
+            // NÃO ENGLOBAR COMPENSA: A Bolsa NÃO entra no quadro superior. Paga-se Trabalho + 28% Autônomo.
+            // O quadro "Custo c/ Englobamento" mostra a simulação marginal total para provar que é má ideia.
+            impostoMarginalVisor = impostoBolsaMarginalTotal;
+            subMarginalVisor = `IRS Marg. (CP): €${margTotalCP.toFixed(2)} + IRS Marg. (LP): €${margTotalLP.toFixed(2)}`;
 
-            subTextoApurada = `Trabalho: €${coletaBaseSemBolsa.toFixed(2)} | Bolsa (Marg. Total): €${impostoAdicionalBolsaTotal.toFixed(2)}`;
-            subTextoMarginal = `Penalização Marginal s/ Toda a Carteira: €${impostoAdicionalBolsaTotal.toFixed(2)}`;
+            demonGlobal = rendimentoGlobalTrabalho; // A bolsa fica fora do IRS normal
+            demonColetavel = trabBase;
+            demonApurada = irsTrab + impostoBolsaFlat; // Soma-se as taxas liberatórias no fim
+            subApuradaTexto = `Trabalho: €${irsTrab.toFixed(2)} | Bolsa Fixo (CP): €${fixoCP.toFixed(2)} | Bolsa Fixo (LP): €${fixoLP.toFixed(2)}`;
         }
 
-        // --- PREENCHER O QUADRO VISUAL ---
-        document.getElementById('demo-global').innerText = `€${globalDemonstracao.toFixed(2)}`;
+        // --- INJEÇÃO NO HTML ---
+        document.getElementById('demo-global').innerText = `€${demonGlobal.toFixed(2)}`;
         document.getElementById('demo-deducoes').innerText = `€${deducoesTotais.toFixed(2)}`;
-        document.getElementById('demo-coletavel').innerText = `€${rendimentoDemonstracao.toFixed(2)}`;
+        document.getElementById('demo-coletavel').innerText = `€${demonColetavel.toFixed(2)}`;
         document.getElementById('demo-quociente').innerText = quociente.toFixed(2);
-        document.getElementById('demo-apurada').innerText = `€${importanciaApuradaTotal.toFixed(2)}`;
-        document.getElementById('irs-custo-liberatoria').innerText = `€${impostoLiberatoria.toFixed(2)}`;
-        document.getElementById('irs-custo-marginal').innerText = `€${impostoMarginal.toFixed(2)}`;
+        document.getElementById('demo-apurada').innerText = `€${demonApurada.toFixed(2)}`;
+        
+        document.getElementById('irs-custo-liberatoria').innerText = `€${impostoBolsaFlat.toFixed(2)}`;
+        document.getElementById('sub-liberatoria').innerText = `IRS Fixo (CP): €${fixoCP.toFixed(2)} + IRS Fixo (LP): €${fixoLP.toFixed(2)}`;
+        
+        document.getElementById('irs-custo-marginal').innerText = `€${impostoMarginalVisor.toFixed(2)}`;
+        document.getElementById('sub-marginal').innerText = subMarginalVisor;
+        document.getElementById('sub-apurada').innerText = subApuradaTexto;
 
-        document.getElementById('sub-apurada').innerText = subTextoApurada;
-        document.getElementById('sub-liberatoria').innerText = subTextoLiberatoria;
-        document.getElementById('sub-marginal').innerText = subTextoMarginal;
-
+        // --- VEREDICTO FINAL ---
         const caixaVeredicto = document.getElementById('irs-veredicto');
         if (englobamentoObrigatorio) {
             let culpado = A_obriga && B_obriga ? "Ambos os sujeitos ultrapassam" : (A_obriga ? "O Sujeito A ultrapassa" : "O Sujeito B ultrapassa");
             caixaVeredicto.style.borderLeftColor = "#8e44ad"; 
             caixaVeredicto.style.background = "rgba(142, 68, 173, 0.1)";
             caixaVeredicto.innerHTML = `<strong style="color:#8e44ad;">⚖️ ENGLOBAMENTO OBRIGATÓRIO HÍBRIDO (Por Lei).</strong> ${culpado} o limite do último escalão apenas com o seu Salário + Mais Valias de Curto Prazo. O motor forçou o englobamento de <strong>€${curtoPrazoTotal.toFixed(2)}</strong> às taxas marginais, blindando os restantes <strong>€${longoPrazoTotal.toFixed(2)}</strong> de longo prazo na taxa liberatória de 28%.`;
-        } else if (impostoMarginal < impostoLiberatoria) {
-            let poupanca = impostoLiberatoria - impostoMarginal;
+        } else if (impostoBolsaMarginalTotal < impostoBolsaFlat) {
+            let poupanca = impostoBolsaFlat - impostoBolsaMarginalTotal;
             caixaVeredicto.style.borderLeftColor = "#5cb85c";
             caixaVeredicto.style.background = "rgba(92, 184, 92, 0.1)";
             caixaVeredicto.innerHTML = `<strong style="color:#5cb85c;">Decisão Matemática: ENGLOBAR TUDO.</strong> O teu escalão absorve a totalidade das mais-valias de forma eficiente. Englobar resulta numa poupança fiscal de <strong>€${poupanca.toFixed(2)}</strong>. Assinala a opção de englobamento no Anexo J/G.`;
         } else {
-            let perda = impostoMarginal - impostoLiberatoria;
+            let perda = impostoBolsaMarginalTotal - impostoBolsaFlat;
             caixaVeredicto.style.borderLeftColor = "#d9534f";
             caixaVeredicto.style.background = "rgba(217, 83, 79, 0.1)";
-            caixaVeredicto.innerHTML = `<strong style="color:#d9534f;">Decisão Matemática: NÃO ENGLOBAR.</strong> O englobamento não é obrigatório para o teu escalão e, se o fizesses de forma voluntária (o que te obrigaria a englobar a carteira inteira), pagarias mais <strong>€${perda.toFixed(2)}</strong>. Deixa a opção em branco no Portal das Finanças.`;
+            caixaVeredicto.innerHTML = `<strong style="color:#d9534f;">Decisão Matemática: NÃO ENGLOBAR.</strong> O englobamento não é obrigatório e, se o fizesses voluntariamente (englobando a carteira inteira), pagarias mais <strong>€${perda.toFixed(2)}</strong> do que a reter 28%. Deixa a opção em branco no Portal das Finanças.`;
         }
     }
     function copiarCabula() {
