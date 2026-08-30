@@ -871,20 +871,30 @@
     <!-- SEPARADOR 4: ASSISTENTE IRS -->
     <div id="tab-irs" class="tab-content">
         
-        <!-- CABEÇALHO DO ANO FISCAL -->
-        <div style="background-color: #1c1e24; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center;">
+        <!-- CABEÇALHO DO ANO FISCAL & DECLARANTE -->
+        <div style="background-color: #1c1e24; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
             <h3 style="margin: 0; color: #f0f2f5; font-size: 16px; text-transform: uppercase;">
                 <span class="dica-edu">
                     Auditoria Fiscal & Englobamento
                     <span class="dica-texto" style="width: 320px;">
                         <strong style="color: #58a6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Simulação Isolada</strong>
-                        Este motor foca-se exclusivamente no impacto das tuas transações de bolsa. Se tiveres outras mais-valias no ano (ex: venda de imóveis herdados ou adquiridos, criptoativos, etc.), deves usar o simulador oficial da AT, pois a exclusão de tributação ou regras de aquisição cruzada alteram as taxas marginais.
+                        Este motor foca-se exclusivamente no impacto das tuas transações de bolsa. Se tiveres outras mais-valias no ano (ex: venda de imóveis, criptoativos), deves usar o simulador oficial da AT, pois a exclusão de tributação altera as taxas marginais.
                     </span>
                 </span>
             </h3>
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <span style="color: #8b949e; font-size: 12px; font-weight: bold;">Ano de Exercício:</span>
-                <select id="irs-ano-fiscal" class="input-moderno" style="min-width: 100px; font-weight: bold;" onchange="processarSimulacaoIRS()"></select>
+            <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 8px; background: #0d1117; padding: 6px 12px; border-radius: 6px; border: 1px solid #30363d;">
+                    <span style="color: #8b949e; font-size: 11px; font-weight: bold; text-transform: uppercase;">Declarante:</span>
+                    <select id="irs-filtro-sujeito" class="input-moderno" style="padding: 2px 5px; font-size: 12px; border: none; background: transparent; cursor: pointer; color: #58a6ff; font-weight: bold; min-width: 140px;" onchange="processarSimulacaoIRS()">
+                        <option value="TODOS">Agregado (Conjunta)</option>
+                        <option value="A">Apenas Sujeito A</option>
+                        <option value="B">Apenas Sujeito B</option>
+                    </select>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px; background: #0d1117; padding: 6px 12px; border-radius: 6px; border: 1px solid #30363d;">
+                    <span style="color: #8b949e; font-size: 11px; font-weight: bold; text-transform: uppercase;">Ano:</span>
+                    <select id="irs-ano-fiscal" class="input-moderno" style="padding: 2px 5px; font-size: 12px; border: none; background: transparent; cursor: pointer; color: #fff; font-weight: bold; min-width: 70px;" onchange="processarSimulacaoIRS()"></select>
+                </div>
             </div>
         </div>
 
@@ -4526,26 +4536,30 @@
         const brutoB = parseFloat(document.getElementById('irs-rendimento-b').value) || 0;
         const casado = document.getElementById('irs-estado-civil').value === 'casado';
         
-        // 1. Extrai o PnL puro do ano alvo
+                
+        // 1. Lê o filtro ESPECÍFICO do painel de IRS
+        const filtroSuj = document.getElementById('irs-filtro-sujeito').value;
+
+        // 2. Extrai o PnL puro do ano alvo
         let pnlTotalAno = 0;
         let cabulaNacional = [];
         let cabulaEstrangeiro = [];
 
-
-        const filtroSuj = document.getElementById('filtro-sujeito-global') ? document.getElementById('filtro-sujeito-global').value : 'TODOS';
         cofreFechadas.forEach(trade => {
+            // A rede de segurança que impede o erro "undefined" nos registos antigos
+            let sujTrade = trade.sujeito || 'A'; 
+            
             if (new Date(trade.data).getFullYear().toString() === anoAtivo) {
+                // Filtra os trades consoante a seleção na simulação atual (Conjunta, A ou B)
+                if (filtroSuj !== 'TODOS' && sujTrade !== filtroSuj) return; 
+                
                 pnlTotalAno += trade.pnlEUR;
                 
-                // Reconstrói a linha para a Cábula
-                // Procura a operação de compra original no CofreBruto cruzando via idOrigem
                 let compraOriginal = cofreBruto.find(b => b.id === trade.idOrigem);
                 let dataCompra = compraOriginal ? compraOriginal.data : "Desconhecida";
                 
-                if (filtroSuj !== 'TODOS' && (trade.sujeito || 'A') !== filtroSuj) return; // Ignora os trades do parceiro se a vista estiver isolada
-
-                // Mapeamento Nacional vs Estrangeiro (.LS = Lisboa)
-                let linhaTexto = `[Suj. ${trade.sujeito}] Ticker: ${trade.ticker} | Qtd: ${trade.qtdVendida} | Aquis: ${dataCompra.slice(0,7)} | Realiz: ${trade.data.slice(0,7)} | PnL: €${trade.pnlEUR.toFixed(2)}\n`;
+                // Texto injetado corretamente com a variável protegida 'sujTrade'
+                let linhaTexto = `[Suj. ${sujTrade}] Ticker: ${trade.ticker} | Qtd: ${trade.qtdVendida} | Aquis: ${dataCompra.slice(0,7)} | Realiz: ${trade.data.slice(0,7)} | PnL: €${trade.pnlEUR.toFixed(2)}\n`;
                 
                 if (trade.ticker.includes('.LS')) {
                     cabulaNacional.push(linhaTexto);
