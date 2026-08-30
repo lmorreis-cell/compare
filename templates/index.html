@@ -288,6 +288,7 @@
             <button class="tab-btn" onclick="abrirSeparador(event, 'tab-screener')">🦅 Screener Algorítmico</button>
             
             <button class="tab-btn" onclick="abrirSeparador(event, 'tab-cofre'); setTimeout(atualizarCofre, 50); setTimeout(sincronizarPrecosLiveCofre, 100);">🏛️ Cofre Fiscal</button>
+            <button class="tab-btn" onclick="abrirSeparador(event, 'tab-irs'); carregarAnosIRS();">⚖️ Assistente IRS</button>
         </div>
 
     <!-- ==========================================
@@ -944,6 +945,98 @@
     </div>
 </div>
 
+
+<!-- SEPARADOR 4: ASSISTENTE IRS -->
+    <div id="tab-irs" class="tab-content">
+        
+        <!-- CABEÇALHO DO ANO FISCAL -->
+        <div style="background-color: #1c1e24; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="margin: 0; color: #f0f2f5; font-size: 16px; text-transform: uppercase;">
+                <span class="dica-edu">
+                    Auditoria Fiscal & Englobamento
+                    <span class="dica-texto" style="width: 320px;">
+                        <strong style="color: #58a6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Simulação Isolada</strong>
+                        Este motor foca-se exclusivamente no impacto das tuas transações de bolsa. Se tiveres outras mais-valias no ano (ex: venda de imóveis herdados ou adquiridos, criptoativos, etc.), deves usar o simulador oficial da AT, pois a exclusão de tributação ou regras de aquisição cruzada alteram as taxas marginais.
+                    </span>
+                </span>
+            </h3>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="color: #8b949e; font-size: 12px; font-weight: bold;">Ano de Exercício:</span>
+                <select id="irs-ano-fiscal" class="input-moderno" style="min-width: 100px; font-weight: bold;" onchange="processarSimulacaoIRS()"></select>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+            
+            <!-- BLOCO 1: SIMULADOR DE ENGLOBAMENTO -->
+            <div style="flex: 1; min-width: 300px; background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; border-top: 4px solid #e3b341;">
+                <h4 style="margin: 0 0 15px 0; color: #e3b341; font-size: 14px; text-transform: uppercase;">1. Simulador de Englobamento</h4>
+                <p style="font-size: 12px; color: #8b949e; margin-bottom: 20px; line-height: 1.5;">Calcula se deves pagar os 28% (Taxa Liberatória) ou somar os lucros da bolsa aos teus rendimentos de trabalho (Taxa Marginal).</p>
+                
+                <div style="display: flex; flex-direction: column; gap: 12px; background: #0d1117; padding: 15px; border-radius: 6px; border: 1px solid #30363d;">
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <label style="font-size: 12px; color: #c9d1d9; font-weight: bold;">Estado Civil</label>
+                        <select id="irs-estado-civil" class="input-moderno" style="max-width: 150px; padding: 8px;" onchange="toggleSujeitoB(); processarSimulacaoIRS();">
+                            <option value="solteiro">Solteiro(a)</option>
+                            <option value="casado">Casado / Unido Facto</option>
+                        </select>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <label style="font-size: 12px; color: #c9d1d9; font-weight: bold;">Rendimento Bruto (Sujeito A)</label>
+                        <input type="number" id="irs-rendimento-a" class="input-moderno" placeholder="€ Anual" style="max-width: 150px; padding: 8px;" oninput="processarSimulacaoIRS()">
+                    </div>
+
+                    <div id="bloco-sujeito-b" style="display: none; justify-content: space-between; align-items: center;">
+                        <label style="font-size: 12px; color: #c9d1d9; font-weight: bold;">Rendimento Bruto (Sujeito B)</label>
+                        <input type="number" id="irs-rendimento-b" class="input-moderno" placeholder="€ Anual" style="max-width: 150px; padding: 8px;" oninput="processarSimulacaoIRS()">
+                    </div>
+                </div>
+
+                <div id="resultado-irs" style="margin-top: 20px; display: none;">
+                    <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed #30363d; padding-bottom: 8px; margin-bottom: 8px;">
+                        <span style="font-size: 12px; color: #8b949e;">Mais-Valias (Bolsa):</span>
+                        <span id="irs-pnl-alvo" style="font-size: 13px; font-weight: bold; color: #fff;">€0.00</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed #30363d; padding-bottom: 8px; margin-bottom: 8px;">
+                        <span style="font-size: 12px; color: #8b949e;">Custo s/ Englobamento (28%):</span>
+                        <span id="irs-custo-liberatoria" style="font-size: 13px; font-weight: bold; color: #d9534f;">€0.00</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+                        <span style="font-size: 12px; color: #8b949e;">Custo c/ Englobamento (Marginal):</span>
+                        <span id="irs-custo-marginal" style="font-size: 13px; font-weight: bold; color: #e3b341;">€0.00</span>
+                    </div>
+                    
+                    <div id="irs-veredicto" style="background: rgba(92, 184, 92, 0.1); border-left: 4px solid #5cb85c; padding: 12px; border-radius: 4px; font-size: 13px; color: #c9d1d9; line-height: 1.5;">
+                        <!-- Decisão matemática injetada aqui -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- BLOCO 2: MÁQUINA DE PREENCHIMENTO -->
+            <div style="flex: 1.5; min-width: 350px; background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; border-top: 4px solid #58a6ff;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
+                    <h4 style="margin: 0; color: #58a6ff; font-size: 14px; text-transform: uppercase;">2. Cábula de Preenchimento</h4>
+                    <button onclick="copiarCabula()" class="btn-moderno" style="background: #232d3f; color: #c9d1d9; padding: 6px 12px; font-size: 11px; border: 1px solid #30363d;">📋 Copiar Dados</button>
+                </div>
+                <p style="font-size: 12px; color: #8b949e; margin-bottom: 20px; line-height: 1.5;">O motor identificou a origem das praças financeiras e processou o teu inventário FIFO para gerar os agregados exatos para o Portal das Finanças.</p>
+                
+                <!-- Grelha de Textareas para Anexo G e J -->
+                <div style="display: flex; flex-direction: column; gap: 15px;">
+                    <div>
+                        <label style="display: block; font-size: 12px; font-weight: bold; color: #5cb85c; margin-bottom: 5px;">🇵🇹 ANEXO G (Ativos Nacionais / Euronext Lisbon)</label>
+                        <textarea id="cabula-anexo-g" readonly style="width: 100%; height: 100px; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; color: #8b949e; font-family: monospace; font-size: 11px; padding: 10px; resize: none;"></textarea>
+                    </div>
+                    <div>
+                        <label style="display: block; font-size: 12px; font-weight: bold; color: #f28b24; margin-bottom: 5px;">🌍 ANEXO J (Ativos Estrangeiros / Wall Street / Xetra)</label>
+                        <textarea id="cabula-anexo-j" readonly style="width: 100%; height: 160px; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; color: #8b949e; font-family: monospace; font-size: 11px; padding: 10px; resize: none;"></textarea>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>    
 </div> <!-- ✔️ NOVO: FECHA A CAIXA DO TERMINAL GLOBAL AQUI -->
     
 <script>
@@ -4332,6 +4425,150 @@
             console.error("Falha a carregar o Ticker Tape:", erro);
         }
     }
+
+    // ==========================================
+    // MOTOR ASSISTENTE IRS & ENGLOBAMENTO
+    // ==========================================
+    function toggleSujeitoB() {
+        const estado = document.getElementById('irs-estado-civil').value;
+        document.getElementById('bloco-sujeito-b').style.display = estado === 'casado' ? 'flex' : 'none';
+        if (estado === 'solteiro') document.getElementById('irs-rendimento-b').value = '';
+    }
+
+    function carregarAnosIRS() {
+        // Varre o cofre para extrair os anos em que houve vendas fechadas
+        const anosSet = new Set();
+        cofreFechadas.forEach(trade => anosSet.add(new Date(trade.data).getFullYear()));
+        
+        const selectAno = document.getElementById('irs-ano-fiscal');
+        selectAno.innerHTML = '';
+        
+        let anos = Array.from(anosSet).sort((a, b) => b - a); // Do mais recente para o mais antigo
+        if (anos.length === 0) anos = [new Date().getFullYear() - 1]; // Fallback
+        
+        anos.forEach(ano => {
+            const opt = document.createElement('option');
+            opt.value = ano;
+            opt.textContent = ano;
+            selectAno.appendChild(opt);
+        });
+        
+        processarSimulacaoIRS();
+    }
+
+    // Calcula o IRS devido baseado nos escalões simplificados (2024)
+    function calcularImpostoAT(rendimentoColetavel) {
+        if (rendimentoColetavel <= 0) return 0;
+        const escaloes = [
+            { limite: 7703, taxa: 0.1325, abater: 0 },
+            { limite: 11623, taxa: 0.18, abater: 366.59 },
+            { limite: 16472, taxa: 0.23, abater: 947.74 },
+            { limite: 21321, taxa: 0.26, abater: 1441.90 },
+            { limite: 27146, taxa: 0.3275, abater: 2881.07 },
+            { limite: 39791, taxa: 0.37, abater: 4034.77 },
+            { limite: 51997, taxa: 0.435, abater: 6621.19 },
+            { limite: 81199, taxa: 0.45, abater: 7401.14 },
+            { limite: Infinity, taxa: 0.48, abater: 9837.11 }
+        ];
+        
+        for (let i = 0; i < escaloes.length; i++) {
+            if (rendimentoColetavel <= escaloes[i].limite) {
+                return (rendimentoColetavel * escaloes[i].taxa) - escaloes[i].abater;
+            }
+        }
+        return 0;
+    }
+
+    function processarSimulacaoIRS() {
+        const anoAtivo = document.getElementById('irs-ano-fiscal').value;
+        const brutoA = parseFloat(document.getElementById('irs-rendimento-a').value) || 0;
+        const brutoB = parseFloat(document.getElementById('irs-rendimento-b').value) || 0;
+        const casado = document.getElementById('irs-estado-civil').value === 'casado';
+        
+        // 1. Extrai o PnL puro do ano alvo
+        let pnlTotalAno = 0;
+        let cabulaNacional = [];
+        let cabulaEstrangeiro = [];
+
+        cofreFechadas.forEach(trade => {
+            if (new Date(trade.data).getFullYear().toString() === anoAtivo) {
+                pnlTotalAno += trade.pnlEUR;
+                
+                // Reconstrói a linha para a Cábula
+                // Procura a operação de compra original no CofreBruto cruzando via idOrigem
+                let compraOriginal = cofreBruto.find(b => b.id === trade.idOrigem);
+                let dataCompra = compraOriginal ? compraOriginal.data : "Desconhecida";
+                
+                // Mapeamento Nacional vs Estrangeiro (.LS = Lisboa)
+                let linhaTexto = `Ticker: ${trade.ticker} | Qtd: ${trade.qtdVendida} | Aquis: ${dataCompra.slice(0,7)} | Realiz: ${trade.data.slice(0,7)} | Lucro/Prejuízo Líquido: €${trade.pnlEUR.toFixed(2)}\n`;
+                
+                if (trade.ticker.includes('.LS')) {
+                    cabulaNacional.push(linhaTexto);
+                } else {
+                    cabulaEstrangeiro.push(linhaTexto);
+                }
+            }
+        });
+
+        // 2. Imprime a Cábula
+        document.getElementById('cabula-anexo-g').value = cabulaNacional.length > 0 ? cabulaNacional.join('') : "Sem operações na bolsa nacional este ano.";
+        document.getElementById('cabula-anexo-j').value = cabulaEstrangeiro.length > 0 ? cabulaEstrangeiro.join('') : "Sem operações no estrangeiro este ano.";
+
+        // 3. O Motor de Englobamento (Apenas arranca se houver inputs)
+        const uiResultado = document.getElementById('resultado-irs');
+        
+        if (pnlTotalAno <= 0 || (brutoA === 0 && brutoB === 0)) {
+            uiResultado.style.display = 'none';
+            return;
+        }
+
+        uiResultado.style.display = 'block';
+        document.getElementById('irs-pnl-alvo').innerText = `€${pnlTotalAno.toFixed(2)}`;
+
+        const deducoesEspecificas = 4104; 
+        const numeroSujeitos = casado ? 2 : 1;
+        const rendimentoBase = Math.max(0, (brutoA + brutoB) - (deducoesEspecificas * numeroSujeitos));
+        
+        // Cálculo do IRS sem englobar (Taxa Liberatória nos 28%)
+        const impostoLiberatoria = pnlTotalAno * 0.28;
+        
+        // IRS do salário normal
+        const coletaBase = calcularImpostoAT(rendimentoBase / numeroSujeitos) * numeroSujeitos;
+        
+        // IRS com o PnL englobado
+        const coletaEnglobada = calcularImpostoAT((rendimentoBase + pnlTotalAno) / numeroSujeitos) * numeroSujeitos;
+        
+        // A diferença é o que pagas *efetivamente* pelas mais valias se englobares
+        const impostoMarginal = Math.max(0, coletaEnglobada - coletaBase);
+
+        document.getElementById('irs-custo-liberatoria').innerText = `€${impostoLiberatoria.toFixed(2)}`;
+        document.getElementById('irs-custo-marginal').innerText = `€${impostoMarginal.toFixed(2)}`;
+
+        const caixaVeredicto = document.getElementById('irs-veredicto');
+        if (impostoMarginal < impostoLiberatoria) {
+            let poupanca = impostoLiberatoria - impostoMarginal;
+            caixaVeredicto.style.borderLeftColor = "#5cb85c";
+            caixaVeredicto.style.background = "rgba(92, 184, 92, 0.1)";
+            caixaVeredicto.innerHTML = `<strong style="color:#5cb85c;">Decisão Matemática: ENGLOBAR.</strong> O teu escalão de IRS é inferior aos 28%. Englobar resulta numa poupança fiscal de <strong>€${poupanca.toFixed(2)}</strong>. Assinala a opção de englobamento no Anexo J/G.`;
+        } else {
+            let perda = impostoMarginal - impostoLiberatoria;
+            caixaVeredicto.style.borderLeftColor = "#d9534f";
+            caixaVeredicto.style.background = "rgba(217, 83, 79, 0.1)";
+            caixaVeredicto.innerHTML = `<strong style="color:#d9534f;">Decisão Matemática: NÃO ENGLOBAR.</strong> A soma das mais-valias ao teu salário atira-te para um escalão punitivo. Englobar faria com que pagasses mais <strong>€${perda.toFixed(2)}</strong> do que a taxa fixa. Deixa a opção de englobamento em branco no Portal das Finanças.`;
+        }
+    }
+
+    function copiarCabula() {
+        const textG = document.getElementById('cabula-anexo-g').value;
+        const textJ = document.getElementById('cabula-anexo-j').value;
+        const conteudo = `--- ANEXO G ---\n${textG}\n\n--- ANEXO J ---\n${textJ}`;
+        
+        navigator.clipboard.writeText(conteudo).then(() => {
+            alert("📋 Dados do Anexo G e J copiados para a área de transferência!");
+        });
+    }
+
+    
 </script>
 
     
