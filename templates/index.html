@@ -885,7 +885,7 @@
             <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
                 <div style="display: flex; align-items: center; gap: 8px; background: #0d1117; padding: 6px 12px; border-radius: 6px; border: 1px solid #30363d;">
                     <span style="color: #8b949e; font-size: 11px; font-weight: bold; text-transform: uppercase;">Declarante:</span>
-                    <select id="irs-filtro-sujeito" class="input-moderno" style="padding: 2px 5px; font-size: 12px; border: none; background: transparent; cursor: pointer; color: #58a6ff; font-weight: bold; min-width: 140px;" onchange="processarSimulacaoIRS()">
+                    <select id="irs-filtro-sujeito" class="input-moderno" style="padding: 2px 5px; font-size: 12px; border: none; background: transparent; cursor: pointer; color: #58a6ff; font-weight: bold; min-width: 140px;" onchange="sincronizarEstadoCivil(); processarSimulacaoIRS()">
                         <option value="TODOS">Agregado (Conjunta)</option>
                         <option value="A">Apenas Sujeito A</option>
                         <option value="B">Apenas Sujeito B</option>
@@ -4480,10 +4480,34 @@
     // ==========================================
     // MOTOR ASSISTENTE IRS & ENGLOBAMENTO
     // ==========================================
+    function sincronizarEstadoCivil() {
+        const declarante = document.getElementById('irs-filtro-sujeito').value;
+        const selectEstado = document.getElementById('irs-estado-civil');
+        
+        // Se escolhe Agregado no topo, muda automaticamente para Casado em baixo
+        if (declarante === 'TODOS') {
+            selectEstado.value = 'casado';
+        } else {
+            selectEstado.value = 'solteiro';
+        }
+        toggleSujeitoB(); // Dispara a animação da gaveta
+    }
+
     function toggleSujeitoB() {
         const estado = document.getElementById('irs-estado-civil').value;
         document.getElementById('bloco-sujeito-b').style.display = estado === 'casado' ? 'flex' : 'none';
-        if (estado === 'solteiro') document.getElementById('irs-rendimento-b').value = '';
+        
+        if (estado === 'solteiro') {
+            document.getElementById('irs-rendimento-b').value = '';
+        }
+
+        // Faz o inverso: Se o utilizador mudar manualmente para Casado em baixo, muda o topo para Agregado
+        const filtroSuj = document.getElementById('irs-filtro-sujeito');
+        if (estado === 'casado' && filtroSuj.value !== 'TODOS') {
+            filtroSuj.value = 'TODOS';
+        } else if (estado === 'solteiro' && filtroSuj.value === 'TODOS') {
+            filtroSuj.value = 'A'; // Assume Sujeito A por defeito
+        }
     }
 
     function carregarAnosIRS() {
