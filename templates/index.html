@@ -208,23 +208,26 @@
             border-bottom: 2px solid #232d3f;
             padding-bottom: 15px;
         }
+        
         /* ==========================================
            SISTEMA DE NAVEGAÇÃO (SEPARADORES/TABS)
            ========================================== */
         .tab-menu { 
             display: flex; 
-            gap: 5px; 
+            gap: 2px; /* Reduzimos o gap ligeiramente */
             margin-bottom: 25px; 
             border-bottom: 2px solid #30363d; 
             padding-bottom: 0;
-            overflow-x: auto;
+            /* Apagámos o overflow-x: auto; que causava a barra de scroll */
         }
         .tab-btn { 
+            flex: 1; /* Força os 6 botões a dividirem os 100% da largura de forma igual */
+            text-align: center; /* Centra o texto no novo botão perfeitamente dividido */
             background: transparent; 
             color: #8b949e; 
             border: none; 
-            padding: 12px 24px; 
-            font-size: 14px; 
+            padding: 12px 5px; /* Reduzimos o enchimento lateral (antes 24px) */
+            font-size: 12px; /* Reduzimos a fonte (antes 14px) para não cortar palavras */
             font-weight: bold; 
             cursor: pointer; 
             border-radius: 8px 8px 0 0; 
