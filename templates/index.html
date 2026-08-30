@@ -923,22 +923,31 @@
                     
                 </div>
 
-                <div id="resultado-irs" style="margin-top: 20px; display: none;">
-                    <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed #30363d; padding-bottom: 8px; margin-bottom: 8px;">
-                        <span style="font-size: 12px; color: #8b949e;">Mais-Valias (Bolsa):</span>
-                        <span id="irs-pnl-alvo" style="font-size: 13px; font-weight: bold; color: #fff;">€0.00</span>
+                <!-- RESULTADO DA AUDIMORIA & SIMULAÇÃO -->
+                <div id="resultado-irs" style="display: none; margin-top: 20px; background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px;">
+                    <h4 style="color: #c9d1d9; margin-top: 0; margin-bottom: 15px; font-size: 14px; text-transform: uppercase; border-bottom: 1px solid #30363d; padding-bottom: 8px;">
+                        📊 Comparativo de Impacto Fiscal
+                    </h4>
+        
+                    <!-- Grelha de Métricas -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 15px;">
+                        <div style="background: #0d1117; padding: 12px; border-radius: 6px; border: 1px solid #30363d; text-align: center;">
+                            <div style="font-size: 10px; color: #8b949e; text-transform: uppercase; font-weight: bold;">Mais-Valias Alvo</div>
+                            <div id="irs-pnl-alvo" style="font-size: 16px; color: #58a6ff; font-weight: bold; margin-top: 4px;">€0.00</div>
+                        </div>
+                        <div style="background: #0d1117; padding: 12px; border-radius: 6px; border: 1px solid #30363d; text-align: center;">
+                            <div style="font-size: 10px; color: #8b949e; text-transform: uppercase; font-weight: bold;">Taxa Fixa (28%)</div>
+                            <div id="irs-custo-liberatoria" style="font-size: 16px; color: #e3b341; font-weight: bold; margin-top: 4px;">€0.00</div>
+                        </div>
+                        <div style="background: #0d1117; padding: 12px; border-radius: 6px; border: 1px solid #30363d; text-align: center;">
+                            <div style="font-size: 10px; color: #8b949e; text-transform: uppercase; font-weight: bold;">Taxa Marginal</div>
+                            <div id="irs-custo-marginal" style="font-size: 16px; color: #f85149; font-weight: bold; margin-top: 4px;">€0.00</div>
+                        </div>
                     </div>
-                    <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed #30363d; padding-bottom: 8px; margin-bottom: 8px;">
-                        <span style="font-size: 12px; color: #8b949e;">Custo s/ Englobamento (28%):</span>
-                        <span id="irs-custo-liberatoria" style="font-size: 13px; font-weight: bold; color: #d9534f;">€0.00</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
-                        <span style="font-size: 12px; color: #8b949e;">Custo c/ Englobamento (Marginal):</span>
-                        <span id="irs-custo-marginal" style="font-size: 13px; font-weight: bold; color: #e3b341;">€0.00</span>
-                    </div>
-                    
-                    <div id="irs-veredicto" style="background: rgba(92, 184, 92, 0.1); border-left: 4px solid #5cb85c; padding: 12px; border-radius: 4px; font-size: 13px; color: #c9d1d9; line-height: 1.5;">
-                        <!-- Decisão matemática injetada aqui -->
+        
+                    <!-- Caixa de Veredicto / Alerta Legal -->
+                    <div id="irs-veredicto" style="padding: 15px; border-radius: 6px; border-left: 4px solid #58a6ff; background: rgba(88, 166, 255, 0.05); font-size: 13px; line-height: 1.5; color: #c9d1d9;">
+                        <!-- O texto da decisão ou aviso legal é injetado dinamicamente pelo motor -->
                     </div>
                 </div>
             </div>
