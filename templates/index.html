@@ -621,7 +621,17 @@
     <div id="tab-cofre" class="tab-content">
         
         <!-- 🏛️ LEDGER INSTITUCIONAL E PROVISÃO FISCAL -->
-        <h3 style="color: #c9d1d9; border-bottom: 1px dashed #30363d; padding-bottom: 10px; margin-bottom: 20px;">🏛️ LEDGER INSTITUCIONAL E PROVISÃO FISCAL</h3>
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed #30363d; padding-bottom: 10px; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
+            <h3 style="color: #c9d1d9; margin: 0;">🏛️ LEDGER INSTITUCIONAL E PROVISÃO FISCAL</h3>
+            <div style="display: flex; align-items: center; gap: 10px; background: #0d1117; padding: 6px 12px; border-radius: 6px; border: 1px solid #30363d;">
+                <span style="font-size: 11px; color: #8b949e; font-weight: bold; text-transform: uppercase;">Visão do Portefólio:</span>
+                <select id="filtro-sujeito-global" class="input-moderno" style="padding: 4px 8px; font-size: 12px; min-width: 150px; cursor: pointer; border-color: #58a6ff;" onchange="atualizarCofre(); carregarAnosIRS();">
+                    <option value="TODOS">Agregado (Suj. A + B)</option>
+                    <option value="A">Apenas Sujeito A</option>
+                    <option value="B">Apenas Sujeito B</option>
+                </select>
+            </div>
+        </div>
 
         <!-- PAINEL FISCAL AVANÇADO (CÓDIGO IRS PORTUGUÊS) -->
         <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 25px;">
@@ -770,7 +780,10 @@
                     <option value="COMPRA">COMPRA</option>
                     <option value="VENDA">VENDA</option>
                 </select>
-                
+                <select id="trade-sujeito" class="input-moderno" style="max-width: 90px; font-weight: bold; color: #58a6ff;" title="Sujeito Passivo (Titular)">
+                    <option value="A">Suj. A</option>
+                    <option value="B">Suj. B</option>
+                </select>
                 <!-- NOVO CAMPO: CARTEIRA (Com memória automática) -->
                 <input list="lista-carteiras" id="trade-carteira" class="input-moderno" placeholder="Carteira (ex: XTB)" style="max-width: 120px;">
                 <datalist id="lista-carteiras">
@@ -3281,6 +3294,7 @@
                 cofreAbertas.push({
                     idOrigem: evento.id, 
                     data: evento.data,
+                    sujeito: evento.sujeito || 'A',
                     carteira: evento.carteira,
                     ticker: evento.ticker,
                     qtdInicial: evento.qtd,
@@ -3292,7 +3306,9 @@
                 });
 
             } else if (evento.tipo === 'VENDA') {
-                let lotesDisponiveis = cofreAbertas.filter(l => l.ticker === evento.ticker && l.carteira === evento.carteira && l.qtdRestante > 0);
+                
+                // A Proteção FIFO: Uma venda só abate em lotes da mesma corretora E do mesmo titular
+                let lotesDisponiveis = cofreAbertas.filter(l => l.ticker === evento.ticker && l.carteira === evento.carteira && l.sujeito === (evento.sujeito || 'A') && l.qtdRestante > 0);
                 let qtdTotalEmArmazem = lotesDisponiveis.reduce((sum, l) => sum + l.qtdRestante, 0);
                 
                 if (evento.qtd > qtdTotalEmArmazem) {
@@ -3332,6 +3348,7 @@
                 cofreFechadas.push({
                     idOrigem: evento.id,
                     data: evento.data,
+                    sujeito: evento.sujeito || 'A',
                     carteira: evento.carteira,
                     ticker: evento.ticker,
                     qtdVendida: evento.qtd,
@@ -3358,6 +3375,7 @@
         const precoOriginal = parseFloat(document.getElementById('trade-preco').value);
         const custoOriginal = parseFloat(document.getElementById('trade-custo').value) || 0;
         const moeda = document.getElementById('trade-moeda').value;
+        const sujeito = document.getElementById('trade-sujeito').value;
         let cambio = parseFloat(document.getElementById('trade-cambio').value) || 1.0;
 
         if (!data || !ticker || !carteira || !qtd || !precoOriginal || qtd <= 0 || precoOriginal <= 0) {
@@ -3369,6 +3387,7 @@
 
         // Injeta a Ordem Bruta no Ledger
         cofreBruto.push({
+            sujeito: sujeito,
             id: Date.now(),
             data: data,
             tipo: tipo,
@@ -3432,6 +3451,9 @@
         let novoTicker = prompt("✏️ Ticker (Atualmente: " + evento.ticker + "):", evento.ticker);
         if(!novoTicker) return;
 
+        let novoSujeito = prompt("✏️ Sujeito Passivo (A ou B) (Atualmente: " + (evento.sujeito || 'A') + "):", evento.sujeito || 'A');
+        if(!novoSujeito) return;
+
         let novaQtdStr = prompt("✏️ Quantidade (Atualmente: " + evento.qtd + "):", evento.qtd);
         if(!novaQtdStr) return;
         let novaQtd = parseFloat(novaQtdStr);
@@ -3457,6 +3479,7 @@
         evento.data = novaData.trim();
         evento.carteira = novaCarteira.trim();
         evento.ticker = novoTicker.trim().toUpperCase();
+        evento.sujeito = novoSujeito.trim().toUpperCase();
         evento.qtd = novaQtd;
         evento.precoOriginal = novoPreco;
         evento.custoOriginal = novoCusto;
@@ -3530,6 +3553,9 @@
         if (!tbodyAbertas || !tbodyFechadas) return;
 
         tbodyAbertas.innerHTML = '';
+
+        const filtroSuj = document.getElementById('filtro-sujeito-global') ? document.getElementById('filtro-sujeito-global').value : 'TODOS';
+        
         tbodyFechadas.innerHTML = '';
         
         let pnlTotalGlobal = 0;
@@ -3541,7 +3567,8 @@
         let carteirasUnicas = new Set(); 
         let alocacaoTicker = {}; // NOVO: Guarda os totais por Ticker para o gráfico
 
-        cofreAbertas.filter(l => l.qtdRestante > 0).forEach(lote => {
+        cofreAbertas.filter(l => l.qtdRestante > 0 && (filtroSuj === 'TODOS' || l.sujeito === filtroSuj)).forEach(lote => {
+        
             totalLotesAbertos++;
             let capitalExpostoEUR = lote.qtdRestante * lote.precoCompraEUR;
             exposicaoTotalEUR += capitalExpostoEUR;
@@ -3577,7 +3604,8 @@
                 <tr style="border-bottom: 1px solid #30363d; transition: background 0.2s;" onmouseover="this.style.background='#161b22'" onmouseout="this.style.background='transparent'">
                     <td style="padding: 12px; color: #c9d1d9;">
                         <strong style="font-size: 14px; display: block; color: #fff;">${lote.ticker}</strong> 
-                        <span style="font-size: 11px; color: #8b949e;">${qtdFormatada} @ ${simbolo}${formatarPreco(lote.precoCompraOriginal)} • <span style="color: #e3b341;">[${nomeCarteira}]</span></span>
+                        <span style="font-size: 11px; color: #8b949e;">${qtdFormatada} @ ${simbolo}${formatarPreco(lote.precoCompraOriginal)} • <span style="color: #e3b341;">[${nomeCarteira}]</span><span style="color:#58a6ff;">[Suj. ${lote.sujeito}]</span></span>
+                        
                     </td>
                     <td style="padding: 12px; color: #8b949e; text-align: right; font-weight: bold; vertical-align: middle;">
                         €${capitalExpostoEUR.toFixed(2)}
@@ -3600,6 +3628,7 @@
 
         for (let i = cofreFechadas.length - 1; i >= 0; i--) {
             let trade = cofreFechadas[i];
+            if (filtroSuj !== 'TODOS' && trade.sujeito !== filtroSuj) continue;
             pnlTotalGlobal += trade.pnlEUR;
             
             let fatias = trade.pnlEscaloes || { sub1: trade.pnlEUR, sub2: 0, sub5: 0, sub8: 0, plus8: 0 };
@@ -3620,7 +3649,7 @@
                 <tr style="border-bottom: 1px solid #30363d;">
                     <td style="padding: 12px; color: #c9d1d9;">
                         <strong>${trade.ticker}</strong> 
-                        <span style="font-size: 10px; color: #8b949e; display: block;">${trade.data} • <span style="color: #e3b341;">[${nomeCarteira}]</span></span>
+                        <span style="font-size: 10px; color: #8b949e; display: block;">${trade.data} • <span style="color: #e3b341;">[${nomeCarteira}]</span><span style="color:#58a6ff;">[Suj. ${trade.sujeito}]</span></span>
                     </td>
                     <td style="padding: 12px; color: #8b949e; font-weight: bold;">${qtdFormatadaFechada}</td>
                     
@@ -3701,8 +3730,9 @@
         } else {
             // MODO: DERIVA DE MERCADO (LIVE) COM CÂMBIO ATUAL
             let alocacaoMarket = {};
+
+            cofreAbertas.filter(l => l.qtdRestante > 0 && (filtroSuj === 'TODOS' || l.sujeito === filtroSuj)).forEach(lote => {
             
-            cofreAbertas.filter(l => l.qtdRestante > 0).forEach(lote => {
                 let precoMercadoOriginal = cachePrecosAtuais[lote.ticker] || lote.precoCompraOriginal; 
                 
                 // NOVO: Aplica o câmbio atualizado se for USD, ou 1.0 se for EUR
@@ -4036,6 +4066,9 @@
                 const custoOriginal = parseFloat(colunas[6]);
                 const moeda = colunas[7].trim().toUpperCase();
                 let cambio = parseFloat(colunas[8]);
+                // Lê a 10ª coluna (índice 9). Se não existir (CSV antigo), assume Sujeito 'A'
+                let sujeito = colunas.length > 9 ? colunas[9].trim().toUpperCase() : 'A';
+                if (sujeito !== 'A' && sujeito !== 'B') sujeito = 'A'; // Proteção contra erros de digitação
 
                 if (isNaN(qtd) || isNaN(precoOriginal)) {
                     erros++;
@@ -4052,6 +4085,7 @@
                     id: Date.now() + i, // ID único sequencial
                     data: data,
                     tipo: tipo,
+                    sujeito: sujeito,
                     carteira: carteira,
                     ticker: ticker,
                     qtd: qtd,
@@ -4374,9 +4408,9 @@
     // GERADOR DO MODELO CSV PARA UTILIZADORES
     // ==========================================
     function descarregarModeloCSV() {
-        const cabecalho = "Data,Tipo,Carteira,Ticker,Qtd,Preco,Custo,Moeda,Cambio\n";
-        const exemplo1 = "2023-01-10,COMPRA,XTB,NVDA,10,140.00,0.00,USD,1.08\n";
-        const exemplo2 = "2023-05-15,VENDA,Degiro,AAPL,5,180.50,1.20,USD,1.05\n";
+        const cabecalho = "Data,Tipo,Carteira,Ticker,Qtd,Preco,Custo,Moeda,Cambio,Sujeito\n";
+        const exemplo1 = "2023-01-10,COMPRA,XTB,NVDA,10,140.00,0.00,USD,1.08,A\n";
+        const exemplo2 = "2023-05-15,VENDA,Degiro,AAPL,5,180.50,1.20,USD,1.05,B\n";
         
         const conteudo = cabecalho + exemplo1 + exemplo2;
         
@@ -4497,6 +4531,8 @@
         let cabulaNacional = [];
         let cabulaEstrangeiro = [];
 
+
+        const filtroSuj = document.getElementById('filtro-sujeito-global') ? document.getElementById('filtro-sujeito-global').value : 'TODOS';
         cofreFechadas.forEach(trade => {
             if (new Date(trade.data).getFullYear().toString() === anoAtivo) {
                 pnlTotalAno += trade.pnlEUR;
@@ -4506,8 +4542,10 @@
                 let compraOriginal = cofreBruto.find(b => b.id === trade.idOrigem);
                 let dataCompra = compraOriginal ? compraOriginal.data : "Desconhecida";
                 
+                if (filtroSuj !== 'TODOS' && trade.sujeito !== filtroSuj) return; // Ignora os trades do parceiro se a vista estiver isolada
+
                 // Mapeamento Nacional vs Estrangeiro (.LS = Lisboa)
-                let linhaTexto = `Ticker: ${trade.ticker} | Qtd: ${trade.qtdVendida} | Aquis: ${dataCompra.slice(0,7)} | Realiz: ${trade.data.slice(0,7)} | Lucro/Prejuízo Líquido: €${trade.pnlEUR.toFixed(2)}\n`;
+                let linhaTexto = `[Suj. ${trade.sujeito}] Ticker: ${trade.ticker} | Qtd: ${trade.qtdVendida} | Aquis: ${dataCompra.slice(0,7)} | Realiz: ${trade.data.slice(0,7)} | PnL: €${trade.pnlEUR.toFixed(2)}\n`;
                 
                 if (trade.ticker.includes('.LS')) {
                     cabulaNacional.push(linhaTexto);
