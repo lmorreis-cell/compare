@@ -4647,6 +4647,7 @@
         let impostoMarginal, coletaEnglobada, rendimentoParaTaxa, rendimentoDemonstracao, globalDemonstracao;
         let subTextoMarginal = "";
         let subTextoApurada = "";
+        let importanciaApuradaTotal = 0; 
 
         // Custo Base caso optes por NÃO englobar (Taxa Fixa para toda a carteira)
         const impostoLiberatoria = pnlTotal * 0.28;
@@ -4660,22 +4661,23 @@
             const impostoLongoPrazo = longoPrazoTotal * 0.28;
             
             impostoMarginal = acrescimoTrabalho + impostoLongoPrazo;
+            importanciaApuradaTotal = coletaEnglobada + impostoLongoPrazo;
+
             globalDemonstracao = rendimentoGlobalTrabalho + curtoPrazoTotal;
             rendimentoDemonstracao = rendimentoBaseTrabalho + curtoPrazoTotal;
 
-            // Injeta o detalhe nas sublinhas
-            subTextoApurada = `IRS Trab: €${coletaBaseSemBolsa.toFixed(2)} + IRS Bolsa (CP): €${acrescimoTrabalho.toFixed(2)}`;
+            subTextoApurada = `IRS Marg.: €${coletaEnglobada.toFixed(2)} + Autonoma (LP): €${impostoLongoPrazo.toFixed(2)}`;
             subTextoMarginal = `Marginal (CP): €${acrescimoTrabalho.toFixed(2)} + Fixa (LP): €${impostoLongoPrazo.toFixed(2)}`;
         } else {
             // ENGLOBAMENTO VOLUNTÁRIO: Para simular se compensa, a lei obriga a englobar TUDO.
             rendimentoParaTaxa = (rendimentoBaseTrabalho + pnlTotal) / quociente;
             coletaEnglobada = calcularImpostoAT(rendimentoParaTaxa) * quociente;
             impostoMarginal = Math.max(0, coletaEnglobada - coletaBaseSemBolsa);
+            importanciaApuradaTotal = coletaEnglobada;
             
             globalDemonstracao = rendimentoGlobalTrabalho + pnlTotal;
             rendimentoDemonstracao = rendimentoBaseTrabalho + pnlTotal;
 
-            // Injeta o detalhe nas sublinhas
             subTextoApurada = `IRS Trab: €${coletaBaseSemBolsa.toFixed(2)} + IRS Bolsa: €${impostoMarginal.toFixed(2)}`;
             subTextoMarginal = `Penalização Marginal s/ Total: €${impostoMarginal.toFixed(2)}`;
         }
@@ -4685,11 +4687,10 @@
         document.getElementById('demo-deducoes').innerText = `€${deducoesTotais.toFixed(2)}`;
         document.getElementById('demo-coletavel').innerText = `€${rendimentoDemonstracao.toFixed(2)}`;
         document.getElementById('demo-quociente').innerText = quociente.toFixed(2);
-        document.getElementById('demo-apurada').innerText = `€${coletaEnglobada.toFixed(2)}`;
+        document.getElementById('demo-apurada').innerText = `€${importanciaApuradaTotal.toFixed(2)}`;
         document.getElementById('irs-custo-liberatoria').innerText = `€${impostoLiberatoria.toFixed(2)}`;
         document.getElementById('irs-custo-marginal').innerText = `€${impostoMarginal.toFixed(2)}`;
 
-        // Imprime as Sublinhas Mapeadas
         document.getElementById('sub-apurada').innerText = subTextoApurada;
         document.getElementById('sub-liberatoria').innerText = subTextoLiberatoria;
         document.getElementById('sub-marginal').innerText = subTextoMarginal;
