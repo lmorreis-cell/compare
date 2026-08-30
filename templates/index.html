@@ -3628,7 +3628,7 @@
 
         for (let i = cofreFechadas.length - 1; i >= 0; i--) {
             let trade = cofreFechadas[i];
-            if (filtroSuj !== 'TODOS' && trade.sujeito !== filtroSuj) continue;
+            if (filtroSuj !== 'TODOS' && (trade.sujeito || 'A') !== filtroSuj) continue;
             pnlTotalGlobal += trade.pnlEUR;
             
             let fatias = trade.pnlEscaloes || { sub1: trade.pnlEUR, sub2: 0, sub5: 0, sub8: 0, plus8: 0 };
@@ -4542,7 +4542,7 @@
                 let compraOriginal = cofreBruto.find(b => b.id === trade.idOrigem);
                 let dataCompra = compraOriginal ? compraOriginal.data : "Desconhecida";
                 
-                if (filtroSuj !== 'TODOS' && trade.sujeito !== filtroSuj) return; // Ignora os trades do parceiro se a vista estiver isolada
+                if (filtroSuj !== 'TODOS' && (trade.sujeito || 'A') !== filtroSuj) return; // Ignora os trades do parceiro se a vista estiver isolada
 
                 // Mapeamento Nacional vs Estrangeiro (.LS = Lisboa)
                 let linhaTexto = `[Suj. ${trade.sujeito}] Ticker: ${trade.ticker} | Qtd: ${trade.qtdVendida} | Aquis: ${dataCompra.slice(0,7)} | Realiz: ${trade.data.slice(0,7)} | PnL: €${trade.pnlEUR.toFixed(2)}\n`;
