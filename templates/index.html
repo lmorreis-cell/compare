@@ -936,46 +936,46 @@
                 </div>
 
                 <!-- RESULTADO DA AUDITORIA & SIMULAÇÃO -->
-        <div id="resultado-irs" style="display: none; margin-top: 20px; background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px;">
-            
-            <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 15px; margin-bottom: 20px; font-family: monospace; font-size: 12px; color: #c9d1d9;">
-                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #21262d; padding-bottom: 5px; margin-bottom: 5px;">
-                    <span>1. RENDIMENTO GLOBAL (Bruto + Bolsa)</span>
-                    <span id="demo-global" style="font-weight: bold;">€0.00</span>
+                <div id="resultado-irs" style="display: none; margin-top: 20px; background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px;">
+                    
+                    <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 15px; margin-bottom: 20px; font-family: monospace; font-size: 12px; color: #c9d1d9;">
+                        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #21262d; padding-bottom: 5px; margin-bottom: 5px;">
+                            <span>1. RENDIMENTO GLOBAL (Bruto + Bolsa)</span>
+                            <span id="demo-global" style="font-weight: bold;">€0.00</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #21262d; padding-bottom: 5px; margin-bottom: 5px; color: #8b949e;">
+                            <span>2. Deduções Específicas</span>
+                            <span id="demo-deducoes">€0.00</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #21262d; padding-bottom: 5px; margin-bottom: 5px; font-weight: bold; color: #f0f2f5;">
+                            <span>6. RENDIMENTO COLETÁVEL (1 - 2)</span>
+                            <span id="demo-coletavel">€0.00</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #21262d; padding-bottom: 5px; margin-bottom: 5px;">
+                            <span>10. Quociente Familiar</span>
+                            <span id="demo-quociente">1.00</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-top: 10px; font-weight: bold; color: #e3b341; font-size: 13px;">
+                            <span title="Fatura global de IRS (Trabalho + Bolsa). Resulta de aplicar a tabela progressiva de IRS ao rendimento coletável. Representa o imposto total exigido pelo Estado antes de abater despesas gerais (saúde, faturas, etc)." style="cursor: help; border-bottom: 1px dotted #e3b341;">IMPORTÂNCIA APURADA (Coleta IRS Marginal)</span>
+                            <span id="demo-apurada">€0.00</span>
+                        </div>
+                    </div>
+        
+                    <!-- Grelha de Decisão Final -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 15px;">
+                        <div style="background: #0d1117; padding: 12px; border-radius: 6px; border: 1px solid #30363d; text-align: center;">
+                            <div title="Imposto a pagar EXCLUSIVAMENTE sobre os lucros da bolsa à taxa fixa de 28%. Isola totalmente a bolsa do rendimento do teu trabalho." style="cursor: help; font-size: 10px; color: #8b949e; text-transform: uppercase; font-weight: bold; display: inline-block; border-bottom: 1px dotted #8b949e;">Custo s/ Englobar (28%)</div>
+                            <div id="irs-custo-liberatoria" style="font-size: 16px; color: #58a6ff; font-weight: bold; margin-top: 4px;">€0.00</div>
+                        </div>
+                        <div style="background: #0d1117; padding: 12px; border-radius: 6px; border: 1px solid #30363d; text-align: center;">
+                            <div title="O 'preço' de englobar. É a diferença entre o IRS Total Englobado e o IRS que pagarias APENAS pelo teu salário. Mostra quanto as tuas mais-valias vão ser taxadas ao caírem nos últimos escalões do teu IRS." style="cursor: help; font-size: 10px; color: #8b949e; text-transform: uppercase; font-weight: bold; display: inline-block; border-bottom: 1px dotted #8b949e;">Custo Marginal Extra</div>
+                            <div id="irs-custo-marginal" style="font-size: 16px; color: #f85149; font-weight: bold; margin-top: 4px;">€0.00</div>
+                        </div>
+                    </div>
+        
+                    <!-- Caixa de Veredicto / Alerta Legal -->
+                    <div id="irs-veredicto" style="padding: 15px; border-radius: 6px; border-left: 4px solid #58a6ff; background: rgba(88, 166, 255, 0.05); font-size: 13px; line-height: 1.5; color: #c9d1d9;"></div>
                 </div>
-                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #21262d; padding-bottom: 5px; margin-bottom: 5px; color: #8b949e;">
-                    <span>2. Deduções Específicas</span>
-                    <span id="demo-deducoes">€0.00</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #21262d; padding-bottom: 5px; margin-bottom: 5px; font-weight: bold; color: #f0f2f5;">
-                    <span>6. RENDIMENTO COLETÁVEL (1 - 2)</span>
-                    <span id="demo-coletavel">€0.00</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #21262d; padding-bottom: 5px; margin-bottom: 5px;">
-                    <span>10. Quociente Familiar</span>
-                    <span id="demo-quociente">1.00</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; margin-top: 10px; font-weight: bold; color: #e3b341; font-size: 13px;">
-                    <span>IMPORTÂNCIA APURADA (Coleta IRS Marginal)</span>
-                    <span id="demo-apurada">€0.00</span>
-                </div>
-            </div>
-
-            <!-- Grelha de Decisão Final -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 15px;">
-                <div style="background: #0d1117; padding: 12px; border-radius: 6px; border: 1px solid #30363d; text-align: center;">
-                    <div style="font-size: 10px; color: #8b949e; text-transform: uppercase; font-weight: bold;">Custo s/ Englobar (28%)</div>
-                    <div id="irs-custo-liberatoria" style="font-size: 16px; color: #58a6ff; font-weight: bold; margin-top: 4px;">€0.00</div>
-                </div>
-                <div style="background: #0d1117; padding: 12px; border-radius: 6px; border: 1px solid #30363d; text-align: center;">
-                    <div style="font-size: 10px; color: #8b949e; text-transform: uppercase; font-weight: bold;">Custo Marginal Extra</div>
-                    <div id="irs-custo-marginal" style="font-size: 16px; color: #f85149; font-weight: bold; margin-top: 4px;">€0.00</div>
-                </div>
-            </div>
-
-            <!-- Caixa de Veredicto / Alerta Legal -->
-            <div id="irs-veredicto" style="padding: 15px; border-radius: 6px; border-left: 4px solid #58a6ff; background: rgba(88, 166, 255, 0.05); font-size: 13px; line-height: 1.5; color: #c9d1d9;"></div>
-        </div>
             </div>
 
             <!-- BLOCO 2: MÁQUINA DE PREENCHIMENTO -->
