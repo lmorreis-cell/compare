@@ -955,21 +955,26 @@
                             <span>10. Quociente Familiar</span>
                             <span id="demo-quociente">1.00</span>
                         </div>
-                        <div style="display: flex; justify-content: space-between; margin-top: 10px; font-weight: bold; color: #e3b341; font-size: 13px;">
-                            <span title="Fatura global de IRS (Trabalho + Bolsa). Resulta de aplicar a tabela progressiva de IRS ao rendimento coletável. Representa o imposto total exigido pelo Estado antes de abater despesas gerais (saúde, faturas, etc)." style="cursor: help; border-bottom: 1px dotted #e3b341;">IMPORTÂNCIA APURADA (Coleta IRS Marginal)</span>
+                        <div style="display: flex; justify-content: space-between; margin-top: 10px; font-weight: bold; color: #e3b341; font-size: 13px; align-items: flex-end;">
+                            <div style="display: flex; flex-direction: column;">
+                                <span title="Fatura global de IRS (Trabalho + Bolsa). Resulta de aplicar a tabela progressiva de IRS ao rendimento coletável." style="cursor: help; border-bottom: 1px dotted #e3b341;">IMPORTÂNCIA APURADA (Coleta IRS Marginal)</span>
+                                <span id="sub-apurada" style="font-size: 9px; color: #8b949e; margin-top: 2px; font-weight: normal; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;"></span>
+                            </div>
                             <span id="demo-apurada">€0.00</span>
                         </div>
                     </div>
         
                     <!-- Grelha de Decisão Final -->
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 15px;">
-                        <div style="background: #0d1117; padding: 12px; border-radius: 6px; border: 1px solid #30363d; text-align: center;">
-                            <div title="Imposto a pagar EXCLUSIVAMENTE sobre os lucros da bolsa à taxa fixa de 28%. Isola totalmente a bolsa do rendimento do teu trabalho." style="cursor: help; font-size: 10px; color: #8b949e; text-transform: uppercase; font-weight: bold; display: inline-block; border-bottom: 1px dotted #8b949e;">Custo s/ Englobar (28%)</div>
+                        <div style="background: #0d1117; padding: 12px; border-radius: 6px; border: 1px solid #30363d; text-align: center; display: flex; flex-direction: column; justify-content: center;">
+                            <div><span title="Imposto a pagar EXCLUSIVAMENTE sobre os lucros da bolsa à taxa fixa de 28%." style="cursor: help; font-size: 10px; color: #8b949e; text-transform: uppercase; font-weight: bold; border-bottom: 1px dotted #8b949e;">Custo s/ Englobar (28%)</span></div>
                             <div id="irs-custo-liberatoria" style="font-size: 16px; color: #58a6ff; font-weight: bold; margin-top: 4px;">€0.00</div>
+                            <div id="sub-liberatoria" style="font-size: 9px; color: #8b949e; margin-top: 2px;"></div>
                         </div>
-                        <div style="background: #0d1117; padding: 12px; border-radius: 6px; border: 1px solid #30363d; text-align: center;">
-                            <div title="O 'preço' de englobar. É a diferença entre o IRS Total Englobado e o IRS que pagarias APENAS pelo teu salário. Mostra quanto as tuas mais-valias vão ser taxadas ao caírem nos últimos escalões do teu IRS." style="cursor: help; font-size: 10px; color: #8b949e; text-transform: uppercase; font-weight: bold; display: inline-block; border-bottom: 1px dotted #8b949e;">Custo Marginal Extra</div>
+                        <div style="background: #0d1117; padding: 12px; border-radius: 6px; border: 1px solid #30363d; text-align: center; display: flex; flex-direction: column; justify-content: center;">
+                            <div><span title="O 'preço' de englobar. Mostra quanto as tuas mais-valias vão ser taxadas ao caírem nos últimos escalões." style="cursor: help; font-size: 10px; color: #8b949e; text-transform: uppercase; font-weight: bold; border-bottom: 1px dotted #8b949e;">Custo Marginal Extra</span></div>
                             <div id="irs-custo-marginal" style="font-size: 16px; color: #f85149; font-weight: bold; margin-top: 4px;">€0.00</div>
+                            <div id="sub-marginal" style="font-size: 9px; color: #8b949e; margin-top: 2px;"></div>
                         </div>
                     </div>
         
@@ -4586,7 +4591,6 @@
 
         const LIMITE_ULTIMO_ESCALAO = parseFloat(document.getElementById('irs-limite-escalao').value) || 86634; 
 
-        // Rastreamento separado por sujeito para verificar a obrigatoriedade
         let pnlAno = { 'A': 0, 'B': 0 };
         let pnlCurtoPrazo = { 'A': 0, 'B': 0 };
         let cabulaNacional = [];
@@ -4594,16 +4598,14 @@
 
         cofreFechadas.forEach(trade => {
             let sujTrade = trade.sujeito || 'A'; 
-            
             if (new Date(trade.data).getFullYear().toString() === anoAtivo) {
                 if (declarante !== 'TODOS' && sujTrade !== declarante) return; 
                 
                 pnlAno[sujTrade] += trade.pnlEUR;
-
                 if (trade.pnlEscaloes && trade.pnlEscaloes.sub1) {
                     pnlCurtoPrazo[sujTrade] += trade.pnlEscaloes.sub1;
                 } else {
-                    pnlCurtoPrazo[sujTrade] += trade.pnlEUR; // Fallback
+                    pnlCurtoPrazo[sujTrade] += trade.pnlEUR; 
                 }
                 
                 let compraOriginal = cofreBruto.find(b => b.id === trade.idOrigem);
@@ -4618,8 +4620,10 @@
         document.getElementById('cabula-anexo-j').value = cabulaEstrangeiro.length > 0 ? cabulaEstrangeiro.join('') : "Sem operações no estrangeiro este ano.";
 
         const pnlTotal = pnlAno['A'] + pnlAno['B'];
+        const curtoPrazoTotal = pnlCurtoPrazo['A'] + pnlCurtoPrazo['B'];
+        const longoPrazoTotal = Math.max(0, pnlTotal - curtoPrazoTotal);
+
         const uiResultado = document.getElementById('resultado-irs');
-        
         if (pnlTotal <= 0 || (brutoA === 0 && brutoB === 0)) {
             uiResultado.style.display = 'none';
             return;
@@ -4627,37 +4631,6 @@
         uiResultado.style.display = 'block';
 
         // --- MATEMÁTICA DO QUADRO DE APURAMENTO (AT) ---
-        const rendimentoGlobalTrabalho = (declarante === 'TODOS' || declarante === 'A' ? brutoA : 0) + (declarante === 'TODOS' || declarante === 'B' ? brutoB : 0);
-        const deducoesTotais = (declarante === 'TODOS' || declarante === 'A' ? dedA : 0) + (declarante === 'TODOS' || declarante === 'B' ? dedB : 0);
-        
-        const rendimentoGlobalTotal = rendimentoGlobalTrabalho + pnlTotal;
-        const rendimentoColetavel = Math.max(0, rendimentoGlobalTotal - deducoesTotais);
-        const quociente = casado ? 2 : 1;
-        const rendimentoParaTaxa = rendimentoColetavel / quociente;
-        
-        // --- PREENCHER O QUADRO VISUAL ---
-        document.getElementById('demo-global').innerText = `€${rendimentoGlobalTotal.toFixed(2)}`;
-        document.getElementById('demo-deducoes').innerText = `€${deducoesTotais.toFixed(2)}`;
-        document.getElementById('demo-coletavel').innerText = `€${rendimentoColetavel.toFixed(2)}`;
-        document.getElementById('demo-quociente').innerText = quociente.toFixed(2);
-
-        // --- CÁLCULO DE CUSTOS ---
-        const impostoLiberatoria = pnlTotal * 0.28;
-        
-        const rendimentoBaseTrabalho = Math.max(0, rendimentoGlobalTrabalho - deducoesTotais);
-        const coletaBaseSemBolsa = calcularImpostoAT(rendimentoBaseTrabalho / quociente) * quociente;
-        const coletaEnglobada = calcularImpostoAT(rendimentoParaTaxa) * quociente;
-        
-        const impostoMarginal = Math.max(0, coletaEnglobada - coletaBaseSemBolsa);
-
-        document.getElementById('demo-apurada').innerText = `€${coletaEnglobada.toFixed(2)}`;
-        document.getElementById('irs-custo-liberatoria').innerText = `€${impostoLiberatoria.toFixed(2)}`;
-        document.getElementById('irs-custo-marginal').innerText = `€${impostoMarginal.toFixed(2)}`;
-
-        // --- SEPARAÇÃO LEGAL ENTRE CURTO E LONGO PRAZO ---
-        const curtoPrazoTotal = pnlCurtoPrazo['A'] + pnlCurtoPrazo['B'];
-        const longoPrazoTotal = Math.max(0, pnlTotal - curtoPrazoTotal);
-
         const rendimentoGlobalTrabalho = (declarante === 'TODOS' || declarante === 'A' ? brutoA : 0) + (declarante === 'TODOS' || declarante === 'B' ? brutoB : 0);
         const deducoesTotais = (declarante === 'TODOS' || declarante === 'A' ? dedA : 0) + (declarante === 'TODOS' || declarante === 'B' ? dedB : 0);
         const quociente = casado ? 2 : 1;
@@ -4672,18 +4645,27 @@
         const englobamentoObrigatorio = A_obriga || B_obriga;
 
         let impostoMarginal, coletaEnglobada, rendimentoParaTaxa, rendimentoDemonstracao, globalDemonstracao;
+        let subTextoMarginal = "";
+        let subTextoApurada = "";
 
-        // Custo Base caso não haja obrigatoriedade e optes por não englobar
+        // Custo Base caso optes por NÃO englobar (Taxa Fixa para toda a carteira)
         const impostoLiberatoria = pnlTotal * 0.28;
+        const subTextoLiberatoria = `(CP: €${(curtoPrazoTotal * 0.28).toFixed(2)} + LP: €${(longoPrazoTotal * 0.28).toFixed(2)})`;
 
         if (englobamentoObrigatorio) {
             // MODELO HÍBRIDO LEGAL: Engloba SÓ o Curto Prazo. O Longo Prazo paga 28%.
             rendimentoParaTaxa = (rendimentoBaseTrabalho + curtoPrazoTotal) / quociente;
             coletaEnglobada = calcularImpostoAT(rendimentoParaTaxa) * quociente;
-            impostoMarginal = Math.max(0, coletaEnglobada - coletaBaseSemBolsa) + (longoPrazoTotal * 0.28);
+            const acrescimoTrabalho = Math.max(0, coletaEnglobada - coletaBaseSemBolsa);
+            const impostoLongoPrazo = longoPrazoTotal * 0.28;
             
+            impostoMarginal = acrescimoTrabalho + impostoLongoPrazo;
             globalDemonstracao = rendimentoGlobalTrabalho + curtoPrazoTotal;
             rendimentoDemonstracao = rendimentoBaseTrabalho + curtoPrazoTotal;
+
+            // Injeta o detalhe nas sublinhas
+            subTextoApurada = `IRS Trab: €${coletaBaseSemBolsa.toFixed(2)} + IRS Bolsa (CP): €${acrescimoTrabalho.toFixed(2)}`;
+            subTextoMarginal = `Marginal (CP): €${acrescimoTrabalho.toFixed(2)} + Fixa (LP): €${impostoLongoPrazo.toFixed(2)}`;
         } else {
             // ENGLOBAMENTO VOLUNTÁRIO: Para simular se compensa, a lei obriga a englobar TUDO.
             rendimentoParaTaxa = (rendimentoBaseTrabalho + pnlTotal) / quociente;
@@ -4692,6 +4674,10 @@
             
             globalDemonstracao = rendimentoGlobalTrabalho + pnlTotal;
             rendimentoDemonstracao = rendimentoBaseTrabalho + pnlTotal;
+
+            // Injeta o detalhe nas sublinhas
+            subTextoApurada = `IRS Trab: €${coletaBaseSemBolsa.toFixed(2)} + IRS Bolsa: €${impostoMarginal.toFixed(2)}`;
+            subTextoMarginal = `Penalização Marginal s/ Total: €${impostoMarginal.toFixed(2)}`;
         }
 
         // --- PREENCHER O QUADRO VISUAL ---
@@ -4702,6 +4688,11 @@
         document.getElementById('demo-apurada').innerText = `€${coletaEnglobada.toFixed(2)}`;
         document.getElementById('irs-custo-liberatoria').innerText = `€${impostoLiberatoria.toFixed(2)}`;
         document.getElementById('irs-custo-marginal').innerText = `€${impostoMarginal.toFixed(2)}`;
+
+        // Imprime as Sublinhas Mapeadas
+        document.getElementById('sub-apurada').innerText = subTextoApurada;
+        document.getElementById('sub-liberatoria').innerText = subTextoLiberatoria;
+        document.getElementById('sub-marginal').innerText = subTextoMarginal;
 
         const caixaVeredicto = document.getElementById('irs-veredicto');
         if (englobamentoObrigatorio) {
