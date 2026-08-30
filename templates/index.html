@@ -4538,36 +4538,41 @@
     }
 
     function processarSimulacaoIRS() {
+        const declarante = document.getElementById('irs-filtro-sujeito').value;
+        const casado = declarante === 'TODOS';
         const anoAtivo = document.getElementById('irs-ano-fiscal').value;
         const brutoA = parseFloat(document.getElementById('irs-rendimento-a').value) || 0;
         const brutoB = parseFloat(document.getElementById('irs-rendimento-b').value) || 0;
-        
-        const declarante = document.getElementById('irs-filtro-sujeito').value;
-        const casado = declarante === 'TODOS';
-        
-                
-        // 1. Lê o filtro ESPECÍFICO do painel de IRS
-        const filtroSuj = document.getElementById('irs-filtro-sujeito').value;
 
-        // 2. Extrai o PnL puro do ano alvo
+        // --- CONSTANTE LEGAL (Lembrete para atualizar anualmente) ---
+        // Valor do último escalão de IRS em vigor (Ex: 81.199€ na tabela de 2024)
+        const LIMITE_ULTIMO_ESCALAO = 81199; 
+
+        // 1. Extrai o PnL puro do ano alvo
         let pnlTotalAno = 0;
+        let pnlCurtoPrazoAno = 0; // Regista apenas as mais-valias de ativos detidos < 1 ano
         let cabulaNacional = [];
         let cabulaEstrangeiro = [];
 
         cofreFechadas.forEach(trade => {
-            // A rede de segurança que impede o erro "undefined" nos registos antigos
             let sujTrade = trade.sujeito || 'A'; 
             
             if (new Date(trade.data).getFullYear().toString() === anoAtivo) {
-                // Filtra os trades consoante a seleção na simulação atual (Conjunta, A ou B)
-                if (filtroSuj !== 'TODOS' && sujTrade !== filtroSuj) return; 
+                if (declarante !== 'TODOS' && sujTrade !== declarante) return; 
                 
                 pnlTotalAno += trade.pnlEUR;
+
+                // Identifica se o trade tem menos de 365 dias recorrendo ao motor FIFO
+                if (trade.pnlEscaloes && trade.pnlEscaloes.sub1) {
+                    pnlCurtoPrazoAno += trade.pnlEscaloes.sub1;
+                } else {
+                    // Fallback de segurança para histórico antigo importado
+                    pnlCurtoPrazoAno += trade.pnlEUR;
+                }
                 
                 let compraOriginal = cofreBruto.find(b => b.id === trade.idOrigem);
                 let dataCompra = compraOriginal ? compraOriginal.data : "Desconhecida";
                 
-                // Texto injetado corretamente com a variável protegida 'sujTrade'
                 let linhaTexto = `[Suj. ${sujTrade}] Ticker: ${trade.ticker} | Qtd: ${trade.qtdVendida} | Aquis: ${dataCompra.slice(0,7)} | Realiz: ${trade.data.slice(0,7)} | PnL: €${trade.pnlEUR.toFixed(2)}\n`;
                 
                 if (trade.ticker.includes('.LS')) {
@@ -4596,24 +4601,34 @@
         const deducoesEspecificas = 4104; 
         const numeroSujeitos = casado ? 2 : 1;
         const rendimentoBase = Math.max(0, (brutoA + brutoB) - (deducoesEspecificas * numeroSujeitos));
+        const rendimentoColetavelPorSujeito = rendimentoBase / numeroSujeitos;
         
         // Cálculo do IRS sem englobar (Taxa Liberatória nos 28%)
         const impostoLiberatoria = pnlTotalAno * 0.28;
         
         // IRS do salário normal
-        const coletaBase = calcularImpostoAT(rendimentoBase / numeroSujeitos) * numeroSujeitos;
+        const coletaBase = calcularImpostoAT(rendimentoColetavelPorSujeito) * numeroSujeitos;
         
         // IRS com o PnL englobado
         const coletaEnglobada = calcularImpostoAT((rendimentoBase + pnlTotalAno) / numeroSujeitos) * numeroSujeitos;
         
-        // A diferença é o que pagas *efetivamente* pelas mais valias se englobares
         const impostoMarginal = Math.max(0, coletaEnglobada - coletaBase);
 
         document.getElementById('irs-custo-liberatoria').innerText = `€${impostoLiberatoria.toFixed(2)}`;
         document.getElementById('irs-custo-marginal').innerText = `€${impostoMarginal.toFixed(2)}`;
 
+        // --- VERIFICAÇÃO DE ENGLOBAMENTO OBRIGATÓRIO (LEI PT) ---
+        const isUltimoEscalao = rendimentoColetavelPorSujeito > LIMITE_ULTIMO_ESCALAO;
+        const temMaisValiasCurtoPrazo = pnlCurtoPrazoAno > 0;
+        const englobamentoObrigatorio = isUltimoEscalao && temMaisValiasCurtoPrazo;
+
         const caixaVeredicto = document.getElementById('irs-veredicto');
-        if (impostoMarginal < impostoLiberatoria) {
+        
+        if (englobamentoObrigatorio) {
+            caixaVeredicto.style.borderLeftColor = "#8e44ad"; // Roxo para avisos legais
+            caixaVeredicto.style.background = "rgba(142, 68, 173, 0.1)";
+            caixaVeredicto.innerHTML = `<strong style="color:#8e44ad;">⚖️ ENGLOBAMENTO OBRIGATÓRIO (Por Lei).</strong> O teu rendimento coletável (<strong>€${rendimentoColetavelPorSujeito.toFixed(2)}</strong>/sujeito) ultrapassa o último escalão de IRS definido no código (>${LIMITE_ULTIMO_ESCALAO}€) e o teu histórico deste ano possui ativos retidos há menos de 365 dias (Curto Prazo). A Autoridade Tributária obriga ao englobamento destas operações.`;
+        } else if (impostoMarginal < impostoLiberatoria) {
             let poupanca = impostoLiberatoria - impostoMarginal;
             caixaVeredicto.style.borderLeftColor = "#5cb85c";
             caixaVeredicto.style.background = "rgba(92, 184, 92, 0.1)";
@@ -4625,7 +4640,6 @@
             caixaVeredicto.innerHTML = `<strong style="color:#d9534f;">Decisão Matemática: NÃO ENGLOBAR.</strong> A soma das mais-valias ao teu salário atira-te para um escalão punitivo. Englobar faria com que pagasses mais <strong>€${perda.toFixed(2)}</strong> do que a taxa fixa. Deixa a opção de englobamento em branco no Portal das Finanças.`;
         }
     }
-
     function copiarCabula() {
         const textG = document.getElementById('cabula-anexo-g').value;
         const textJ = document.getElementById('cabula-anexo-j').value;
