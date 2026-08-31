@@ -1526,6 +1526,24 @@ def api_sniper(ticker, timeframe):
         except Exception as e:
             pass
 
+        # ==========================================
+        # MOTOR DE LEITURA QUALITATIVA MANUAL
+        # ==========================================
+        leitura_qualitativa = []
+        
+        # Podes adicionar mais tickers usando elif ticker.upper() == 'TSLA': ...
+        if ticker.upper() == 'ARRY':
+            leitura_qualitativa = [
+                {"fator": "Crescimento futuro", "avaliacao": "Interessante", "cores": ["verde"]},
+                {"fator": "Carteira de encomendas", "avaliacao": "Muito forte", "cores": ["verde"]},
+                {"fator": "Posicionamento no solar", "avaliacao": "Forte", "cores": ["verde"]},
+                {"fator": "Margens atuais", "avaliacao": "A acompanhar", "cores": ["laranja"]},
+                {"fator": "Dívida/risco financeiro", "avaliacao": "Importante analisar", "cores": ["laranja"]},
+                {"fator": "Cotação", "avaliacao": "Potencialmente barata, mas arriscada", "cores": ["verde", "laranja"]},
+                {"fator": "Volatilidade", "avaliacao": "Elevada", "cores": ["vermelho"]},
+                {"fator": "Potencial 2027-28", "avaliacao": "Interessante", "cores": ["verde"]}
+            ]
+        
         return jsonify({
             "ticker": ticker.upper(),
             "timeframe": timeframe.upper(),
@@ -1573,6 +1591,9 @@ def api_sniper(ticker, timeframe):
             "radar_scores": radar_scores,
             "checklist_fund": checklist,
             "score_fund_total": score_total,
+
+            # 👇 INJETA ESTA LINHA AQUI 👇
+            "leitura_qualitativa": leitura_qualitativa,
             
             "suportes": [f"{s:.2f}" for s in suportes],
             "resistencias": [f"{r:.2f}" for r in resistencias],
