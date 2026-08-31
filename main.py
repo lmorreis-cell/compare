@@ -1594,7 +1594,43 @@ def api_sniper(ticker, timeframe):
             pot_aval, pot_cor = "Esgotado (Preço ultrapassou o consenso de Wall St)", ["vermelho", "laranja"]
         leitura_qualitativa.append({"fator": "Sentimento Institucional", "avaliacao": pot_aval, "cores": pot_cor})
         
-       
+       # ==========================================
+        # MOTOR DE VALOR JUSTO (TRÊS CENÁRIOS)
+        # ==========================================
+        cenarios_valuation = []
+        try:
+            # Extrai os lucros atuais (Trailing) e as projeções futuras dos analistas (Forward)
+            eps_ttm = info.get('trailingEps', 0)
+            eps_fwd = info.get('forwardEps', 0)
+            
+            # Empresas a dar prejuízo não podem ser avaliadas por P/E. O motor esconde a tabela.
+            if eps_ttm is not None and eps_ttm > 0:
+                
+                # 1. Cenário Bear (Contração)
+                # Assume que os lucros caem 15% e o mercado penaliza o múltiplo atirando-o para os mínimos de 5 anos
+                eps_bear = eps_ttm * 0.85
+                pe_bear = pe_min_5y if pe_min_5y > 0 else 10.0
+                val_bear = eps_bear * pe_bear
+                
+                # 2. Cenário Base (O "Fair Value" atual)
+                # Assume a manutenção dos lucros e o múltiplo normal de transação
+                eps_base = eps_ttm
+                pe_base_val = pe_ratio if pe_ratio > 0 else 15.0
+                val_base = eps_base * pe_base_val
+                
+                # 3. Cenário Bull (Expansão)
+                # Assume que a empresa atinge as estimativas futuras (ou cresce 20%) e o mercado aceita pagar um prémio de 25% no múltiplo
+                eps_bull = eps_fwd if (eps_fwd and eps_fwd > eps_ttm) else (eps_ttm * 1.20)
+                pe_bull = pe_base_val * 1.25
+                val_bull = eps_bull * pe_bull
+                
+                cenarios_valuation = [
+                    {"nome": "Bear", "cor": "#d9534f", "eps": f"${eps_bear:.2f}", "per": f"{pe_bear:.1f}x", "valor": f"${val_bear:.2f}"},
+                    {"nome": "Base", "cor": "#f0ad4e", "eps": f"${eps_base:.2f}", "per": f"{pe_base_val:.1f}x", "valor": f"${val_base:.2f}"},
+                    {"nome": "Bull", "cor": "#5cb85c", "eps": f"${eps_bull:.2f}", "per": f"{pe_bull:.1f}x", "valor": f"${val_bull:.2f}"}
+                ]
+        except Exception as e:
+            print(f"Erro a calcular cenários de valuation: {e}")
          
         return jsonify({
             "ticker": ticker.upper(),
@@ -1612,7 +1648,7 @@ def api_sniper(ticker, timeframe):
             "target_consensus": target_consensus,
             "target_upside": f"{target_upside:+.1f}%",
             "news_data": news_data,
-            
+            "cenarios_valuation": cenarios_valuation,
             "setor": setor_final,
             "mkt_cap": mkt_cap,
             "exchange": exchange,
