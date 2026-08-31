@@ -1594,22 +1594,8 @@ def api_sniper(ticker, timeframe):
             pot_aval, pot_cor = "Esgotado (Preço ultrapassou o consenso de Wall St)", ["vermelho", "laranja"]
         leitura_qualitativa.append({"fator": "Sentimento Institucional", "avaliacao": pot_aval, "cores": pot_cor})
         
-        # Injeção no return final
-        return jsonify({
-            "ticker": ticker.upper(),
-            "timeframe": timeframe.upper(),
-            "preco": f"{fecho_atual:.2f}",
-            "rsi": f"{rsi_atual:.1f}",
-            # ... as tuas outras chaves existentes
-            "radar_scores": radar_scores,
-            "checklist_fund": checklist,
-            "score_fund_total": score_total,
-            
-            "leitura_qualitativa": leitura_qualitativa, # <-- NÃO ESQUECER DE INCLUIR A CHAVE AQUI
-            
-            "suportes": [f"{s:.2f}" for s in suportes],
-            # ... o resto do dicionário até fechar }
-        
+       
+         
         return jsonify({
             "ticker": ticker.upper(),
             "timeframe": timeframe.upper(),
