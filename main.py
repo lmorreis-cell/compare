@@ -1527,22 +1527,88 @@ def api_sniper(ticker, timeframe):
             pass
 
         # ==========================================
-        # MOTOR DE LEITURA QUALITATIVA MANUAL
+        # MOTOR DE LEITURA QUALITATIVA DINÂMICA
         # ==========================================
         leitura_qualitativa = []
         
-        # Podes adicionar mais tickers usando elif ticker.upper() == 'TSLA': ...
-        if ticker.upper() == 'ARRY':
-            leitura_qualitativa = [
-                {"fator": "Crescimento futuro", "avaliacao": "Interessante", "cores": ["verde"]},
-                {"fator": "Carteira de encomendas", "avaliacao": "Muito forte", "cores": ["verde"]},
-                {"fator": "Posicionamento no solar", "avaliacao": "Forte", "cores": ["verde"]},
-                {"fator": "Margens atuais", "avaliacao": "A acompanhar", "cores": ["laranja"]},
-                {"fator": "Dívida/risco financeiro", "avaliacao": "Importante analisar", "cores": ["laranja"]},
-                {"fator": "Cotação", "avaliacao": "Potencialmente barata, mas arriscada", "cores": ["verde", "laranja"]},
-                {"fator": "Volatilidade", "avaliacao": "Elevada", "cores": ["vermelho"]},
-                {"fator": "Potencial 2027-28", "avaliacao": "Interessante", "cores": ["verde"]}
-            ]
+        # 1. Crescimento Futuro (PEG Ratio)
+        if peg_ratio > 0 and peg_ratio <= 1.2:
+            cresc_aval, cresc_cor = "Forte (Crescimento justifica plenamente o preço)", ["verde"]
+        elif peg_ratio > 1.2 and peg_ratio <= 2.0:
+            cresc_aval, cresc_cor = "Interessante (Crescimento precificado normalmente)", ["laranja"]
+        elif peg_ratio > 2.0:
+            cresc_aval, cresc_cor = "Esticado (Prémio de mercado muito elevado face ao futuro)", ["vermelho"]
+        else:
+            cresc_aval, cresc_cor = "Dados de crescimento ausentes ou inconsistentes", ["vermelho"]
+        leitura_qualitativa.append({"fator": "Crescimento futuro", "avaliacao": cresc_aval, "cores": cresc_cor})
+
+        # 2. Rentabilidade e Margens (Net Margin)
+        nm_valor = info.get('profitMargins', 0) * 100 if info.get('profitMargins') else 0
+        if nm_valor >= 15:
+            margem_aval, margem_cor = "Muito forte (Forte poder de fixação de preços)", ["verde"]
+        elif nm_valor >= 5:
+            margem_aval, margem_cor = "A acompanhar (Margens operacionais curtas)", ["laranja"]
+        else:
+            margem_aval, margem_cor = "Perigoso (Empresa a queimar dinheiro operacionalmente)", ["vermelho"]
+        leitura_qualitativa.append({"fator": "Margens atuais", "avaliacao": margem_aval, "cores": margem_cor})
+
+        # 3. Dívida / Risco Financeiro (Debt to Equity)
+        de_valor = info.get('debtToEquity', 0) if info.get('debtToEquity') else 0
+        if de_valor == 0:
+            divida_aval, divida_cor = "Dados indisponíveis na API (Requer análise manual)", ["laranja"]
+        elif de_valor < 60:
+            divida_aval, divida_cor = "Sólida e muito controlada", ["verde"]
+        elif de_valor < 120:
+            divida_aval, divida_cor = "Importante analisar detalhadamente o balanço", ["laranja"]
+        else:
+            divida_aval, divida_cor = "Elevada alavancagem / Risco de insolvência", ["vermelho"]
+        leitura_qualitativa.append({"fator": "Dívida/risco financeiro", "avaliacao": divida_aval, "cores": divida_cor})
+
+        # 4. Avaliação e Cotação (P/E Ratio)
+        if pe_ratio > 0 and pe_ratio < 15:
+            cot_aval, cot_cor = "Descontada (Barata face aos lucros atuais)", ["verde"]
+        elif pe_ratio >= 15 and pe_ratio < 25:
+            cot_aval, cot_cor = "Potencialmente barata, mas arriscada", ["verde", "laranja"]
+        elif pe_ratio >= 25:
+            cot_aval, cot_cor = "Cara (Mercado espera execução perfeita)", ["vermelho"]
+        else:
+            cot_aval, cot_cor = "Avaliação cega (Empresa reporta prejuízos líquidos)", ["vermelho"]
+        leitura_qualitativa.append({"fator": "Cotação Atual", "avaliacao": cot_aval, "cores": cot_cor})
+
+        # 5. Volatilidade (ATR percentual face ao preço)
+        atr_pct = (atr_14 / fecho_atual) * 100 if fecho_atual > 0 else 0
+        if atr_pct > 5:
+            vol_aval, vol_cor = "Elevada (Gaps e movimentos intradiários violentos)", ["vermelho"]
+        elif atr_pct > 2.5:
+            vol_aval, vol_cor = "Moderada (Flutuações típicas)", ["laranja"]
+        else:
+            vol_aval, vol_cor = "Baixa (Ativo defensivo e previsível)", ["verde"]
+        leitura_qualitativa.append({"fator": "Volatilidade", "avaliacao": vol_aval, "cores": vol_cor})
+
+        # 6. Potencial de Mercado (Wall St Consensus)
+        if target_upside > 15:
+            pot_aval, pot_cor = "Interessante (>15% de Upside estimado pelos analistas)", ["verde"]
+        elif target_upside > 0:
+            pot_aval, pot_cor = "Moderado (Próximo do teto técnico)", ["laranja"]
+        else:
+            pot_aval, pot_cor = "Esgotado (Preço ultrapassou o consenso de Wall St)", ["vermelho", "laranja"]
+        leitura_qualitativa.append({"fator": "Sentimento Institucional", "avaliacao": pot_aval, "cores": pot_cor})
+        
+        # Injeção no return final
+        return jsonify({
+            "ticker": ticker.upper(),
+            "timeframe": timeframe.upper(),
+            "preco": f"{fecho_atual:.2f}",
+            "rsi": f"{rsi_atual:.1f}",
+            # ... as tuas outras chaves existentes
+            "radar_scores": radar_scores,
+            "checklist_fund": checklist,
+            "score_fund_total": score_total,
+            
+            "leitura_qualitativa": leitura_qualitativa, # <-- NÃO ESQUECER DE INCLUIR A CHAVE AQUI
+            
+            "suportes": [f"{s:.2f}" for s in suportes],
+            # ... o resto do dicionário até fechar }
         
         return jsonify({
             "ticker": ticker.upper(),
