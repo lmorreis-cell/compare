@@ -1658,6 +1658,43 @@
                 </div>
                 ` : ''}
     
+                <!-- INJEÇÃO DA LEITURA QUALITATIVA DA EMPRESA -->
+                ${dados.leitura_qualitativa && dados.leitura_qualitativa.length > 0 ? `
+                <div style="background: #1c1e24; border: 1px solid #30363d; border-radius: 6px; padding: 25px; margin-bottom: 25px; position: relative; z-index: 51;">
+                    <h4 style="margin: 0 0 5px 0; color: #f0f2f5; font-size: 18px;">A minha leitura da ${dados.ticker}</h4>
+                    <p style="color: #8b949e; font-size: 13px; margin: 0 0 20px 0;">Eu colocaria a empresa nesta categoria:</p>
+                    
+                    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid #30363d;">
+                                <th style="text-align: left; padding: 10px 0; color: #8b949e; font-weight: bold; width: 40%;">Fator</th>
+                                <th style="text-align: left; padding: 10px 0; color: #8b949e; font-weight: bold;">Avaliação</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${dados.leitura_qualitativa.map(item => {
+                                // Mapeia as cores enviadas pelo backend para os códigos hexadecimais corretos do teu tema
+                                const bolinhas = item.cores.map(cor => {
+                                    let hex = '#8b949e'; 
+                                    if(cor === 'verde') hex = '#5cb85c';
+                                    if(cor === 'laranja') hex = '#f0ad4e';
+                                    if(cor === 'vermelho') hex = '#d9534f';
+                                    return `<span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background-color: ${hex}; box-shadow: 0 0 5px ${hex}40;"></span>`;
+                                }).join('<span style="margin: 0 4px; color: #8b949e; font-weight: bold;">/</span>');
+
+                                return `
+                                <tr style="border-bottom: 1px solid #21262d;">
+                                    <td style="padding: 12px 0; color: #c9d1d9;">${item.fator}</td>
+                                    <td style="padding: 12px 0; color: #f0f2f5; display: flex; align-items: center; gap: 8px;">
+                                        <div style="display: flex; align-items: center;">${bolinhas}</div>
+                                        <span>${item.avaliacao}</span>
+                                    </td>
+                                </tr>`;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+                ` : ''}
 
                 <h4 style="margin-top: 35px; color: #121212; text-transform: uppercase; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px; position: relative; z-index: 51;">
                     ⚖️ Fundamental Gravity & Institutional Flow
