@@ -1696,6 +1696,39 @@
                 </div>
                 ` : ''}
 
+
+                <!-- INJEÇÃO DOS CENÁRIOS DE VALUATION (FAIR VALUE) -->
+                ${dados.cenarios_valuation && dados.cenarios_valuation.length > 0 ? `
+                <div style="background: #1c1e24; border: 1px solid #30363d; border-radius: 6px; padding: 25px; margin-bottom: 25px; position: relative; z-index: 51;">
+                    <h4 style="margin: 0 0 5px 0; color: #f0f2f5; font-size: 18px;">O que eu considero um valor justo</h4>
+                    <p style="color: #8b949e; font-size: 13px; margin: 0 0 20px 0;">Eu faria três cenários matemáticos baseados nos lucros e múltiplos históricos:</p>
+                    
+                    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid #30363d;">
+                                <th style="text-align: left; padding: 10px 0; color: #8b949e; font-weight: bold;">Cenário</th>
+                                <th style="text-align: right; padding: 10px 0; color: #8b949e; font-weight: bold;">EPS</th>
+                                <th style="text-align: right; padding: 10px 0; color: #8b949e; font-weight: bold;">PER</th>
+                                <th style="text-align: right; padding: 10px 0; color: #8b949e; font-weight: bold;">Valor</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${dados.cenarios_valuation.map(cenario => `
+                                <tr style="border-bottom: 1px solid #21262d;">
+                                    <td style="padding: 12px 0; color: #c9d1d9; display: flex; align-items: center; gap: 8px;">
+                                        <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background-color: ${cenario.cor}; box-shadow: 0 0 5px ${cenario.cor}40;"></span>
+                                        ${cenario.nome}
+                                    </td>
+                                    <td style="padding: 12px 0; color: #f0f2f5; text-align: right; font-family: monospace;">${cenario.eps}</td>
+                                    <td style="padding: 12px 0; color: #f0f2f5; text-align: right; font-family: monospace;">${cenario.per}</td>
+                                    <td style="padding: 12px 0; color: #f0f2f5; text-align: right; font-weight: bold; font-family: monospace; font-size: 14px;">${cenario.valor}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+                ` : ''}
+    
                 <h4 style="margin-top: 35px; color: #121212; text-transform: uppercase; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px; position: relative; z-index: 51;">
                     ⚖️ Fundamental Gravity & Institutional Flow
                 </h4>
