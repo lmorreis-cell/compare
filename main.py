@@ -1527,50 +1527,50 @@ def api_sniper(ticker, timeframe):
             pass
 
         # ==========================================
-        # MOTOR DE LEITURA QUALITATIVA DINÂMICA
+        # MOTOR DE LEITURA QUALITATIVA DINÂMICA (HARMONIZADO)
         # ==========================================
         leitura_qualitativa = []
         
         # 1. Crescimento Futuro (PEG Ratio)
         if peg_ratio > 0 and peg_ratio <= 1.2:
-            cresc_aval, cresc_cor = "Forte (Crescimento justifica plenamente o preço)", ["verde"]
+            cresc_aval, cresc_cor = f"Forte (PEG de {peg_ratio:.2f} justifica plenamente o múltiplo)", ["verde"]
         elif peg_ratio > 1.2 and peg_ratio <= 2.0:
-            cresc_aval, cresc_cor = "Interessante (Crescimento precificado normalmente)", ["laranja"]
+            cresc_aval, cresc_cor = f"Moderado (PEG de {peg_ratio:.2f} reflete crescimento normalizado)", ["laranja"]
         elif peg_ratio > 2.0:
-            cresc_aval, cresc_cor = "Esticado (Prémio de mercado muito elevado face ao futuro)", ["vermelho"]
+            cresc_aval, cresc_cor = f"Esticado (PEG de {peg_ratio:.2f} revela prémio de mercado muito elevado)", ["vermelho"]
         else:
-            cresc_aval, cresc_cor = "Dados de crescimento ausentes ou inconsistentes", ["vermelho"]
+            cresc_aval, cresc_cor = "Dados de crescimento ausentes ou inconsistentes na API", ["vermelho"]
         leitura_qualitativa.append({"fator": "Crescimento futuro", "avaliacao": cresc_aval, "cores": cresc_cor})
 
         # 2. Rentabilidade e Margens (Net Margin)
         nm_valor = info.get('profitMargins', 0) * 100 if info.get('profitMargins') else 0
         if nm_valor >= 15:
-            margem_aval, margem_cor = "Muito forte (Forte poder de fixação de preços)", ["verde"]
+            margem_aval, margem_cor = f"Muito forte (Margem líquida confortável de {nm_valor:.1f}%)", ["verde"]
         elif nm_valor >= 5:
-            margem_aval, margem_cor = "A acompanhar (Margens operacionais curtas)", ["laranja"]
+            margem_aval, margem_cor = f"A acompanhar (Margem operacional curta de {nm_valor:.1f}%)", ["laranja"]
         else:
-            margem_aval, margem_cor = "Perigoso (Empresa a queimar dinheiro operacionalmente)", ["vermelho"]
+            margem_aval, margem_cor = f"Perigoso (Rentabilidade nula ou negativa de {nm_valor:.1f}%)", ["vermelho"]
         leitura_qualitativa.append({"fator": "Margens atuais", "avaliacao": margem_aval, "cores": margem_cor})
 
         # 3. Dívida / Risco Financeiro (Debt to Equity)
         de_valor = info.get('debtToEquity', 0) if info.get('debtToEquity') else 0
         if de_valor == 0:
-            divida_aval, divida_cor = "Dados indisponíveis na API (Requer análise manual)", ["laranja"]
+            divida_aval, divida_cor = "Dados de dívida indisponíveis (Análise manual necessária)", ["laranja"]
         elif de_valor < 60:
-            divida_aval, divida_cor = "Sólida e muito controlada", ["verde"]
+            divida_aval, divida_cor = f"Sólida e controlada (D/E de {de_valor:.1f}%)", ["verde"]
         elif de_valor < 120:
-            divida_aval, divida_cor = "Importante analisar detalhadamente o balanço", ["laranja"]
+            divida_aval, divida_cor = f"Alavancagem moderada (D/E de {de_valor:.1f}%)", ["laranja"]
         else:
-            divida_aval, divida_cor = "Elevada alavancagem / Risco de insolvência", ["vermelho"]
+            divida_aval, divida_cor = f"Elevada alavancagem (D/E de {de_valor:.1f}%) - Risco acrescido", ["vermelho"]
         leitura_qualitativa.append({"fator": "Dívida/risco financeiro", "avaliacao": divida_aval, "cores": divida_cor})
 
         # 4. Avaliação e Cotação (P/E Ratio)
         if pe_ratio > 0 and pe_ratio < 15:
-            cot_aval, cot_cor = "Descontada (Barata face aos lucros atuais)", ["verde"]
+            cot_aval, cot_cor = f"Descontada (Múltiplo P/E atual de {pe_ratio:.1f}x é atrativo)", ["verde"]
         elif pe_ratio >= 15 and pe_ratio < 25:
-            cot_aval, cot_cor = "Potencialmente barata, mas arriscada", ["verde", "laranja"]
+            cot_aval, cot_cor = f"Justa a esticada (Negocia a {pe_ratio:.1f}x os lucros atuais)", ["verde", "laranja"]
         elif pe_ratio >= 25:
-            cot_aval, cot_cor = "Cara (Mercado espera execução perfeita)", ["vermelho"]
+            cot_aval, cot_cor = f"Cara (P/E de {pe_ratio:.1f}x exige execução operacional perfeita)", ["vermelho"]
         else:
             cot_aval, cot_cor = "Avaliação cega (Empresa reporta prejuízos líquidos)", ["vermelho"]
         leitura_qualitativa.append({"fator": "Cotação Atual", "avaliacao": cot_aval, "cores": cot_cor})
@@ -1578,20 +1578,20 @@ def api_sniper(ticker, timeframe):
         # 5. Volatilidade (ATR percentual face ao preço)
         atr_pct = (atr_14 / fecho_atual) * 100 if fecho_atual > 0 else 0
         if atr_pct > 5:
-            vol_aval, vol_cor = "Elevada (Gaps e movimentos intradiários violentos)", ["vermelho"]
+            vol_aval, vol_cor = f"Elevada (Oscilação média de {atr_pct:.1f}% ao dia)", ["vermelho"]
         elif atr_pct > 2.5:
-            vol_aval, vol_cor = "Moderada (Flutuações típicas)", ["laranja"]
+            vol_aval, vol_cor = f"Moderada (Oscilação média de {atr_pct:.1f}% ao dia)", ["laranja"]
         else:
-            vol_aval, vol_cor = "Baixa (Ativo defensivo e previsível)", ["verde"]
+            vol_aval, vol_cor = f"Baixa (Movimentação previsível de {atr_pct:.1f}% ao dia)", ["verde"]
         leitura_qualitativa.append({"fator": "Volatilidade", "avaliacao": vol_aval, "cores": vol_cor})
 
         # 6. Potencial de Mercado (Wall St Consensus)
         if target_upside > 15:
-            pot_aval, pot_cor = "Interessante (>15% de Upside estimado pelos analistas)", ["verde"]
+            pot_aval, pot_cor = f"Atrativo (Consenso institucional projeta um Upside de {target_upside:.1f}%)", ["verde"]
         elif target_upside > 0:
-            pot_aval, pot_cor = "Moderado (Próximo do teto técnico)", ["laranja"]
+            pot_aval, pot_cor = f"Moderado (Upside de {target_upside:.1f}% - Próximo do teto técnico)", ["laranja"]
         else:
-            pot_aval, pot_cor = "Esgotado (Preço ultrapassou o consenso de Wall St)", ["vermelho", "laranja"]
+            pot_aval, pot_cor = f"Esgotado (Preço superou os alvos e projeta contração de {target_upside:.1f}%)", ["vermelho", "laranja"]
         leitura_qualitativa.append({"fator": "Sentimento Institucional", "avaliacao": pot_aval, "cores": pot_cor})
         
        # ==========================================
