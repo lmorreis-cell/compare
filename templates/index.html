@@ -1698,11 +1698,11 @@
 
 
                 <!-- INJEÇÃO DOS CENÁRIOS DE VALUATION (FAIR VALUE) -->
-                ${dados.cenarios_valuation && dados.cenarios_valuation.length > 0 ? `
                 <div style="background: #1c1e24; border: 1px solid #30363d; border-radius: 6px; padding: 25px; margin-bottom: 25px; position: relative; z-index: 51;">
                     <h4 style="margin: 0 0 5px 0; color: #f0f2f5; font-size: 18px;">O que eu considero um valor justo</h4>
-                    <p style="color: #8b949e; font-size: 13px; margin: 0 0 20px 0;">Eu faria três cenários matemáticos baseados nos lucros e múltiplos históricos:</p>
                     
+                    ${dados.cenarios_valuation && dados.cenarios_valuation.length > 0 ? `
+                    <p style="color: #8b949e; font-size: 13px; margin: 0 0 20px 0;">Eu faria três cenários matemáticos baseados nos lucros e múltiplos históricos:</p>
                     <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
                         <thead>
                             <tr style="border-bottom: 1px solid #30363d;">
@@ -1726,8 +1726,13 @@
                             `).join('')}
                         </tbody>
                     </table>
+                    ` : `
+                    <div style="background: rgba(217, 83, 79, 0.05); border-left: 4px solid #d9534f; padding: 15px; border-radius: 4px; margin-top: 15px;">
+                        <span style="color: #d9534f; font-weight: bold; font-size: 13px;">⚠️ Avaliação Inviável (Empresa com Prejuízos)</span>
+                        <p style="color: #8b949e; font-size: 12px; margin: 5px 0 0 0; line-height: 1.5;">O modelo de <i>Fair Value</i> assenta na projeção de lucros (Price-to-Earnings). Como os analistas preveem que a empresa continue a reportar resultados líquidos negativos nos próximos 12 meses, é matematicamente impossível calcular um valor justo baseado em múltiplos. A cotação atual não tem um suporte fundamental tradicional e reflete pura especulação sobre o futuro.</p>
+                    </div>
+                    `}
                 </div>
-                ` : ''}
     
                 <h4 style="margin-top: 35px; color: #121212; text-transform: uppercase; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px; position: relative; z-index: 51;">
                     ⚖️ Fundamental Gravity & Institutional Flow
