@@ -1069,7 +1069,7 @@ def api_search(query):
         return jsonify([])
 
 @app.route('/api/sniper/<ticker>/<timeframe>')
-@cache.cached(timeout=300) 
+@cache.cached(timeout=300, response_filter=lambda resp: resp.status_code == 200)
 def api_sniper(ticker, timeframe):
     import numpy as np
     import yfinance as yf
