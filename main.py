@@ -1599,29 +1599,32 @@ def api_sniper(ticker, timeframe):
         # ==========================================
         cenarios_valuation = []
         try:
-            # Extrai os lucros atuais (Trailing) e as projeções futuras dos analistas (Forward)
+            # Extrai os lucros atuais (Trailing) e as projeções futuras de Wall St (Forward)
             eps_ttm = info.get('trailingEps', 0)
             eps_fwd = info.get('forwardEps', 0)
             
-            # Empresas a dar prejuízo não podem ser avaliadas por P/E. O motor esconde a tabela.
+            # Garante que o múltiplo base é o real (Trailing) para ancorar o preço atual
+            pe_trailing = info.get('trailingPE', 0)
+            if pe_trailing == 0 and eps_ttm > 0:
+                pe_trailing = fecho_atual / eps_ttm
+                
             if eps_ttm is not None and eps_ttm > 0:
                 
-                # 1. Cenário Bear (Contração)
-                # Assume que os lucros caem 15% e o mercado penaliza o múltiplo atirando-o para os mínimos de 5 anos
+                # 1. Cenário Bear (Pânico: Lucros caem 15% e o múltiplo afunda para os mínimos históricos)
                 eps_bear = eps_ttm * 0.85
-                pe_bear = pe_min_5y if pe_min_5y > 0 else 10.0
+                pe_bear = pe_min_5y if pe_min_5y > 0 else (pe_trailing * 0.5)
                 val_bear = eps_bear * pe_bear
                 
-                # 2. Cenário Base (O "Fair Value" atual)
-                # Assume a manutenção dos lucros e o múltiplo normal de transação
+                # 2. Cenário Base (Realidade Atual: Lucros Passados x Múltiplo Passado)
+                # Isto garante que o valor Base "ancora" matematicamente à cotação atual
                 eps_base = eps_ttm
-                pe_base_val = pe_ratio if pe_ratio > 0 else 15.0
+                pe_base_val = pe_trailing if pe_trailing > 0 else 15.0
                 val_base = eps_base * pe_base_val
                 
-                # 3. Cenário Bull (Expansão)
-                # Assume que a empresa atinge as estimativas futuras (ou cresce 20%) e o mercado aceita pagar um prémio de 25% no múltiplo
+                # 3. Cenário Bull (Crescimento: Wall St acerta no crescimento futuro e a empresa mantém o seu múltiplo atual)
                 eps_bull = eps_fwd if (eps_fwd and eps_fwd > eps_ttm) else (eps_ttm * 1.20)
-                pe_bull = pe_base_val * 1.25
+                # Limitamos o P/E a 45x no máximo para o cenário Bull não gerar alvos alucinantes em cotadas de IA sobreaquecidas
+                pe_bull = min(pe_base_val, 45.0) if pe_base_val > 0 else 20.0
                 val_bull = eps_bull * pe_bull
                 
                 cenarios_valuation = [
