@@ -1661,8 +1661,8 @@
                 <!-- INJEÇÃO DA LEITURA QUALITATIVA DA EMPRESA -->
                 ${dados.leitura_qualitativa && dados.leitura_qualitativa.length > 0 ? `
                 <div style="background: #1c1e24; border: 1px solid #30363d; border-radius: 6px; padding: 25px; margin-bottom: 25px; position: relative; z-index: 51;">
-                    <h4 style="margin: 0 0 5px 0; color: #f0f2f5; font-size: 18px;">A minha leitura da ${dados.ticker}</h4>
-                    <p style="color: #8b949e; font-size: 13px; margin: 0 0 20px 0;">Eu colocaria a empresa nesta categoria:</p>
+                    <h4 style="margin: 0 0 5px 0; color: #f0f2f5; font-size: 18px;">Leitura Qualitativa da ${dados.ticker}</h4>
+                    <p style="color: #8b949e; font-size: 13px; margin: 0 0 20px 0;">Avaliação da empresa nas seguintes categorias:</p>
                     
                     <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
                         <thead>
@@ -1699,7 +1699,7 @@
 
                 <!-- INJEÇÃO DOS CENÁRIOS DE VALUATION (FAIR VALUE) -->
                 <div style="background: #1c1e24; border: 1px solid #30363d; border-radius: 6px; padding: 25px; margin-bottom: 25px; position: relative; z-index: 51;">
-                    <h4 style="margin: 0 0 5px 0; color: #f0f2f5; font-size: 18px;">O que eu considero um valor justo</h4>
+                    <h4 style="margin: 0 0 5px 0; color: #f0f2f5; font-size: 18px;">Valor justo (perspectiva fundamental e não técnica)</h4>
                     
                     ${dados.cenarios_valuation && dados.cenarios_valuation.length > 0 ? `
                     <p style="color: #8b949e; font-size: 13px; margin: 0 0 20px 0;">Eu faria três cenários matemáticos baseados nos lucros e múltiplos históricos:</p>
