@@ -1595,36 +1595,46 @@ def api_sniper(ticker, timeframe):
         leitura_qualitativa.append({"fator": "Sentimento Institucional", "avaliacao": pot_aval, "cores": pot_cor})
         
        # ==========================================
-        # MOTOR DE VALOR JUSTO (TRÊS CENÁRIOS)
+        # MOTOR DE VALOR JUSTO INSTITUCIONAL (FAIR VALUE)
         # ==========================================
         cenarios_valuation = []
         try:
-            # Extrai os lucros atuais (Trailing) e as projeções futuras de Wall St (Forward)
+            # 1. Extração de Lucros (TTM = Passado, FWD = Estimativa Wall St a 12 meses)
             eps_ttm = info.get('trailingEps', 0)
             eps_fwd = info.get('forwardEps', 0)
             
-            # Garante que o múltiplo base é o real (Trailing) para ancorar o preço atual
-            pe_trailing = info.get('trailingPE', 0)
-            if pe_trailing == 0 and eps_ttm > 0:
-                pe_trailing = fecho_atual / eps_ttm
+            # Se a empresa dá prejuízo crónico, a avaliação por P/E não é viável (esconde a tabela)
+            if eps_ttm is not None and eps_ttm > 0 and eps_fwd is not None and eps_fwd > 0:
                 
-            if eps_ttm is not None and eps_ttm > 0:
+                # 2. Definição do Múltiplo Médio (O "Justo" Histórico)
+                pe_atual = fecho_atual / eps_ttm
+                pe_fwd = fecho_atual / eps_fwd
                 
-                # 1. Cenário Bear (Pânico: Lucros caem 15% e o múltiplo afunda para os mínimos históricos)
-                eps_bear = eps_ttm * 0.85
-                pe_bear = pe_min_5y if pe_min_5y > 0 else (pe_trailing * 0.5)
-                val_bear = eps_bear * pe_bear
+                # Heurística para encontrar o P/E médio estabilizado da empresa:
+                if 'pe_min_5y' in locals() and pe_min_5y > 0 and pe_min_5y < pe_atual:
+                    pe_medio = (pe_atual + pe_min_5y + pe_fwd) / 3
+                else:
+                    pe_medio = (pe_atual + pe_fwd) / 2
                 
-                # 2. Cenário Base (Realidade Atual: Lucros Passados x Múltiplo Passado)
-                # Isto garante que o valor Base "ancora" matematicamente à cotação atual
-                eps_base = eps_ttm
-                pe_base_val = pe_trailing if pe_trailing > 0 else 15.0
+                # Limites de segurança para evitar projeções irrealistas
+                pe_medio = min(max(pe_medio, 10.0), 60.0) 
+                
+                # --- CENÁRIO BASE (Fair Value) ---
+                # A empresa atinge as estimativas e negoceia ao seu múltiplo normal
+                eps_base = eps_fwd
+                pe_base_val = pe_medio
                 val_base = eps_base * pe_base_val
                 
-                # 3. Cenário Bull (Crescimento: Wall St acerta no crescimento futuro e a empresa mantém o seu múltiplo atual)
-                eps_bull = eps_fwd if (eps_fwd and eps_fwd > eps_ttm) else (eps_ttm * 1.20)
-                # Limitamos o P/E a 45x no máximo para o cenário Bull não gerar alvos alucinantes em cotadas de IA sobreaquecidas
-                pe_bull = min(pe_base_val, 45.0) if pe_base_val > 0 else 20.0
+                # --- CENÁRIO BEAR (Pessimista / Contração) ---
+                # O crescimento estagna no passado e o mercado penaliza o múltiplo em 30%
+                eps_bear = eps_ttm
+                pe_bear = max(pe_medio * 0.70, 8.0) # Teto mínimo de 8x para não dar valores de falência
+                val_bear = eps_bear * pe_bear
+                
+                # --- CENÁRIO BULL (Otimista / Expansão) ---
+                # A empresa bate estimativas em 15% e o mercado paga um prémio de 20%
+                eps_bull = eps_fwd * 1.15
+                pe_bull = min(pe_medio * 1.20, 80.0) # Teto máximo de 80x
                 val_bull = eps_bull * pe_bull
                 
                 cenarios_valuation = [
