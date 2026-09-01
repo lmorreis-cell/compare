@@ -1599,42 +1599,48 @@ def api_sniper(ticker, timeframe):
         # ==========================================
         cenarios_valuation = []
         try:
-            # 1. Extração de Lucros (TTM = Passado, FWD = Estimativa Wall St a 12 meses)
-            eps_ttm = info.get('trailingEps', 0)
+            # O mercado olha para a frente. Ancoramos tudo no Forward EPS (Estimativas a 12 meses)
             eps_fwd = info.get('forwardEps', 0)
             
-            # Se a empresa dá prejuízo crónico, a avaliação por P/E não é viável (esconde a tabela)
-            if eps_ttm is not None and eps_ttm > 0 and eps_fwd is not None and eps_fwd > 0:
+            # Se a empresa não tem lucros previstos, o modelo P/E é inválido (esconde a tabela)
+            if eps_fwd is not None and eps_fwd > 0:
                 
-                # 2. Definição do Múltiplo Médio (O "Justo" Histórico)
-                pe_atual = fecho_atual / eps_ttm
-                pe_fwd = fecho_atual / eps_fwd
+                # 1. Definir o Múltiplo Médio (O P/E "Normal" sem emoções extremas)
+                pe_trailing = info.get('trailingPE', 0)
+                pe_forward = info.get('forwardPE', 0)
                 
-                # Heurística para encontrar o P/E médio estabilizado da empresa:
-                if 'pe_min_5y' in locals() and pe_min_5y > 0 and pe_min_5y < pe_atual:
-                    pe_medio = (pe_atual + pe_min_5y + pe_fwd) / 3
+                # Limpa anomalias de P/Es gigantes para não distorcer a média
+                pe_t_clean = min(pe_trailing, 60.0) if pe_trailing > 0 else 0
+                pe_f_clean = min(pe_forward, 60.0) if pe_forward > 0 else 0
+                
+                if pe_t_clean > 0 and pe_f_clean > 0:
+                    pe_normal = (pe_t_clean + pe_f_clean) / 2
+                elif pe_f_clean > 0:
+                    pe_normal = pe_f_clean
+                elif pe_t_clean > 0:
+                    pe_normal = pe_t_clean
                 else:
-                    pe_medio = (pe_atual + pe_fwd) / 2
-                
-                # Limites de segurança para evitar projeções irrealistas
-                pe_medio = min(max(pe_medio, 10.0), 60.0) 
+                    pe_normal = 15.0 # Fallback: Média histórica do S&P 500
+                    
+                # Limites estruturais de segurança para a avaliação base
+                pe_normal = min(max(pe_normal, 8.0), 50.0)
                 
                 # --- CENÁRIO BASE (Fair Value) ---
-                # A empresa atinge as estimativas e negoceia ao seu múltiplo normal
+                # A empresa atinge as estimativas exatas e negoceia ao P/E médio
                 eps_base = eps_fwd
-                pe_base_val = pe_medio
+                pe_base_val = pe_normal
                 val_base = eps_base * pe_base_val
                 
-                # --- CENÁRIO BEAR (Pessimista / Contração) ---
-                # O crescimento estagna no passado e o mercado penaliza o múltiplo em 30%
-                eps_bear = eps_ttm
-                pe_bear = max(pe_medio * 0.70, 8.0) # Teto mínimo de 8x para não dar valores de falência
+                # --- CENÁRIO BEAR (Choque Negativo) ---
+                # A empresa falha estimativas (cai 20%) e o mercado corta o múltiplo (cai 25%)
+                eps_bear = eps_fwd * 0.80
+                pe_bear = max(pe_normal * 0.75, 7.0) # Teto mínimo para não dar falência
                 val_bear = eps_bear * pe_bear
                 
-                # --- CENÁRIO BULL (Otimista / Expansão) ---
-                # A empresa bate estimativas em 15% e o mercado paga um prémio de 20%
+                # --- CENÁRIO BULL (Choque Positivo) ---
+                # A empresa bate estimativas (sobe 15%) e o mercado paga prémio (sobe 20%)
                 eps_bull = eps_fwd * 1.15
-                pe_bull = min(pe_medio * 1.20, 80.0) # Teto máximo de 80x
+                pe_bull = min(pe_normal * 1.20, 70.0) # Teto máximo 
                 val_bull = eps_bull * pe_bull
                 
                 cenarios_valuation = [
