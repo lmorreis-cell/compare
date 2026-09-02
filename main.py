@@ -1614,7 +1614,13 @@ def api_sniper(ticker, timeframe):
                 pe_f_clean = min(pe_forward, 60.0) if pe_forward > 0 else 0
                 
                 if pe_t_clean > 0 and pe_f_clean > 0:
-                    pe_normal = (pe_t_clean + pe_f_clean) / 2
+                    # CORREÇÃO: Filtro de Distorção Contabilística Histórica (M&A, Write-downs)
+                    # Se o P/E passado for mais de 50% superior ao P/E futuro, a métrica histórica está corrompida.
+                    # O motor corta o passado e assume apenas o consenso futuro do mercado.
+                    if pe_t_clean > (pe_f_clean * 1.5):
+                        pe_normal = pe_f_clean
+                    else:
+                        pe_normal = (pe_t_clean + pe_f_clean) / 2
                 elif pe_f_clean > 0:
                     pe_normal = pe_f_clean
                 elif pe_t_clean > 0:
