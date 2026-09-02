@@ -1613,21 +1613,23 @@ def api_sniper(ticker, timeframe):
                 pe_t_clean = min(pe_trailing, 60.0) if pe_trailing > 0 else 0
                 pe_f_clean = min(pe_forward, 60.0) if pe_forward > 0 else 0
                 
+                # Recupera a âncora histórica já calculada no script (linha ~930)
+                pe_hist_base = pe_min_5y if pe_min_5y > 0 else 15.0
+                
                 if pe_t_clean > 0 and pe_f_clean > 0:
-                    # CORREÇÃO: Filtro de Distorção Contabilística Histórica (M&A, Write-downs)
-                    # Se o P/E passado for mais de 50% superior ao P/E futuro, a métrica histórica está corrompida.
-                    # O motor corta o passado e assume apenas o consenso futuro do mercado.
                     if pe_t_clean > (pe_f_clean * 1.5):
-                        pe_normal = pe_f_clean
+                        # Trailing corrompido. Para evitar a tautologia (Forward P/E * Forward EPS = Cotação Atual),
+                        # fundimos a perspetiva futura com a âncora histórica mínima.
+                        pe_normal = (pe_hist_base + pe_f_clean) / 2
                     else:
                         pe_normal = (pe_t_clean + pe_f_clean) / 2
                 elif pe_f_clean > 0:
-                    pe_normal = pe_f_clean
+                    pe_normal = (pe_hist_base + pe_f_clean) / 2
                 elif pe_t_clean > 0:
                     pe_normal = pe_t_clean
                 else:
                     pe_normal = 15.0 # Fallback: Média histórica do S&P 500
-                    
+                
                 # Limites estruturais de segurança para a avaliação base
                 pe_normal = min(max(pe_normal, 8.0), 50.0)
                 
