@@ -1609,24 +1609,21 @@ def api_sniper(ticker, timeframe):
                 pe_trailing = info.get('trailingPE', 0)
                 pe_forward = info.get('forwardPE', 0)
                 
-                # Limpa anomalias de P/Es gigantes para não distorcer a média
-                pe_t_clean = min(pe_trailing, 60.0) if pe_trailing > 0 else 0
-                pe_f_clean = min(pe_forward, 60.0) if pe_forward > 0 else 0
+                if pe_trailing > 0 and pe_forward > 0:
+                    # CORREÇÃO: Em vez de usar o mínimo histórico, aplicamos um "Cap" dinâmico.
+                    # Se o Trailing P/E estiver distorcido (ex: 150x devido a M&A), limitamos o seu peso
+                    # a um máximo de 1.5x o Forward P/E atual. Isto elimina o lixo contabilístico
+                    # sem esmagar o cenário Base para níveis de "Bear Market".
+                    pe_t_clean = pe_trailing
+                    if pe_t_clean > (pe_forward * 1.5):
+                        pe_t_clean = pe_forward * 1.5
+                        
+                    pe_normal = (pe_t_clean + pe_forward) / 2
                 
-                # Recupera a âncora histórica já calculada no script (linha ~930)
-                pe_hist_base = pe_min_5y if pe_min_5y > 0 else 15.0
-                
-                if pe_t_clean > 0 and pe_f_clean > 0:
-                    if pe_t_clean > (pe_f_clean * 1.5):
-                        # Trailing corrompido. Para evitar a tautologia (Forward P/E * Forward EPS = Cotação Atual),
-                        # fundimos a perspetiva futura com a âncora histórica mínima.
-                        pe_normal = (pe_hist_base + pe_f_clean) / 2
-                    else:
-                        pe_normal = (pe_t_clean + pe_f_clean) / 2
-                elif pe_f_clean > 0:
-                    pe_normal = (pe_hist_base + pe_f_clean) / 2
-                elif pe_t_clean > 0:
-                    pe_normal = pe_t_clean
+                elif pe_forward > 0:
+                    pe_normal = pe_forward
+                elif pe_trailing > 0:
+                    pe_normal = pe_trailing
                 else:
                     pe_normal = 15.0 # Fallback: Média histórica do S&P 500
                 
