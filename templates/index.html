@@ -3505,7 +3505,10 @@
         
     }
 
-    function adicionarTrade() {
+    // ==========================================
+    // REGISTO DE TRANSAÇÃO COM AUDITORIA E VERIFICAÇÃO
+    // ==========================================
+    async function adicionarTrade() {
         const data = document.getElementById('trade-data').value;
         const tipo = document.getElementById('trade-tipo').value;
         const carteira = document.getElementById('trade-carteira').value.trim();
@@ -3517,14 +3520,54 @@
         const sujeito = document.getElementById('trade-sujeito').value;
         let cambio = parseFloat(document.getElementById('trade-cambio').value) || 1.0;
 
-        if (!data || !ticker || !carteira || !qtd || !precoOriginal || qtd <= 0 || precoOriginal <= 0) {
-            alert("⚠️ Preenche todos os campos obrigatórios.");
+        // 1. Validação de campos obrigatórios
+        if (!data || !ticker || !carteira || isNaN(qtd) || isNaN(precoOriginal) || qtd <= 0 || precoOriginal <= 0) {
+            alert("⚠️ Preenche todos os campos obrigatórios (Data, Tipo, Carteira, Ticker, Quantidade e Preço válidos).");
             return;
+        }
+
+        // 2. Auditoria Específica para VENDAS (Existência e Quantidade em Carteira)
+        if (tipo === 'VENDA') {
+            const lotesDisponiveis = cofreAbertas.filter(l => 
+                l.ticker === ticker && 
+                l.carteira === carteira && 
+                (l.sujeito || 'A') === sujeito && 
+                l.qtdRestante > 0
+            );
+
+            if (lotesDisponiveis.length === 0) {
+                alert(`❌ Venda Rejeitada: Não existem posições abertas de ${ticker} na carteira [${carteira}] para o Sujeito ${sujeito}.`);
+                return;
+            }
+
+            const qtdTotalDisponivel = lotesDisponiveis.reduce((soma, l) => soma + l.qtdRestante, 0);
+
+            if (qtd > (qtdTotalDisponivel + 0.00001)) {
+                alert(`❌ Quantidade Excessiva: Tens apenas ${parseFloat(qtdTotalDisponivel.toFixed(4))} ações de ${ticker} disponíveis na carteira [${carteira}] (Suj. ${sujeito}). Tentaste vender ${qtd}.`);
+                return;
+            }
+        }
+
+        // 3. Verificador de Ticker na API (Yahoo Finance)
+        try {
+            const resp = await fetch(`/api/cotacao/${ticker}`);
+            const dadosCotacao = await resp.json();
+
+            if (!resp.ok || !dadosCotacao.preco) {
+                const prosseguir = confirm(
+                    `⚠️ Alerta de Ticker: O ativo "${ticker}" não devolveu cotação na API da bolsa.\n\n` +
+                    `Se for uma cotada europeia, normalmente necessita do sufixo da praça (ex: ${ticker}.DE para Xetra/Alemanha, ${ticker}.LS para Lisboa, ${ticker}.MC para Madrid).\n\n` +
+                    `Clica "Cancelar" para corrigir o ticker, ou "OK" se quiseres registar mesmo assim.`
+                );
+                if (!prosseguir) return;
+            }
+        } catch (e) {
+            console.warn("Falha de rede ao verificar cotação prévia do ticker:", e);
         }
 
         if (moeda === 'EUR') cambio = 1.0;
 
-        // Injeta a Ordem Bruta no Ledger
+        // Injeta a Ordem Bruta no Ledger Mestre
         cofreBruto.push({
             sujeito: sujeito,
             id: Date.now(),
@@ -3541,24 +3584,18 @@
 
         localStorage.setItem('cofreBruto', JSON.stringify(cofreBruto));
         
-        // Limpa a UI
+        // Limpeza dos campos
         document.getElementById('trade-qtd').value = '';
         document.getElementById('trade-preco').value = '';
         document.getElementById('trade-custo').value = '';
         
-        // Dispara o recálculo global
+        // Recálculo imediato do motor contábil FIFO
         recalcularTudo();
         sinalizarAlertaBackup();
     }
 
     
-    // ==========================================
-    // FUNÇÕES PARA APAGAR REGISTOS (O TEU "UNDO")
-    // ==========================================
-    // ==========================================
-    // FUNÇÕES DE EDIÇÃO RÁPIDA (METADADOS, PREÇOS E QUANTIDADES)
-    // ==========================================
-
+    
     // ==========================================
     // EDITOR UNIVERSAL DO LEDGER (EVENT SOURCING)
     // ==========================================
