@@ -3941,7 +3941,7 @@
                 // Soma o custo inicial que foi guardado na memória base
                 const custoTotalInicial = Object.values(alocacaoTicker).reduce((a, b) => a + b, 0);
                 const pnlLatente = totalCapital - custoTotalInicial;
-                
+                               
                 const sinalPnl = pnlLatente >= 0 ? '+' : '';
                 const corPnl = pnlLatente >= 0 ? '#5cb85c' : '#d9534f';
 
@@ -3953,12 +3953,29 @@
                 elementoPnL.style.display = 'none';
             }
         }
-        
-        
+
+                
         const legendasEnriquecidas = labelsGrafico.map((ticker, index) => {
             const valor = valoresGrafico[index];
             const percentagem = totalCapital > 0 ? ((valor / totalCapital) * 100).toFixed(1) : 0;
-            return `${ticker} (${percentagem}%) - €${valor.toFixed(2)}`;
+            
+            let textoLegenda = `${ticker} (${percentagem}%) - €${valor.toFixed(2)}`;
+
+            // NOVO: Adiciona o PnL individual colorido se estivermos no modo "atual"
+            if (modoGraficoAlocacao === 'atual') {
+                // Vai buscar o custo inicial deste ticker específico que foi calculado mais acima
+                const custoInicial = alocacaoTicker[ticker] || 0; 
+                const pnlLatente = valor - custoInicial;
+                const pnlPct = custoInicial > 0 ? (pnlLatente / custoInicial) * 100 : 0;
+                
+                const sinal = pnlLatente >= 0 ? '+' : '-';
+                const cor = pnlLatente >= 0 ? '#5cb85c' : '#d9534f';
+                
+                // Injeta HTML diretamente no texto da legenda do Plotly
+                textoLegenda += ` <span style="color:${cor}">(${sinal}€${Math.abs(pnlLatente).toFixed(2)} | ${sinal}${Math.abs(pnlPct).toFixed(2)}%)</span>`;
+            }
+
+            return textoLegenda;
         });
 
         if (labelsGrafico.length > 0) {
