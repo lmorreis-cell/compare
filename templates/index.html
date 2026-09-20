@@ -1066,14 +1066,32 @@
             </span>
         </h3>
 
-        <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 20px;">
+        <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 20px;">
             <div style="flex: 1; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 15px; text-align: center; border-left: 4px solid #58a6ff;">
                 <div style="font-size: 11px; color: #8b949e; text-transform: uppercase; font-weight: bold;">Beta Global da Carteira</div>
                 <div id="risco-beta-global" style="font-size: 28px; font-weight: 900; color: #58a6ff; margin-top: 5px;">--</div>
             </div>
-            <div style="flex: 1; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 15px; text-align: center; border-left: 4px solid #c9d1d9;">
-                <div style="font-size: 11px; color: #8b949e; text-transform: uppercase; font-weight: bold;">Capital Total em Risco</div>
-                <div id="risco-capital-base" style="font-size: 28px; font-weight: 900; color: #c9d1d9; margin-top: 5px;">€0.00</div>
+            
+            <div style="flex: 1; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 15px; text-align: center; border-left: 4px solid #8b949e;">
+                <span class="dica-edu" style="font-size: 11px; color: #8b949e; text-transform: uppercase; font-weight: bold;">
+                    Capital Inicial (Custo)
+                    <span class="dica-texto" style="width: 250px;">
+                        <strong style="color: #c9d1d9; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Exposição Base</strong>
+                        O montante exato que retiraste da tua conta bancária para adquirir os ativos em aberto.
+                    </span>
+                </span>
+                <div id="risco-capital-investido" style="font-size: 22px; font-weight: bold; color: #8b949e; margin-top: 10px;">€0.00</div>
+            </div>
+
+            <div style="flex: 1; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 15px; text-align: center; border-left: 4px solid #e3b341;">
+                <span class="dica-edu" style="font-size: 11px; color: #e3b341; text-transform: uppercase; font-weight: bold;">
+                    Exposição Atual (Live)
+                    <span class="dica-texto" style="width: 280px;">
+                        <strong style="color: #e3b341; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Marcação a Mercado (MtM)</strong>
+                        A gestão de risco exige que avalies o que podes perder hoje. Se uma ação duplicou de valor desde a compra, o teu risco de queda também duplicou. Os testes de stress utilizam este valor em tempo real.
+                    </span>
+                </span>
+                <div id="risco-capital-base" style="font-size: 28px; font-weight: 900; color: #e3b341; margin-top: 5px;">€0.00</div>
             </div>
         </div>
 
@@ -4943,12 +4961,9 @@
     const graficoDiv = document.getElementById('plotly-correlacao');
     const painelCenarios = document.getElementById('painel-stress-cenarios');
     
-    // 1. Extrair os ativos em aberto e calcular o capital alocado
-    // Assumimos que a variável global cofreAbertas já existe e está atualizada pelo teu motor FIFO
-    let alocacao = {};
-    let capitalTotal = 0;
+    let alocacaoAtual = {};
+    let capitalInvestidoTotal = 0;
     
-    // Filtra apenas ativos com quantidade e ignora posições fechadas
     let lotesAtivos = cofreAbertas.filter(l => l.qtdRestante > 0);
     
     if (lotesAtivos.length < 2) {
@@ -4957,12 +4972,20 @@
     }
 
     lotesAtivos.forEach(lote => {
-        // Usa o custo atualizado com o câmbio ou a cacheLive se preferires medir risco real
-        let capitalEUR = lote.qtdRestante * lote.precoCompraEUR; 
-        if (alocacao[lote.ticker]) {
-            alocacao[lote.ticker] += capitalEUR;
+        // 1. Guarda o valor de custo puramente para referência visual
+        capitalInvestidoTotal += (lote.qtdRestante * lote.precoCompraEUR);
+
+        // 2. Extrai a Cotação e o Câmbio em Tempo Real das caches do portal
+        let precoMercadoOriginal = cachePrecosAtuais[lote.ticker] || lote.precoCompraOriginal;
+        let cambioAtual = lote.moeda === 'USD' ? cacheCambioLive : 1.0;
+        
+        // 3. Constrói a Alocação Live para o motor estatístico
+        let valorMercadoEUR = (lote.qtdRestante * precoMercadoOriginal) / cambioAtual; 
+        
+        if (alocacaoAtual[lote.ticker]) {
+            alocacaoAtual[lote.ticker] += valorMercadoEUR;
         } else {
-            alocacao[lote.ticker] = capitalEUR;
+            alocacaoAtual[lote.ticker] = valorMercadoEUR;
         }
     });
 
@@ -4973,23 +4996,22 @@
         const resposta = await fetch('/api/risco/portfolio', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ alocacao: alocacao })
+            body: JSON.stringify({ alocacao: alocacaoAtual })
         });
 
         const dados = await resposta.json();
-        
         if (dados.erro) { throw new Error(dados.erro); }
 
-        // 2. DESENHAR O HEATMAP DE CORRELAÇÃO
+        // [Mantém o código do Plotly trace e layout igual ao anterior...]
         const trace = {
             z: dados.correlacao.z,
             x: dados.correlacao.x,
             y: dados.correlacao.y,
             type: 'heatmap',
             colorscale: [
-                [0.0, '#1c1e24'], // Baixa correlação (Fundo escuro/Preto)
-                [0.5, '#58a6ff'], // Média correlação (Azul)
-                [1.0, '#d9534f']  // Alta correlação (Vermelho Perigo)
+                [0.0, '#1c1e24'], 
+                [0.5, '#58a6ff'], 
+                [1.0, '#d9534f']  
             ],
             hoverongaps: false,
             texttemplate: "%{z}",
@@ -5009,8 +5031,9 @@
         loading.style.display = 'none';
         graficoDiv.style.display = 'block';
 
-        // 3. ATUALIZAR O STRESS TEST E O BETA
+        // Atualiza a nova interface tripla
         document.getElementById('risco-beta-global').innerText = dados.beta_global.toFixed(2);
+        document.getElementById('risco-capital-investido').innerText = `€${capitalInvestidoTotal.toFixed(2)}`;
         document.getElementById('risco-capital-base').innerText = `€${dados.capital_avaliado.toFixed(2)}`;
 
         let htmlCenarios = '';
