@@ -2146,7 +2146,34 @@ def api_risco_portfolio():
         x_values = matriz_corr.columns.tolist()
         y_values = matriz_corr.index.tolist()
 
-        # ... [código anterior da matriz de correlação] ...
+        # --- MOTOR NLG (Tradução da Matriz) ---
+        # Isola o triângulo superior da matriz (ignorando a diagonal 1.0) para encontrar extremos reais
+        upper_tri = matriz_corr.where(np.triu(np.ones(matriz_corr.shape), k=1).astype(bool))
+        corr_max = upper_tri.max().max()
+        corr_min = upper_tri.min().min()
+        corr_avg = upper_tri.mean().mean()
+
+        par_max = upper_tri.stack().idxmax() if not pd.isna(corr_max) else ("N/A", "N/A")
+        par_min = upper_tri.stack().idxmin() if not pd.isna(corr_min) else ("N/A", "N/A")
+
+        nlg_texto = ""
+        nlg_cor = "#58a6ff"
+
+        if pd.isna(corr_avg):
+            nlg_texto = "Ativos insuficientes para análise de correlação cruzada."
+        elif corr_avg > 0.6:
+            nlg_texto = f"⚠️ <strong>Risco de Concentração Sistémico:</strong> A tua carteira move-se em bloco. O par mais perigoso é <strong>{par_max[0]} e {par_max[1]}</strong> ({corr_max:.2f}). Se o fator macroeconómico que os une sofrer um choque, o teu portefólio afunda sem defesa. Adiciona ativos descorrelacionados."
+            nlg_cor = "#d9534f"
+        elif corr_max > 0.7:
+            nlg_texto = f"⚠️ <strong>Aviso Tático (Sobreposição):</strong> A carteira global está equilibrada, mas tens uma duplicação perigosa entre <strong>{par_max[0]} e {par_max[1]}</strong> ({corr_max:.2f}). Estás tecnicamente a duplicar a mesma aposta de risco. Pondera reduzir uma das posições."
+            nlg_cor = "#f28b24"
+        elif corr_min < -0.3:
+            nlg_texto = f"🛡️ <strong>Proteção Ativa Detetada:</strong> Excelente arquitetura. Tens verdadeiros 'amortecedores' na carteira. O par <strong>{par_min[0]} e {par_min[1]}</strong> apresenta uma correlação inversa de {corr_min:.2f}. Num cenário de pânico direcional, um protegerá a queda do outro."
+            nlg_cor = "#5cb85c"
+        else:
+            nlg_texto = f"⚖️ <strong>Carteira Neutra (Stock-Picker):</strong> O teu portefólio é uma coleção de ativos independentes (média de {corr_avg:.2f}). Não existem sobreposições mortais, mas também não possuis <i>hedges</i> direcionais puros. Estás integralmente dependente do mérito individual de cada ação escolhida."
+            nlg_cor = "#58a6ff"
+        # ------------------------------------
 
         # 2. CÁLCULO DE BETA E STRESS TESTING
         retorno_mercado = retornos['^GSPC']
@@ -2188,6 +2215,8 @@ def api_risco_portfolio():
 
         return jsonify({
             "correlacao": {"z": z_values, "x": x_values, "y": y_values},
+            "nlg_texto": nlg_texto,
+            "nlg_cor": nlg_cor,
             "beta_global": beta_portfolio,
             "betas_ativos": betas_individuais,
             "stress_test": stress_results,
