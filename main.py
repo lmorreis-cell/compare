@@ -2099,6 +2099,95 @@ def webhook_duelo():
     except Exception as e:
         return jsonify({"erro": str(e)}), 500
 
+@app.route('/api/risco/portfolio', methods=['POST'])
+@cache.cached(timeout=3600, key_prefix=lambda: f"risco_{hash(str(request.json))}")
+def api_risco_portfolio():
+    import yfinance as yf
+    import pandas as pd
+    import numpy as np
+    
+    dados = request.json
+    alocacao = dados.get('alocacao', {}) # Ex: {'AAPL': 5000, 'MSFT': 3000, 'BTC-USD': 2000}
+    
+    if not alocacao:
+        return jsonify({"erro": "Cofre vazio ou sem exposição ao mercado."}), 400
+
+    tickers = list(alocacao.keys())
+    capital_total = sum(alocacao.values())
+    pesos = {t: v / capital_total for t, v in alocacao.items()}
+
+    # Adiciona o S&P 500 como benchmark invisível para calcular o Beta
+    tickers_api = tickers + ['^GSPC']
+    
+    try:
+        # Download de 1 ano de histórico para ter relevância estatística
+        df = yf.download(tickers_api, period="1y", interval="1d", group_by="ticker", progress=False)
+        
+        # Constrói um DataFrame limpo apenas com os fechos (Close)
+        df_close = pd.DataFrame()
+        if len(tickers_api) == 1:
+            df_close[tickers_api[0]] = df['Close']
+        else:
+            for t in tickers_api:
+                if t in df.columns.levels[0]:
+                    df_close[t] = df[t]['Close']
+                else:
+                    df_close[t] = df['Close'] # Fallback para 1 ticker (yfinance bug)
+                    
+        df_close = df_close.dropna()
+        retornos = df_close.pct_change().dropna()
+
+        # 1. MATRIZ DE CORRELAÇÃO (Ignorando o Benchmark)
+        retornos_ativos = retornos[tickers]
+        matriz_corr = retornos_ativos.corr().round(2)
+        
+        # Formata para o Plotly Heatmap
+        z_values = matriz_corr.values.tolist()
+        x_values = matriz_corr.columns.tolist()
+        y_values = matriz_corr.index.tolist()
+
+        # 2. CÁLCULO DE BETA E STRESS TESTING
+        retorno_mercado = retornos['^GSPC']
+        var_mercado = retorno_mercado.var()
+        
+        beta_portfolio = 0
+        betas_individuais = {}
+        
+        for t in tickers:
+            covariancia = retornos[t].cov(retorno_mercado)
+            beta_ativo = covariancia / var_mercado if var_mercado > 0 else 1
+            betas_individuais[t] = round(beta_ativo, 2)
+            beta_portfolio += beta_ativo * pesos[t]
+
+        # 3. CENÁRIOS DE CHOQUE MACROECONÓMICO
+        cenarios = [
+            {"nome": "Correção Técnica (S&P 500 -10%)", "choque_mercado": -0.10, "cor": "#f0ad4e"},
+            {"nome": "Bear Market (S&P 500 -20%)", "choque_mercado": -0.20, "cor": "#d9534f"},
+            {"nome": "Crash Sistémico (S&P 500 -30%)", "choque_mercado": -0.30, "cor": "#843534"}
+        ]
+        
+        stress_results = []
+        for c in cenarios:
+            impacto_pct = beta_portfolio * c["choque_mercado"]
+            impacto_eur = capital_total * impacto_pct
+            stress_results.append({
+                "cenario": c["nome"],
+                "impacto_pct": round(impacto_pct * 100, 2),
+                "impacto_eur": round(impacto_eur, 2),
+                "cor": c["cor"]
+            })
+
+        return jsonify({
+            "correlacao": {"z": z_values, "x": x_values, "y": y_values},
+            "beta_global": round(beta_portfolio, 2),
+            "betas_ativos": betas_individuais,
+            "stress_test": stress_results,
+            "capital_avaliado": capital_total
+        })
+
+    except Exception as e:
+        return jsonify({"erro": f"Falha no motor estatístico: {str(e)}"}), 500
+
 if __name__ == "__main__":
     import os
     
