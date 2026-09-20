@@ -294,7 +294,7 @@
             <button class="tab-btn" onclick="abrirSeparador(event, 'tab-irs'); carregarAnosIRS();">⚖️ Assistente IRS</button>
 
             <button class="tab-btn" onclick="abrirSeparador(event, 'tab-risco'); carregarLaboratorioRisco();">🛡️ Risco & Stress</button>
-        
+            <button class="tab-btn" onclick="abrirSeparador(event, 'tab-diario'); atualizarDiarioBordo();">📓 Diário de Bordo</button>
         </div>
 
     <!-- ==========================================
@@ -1027,7 +1027,7 @@
         </div>
     </div>
 
-    <!-- SEPARADOR 6 DO LABORATÓRIO -->
+    <!-- SEPARADOR 7 DO LABORATÓRIO -->
 <div id="tab-risco" class="tab-content">
     
     <div style="background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
@@ -1111,7 +1111,87 @@
     </div>
 </div>
     
+<!-- SEPARADOR 8: DIÁRIO DE BORDO -->
+<div id="tab-diario" class="tab-content">
+    
+    <!-- DASHBOARD DE PERFORMANCE -->
+    <div style="background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3 style="margin: 0; font-size: 14px; color: #f0f2f5; text-transform: uppercase;">
+                <span class="dica-edu">
+                    🧠 Profiling de Operador (Trade Journal)
+                    <span class="dica-texto" style="width: 350px;">
+                        <strong style="color: #58a6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Auditoria Comportamental</strong>
+                        Mede a tua eficácia por estratégia. Identifica os setups que te dão dinheiro e expõe implacavelmente as táticas onde serves de liquidez para o mercado.
+                    </span>
+                </span>
+            </h3>
+        </div>
 
+        <!-- KPIs GLOBAIS -->
+        <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 25px;">
+            <div style="flex: 1; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 15px; text-align: center; border-left: 4px solid #58a6ff;">
+                <span class="dica-edu" style="font-size: 11px; color: #8b949e; text-transform: uppercase; font-weight: bold;">
+                    Win Rate Global
+                    <span class="dica-texto" style="width: 250px;">
+                        Percentagem total de trades encerrados com lucro. Sistemas Trend Following funcionam com 40-50%. Mean Reversion exige > 60%.
+                    </span>
+                </span>
+                <div id="diario-winrate" style="font-size: 28px; font-weight: 900; color: #58a6ff; margin-top: 5px;">--%</div>
+            </div>
+            
+            <div style="flex: 1; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 15px; text-align: center; border-left: 4px solid #e3b341;">
+                <span class="dica-edu" style="font-size: 11px; color: #8b949e; text-transform: uppercase; font-weight: bold;">
+                    Profit Factor
+                    <span class="dica-texto" style="width: 280px;">
+                        <strong style="color: #e3b341; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Lucro Bruto / Prejuízo Bruto</strong>
+                        A métrica final. Por cada 1€ que perdes, quanto ganhas? Valores < 1.0 indicam destruição de capital. Valores > 1.5 indicam um operador consistente e lucrativo.
+                    </span>
+                </span>
+                <div id="diario-profit-factor" style="font-size: 28px; font-weight: 900; color: #e3b341; margin-top: 5px;">--</div>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+            <!-- GRÁFICO DE PNL POR ESTRATÉGIA -->
+            <div style="flex: 1.5; min-width: 300px;">
+                <div id="plotly-diario" style="width: 100%; height: 300px;"></div>
+            </div>
+            
+            <!-- TABELA DE ESTATÍSTICA POR SETUP -->
+            <div style="flex: 1; min-width: 300px; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; overflow: hidden;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 12px; text-align: left;">
+                    <thead style="background: #161b22; color: #8b949e;">
+                        <tr>
+                            <th style="padding: 12px; border-bottom: 1px solid #30363d;">Estratégia (Setup)</th>
+                            <th style="padding: 12px; border-bottom: 1px solid #30363d; text-align: center;">WR %</th>
+                            <th style="padding: 12px; border-bottom: 1px solid #30363d; text-align: right;">PnL Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody-stats-estrategias"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- LISTA DE CLASSIFICAÇÃO (ONDE AUDITAS OS TRADES) -->
+    <div style="background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px;">
+        <h4 style="margin: 0 0 15px 0; color: #f0f2f5; font-size: 13px; text-transform: uppercase;">Classificação de Trades Fechados</h4>
+        <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 6px; overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                <thead style="background: #161b22; color: #8b949e; text-align: left;">
+                    <tr>
+                        <th style="padding: 10px; border-bottom: 1px solid #30363d;">Data</th>
+                        <th style="padding: 10px; border-bottom: 1px solid #30363d;">Ativo</th>
+                        <th style="padding: 10px; border-bottom: 1px solid #30363d; text-align: right;">PnL</th>
+                        <th style="padding: 10px; border-bottom: 1px solid #30363d;">Estratégia / Motivo</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody-classificacao-trades"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
 
         
     <!-- ==========================================
@@ -3509,6 +3589,7 @@
             
             // PONTE DE COMPATIBILIDADE: Injeta trades antigos diretamente sem matemática FIFO
             if (evento.tipo === 'MIGRACAO_FECHADA') {
+                evento.tradeAntigo.estrategia = evento.tradeAntigo.estrategia || 'Não Classificado';
                 cofreFechadas.push(evento.tradeAntigo);
                 continue;
             }
@@ -3584,7 +3665,8 @@
                     pnlEUR: lucroTradeEUR,
                     pnlEscaloes: pnlEscaloes,
                     moeda: evento.moeda,
-                    detalhes: detalhesCasamento.join(" + ")
+                    detalhes: detalhesCasamento.join(" + "),
+                    estrategia: evento.estrategia || 'Não Classificado'
                 });
             }
         }
@@ -3750,6 +3832,8 @@
         evento.precoOriginal = novoPreco;
         evento.custoOriginal = novoCusto;
         evento.cambio = novoCambio;
+
+        
 
         localStorage.setItem('cofreBruto', JSON.stringify(cofreBruto));
         
@@ -5092,7 +5176,152 @@
         painelCenarios.innerHTML = `<div style="color: #d9534f; padding: 15px;">Falha ao calcular o risco quantitativo: ${erro.message}</div>`;
     }
 }
+
+
+
+    function classificarTradeBruto(idOrigem, novaEstrategia) {
+    let evento = cofreBruto.find(ev => ev.id === idOrigem);
+    if (evento) {
+        // Grava a estratégia diretamente no evento de venda do Ledger
+        evento.estrategia = novaEstrategia;
+    } else {
+        // Fallback para trades antigos importados
+        let migracao = cofreBruto.find(ev => ev.tipo === 'MIGRACAO_FECHADA' && ev.tradeAntigo.idOrigem === idOrigem);
+        if (migracao) migracao.tradeAntigo.estrategia = novaEstrategia;
+    }
     
+    localStorage.setItem('cofreBruto', JSON.stringify(cofreBruto));
+    recalcularTudo();
+    atualizarDiarioBordo();
+}
+
+function atualizarDiarioBordo() {
+    const tbodyTrades = document.getElementById('tbody-classificacao-trades');
+    const tbodyStats = document.getElementById('tbody-stats-estrategias');
+    if (!tbodyTrades || !tbodyStats) return;
+
+    let estrategiasDisponiveis = [
+        "Não Classificado",
+        "Trend Following (Breakout)",
+        "Trend Following (Pullback)",
+        "Mean Reversion (Oversold)",
+        "Bollinger Squeeze",
+        "Arbitragem / Long-Short",
+        "Earnings / Evento Macro",
+        "FOMO / Emocional",
+        "Erro Operacional"
+    ];
+
+    let stats = {};
+    let grossProfit = 0;
+    let grossLoss = 0;
+    let totalTrades = cofreFechadas.length;
+    let winningTrades = 0;
+
+    tbodyTrades.innerHTML = '';
+
+    // Ordena do mais recente para o mais antigo para facilitar a classificação
+    let fechadasOrdenadas = [...cofreFechadas].sort((a, b) => new Date(b.data) - new Date(a.data));
+
+    fechadasOrdenadas.forEach(trade => {
+        let est = trade.estrategia || 'Não Classificado';
+        let pnl = trade.pnlEUR;
+
+        // 1. Acumuladores Globais
+        if (pnl > 0) {
+            grossProfit += pnl;
+            winningTrades++;
+        } else {
+            grossLoss += Math.abs(pnl);
+        }
+
+        // 2. Acumuladores por Estratégia
+        if (!stats[est]) stats[est] = { trades: 0, wins: 0, pnl: 0 };
+        stats[est].trades++;
+        stats[est].pnl += pnl;
+        if (pnl > 0) stats[est].wins++;
+
+        // 3. Renderização da Tabela de Auditoria
+        let corPnl = pnl >= 0 ? '#5cb85c' : '#d9534f';
+        let sinal = pnl >= 0 ? '+' : '-';
+        
+        let opcoesHtml = estrategiasDisponiveis.map(op => 
+            `<option value="${op}" ${op === est ? 'selected' : ''}>${op}</option>`
+        ).join('');
+
+        tbodyTrades.innerHTML += `
+            <tr style="border-bottom: 1px solid #30363d;">
+                <td style="padding: 10px; color: #8b949e;">${trade.data}</td>
+                <td style="padding: 10px; color: #c9d1d9; font-weight: bold;">${trade.ticker}</td>
+                <td style="padding: 10px; text-align: right; color: ${corPnl}; font-weight: bold;">${sinal}€${Math.abs(pnl).toFixed(2)}</td>
+                <td style="padding: 10px;">
+                    <select class="input-moderno" style="padding: 4px 8px; font-size: 11px; cursor: pointer; border-color: ${est === 'Não Classificado' ? '#d9534f' : '#30363d'};" onchange="classificarTradeBruto(${trade.idOrigem}, this.value)">
+                        ${opcoesHtml}
+                    </select>
+                </td>
+            </tr>
+        `;
+    });
+
+    // 4. Calcular KPIs Globais
+    let globalWR = totalTrades > 0 ? (winningTrades / totalTrades) * 100 : 0;
+    let profitFactor = grossLoss === 0 ? (grossProfit > 0 ? 99.9 : 0) : (grossProfit / grossLoss);
+
+    document.getElementById('diario-winrate').innerText = `${globalWR.toFixed(1)}%`;
+    document.getElementById('diario-winrate').style.color = globalWR >= 50 ? '#5cb85c' : '#d9534f';
+    
+    document.getElementById('diario-profit-factor').innerText = profitFactor.toFixed(2);
+    document.getElementById('diario-profit-factor').style.color = profitFactor >= 1.5 ? '#5cb85c' : (profitFactor >= 1.0 ? '#f0ad4e' : '#d9534f');
+
+    // 5. Renderizar Tabela e Gráfico de Estratégias
+    tbodyStats.innerHTML = '';
+    let x_estrategias = [];
+    let y_pnls = [];
+    let c_cores = [];
+
+    // Ignora os 'Não Classificado' no gráfico para forçar o utilizador a classificar
+    Object.keys(stats).forEach(est => {
+        if (est === 'Não Classificado' && stats[est].trades === 0) return;
+
+        let dado = stats[est];
+        let wr = (dado.wins / dado.trades) * 100;
+        let corRowPnl = dado.pnl >= 0 ? '#5cb85c' : '#d9534f';
+
+        tbodyStats.innerHTML += `
+            <tr style="border-bottom: 1px solid #21262d;">
+                <td style="padding: 12px; color: #c9d1d9;">${est} <span style="color:#8b949e; font-size: 10px;">(${dado.trades})</span></td>
+                <td style="padding: 12px; text-align: center; color: ${wr >= 50 ? '#5cb85c' : '#d9534f'}; font-weight: bold;">${wr.toFixed(0)}%</td>
+                <td style="padding: 12px; text-align: right; color: ${corRowPnl}; font-weight: bold;">€${dado.pnl.toFixed(2)}</td>
+            </tr>
+        `;
+
+        if (est !== 'Não Classificado') {
+            x_estrategias.push(est);
+            y_pnls.push(dado.pnl);
+            c_cores.push(dado.pnl >= 0 ? '#5cb85c' : '#d9534f');
+        }
+    });
+
+    const traceBar = {
+        x: x_estrategias,
+        y: y_pnls,
+        type: 'bar',
+        marker: { color: c_cores },
+        text: y_pnls.map(v => `€${v.toFixed(2)}`),
+        textposition: 'outside',
+        textfont: { color: '#c9d1d9', size: 10 }
+    };
+
+    const layoutBar = {
+        margin: { t: 20, r: 20, b: 80, l: 40 },
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        plot_bgcolor: 'rgba(0,0,0,0)',
+        xaxis: { tickfont: { color: '#8b949e', size: 10 }, tickangle: -45 },
+        yaxis: { showgrid: true, gridcolor: '#30363d', tickfont: { color: '#8b949e', size: 10 } }
+    };
+
+    Plotly.newPlot('plotly-diario', [traceBar], layoutBar, {responsive: true, displayModeBar: false});
+}
 </script>
 
     
