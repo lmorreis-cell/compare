@@ -5019,16 +5019,29 @@
         const dados = await resposta.json();
         if (dados.erro) { throw new Error(dados.erro); }
 
+        const mediaCorr = dados.corr_avg;
+        
         const trace = {
             z: dados.correlacao.z,
             x: dados.correlacao.x,
             y: dados.correlacao.y,
             type: 'heatmap',
+            zmin: -1, // Força o limite mínimo matemático da correlação
+            zmax: 1,  // Força o limite máximo
             colorscale: [
-                [0.0, '#1c1e24'], 
-                [0.5, '#58a6ff'], 
-                [1.0, '#d9534f']  
+                [0.0, '#5cb85c'], // -1.0 (Verde: Hedge/Proteção)
+                [0.5, '#1c1e24'], //  0.0 (Preto: Neutro/Isolado)
+                [1.0, '#d9534f']  //  1.0 (Vermelho: Risco Concentrado)
             ],
+            colorbar: {
+                tickmode: 'array',
+                // Define as réguas base + a régua específica da tua média
+                tickvals: [-1, -0.5, 0, 0.5, 1, mediaCorr],
+                // Define o texto que aparece ao lado de cada régua (com a seta a apontar)
+                ticktext: ['-1.0', '-0.5', '0.0', '0.5', '1.0', `Média: ${mediaCorr} ◄`],
+                tickfont: { color: "#8b949e", size: 11, font: 'bold' },
+                outlinewidth: 0
+            },
             hoverongaps: false,
             texttemplate: "%{z}",
             textfont: { color: "#ffffff", size: 10 }
