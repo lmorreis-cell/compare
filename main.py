@@ -2153,6 +2153,9 @@ def api_risco_portfolio():
         corr_min = upper_tri.min().min()
         corr_avg = upper_tri.mean().mean()
 
+        # Garante que a média é um número standard para enviar para a interface
+        media_matriz = round(float(corr_avg), 2) if pd.notna(corr_avg) else 0.0
+        
         par_max = upper_tri.stack().idxmax() if not pd.isna(corr_max) else ("N/A", "N/A")
         par_min = upper_tri.stack().idxmin() if not pd.isna(corr_min) else ("N/A", "N/A")
 
@@ -2216,6 +2219,7 @@ def api_risco_portfolio():
         return jsonify({
             "correlacao": {"z": z_values, "x": x_values, "y": y_values},
             "nlg_texto": nlg_texto,
+            "corr_avg": media_matriz,  # <-- ADICIONA ESTA LINHA AQUI
             "nlg_cor": nlg_cor,
             "beta_global": beta_portfolio,
             "betas_ativos": betas_individuais,
