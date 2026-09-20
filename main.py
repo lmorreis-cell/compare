@@ -2146,6 +2146,8 @@ def api_risco_portfolio():
         x_values = matriz_corr.columns.tolist()
         y_values = matriz_corr.index.tolist()
 
+        # ... [código anterior da matriz de correlação] ...
+
         # 2. CÁLCULO DE BETA E STRESS TESTING
         retorno_mercado = retornos['^GSPC']
         var_mercado = retorno_mercado.var()
@@ -2159,6 +2161,10 @@ def api_risco_portfolio():
             betas_individuais[t] = round(beta_ativo, 2)
             beta_portfolio += beta_ativo * pesos[t]
 
+        # CORREÇÃO: Arredondar o Beta Global a 2 casas decimais ANTES da matemática dos cenários
+        # Isto garante que o valor exibido no ecrã (ex: 1.10) é exatamente o mesmo usado no multiplicador
+        beta_portfolio = round(beta_portfolio, 2)
+
         # 3. CENÁRIOS DE CHOQUE MACROECONÓMICO
         cenarios = [
             {"nome": "Correção Técnica (S&P 500 -10%)", "choque_mercado": -0.10, "cor": "#f0ad4e"},
@@ -2169,17 +2175,20 @@ def api_risco_portfolio():
         stress_results = []
         for c in cenarios:
             impacto_pct = beta_portfolio * c["choque_mercado"]
-            impacto_eur = capital_total * impacto_pct
+            # Arredonda a percentagem antes de aplicar ao capital (Alinhamento com a calculadora manual)
+            impacto_pct_arredondado = round(impacto_pct, 4) 
+            impacto_eur = capital_total * impacto_pct_arredondado
+            
             stress_results.append({
                 "cenario": c["nome"],
-                "impacto_pct": round(impacto_pct * 100, 2),
+                "impacto_pct": round(impacto_pct_arredondado * 100, 2),
                 "impacto_eur": round(impacto_eur, 2),
                 "cor": c["cor"]
             })
 
         return jsonify({
             "correlacao": {"z": z_values, "x": x_values, "y": y_values},
-            "beta_global": round(beta_portfolio, 2),
+            "beta_global": beta_portfolio,
             "betas_ativos": betas_individuais,
             "stress_test": stress_results,
             "capital_avaliado": capital_total
