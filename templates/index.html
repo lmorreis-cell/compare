@@ -4970,36 +4970,32 @@
     async function carregarLaboratorioRisco() {
     const loading = document.getElementById('loading-risco');
     const graficoDiv = document.getElementById('plotly-correlacao');
+    const nlgBox = document.getElementById('nlg-correlacao');
     const painelCenarios = document.getElementById('painel-stress-cenarios');
     
-    // 1. Lê a posição atual do interrutor ESPECÍFICO do Laboratório de Risco
+    // Lê o filtro local do painel de Risco (e não do Cofre)
     const filtroSuj = document.getElementById('risco-filtro-sujeito') ? document.getElementById('risco-filtro-sujeito').value : 'TODOS';
     
     let alocacaoAtual = {};
     let capitalInvestidoTotal = 0;
     
-    // 2. Extrai os lotes aplicando o filtro local do Sujeito Passivo
+    // Filtra os lotes pelo titular escolhido
     let lotesAtivos = cofreAbertas.filter(l => 
         l.qtdRestante > 0 && 
         (filtroSuj === 'TODOS' || (l.sujeito || 'A') === filtroSuj)
     );
     
-    // Proteção: Se a pessoa selecionada não tiver ativos suficientes
     if (lotesAtivos.length < 2) {
-        let msgSujeito = filtroSuj === 'TODOS' ? 'no Cofre Global' : `na carteira do Sujeito ${filtroSuj}`;
-        painelCenarios.innerHTML = `<div style="color: #d9534f; font-size: 13px; padding: 10px;">Precisas de pelo menos 2 ativos abertos ${msgSujeito} para calcular o risco estatístico cruzado.</div>`;
+        painelCenarios.innerHTML = `<div style="color: #d9534f; font-size: 13px; padding: 10px;">Precisas de pelo menos 2 ativos abertos para calcular o risco estatístico cruzado.</div>`;
+        graficoDiv.style.display = 'none';
+        nlgBox.style.display = 'none';
         return;
     }
 
     lotesAtivos.forEach(lote => {
-        // 1. Guarda o valor de custo puramente para referência visual
         capitalInvestidoTotal += (lote.qtdRestante * lote.precoCompraEUR);
-
-        // 2. Extrai a Cotação e o Câmbio em Tempo Real das caches do portal
         let precoMercadoOriginal = cachePrecosAtuais[lote.ticker] || lote.precoCompraOriginal;
         let cambioAtual = lote.moeda === 'USD' ? cacheCambioLive : 1.0;
-        
-        // 3. Constrói a Alocação Live para o motor estatístico
         let valorMercadoEUR = (lote.qtdRestante * precoMercadoOriginal) / cambioAtual; 
         
         if (alocacaoAtual[lote.ticker]) {
@@ -5011,6 +5007,7 @@
 
     loading.style.display = 'block';
     graficoDiv.style.display = 'none';
+    nlgBox.style.display = 'none';
 
     try {
         const resposta = await fetch('/api/risco/portfolio', {
@@ -5022,7 +5019,6 @@
         const dados = await resposta.json();
         if (dados.erro) { throw new Error(dados.erro); }
 
-        // [Mantém o código do Plotly trace e layout igual ao anterior...]
         const trace = {
             z: dados.correlacao.z,
             x: dados.correlacao.x,
@@ -5048,10 +5044,15 @@
 
         Plotly.newPlot('plotly-correlacao', [trace], layout, {responsive: true, displayModeBar: false});
         
+        // Injeção do Texto NLG
+        nlgBox.innerHTML = dados.nlg_texto;
+        nlgBox.style.borderLeftColor = dados.nlg_cor;
+        
         loading.style.display = 'none';
         graficoDiv.style.display = 'block';
+        nlgBox.style.display = 'block';
 
-        // Atualiza a nova interface tripla
+        // Atualização dos Painéis de Stress
         document.getElementById('risco-beta-global').innerText = dados.beta_global.toFixed(2);
         document.getElementById('risco-capital-investido').innerText = `€${capitalInvestidoTotal.toFixed(2)}`;
         document.getElementById('risco-capital-base').innerText = `€${dados.capital_avaliado.toFixed(2)}`;
@@ -5071,7 +5072,6 @@
                 </div>
             `;
         });
-        
         painelCenarios.innerHTML = htmlCenarios;
 
     } catch (erro) {
