@@ -292,6 +292,9 @@
             
             <button class="tab-btn" onclick="abrirSeparador(event, 'tab-cofre'); setTimeout(atualizarCofre, 50); setTimeout(sincronizarPrecosLiveCofre, 100);">🏛️ Cofre Fiscal</button>
             <button class="tab-btn" onclick="abrirSeparador(event, 'tab-irs'); carregarAnosIRS();">⚖️ Assistente IRS</button>
+
+            <button class="tab-btn" onclick="abrirSeparador(event, 'tab-risco'); carregarLaboratorioRisco();">🛡️ Risco & Stress</button>
+        
         </div>
 
     <!-- ==========================================
@@ -1023,6 +1026,61 @@
 
         </div>
     </div>
+
+    <!-- SEPARADOR 6 DO LABORATÓRIO -->
+<div id="tab-risco" class="tab-content">
+    
+    <div style="background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3 style="margin: 0; font-size: 14px; color: #f0f2f5; text-transform: uppercase;">
+                <span class="dica-edu">
+                    🧬 Matriz de Correlação do Cofre
+                    <span class="dica-texto" style="width: 350px;">
+                        <strong style="color: #58a6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Ilusão de Diversificação</strong>
+                        Ter 10 ativos diferentes não reduz o risco se todos fizerem o mesmo. Valores próximos de 1.0 (Vermelho) indicam ativos que sobem e caem juntos. Valores próximos de 0.0 (Preto) indicam ativos independentes. O objetivo de um cofre blindado é misturar ativos descorrelacionados para suavizar a curva de capital.
+                    </span>
+                </span>
+            </h3>
+            <button onclick="carregarLaboratorioRisco()" class="btn-moderno" style="background: #232d3f; color: #58a6ff; border: 1px solid #30363d; padding: 6px 12px; font-size: 11px;">Recalcular Risco</button>
+        </div>
+
+        <div id="loading-risco" style="display: none; text-align: center; color: #8b949e; padding: 30px; font-size: 13px;">
+            ⚙️ A descarregar histórico e a processar matriz de covariância...
+        </div>
+
+        <div id="plotly-correlacao" style="width: 100%; height: 400px; display: none;"></div>
+    </div>
+
+    <!-- STRESS TESTING -->
+    <div style="background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px;">
+        <h3 style="margin: 0 0 15px 0; font-size: 14px; color: #f0f2f5; text-transform: uppercase;">
+            <span class="dica-edu">
+                🌋 Stress Testing & Beta Exposto
+                <span class="dica-texto" style="width: 350px;">
+                    <strong style="color: #d9534f; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Simulação de Crise Macro</strong>
+                    Mede o Beta ponderado da tua carteira contra o S&P 500. Um Beta global de 1.5 significa que, se o mercado cair 10%, a tua carteira cai estatisticamente 15%. Este painel simula a destruição de capital em euros num evento de liquidação.
+                </span>
+            </span>
+        </h3>
+
+        <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 20px;">
+            <div style="flex: 1; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 15px; text-align: center; border-left: 4px solid #58a6ff;">
+                <div style="font-size: 11px; color: #8b949e; text-transform: uppercase; font-weight: bold;">Beta Global da Carteira</div>
+                <div id="risco-beta-global" style="font-size: 28px; font-weight: 900; color: #58a6ff; margin-top: 5px;">--</div>
+            </div>
+            <div style="flex: 1; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 15px; text-align: center; border-left: 4px solid #c9d1d9;">
+                <div style="font-size: 11px; color: #8b949e; text-transform: uppercase; font-weight: bold;">Capital Total em Risco</div>
+                <div id="risco-capital-base" style="font-size: 28px; font-weight: 900; color: #c9d1d9; margin-top: 5px;">€0.00</div>
+            </div>
+        </div>
+
+        <div id="painel-stress-cenarios" style="display: flex; gap: 15px; flex-direction: column;">
+            <!-- Os cenários injetados pelo JS entram aqui -->
+        </div>
+    </div>
+</div>
+
+
         
     <!-- ==========================================
          ZONA COMUM (FICA SEMPRE VISÍVEL)
@@ -4877,6 +4935,104 @@
         });
     }
 
+    async function carregarLaboratorioRisco() {
+    const loading = document.getElementById('loading-risco');
+    const graficoDiv = document.getElementById('plotly-correlacao');
+    const painelCenarios = document.getElementById('painel-stress-cenarios');
+    
+    // 1. Extrair os ativos em aberto e calcular o capital alocado
+    // Assumimos que a variável global cofreAbertas já existe e está atualizada pelo teu motor FIFO
+    let alocacao = {};
+    let capitalTotal = 0;
+    
+    // Filtra apenas ativos com quantidade e ignora posições fechadas
+    let lotesAtivos = cofreAbertas.filter(l => l.qtdRestante > 0);
+    
+    if (lotesAtivos.length < 2) {
+        painelCenarios.innerHTML = `<div style="color: #d9534f; font-size: 13px; padding: 10px;">Precisas de pelo menos 2 ativos abertos no Cofre para calcular o risco estatístico cruzado.</div>`;
+        return;
+    }
+
+    lotesAtivos.forEach(lote => {
+        // Usa o custo atualizado com o câmbio ou a cacheLive se preferires medir risco real
+        let capitalEUR = lote.qtdRestante * lote.precoCompraEUR; 
+        if (alocacao[lote.ticker]) {
+            alocacao[lote.ticker] += capitalEUR;
+        } else {
+            alocacao[lote.ticker] = capitalEUR;
+        }
+    });
+
+    loading.style.display = 'block';
+    graficoDiv.style.display = 'none';
+
+    try {
+        const resposta = await fetch('/api/risco/portfolio', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ alocacao: alocacao })
+        });
+
+        const dados = await resposta.json();
+        
+        if (dados.erro) { throw new Error(dados.erro); }
+
+        // 2. DESENHAR O HEATMAP DE CORRELAÇÃO
+        const trace = {
+            z: dados.correlacao.z,
+            x: dados.correlacao.x,
+            y: dados.correlacao.y,
+            type: 'heatmap',
+            colorscale: [
+                [0.0, '#1c1e24'], // Baixa correlação (Fundo escuro/Preto)
+                [0.5, '#58a6ff'], // Média correlação (Azul)
+                [1.0, '#d9534f']  // Alta correlação (Vermelho Perigo)
+            ],
+            hoverongaps: false,
+            texttemplate: "%{z}",
+            textfont: { color: "#ffffff", size: 10 }
+        };
+
+        const layout = {
+            margin: { t: 20, r: 20, b: 50, l: 80 },
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            plot_bgcolor: 'rgba(0,0,0,0)',
+            xaxis: { tickfont: { color: '#8b949e', size: 10 } },
+            yaxis: { tickfont: { color: '#8b949e', size: 10 }, autorange: 'reversed' }
+        };
+
+        Plotly.newPlot('plotly-correlacao', [trace], layout, {responsive: true, displayModeBar: false});
+        
+        loading.style.display = 'none';
+        graficoDiv.style.display = 'block';
+
+        // 3. ATUALIZAR O STRESS TEST E O BETA
+        document.getElementById('risco-beta-global').innerText = dados.beta_global.toFixed(2);
+        document.getElementById('risco-capital-base').innerText = `€${dados.capital_avaliado.toFixed(2)}`;
+
+        let htmlCenarios = '';
+        dados.stress_test.forEach(c => {
+            htmlCenarios += `
+                <div style="display: flex; justify-content: space-between; align-items: center; background: #0d1117; padding: 15px; border-radius: 6px; border: 1px solid #30363d; border-left: 4px solid ${c.cor};">
+                    <div>
+                        <strong style="color: #c9d1d9; font-size: 13px;">${c.cenario}</strong>
+                        <div style="font-size: 11px; color: #8b949e; margin-top: 4px;">Impacto Estatístico Projetado (Beta Adjusted)</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <strong style="color: ${c.cor}; font-size: 18px; font-family: monospace;">€${c.impacto_eur.toFixed(2)}</strong>
+                        <div style="color: ${c.cor}; font-size: 12px; font-weight: bold;">${c.impacto_pct.toFixed(2)}%</div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        painelCenarios.innerHTML = htmlCenarios;
+
+    } catch (erro) {
+        loading.style.display = 'none';
+        painelCenarios.innerHTML = `<div style="color: #d9534f; padding: 15px;">Falha ao calcular o risco quantitativo: ${erro.message}</div>`;
+    }
+}
     
 </script>
 
