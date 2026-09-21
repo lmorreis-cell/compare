@@ -305,6 +305,84 @@ def api_ticker_tape():
         
     return jsonify(resultados)
 
+# --------------------------------------
+# ==========================================
+# MOTOR DA WATCHLIST (LISTA DE VIGIA)
+# ==========================================
+ARQUIVO_WATCHLIST = "watchlist.json"
+
+def carregar_watchlist():
+    if os.path.exists(ARQUIVO_WATCHLIST):
+        try:
+            with open(ARQUIVO_WATCHLIST, 'r') as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+def guardar_watchlist(dados):
+    try:
+        with open(ARQUIVO_WATCHLIST, 'w') as f:
+            json.dump(dados, f, indent=4)
+    except Exception as e:
+        print(f"Erro ao guardar watchlist: {e}")
+
+@app.route('/api/watchlist', methods=['GET', 'POST', 'DELETE'])
+@requer_cargo(nivel_minimo=2) # Bloqueia o acesso a quem não é Patrocinador (Efeito FOMO)
+def gerir_watchlist():
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({"erro": "Não autenticado ou sessão expirada."}), 401
+    
+    wl = carregar_watchlist()
+    
+    # Se o utilizador é novo, inicializa uma lista vazia
+    if user_id not in wl:
+        wl[user_id] = []
+
+    # LER A LISTA
+    if request.method == 'GET':
+        return jsonify(wl[user_id])
+        
+    # ADICIONAR À LISTA
+    if request.method == 'POST':
+        dados = request.json
+        ticker = dados.get('ticker', '').strip().upper()
+        setup = dados.get('setup', 'trend_ema20') # Liga-se à lógica que já tens no Screener/Backtest
+        
+        if not ticker:
+            return jsonify({"erro": "Ticker inválido."}), 400
+            
+        # Ponto Cego: Evitar que o utilizador adicione a mesma ação com o mesmo setup 5 vezes
+        if any(item['ticker'] == ticker and item['setup'] == setup for item in wl[user_id]):
+            return jsonify({"erro": "Este ativo já está a ser vigiado para este setup."}), 400
+            
+        # Ponto Cego: Limitar abusos de uso de servidor
+        if len(wl[user_id]) >= 20:
+            return jsonify({"erro": "Limite atingido. Apenas podes vigiar 20 ativos em simultâneo."}), 400
+            
+        wl[user_id].append({
+            "ticker": ticker, 
+            "setup": setup, 
+            "data_adicao": datetime.now().strftime("%Y-%m-%d")
+        })
+        guardar_watchlist(wl)
+        return jsonify({"sucesso": True, "lista": wl[user_id]})
+        
+    # REMOVER DA LISTA
+    if request.method == 'DELETE':
+        dados = request.json
+        ticker = dados.get('ticker', '').strip().upper()
+        setup = dados.get('setup', '')
+        
+        # Filtra a lista, removendo o elemento exato
+        wl[user_id] = [item for item in wl[user_id] if not (item['ticker'] == ticker and item['setup'] == setup)]
+        guardar_watchlist(wl)
+        return jsonify({"sucesso": True, "lista": wl[user_id]})
+
+# --------------------------------------
+
+
 @app.route('/api/market_movers')
 @cache.cached(timeout=300) # Atualiza a cada 5 minutos
 def api_market_movers():
