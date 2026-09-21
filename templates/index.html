@@ -3589,6 +3589,7 @@
             
             // PONTE DE COMPATIBILIDADE: Injeta trades antigos diretamente sem matemática FIFO
             if (evento.tipo === 'MIGRACAO_FECHADA') {
+                // Injeta a estratégia nos trades do histórico antigo para não quebrar a tabela
                 evento.tradeAntigo.estrategia = evento.tradeAntigo.estrategia || 'Não Classificado';
                 cofreFechadas.push(evento.tradeAntigo);
                 continue;
@@ -5180,16 +5181,22 @@
 
 
     function classificarTradeBruto(idOrigem, novaEstrategia) {
-    let evento = cofreBruto.find(ev => ev.id === idOrigem);
+    // 1. Força a conversão para número para evitar falhas de correspondência estrita (===)
+    const idNum = Number(idOrigem);
+    let evento = cofreBruto.find(ev => ev.id === idNum);
+    
     if (evento) {
-        // Grava a estratégia diretamente no evento de venda do Ledger
-        evento.estrategia = novaEstrategia;
-    } else {
-        // Fallback para trades antigos importados
-        let migracao = cofreBruto.find(ev => ev.tipo === 'MIGRACAO_FECHADA' && ev.tradeAntigo.idOrigem === idOrigem);
-        if (migracao) migracao.tradeAntigo.estrategia = novaEstrategia;
+        // 2. Direciona a gravação para a raiz correta consoante a origem do trade
+        if (evento.tipo === 'MIGRACAO_FECHADA') {
+            // Trades antigos importados via JSON/Migração
+            evento.tradeAntigo.estrategia = novaEstrategia;
+        } else {
+            // Trades novos processados organicamente pelo motor FIFO
+            evento.estrategia = novaEstrategia;
+        }
     }
     
+    // 3. Grava no disco e força a re-renderização das estatísticas
     localStorage.setItem('cofreBruto', JSON.stringify(cofreBruto));
     recalcularTudo();
     atualizarDiarioBordo();
