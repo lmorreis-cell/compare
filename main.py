@@ -2308,6 +2308,33 @@ def api_risco_portfolio():
     except Exception as e:
         return jsonify({"erro": f"Falha no motor estatístico: {str(e)}"}), 500
 
+
+# ==========================================
+# MOTOR DE VIGIA (GATILHO EXTERNO / CRON)
+# ==========================================
+import threading
+
+@app.route('/api/cron/executar-vigia/<token_secreto>')
+def disparar_vigia_remota(token_secreto):
+    # A tua password de segurança (evita que curiosos disparem o bot)
+    # Define isto no ficheiro .env como CRON_TOKEN="minha_password_secreta_aqui"
+    token_esperado = os.environ.get("CRON_TOKEN", "senha_de_reserva_123")
+    
+    if token_secreto != token_esperado:
+        return jsonify({"erro": "Acesso Negado. Token inválido."}), 403
+
+    try:
+        # Importamos o ficheiro que criaste na Fase 3
+        import motor_vigia
+        
+        # Executamos o motor em Background (Thread paralela)
+        # Isto é vital para o Cron não dar "Timeout" enquanto espera pela API do Yahoo
+        threading.Thread(target=motor_vigia.processar_vigia).start()
+        
+        return jsonify({"sucesso": True, "mensagem": "Motor de Vigia iniciado em background."}), 200
+    except Exception as e:
+        return jsonify({"erro": f"Falha ao iniciar o motor: {str(e)}"}), 500
+
 if __name__ == "__main__":
     import os
     
