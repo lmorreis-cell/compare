@@ -398,12 +398,66 @@
             </h3>
             <button onclick="carregarMarketMovers()" style="background: transparent; color: #58a6ff; border: 1px solid #30363d; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer; transition: background 0.2s;">Sincronizar Termómetro</button>
         </div>
-
+    	
         <div id="loading-movers" style="display: none; text-align: center; color: #8b949e; font-size: 12px; margin-bottom: 20px;">A calibrar termómetros...</div>
 
         <div id="painel-movers" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px;">
             <!-- O Javascript vai injetar as 3 colunas aqui -->
         </div>
+
+        <!-- NOVO: SISTEMA DE WATCHLIST -->
+        <div class="painel-controlo borda-azul">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
+                <h3 class="painel-titulo">
+                    <span class="dica-edu">
+                        👁️ Lista de Vigia (Watchlist Automática)
+                        <span class="dica-texto" style="width: 380px;">
+                            <strong style="color: #58a6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Automação de Foco</strong>
+                            Delega o trabalho sujo à máquina. Em vez de abrires dezenas de gráficos todos os dias à procura de uma entrada, o algoritmo vigia-os por ti enquanto dormes. Serás notificado no Discord (com um ping direto <strong>@O_Teu_Nome</strong>) assim que a anomalia matemática que escolheste ocorrer.
+                        </span>
+                    </span>
+                </h3>
+                <span id="watchlist-contador" style="background: #232d3f; padding: 4px 10px; border-radius: 4px; font-size: 12px; color: #58a6ff; font-weight: bold;">0 / 20 Vigiados</span>
+            </div>
+
+            <div class="linha-inputs" style="background: #0d1117; padding: 15px; border-radius: 6px; border: 1px solid #30363d; margin-bottom: 20px; align-items: flex-end;">
+                <div style="flex: 1; min-width: 150px;">
+                    <label style="display: block; font-size: 11px; color: #8b949e; margin-bottom: 5px; font-weight: bold; text-transform: uppercase;">1. Ativo (Ticker)</label>
+                    <input type="text" id="watchlist-ticker" class="input-moderno" list="lista-sugestoes-watchlist" placeholder="Ex: TSLA" oninput="pesquisarTickerInteligente(this, 'lista-sugestoes-watchlist')" style="width: 100%; box-sizing: border-box; text-transform: uppercase;">
+                    <datalist id="lista-sugestoes-watchlist"></datalist>
+                </div>
+
+                <div style="flex: 1.5; min-width: 250px;">
+                    <label style="display: block; font-size: 11px; color: #8b949e; margin-bottom: 5px; font-weight: bold; text-transform: uppercase;">2. Gatilho Algorítmico (O que procuras?)</label>
+                    <select id="watchlist-setup" class="input-moderno" style="width: 100%;">
+                        <option value="pullback">Pullback Tático (Toque na EMA 20)</option>
+                        <option value="squeeze">Compressão de Volatilidade (Bollinger Squeeze)</option>
+                        <option value="oversold">Capitulação Extrema (RSI < 30)</option>
+                    </select>
+                </div>
+
+                <button onclick="adicionarWatchlist()" class="btn-moderno btn-azul" style="display: flex; align-items: center; gap: 8px;">
+                    ➕ Vigiar
+                </button>
+            </div>
+
+            <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 6px; overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                    <thead style="background: #161b22; color: #8b949e; text-align: left;">
+                        <tr>
+                            <th style="padding: 12px; border-bottom: 1px solid #30363d;">Ativo</th>
+                            <th style="padding: 12px; border-bottom: 1px solid #30363d;">Estratégia Monitorizada</th>
+                            <th style="padding: 12px; border-bottom: 1px solid #30363d;">Data Registo</th>
+                            <th style="padding: 12px; border-bottom: 1px solid #30363d; text-align: center; width: 60px;">Remover</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody-watchlist">
+                        <!-- O JS injeta as linhas aqui -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
     </div>
 
     <!-- SEPARADOR 2: AÇÕES E ETFs -->
@@ -5352,6 +5406,105 @@ function atualizarDiarioBordo() {
 
     Plotly.newPlot('plotly-diario', [traceBar], layoutBar, {responsive: true, displayModeBar: false});
 }
+
+// ==========================================
+    // MOTOR CLIENT-SIDE DA WATCHLIST
+    // ==========================================
+    async function carregarWatchlist() {
+        const tbody = document.getElementById('tbody-watchlist');
+        const contador = document.getElementById('watchlist-contador');
+        
+        try {
+            const resposta = await fetch('/api/watchlist');
+            
+            // Se der 401/403, significa que o utilizador não tem cargo suficiente (efeito Upsell)
+            if (!resposta.ok) {
+                tbody.innerHTML = '<tr><td colspan="4" style="padding: 15px; text-align: center; color: #d9534f;">Ferramenta bloqueada. Funcionalidade exclusiva para Patrocinadores.</td></tr>';
+                return;
+            }
+            
+            const dados = await resposta.json();
+            contador.innerText = `${dados.length} / 20 Vigiados`;
+            
+            if (dados.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="padding: 15px; text-align: center; color: #8b949e;">Não estás a vigiar nenhum ativo. Adiciona o primeiro acima.</td></tr>';
+                return;
+            }
+            
+            // Dicionário de tradução para a UI ser mais legível
+            const nomesSetups = {
+                'pullback': 'Pullback Tático (EMA 20)',
+                'squeeze': 'Bollinger Squeeze',
+                'oversold': 'Capitulação (RSI < 30)'
+            };
+            
+            tbody.innerHTML = dados.map(item => `
+                <tr style="border-bottom: 1px solid #21262d;">
+                    <td style="padding: 12px; color: #f0f2f5; font-weight: bold; font-family: monospace; font-size: 14px;">${item.ticker}</td>
+                    <td style="padding: 12px; color: #c9d1d9;">${nomesSetups[item.setup] || item.setup}</td>
+                    <td style="padding: 12px; color: #8b949e;">${item.data_adicao}</td>
+                    <td style="padding: 12px; text-align: center;">
+                        <button onclick="removerWatchlist('${item.ticker}', '${item.setup}')" style="background: transparent; border: none; cursor: pointer; font-size: 14px;" title="Remover da Vigia">🗑️</button>
+                    </td>
+                </tr>
+            `).join('');
+            
+        } catch (erro) {
+            console.error("Falha ao carregar watchlist:", erro);
+        }
+    }
+
+    async function adicionarWatchlist() {
+        const ticker = document.getElementById('watchlist-ticker').value.trim();
+        const setup = document.getElementById('watchlist-setup').value;
+        
+        if (!ticker) {
+            alert("Escreve o Ticker que queres vigiar.");
+            return;
+        }
+        
+        try {
+            const resposta = await fetch('/api/watchlist', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ticker: ticker, setup: setup })
+            });
+            
+            const dados = await resposta.json();
+            
+            if (dados.erro) {
+                alert(dados.erro);
+                return;
+            }
+            
+            document.getElementById('watchlist-ticker').value = ''; // Limpa o input
+            carregarWatchlist(); // Atualiza a tabela graficamente
+            
+        } catch (erro) {
+            alert("Erro de comunicação com o servidor.");
+        }
+    }
+
+    async function removerWatchlist(ticker, setup) {
+        if (!confirm(`Parar de vigiar ${ticker}?`)) return;
+        
+        try {
+            await fetch('/api/watchlist', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ticker: ticker, setup: setup })
+            });
+            carregarWatchlist();
+        } catch (erro) {
+            alert("Erro ao remover ativo.");
+        }
+    }
+
+    // Adiciona o carregamento à lista de funções de arranque da página
+    document.addEventListener('DOMContentLoaded', () => {
+        carregarWatchlist(); // <--- INJETA ESTA CHAMADA NO TEU DOMContentLoaded
+    });
+            
 </script>
 
     
