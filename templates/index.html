@@ -5304,7 +5304,10 @@ function atualizarDiarioBordo() {
         `;
 
         if (est !== 'Não Classificado') {
-            x_estrategias.push(est);
+            // Insere uma quebra de linha HTML (<br>) antes dos parênteses ou da barra
+            let labelFormatada = est.replace(" (", "<br>(").replace(" / ", "<br>/ ");
+            
+            x_estrategias.push(labelFormatada);
             y_pnls.push(dado.pnl);
             c_cores.push(dado.pnl >= 0 ? '#5cb85c' : '#d9534f');
         }
