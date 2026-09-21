@@ -5317,11 +5317,12 @@ function atualizarDiarioBordo() {
         marker: { color: c_cores },
         text: y_pnls.map(v => `€${v.toFixed(2)}`),
         textposition: 'outside',
-        textfont: { color: '#c9d1d9', size: 10 }
+        textfont: { color: '#c9d1d9', size: 10 },
+        cliponaxis: false // <-- Impede que os valores negativos sejam cortados pela linha de fundo
     };
 
     const layoutBar = {
-        margin: { t: 20, r: 20, b: 80, l: 40 },
+        margin: { t: 20, r: 20, b: 130, l: 50 }, // <-- Aumentada a margem 'b' (bottom) para 130
         paper_bgcolor: 'rgba(0,0,0,0)',
         plot_bgcolor: 'rgba(0,0,0,0)',
         xaxis: { tickfont: { color: '#8b949e', size: 10 }, tickangle: -45 },
