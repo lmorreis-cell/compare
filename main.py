@@ -2219,19 +2219,20 @@ def api_risco_portfolio():
         retornos_ativos = retornos[tickers]
         matriz_corr = retornos_ativos.corr().round(2)
         
+        # ---> A CORREÇÃO: Substitui NaNs por None (null em JSON) para não corromper o JavaScript
+        matriz_corr = matriz_corr.replace({np.nan: None})
+        
         # Formata para o Plotly Heatmap
         z_values = matriz_corr.values.tolist()
         x_values = matriz_corr.columns.tolist()
         y_values = matriz_corr.index.tolist()
 
         # --- MOTOR NLG (Tradução da Matriz) ---
-        # Isola o triângulo superior da matriz (ignorando a diagonal 1.0) para encontrar extremos reais
         upper_tri = matriz_corr.where(np.triu(np.ones(matriz_corr.shape), k=1).astype(bool))
         corr_max = upper_tri.max().max()
         corr_min = upper_tri.min().min()
         corr_avg = upper_tri.mean().mean()
 
-        # Garante que a média é um número standard para enviar para a interface
         media_matriz = round(float(corr_avg), 2) if pd.notna(corr_avg) else 0.0
         
         par_max = upper_tri.stack().idxmax() if not pd.isna(corr_max) else ("N/A", "N/A")
@@ -2241,7 +2242,7 @@ def api_risco_portfolio():
         nlg_cor = "#58a6ff"
 
         if pd.isna(corr_avg):
-            nlg_texto = "Ativos insuficientes para análise de correlação cruzada."
+            nlg_texto = "Ativos insuficientes (ou com histórico falhado) para análise de correlação cruzada."
         elif corr_avg > 0.6:
             nlg_texto = f"⚠️ <strong>Risco de Concentração Sistémico:</strong> A tua carteira move-se em bloco. O par mais perigoso é <strong>{par_max[0]} e {par_max[1]}</strong> ({corr_max:.2f}). Se o fator macroeconómico que os une sofrer um choque, o teu portefólio afunda sem defesa. Adiciona ativos descorrelacionados."
             nlg_cor = "#d9534f"
@@ -2265,12 +2266,15 @@ def api_risco_portfolio():
         
         for t in tickers:
             covariancia = retornos[t].cov(retorno_mercado)
+            
+            # ---> A CORREÇÃO NO BETA: Impede que uma covariância NaN destrua a matemática
+            if pd.isna(covariancia):
+                covariancia = 0
+                
             beta_ativo = covariancia / var_mercado if var_mercado > 0 else 1
             betas_individuais[t] = round(beta_ativo, 2)
             beta_portfolio += beta_ativo * pesos[t]
 
-        # CORREÇÃO: Arredondar o Beta Global a 2 casas decimais ANTES da matemática dos cenários
-        # Isto garante que o valor exibido no ecrã (ex: 1.10) é exatamente o mesmo usado no multiplicador
         beta_portfolio = round(beta_portfolio, 2)
 
         # 3. CENÁRIOS DE CHOQUE MACROECONÓMICO
