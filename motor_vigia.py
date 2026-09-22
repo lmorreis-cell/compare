@@ -65,6 +65,11 @@ def processar_vigia():
             df['BB_Lower'] = df['BB_Mid'] - (df['BB_Std'] * 2)
             df['BB_Width'] = (df['BB_Upper'] - df['BB_Lower']) / df['BB_Mid']
 
+            # --- NOVOS CÁLCULOS ADICIONADOS ---
+            df['Vol_SMA20'] = df['Volume'].rolling(20).mean()
+            df['EMA9'] = df['Close'].ewm(span=9, adjust=False).mean()
+            df['Max_50'] = df['High'].shift(1).rolling(50).max()
+
             fecho_atual = float(df['Close'].iloc[-1])
             gatilhos_acionados[ticker] = []
 
@@ -78,6 +83,21 @@ def processar_vigia():
             if df['RSI'].iloc[-1] < 30:
                 gatilhos_acionados[ticker].append('oversold')
 
+                # --- NOVAS VALIDAÇÕES TÁTICAS ---
+            if df['Volume'].iloc[-1] > (df['Vol_SMA20'].iloc[-1] * 3):
+                gatilhos_acionados[ticker].append('volume_spike')
+
+            if df['RSI'].iloc[-1] > 75 and fecho_atual > df['BB_Upper'].iloc[-1]:
+                gatilhos_acionados[ticker].append('overbought')
+
+            cruzamento_hoje = df['EMA9'].iloc[-1] > df['EMA20'].iloc[-1]
+            cruzamento_ontem = df['EMA9'].iloc[-2] <= df['EMA20'].iloc[-2]
+            if cruzamento_hoje and cruzamento_ontem:
+                gatilhos_acionados[ticker].append('golden_cross_tatico')
+
+            if fecho_atual >= df['Max_50'].iloc[-1]:
+                gatilhos_acionados[ticker].append('breakout_50d')
+
         except Exception as e:
             print(f"Erro a processar {ticker}: {e}")
             continue
@@ -90,7 +110,11 @@ def processar_vigia():
     descricoes_setup = {
         'pullback': "📉 **Pullback Tático Confirmado:** O ativo suportou milimetricamente na média móvel de 20 dias (EMA 20). Setup clássico de Trend Following de baixo risco.",
         'squeeze': "🗜️ **Bollinger Squeeze Iminente:** O mercado está sem liquidez direcional e a mola está comprimida ao máximo. Prepara-te para uma explosão de volatilidade.",
-        'oversold': "🩸 **Capitulação Extrema (RSI < 30):** Pânico total instalado. O ativo está sobrevendido face à média. Possibilidade matemática de ressalto de curto prazo."
+        'oversold': "🩸 **Capitulação Extrema (RSI < 30):** Pânico total instalado. O ativo está sobrevendido face à média. Possibilidade matemática de ressalto de curto prazo.",
+        'volume_spike': "🐋 **Anomalia de Liquidez:** O volume transacionado hoje excedeu em mais de 300% a média mensal. Forte presença institucional detetada.",
+        'overbought': "⚠️ **Risco de Exaustão (Take Profit):** O ativo encontra-se severamente sobrecomprado (RSI > 75) e a perfurar a Banda de Bollinger Superior. Considera proteger os teus lucros.",
+        'golden_cross_tatico': "🚀 **Ignição de Momentum:** A EMA 9 acabou de cruzar acima da EMA 20. O ativo ativou um regime de tendência de alta tática.",
+        'breakout_50d': "📈 **Breakout Estrutural:** O ativo acaba de quebrar a resistência máxima dos últimos 50 dias. Limpeza de oferta confirmada, caminho aberto."
     }
 
     for user_id, alertas_user in watchlist.items():
