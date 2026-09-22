@@ -430,6 +430,7 @@
                 <div style="flex: 1.5; min-width: 250px;">
                     <label style="display: block; font-size: 11px; color: #8b949e; margin-bottom: 5px; font-weight: bold; text-transform: uppercase;">2. Gatilho Algorítmico (O que procuras?)</label>
                     <select id="watchlist-setup" class="input-moderno" style="width: 100%;">
+                        <option value="qualquer">⚡ Qualquer Anomalia (Avisa ao 1º sinal)</option>
                         <option value="pullback">Pullback Tático (Toque na EMA 20)</option>
                         <option value="squeeze">Compressão de Volatilidade (Bollinger Squeeze)</option>
                         <option value="oversold">Capitulação Extrema (RSI < 30)</option>
@@ -5433,6 +5434,7 @@ function atualizarDiarioBordo() {
             
             // Dicionário de tradução para a UI ser mais legível
             const nomesSetups = {
+                'qualquer': 'Qualquer Anomalia (Alerta Dinâmico)',
                 'pullback': 'Pullback Tático (EMA 20)',
                 'squeeze': 'Bollinger Squeeze',
                 'oversold': 'Capitulação (RSI < 30)'
