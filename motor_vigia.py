@@ -98,36 +98,54 @@ def processar_vigia():
             ticker = alerta['ticker']
             setup = alerta['setup']
 
-            if ticker in gatilhos_acionados and setup in gatilhos_acionados[ticker]:
+            # Verifica se o ticker tem algum gatilho acionado hoje
+            if ticker in gatilhos_acionados:
                 
-                # BARREIRA DE ESTADO: Verificação das últimas 24 horas
-                ultimo_alerta_str = alerta.get('ultimo_alerta')
-                pode_enviar = True
+                # A LÓGICA DO "QUALQUER" ANOMALIA
+                gatilho_valido = None
+                if setup == 'qualquer' and len(gatilhos_acionados[ticker]) > 0:
+                    # O utilizador quer qualquer anomalia. Apanhamos a primeira que ocorreu no array.
+                    gatilho_valido = gatilhos_acionados[ticker][0]
+                elif setup in gatilhos_acionados[ticker]:
+                    # O utilizador pediu um setup específico e ele ocorreu.
+                    gatilho_valido = setup
 
-                if ultimo_alerta_str:
-                    try:
-                        ultimo_alerta_data = datetime.fromisoformat(ultimo_alerta_str)
-                        if agora - ultimo_alerta_data < timedelta(hours=24):
-                            pode_enviar = False
-                    except ValueError:
-                        pass # Ignora bloqueio se a string de data estiver corrompida
+                # Se encontrámos um gatilho válido para notificar
+                if gatilho_valido:
+                    
+                    # BARREIRA DE ESTADO: Verificação das últimas 24 horas
+                    ultimo_alerta_str = alerta.get('ultimo_alerta')
+                    pode_enviar = True
 
-                if pode_enviar:
-                    texto_alerta = descricoes_setup.get(setup, "Gatilho ativado.")
-                    payload = {
-                        "content": f"🚨 <@{user_id}> O teu gatilho de mercado foi ativado!",
-                        "embeds": [{
-                            "title": f"🎯 ALVO TÁTICO: {ticker}",
-                            "color": 15965184,
-                            "description": texto_alerta,
-                            "footer": {"text": "Portal Bolsa - Motor de Vigia Algorítmico"}
-                        }]
-                    }
-                    mensagens_discord.append(payload)
+                    if ultimo_alerta_str:
+                        try:
+                            ultimo_alerta_data = datetime.fromisoformat(ultimo_alerta_str)
+                            if agora - ultimo_alerta_data < timedelta(hours=24):
+                                pode_enviar = False
+                        except ValueError:
+                            pass # Ignora bloqueio se a string de data estiver corrompida
 
-                    # Atualiza o carimbo de tempo no dicionário em memória
-                    alerta['ultimo_alerta'] = agora.isoformat()
-                    houve_alteracao_json = True
+                    if pode_enviar:
+                        texto_alerta = descricoes_setup.get(gatilho_valido, "Gatilho ativado.")
+                        
+                        # Se a opção original era "qualquer", adicionamos um aviso visual para o utilizador saber o que disparou
+                        if setup == 'qualquer':
+                            texto_alerta = f"*(Monitorização Ampla)*\n\n" + texto_alerta
+
+                        payload = {
+                            "content": f"🚨 <@{user_id}> O teu gatilho de mercado foi ativado!",
+                            "embeds": [{
+                                "title": f"🎯 ALVO TÁTICO: {ticker}",
+                                "color": 15965184,
+                                "description": texto_alerta,
+                                "footer": {"text": "Portal Bolsa - Motor de Vigia Algorítmico"}
+                            }]
+                        }
+                        mensagens_discord.append(payload)
+
+                        # Atualiza o carimbo de tempo no dicionário em memória
+                        alerta['ultimo_alerta'] = agora.isoformat()
+                        houve_alteracao_json = True
 
     if mensagens_discord:
         print(f"A transmitir {len(mensagens_discord)} alertas para o servidor Discord...")
