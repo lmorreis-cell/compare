@@ -3,11 +3,9 @@ import json
 import requests
 import yfinance as yf
 import pandas as pd
-import numpy as np
-from datetime import datetime
+from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
-# Carrega as variáveis de ambiente (o teu ficheiro .env)
 load_dotenv()
 
 ARQUIVO_WATCHLIST = "watchlist.json"
@@ -21,25 +19,21 @@ def processar_vigia():
         return
 
     if not os.path.exists(ARQUIVO_WATCHLIST):
-        print("Watchlist vazia ou ficheiro inexistente. Operação abortada.")
+        print("Watchlist vazia ou ficheiro inexistente.")
         return
 
     with open(ARQUIVO_WATCHLIST, 'r') as f:
         watchlist = json.load(f)
 
     if not watchlist:
-        print("Nenhum utilizador com ativos na watchlist.")
         return
 
-    # 1. Agrupar todos os tickers únicos para não massacrar a API do Yahoo
-    # (Se 10 pessoas vigiam a TSLA, o algoritmo só faz o download 1 vez)
     tickers_unicos = set()
     for user_id, alertas in watchlist.items():
         for alerta in alertas:
             tickers_unicos.add(alerta['ticker'])
 
     if not tickers_unicos:
-        print("Nenhum ticker para verificar.")
         return
 
     tickers_lista = list(tickers_unicos)
@@ -48,28 +42,23 @@ def processar_vigia():
     print(f"A descarregar dados para {len(tickers_lista)} ativos...")
     dados = yf.download(string_tickers, period="1y", interval="1d", group_by="ticker", threads=True, progress=False)
 
-    # 2. Armazém de Resultados: quem é que cumpriu o setup hoje?
     gatilhos_acionados = {}
 
     for ticker in tickers_lista:
         try:
-            # Tratamento da estrutura do Pandas dependendo se é 1 ou vários tickers
             df = dados.dropna() if len(tickers_lista) == 1 else dados[ticker].dropna()
             if df.empty or len(df) < 200:
                 continue
 
-            # --- MATEMÁTICA PESADA ---
             df['SMA200'] = df['Close'].rolling(200).mean()
             df['EMA20'] = df['Close'].ewm(span=20, adjust=False).mean()
             
-            # RSI
             delta = df['Close'].diff()
             gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
             loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
             rs = gain / loss
             df['RSI'] = 100 - (100 / (1 + rs))
 
-            # Bollinger Bands
             df['BB_Mid'] = df['Close'].rolling(20).mean()
             df['BB_Std'] = df['Close'].rolling(20).std()
             df['BB_Upper'] = df['BB_Mid'] + (df['BB_Std'] * 2)
@@ -77,24 +66,15 @@ def processar_vigia():
             df['BB_Width'] = (df['BB_Upper'] - df['BB_Lower']) / df['BB_Mid']
 
             fecho_atual = float(df['Close'].iloc[-1])
-            
-            # --- VALIDAÇÃO DOS SETUPS TÁTICOS ---
             gatilhos_acionados[ticker] = []
 
-            # Setup 1: Pullback Tático
-            # Regra: Preço numa tendência primária de alta (> SMA200) e a tocar na EMA20 (margem de 1.5%)
             if fecho_atual > df['SMA200'].iloc[-1]:
-                distancia_ema20 = abs(fecho_atual - df['EMA20'].iloc[-1]) / fecho_atual
-                if distancia_ema20 <= 0.015:
+                if abs(fecho_atual - df['EMA20'].iloc[-1]) / fecho_atual <= 0.015:
                     gatilhos_acionados[ticker].append('pullback')
 
-            # Setup 2: Bollinger Squeeze
-            # Regra: Largura da banda atual está no percentil 10 (mínimos dos últimos tempos)
             if df['BB_Width'].iloc[-1] < df['BB_Width'].tail(100).quantile(0.10):
                 gatilhos_acionados[ticker].append('squeeze')
 
-            # Setup 3: Capitulação Extrema (Oversold)
-            # Regra: RSI < 30
             if df['RSI'].iloc[-1] < 30:
                 gatilhos_acionados[ticker].append('oversold')
 
@@ -102,11 +82,11 @@ def processar_vigia():
             print(f"Erro a processar {ticker}: {e}")
             continue
 
-    # 3. Cruzamento e Disparo de Alertas
     alertas_enviados = 0
     mensagens_discord = []
+    houve_alteracao_json = False
+    agora = datetime.now()
 
-    # Textos formatados para o Discord (O Efeito Educacional)
     descricoes_setup = {
         'pullback': "📉 **Pullback Tático Confirmado:** O ativo suportou milimetricamente na média móvel de 20 dias (EMA 20). Setup clássico de Trend Following de baixo risco.",
         'squeeze': "🗜️ **Bollinger Squeeze Iminente:** O mercado está sem liquidez direcional e a mola está comprimida ao máximo. Prepara-te para uma explosão de volatilidade.",
@@ -118,28 +98,37 @@ def processar_vigia():
             ticker = alerta['ticker']
             setup = alerta['setup']
 
-            # Se este ticker acionou hoje a anomalia que este utilizador procurava
             if ticker in gatilhos_acionados and setup in gatilhos_acionados[ticker]:
                 
-                texto_alerta = descricoes_setup[setup]
-                
-                # A MAGIA DA ENGENHARIA SOCIAL: Fazemos o PING do utilizador fora do Embed para o telemóvel dele tocar!
-                payload = {
-                    "content": f"🚨 <@{user_id}> O teu gatilho de mercado foi ativado!",
-                    "embeds": [
-                        {
-                            "title": f"🎯 ALVO TÁTICO: {ticker}",
-                            "color": 15965184, # Laranja do Portal
-                            "description": texto_alerta,
-                            "footer": {
-                                "text": "Portal Bolsa - Motor de Vigia Algorítmico"
-                            }
-                        }
-                    ]
-                }
-                mensagens_discord.append(payload)
+                # BARREIRA DE ESTADO: Verificação das últimas 24 horas
+                ultimo_alerta_str = alerta.get('ultimo_alerta')
+                pode_enviar = True
 
-    # 4. Envio Sequencial para o Discord
+                if ultimo_alerta_str:
+                    try:
+                        ultimo_alerta_data = datetime.fromisoformat(ultimo_alerta_str)
+                        if agora - ultimo_alerta_data < timedelta(hours=24):
+                            pode_enviar = False
+                    except ValueError:
+                        pass # Ignora bloqueio se a string de data estiver corrompida
+
+                if pode_enviar:
+                    texto_alerta = descricoes_setup.get(setup, "Gatilho ativado.")
+                    payload = {
+                        "content": f"🚨 <@{user_id}> O teu gatilho de mercado foi ativado!",
+                        "embeds": [{
+                            "title": f"🎯 ALVO TÁTICO: {ticker}",
+                            "color": 15965184,
+                            "description": texto_alerta,
+                            "footer": {"text": "Portal Bolsa - Motor de Vigia Algorítmico"}
+                        }]
+                    }
+                    mensagens_discord.append(payload)
+
+                    # Atualiza o carimbo de tempo no dicionário em memória
+                    alerta['ultimo_alerta'] = agora.isoformat()
+                    houve_alteracao_json = True
+
     if mensagens_discord:
         print(f"A transmitir {len(mensagens_discord)} alertas para o servidor Discord...")
         for msg in mensagens_discord:
@@ -150,9 +139,17 @@ def processar_vigia():
             except Exception as e:
                 print(f"Falha ao enviar webhook: {e}")
     else:
-        print("Nenhum setup da Watchlist atingiu as condições matemáticas hoje.")
+        print("Nenhum setup atingiu as condições matemáticas ou os alertas encontram-se em período de cooldown (24h).")
 
-    print(f"[{datetime.now()}] Ciclo fechado. {alertas_enviados} alertas entreges com sucesso.")
+    # ESCRITA NO DISCO: Guarda as alterações de estado se novos alertas foram disparados
+    if houve_alteracao_json:
+        try:
+            with open(ARQUIVO_WATCHLIST, 'w') as f:
+                json.dump(watchlist, f, indent=4)
+        except Exception as e:
+            print(f"Erro ao atualizar estado da watchlist no disco: {e}")
+
+    print(f"[{datetime.now()}] Ciclo fechado. {alertas_enviados} alertas entregues com sucesso.")
 
 if __name__ == "__main__":
     processar_vigia()
