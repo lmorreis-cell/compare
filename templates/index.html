@@ -434,6 +434,10 @@
                         <option value="pullback">Pullback Tático (Toque na EMA 20)</option>
                         <option value="squeeze">Compressão de Volatilidade (Bollinger Squeeze)</option>
                         <option value="oversold">Capitulação Extrema (RSI < 30)</option>
+                        <option value="volume_spike">Rasto Institucional (Volume > 300%)</option>
+                        <option value="overbought">Exaustão Compradora (RSI > 75 + BB Upper)</option>
+                        <option value="golden_cross_tatico">Ignição Tática (EMA 9 cruza EMA 20)</option>
+                        <option value="breakout_50d">Fuga de Base (Breakout Máx 50 Dias)</option>
                     </select>
                 </div>
 
@@ -5437,7 +5441,11 @@ function atualizarDiarioBordo() {
                 'qualquer': 'Qualquer Anomalia (Alerta Dinâmico)',
                 'pullback': 'Pullback Tático (EMA 20)',
                 'squeeze': 'Bollinger Squeeze',
-                'oversold': 'Capitulação (RSI < 30)'
+                'oversold': 'Capitulação (RSI < 30)',
+                'volume_spike': 'Rasto Institucional (Volume > 300%)',
+                'overbought': 'Exaustão Compradora (Take Profit)',
+                'golden_cross_tatico': 'Ignição Tática (EMA 9 > EMA 20)',
+                'breakout_50d': 'Breakout Estrutural (50 Dias)'
             };
             
             tbody.innerHTML = dados.map(item => `
