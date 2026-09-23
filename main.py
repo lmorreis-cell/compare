@@ -2194,8 +2194,17 @@ def api_risco_portfolio():
     capital_total = sum(alocacao.values())
     pesos = {t: v / capital_total for t, v in alocacao.items()}
 
-    # Adiciona o S&P 500 como benchmark invisível para calcular o Beta
-    tickers_api = tickers + ['^GSPC']
+    # Universo de Escudos Macroeconómicos (Hedges Reais)
+    hedge_universe = {
+        'TLT': 'Obrigações do Tesouro 20A+',
+        'GLD': 'Ouro Físico',
+        'UUP': 'Dólar Americano',
+        'XLU': 'Setor Utilities (Defensivo)',
+        'SH': 'Short S&P 500'
+    }
+
+    # Adiciona o S&P 500 e o Cesto de Hedges para o download
+    tickers_api = tickers + ['^GSPC'] + list(hedge_universe.keys())
     
     try:
         # Download de 1 ano de histórico para ter relevância estatística
@@ -2215,14 +2224,13 @@ def api_risco_portfolio():
         df_close = df_close.dropna()
         retornos = df_close.pct_change().dropna()
 
-        # 1. MATRIZ DE CORRELAÇÃO (Ignorando o Benchmark)
+        # 1. MATRIZ DE CORRELAÇÃO (Ignorando o Benchmark e Hedges para o gráfico)
         retornos_ativos = retornos[tickers]
         matriz_corr = retornos_ativos.corr().round(2)
         
-        # ---> A CORREÇÃO: Substitui NaNs por None (null em JSON) para não corromper o JavaScript
+        # Substitui NaNs por None para não corromper o JavaScript
         matriz_corr = matriz_corr.replace({np.nan: None})
         
-        # Formata para o Plotly Heatmap
         z_values = matriz_corr.values.tolist()
         x_values = matriz_corr.columns.tolist()
         y_values = matriz_corr.index.tolist()
@@ -2255,7 +2263,30 @@ def api_risco_portfolio():
         else:
             nlg_texto = f"⚖️ <strong>Carteira Neutra (Stock-Picker):</strong> O teu portefólio é uma coleção de ativos independentes (média de {corr_avg:.2f}). Não existem sobreposições mortais, mas também não possuis <i>hedges</i> direcionais puros. Estás integralmente dependente do mérito individual de cada ação escolhida."
             nlg_cor = "#58a6ff"
-        # ------------------------------------
+
+
+        # ==========================================
+        # NOVO: MOTOR DE PROPOSTAS DE HEDGE
+        # ==========================================
+        # Calcula o retorno diário exato da tua carteira ponderada
+        retorno_portfolio = pd.Series(0.0, index=retornos.index)
+        for t in tickers:
+            if t in retornos.columns:
+                retorno_portfolio += retornos[t] * pesos[t]
+
+        hedges_sugeridos = []
+        for h_ticker, h_nome in hedge_universe.items():
+            if h_ticker in retornos.columns:
+                corr_h = retorno_portfolio.corr(retornos[h_ticker])
+                hedges_sugeridos.append({
+                    "ticker": h_ticker,
+                    "nome": h_nome,
+                    "correlacao": float(corr_h) if pd.notna(corr_h) else 0.0
+                })
+
+        # Ordena para mostrar primeiro os que têm correlação mais invertida (os mais negativos)
+        hedges_sugeridos = sorted(hedges_sugeridos, key=lambda x: x['correlacao'])[:3]
+
 
         # 2. CÁLCULO DE BETA E STRESS TESTING
         retorno_mercado = retornos['^GSPC']
@@ -2265,15 +2296,13 @@ def api_risco_portfolio():
         betas_individuais = {}
         
         for t in tickers:
-            covariancia = retornos[t].cov(retorno_mercado)
-            
-            # ---> A CORREÇÃO NO BETA: Impede que uma covariância NaN destrua a matemática
-            if pd.isna(covariancia):
-                covariancia = 0
-                
-            beta_ativo = covariancia / var_mercado if var_mercado > 0 else 1
-            betas_individuais[t] = round(beta_ativo, 2)
-            beta_portfolio += beta_ativo * pesos[t]
+            if t in retornos.columns:
+                covariancia = retornos[t].cov(retorno_mercado)
+                if pd.isna(covariancia):
+                    covariancia = 0
+                beta_ativo = covariancia / var_mercado if var_mercado > 0 else 1
+                betas_individuais[t] = round(beta_ativo, 2)
+                beta_portfolio += beta_ativo * pesos[t]
 
         beta_portfolio = round(beta_portfolio, 2)
 
@@ -2287,7 +2316,6 @@ def api_risco_portfolio():
         stress_results = []
         for c in cenarios:
             impacto_pct = beta_portfolio * c["choque_mercado"]
-            # Arredonda a percentagem antes de aplicar ao capital (Alinhamento com a calculadora manual)
             impacto_pct_arredondado = round(impacto_pct, 4) 
             impacto_eur = capital_total * impacto_pct_arredondado
             
@@ -2298,15 +2326,17 @@ def api_risco_portfolio():
                 "cor": c["cor"]
             })
 
+        # Devolvemos tudo para a interface gráfica
         return jsonify({
             "correlacao": {"z": z_values, "x": x_values, "y": y_values},
             "nlg_texto": nlg_texto,
-            "corr_avg": media_matriz,  # <-- ADICIONA ESTA LINHA AQUI
+            "corr_avg": media_matriz,
             "nlg_cor": nlg_cor,
             "beta_global": beta_portfolio,
             "betas_ativos": betas_individuais,
             "stress_test": stress_results,
-            "capital_avaliado": capital_total
+            "capital_avaliado": capital_total,
+            "hedges": hedges_sugeridos # <-- As nossas hedges matemáticas
         })
 
     except Exception as e:
