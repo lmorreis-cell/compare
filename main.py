@@ -2266,9 +2266,16 @@ def api_risco_portfolio():
 
 
         # ==========================================
-        # NOVO: MOTOR DE PROPOSTAS DE HEDGE
+        # NOVO: MOTOR DE PROPOSTAS DE HEDGE (COM NLG)
         # ==========================================
-        # Calcula o retorno diário exato da tua carteira ponderada
+        dicionario_hedges_nlg = {
+            'SH': "<strong style='color:#58a6ff;'>Mecânica:</strong> ETF Inverso (-1x S&P500). Sob a matemática de derivativos, valoriza na exata proporção em que o mercado sangra.<br><strong style='color:#d9534f;'>Ponto Cego:</strong> <i>Beta Slippage</i>. Em mercados laterais, o fundo perde valor absoluto devido ao recálculo diário. É um paraquedas tático para dias de pânico, não um ativo para esquecer na carteira.",
+            'TLT': "<strong style='color:#58a6ff;'>Mecânica:</strong> Obrigações do Tesouro EUA a 20+ anos. O refúgio tradicional em deflação ou pânico acionista (<i>Flight to Quality</i>).<br><strong style='color:#d9534f;'>Ponto Cego:</strong> Correlação positiva com a inflação. Se o mercado cair devido a choques inflacionários, o TLT vai afundar juntamente com as tuas ações. Vulnerabilidade máxima a subidas de taxa de juro.",
+            'GLD': "<strong style='color:#58a6ff;'>Mecânica:</strong> Exposição direta a Ouro físico. Descorrelacionado de lucros corporativos, protege o capital contra a degradação da moeda fiduciária e pânico sistémico.<br><strong style='color:#d9534f;'>Ponto Cego:</strong> Zero <i>yield</i> (não gera juros nem dividendos). Custo de oportunidade puro. É uma âncora de preservação de riqueza, mas atua como peso morto em <i>Bull Markets</i> seculares.",
+            'UUP': "<strong style='color:#58a6ff;'>Mecânica:</strong> Índice do Dólar Americano (USD). A derradeira reserva de liquidez. Em crises de liquidez globais severas, todo o capital institucional foge para o dólar.<br><strong style='color:#d9534f;'>Ponto Cego:</strong> Risco cambial puro. Se as tuas despesas de vida forem em Euros e o Euro valorizar face ao Dólar, a tua proteção no portefólio é anulada pela taxa de câmbio.",
+            'XLU': "<strong style='color:#58a6ff;'>Mecânica:</strong> Setor Utilities (Eletricidade, Água). Procura inelástica. As pessoas cortam em bens discricionários num <i>Bear Market</i>, mas não cortam a luz.<br><strong style='color:#d9534f;'>Ponto Cego:</strong> São <i>Bond Proxies</i>. Quando as taxas de juro sem risco sobem (<i>Treasuries</i> a render 5%), o capital abandona este setor porque já não justifica o risco acionista pelo dividendo."
+        }
+
         retorno_portfolio = pd.Series(0.0, index=retornos.index)
         for t in tickers:
             if t in retornos.columns:
@@ -2281,10 +2288,11 @@ def api_risco_portfolio():
                 hedges_sugeridos.append({
                     "ticker": h_ticker,
                     "nome": h_nome,
-                    "correlacao": float(corr_h) if pd.notna(corr_h) else 0.0
+                    "correlacao": float(corr_h) if pd.notna(corr_h) else 0.0,
+                    "nlg": dicionario_hedges_nlg.get(h_ticker, "Dados de avaliação qualitativa indisponíveis.")
                 })
 
-        # Ordena para mostrar primeiro os que têm correlação mais invertida (os mais negativos)
+        # Ordena para mostrar os mais negativamente correlacionados
         hedges_sugeridos = sorted(hedges_sugeridos, key=lambda x: x['correlacao'])[:3]
 
 
