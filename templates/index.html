@@ -5272,7 +5272,7 @@
         graficoDiv.style.display = 'block';
         nlgBox.style.display = 'block';
 
-        // NOVO: INJEÇÃO DAS PROPOSTAS DE HEDGE
+        // NOVO: INJEÇÃO DAS PROPOSTAS DE HEDGE COM NLG
         const painelHedge = document.getElementById('painel-hedge');
         const listaHedges = document.getElementById('lista-hedges');
         
@@ -5280,19 +5280,30 @@
             let htmlHedge = '';
             dados.hedges.forEach(h => {
                 let cor_h = h.correlacao < 0 ? '#5cb85c' : '#d9534f';
-                let alert_h = h.correlacao > 0.5 ? '<br><span style="font-size:10px; color:#d9534f;">(Ineficaz: Muito correlacionado)</span>' : '';
+                let alert_h = h.correlacao > 0.5 ? '<br><span style="font-size:10px; color:#d9534f; font-weight:bold;">⚠️ Ineficaz contra este portefólio</span>' : '';
                 
                 htmlHedge += `
-                    <div style="flex: 1; min-width: 140px; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 15px; text-align: center; border-left: 3px solid ${cor_h};">
-                        <strong style="color: #c9d1d9; font-size: 16px; font-family: monospace;">${h.ticker}</strong>
-                        <div style="color: #8b949e; font-size: 11px; margin-top: 2px;">${h.nome}</div>
-                        <div style="margin-top: 10px; border-top: 1px dashed #30363d; padding-top: 10px;">
-                            <span style="color: #8b949e; font-size: 11px; display: block;">Correlação Dinâmica</span>
-                            <strong style="color: ${cor_h}; font-size: 18px;">${h.correlacao.toFixed(2)}</strong>
-                            ${alert_h}
+                    <div style="flex: 1; min-width: 300px; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 15px; text-align: left; border-top: 3px solid ${cor_h}; display: flex; flex-direction: column;">
+                        
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div>
+                                <strong style="color: #c9d1d9; font-size: 18px; font-family: monospace; letter-spacing: 1px;">${h.ticker}</strong>
+                                <div style="color: #8b949e; font-size: 12px; margin-top: 2px;">${h.nome}</div>
+                            </div>
+                            <div style="text-align: right; background: #161b22; padding: 5px 10px; border-radius: 4px; border: 1px solid #30363d;">
+                                <span style="color: #8b949e; font-size: 9px; display: block; text-transform: uppercase; font-weight: bold;">Correlação</span>
+                                <strong style="color: ${cor_h}; font-size: 18px;">${h.correlacao.toFixed(2)}</strong>
+                                ${alert_h}
+                            </div>
                         </div>
-                        <button onclick="document.getElementById('tab-acoes').click(); document.getElementById('sniper-ticker').value='${h.ticker}'; gerarBlueprintSniper();" class="btn-moderno" style="margin-top: 12px; width: 100%; background: #232d3f; color: #58a6ff; border: 1px solid #30363d; padding: 6px 0; font-size: 11px; transition: 0.2s;">
-                            Extrair Blueprint
+                        
+                        <!-- PAINEL NLG EDUCACIONAL -->
+                        <div style="margin-top: 15px; flex-grow: 1; background: #161b22; border-left: 2px solid #30363d; padding: 12px; border-radius: 0 4px 4px 0; font-size: 11px; line-height: 1.6; color: #c9d1d9;">
+                            ${h.nlg}
+                        </div>
+
+                        <button onclick="document.getElementById('tab-acoes').click(); document.getElementById('sniper-ticker').value='${h.ticker}'; gerarBlueprintSniper();" class="btn-moderno" style="margin-top: 15px; width: 100%; background: #232d3f; color: #58a6ff; border: 1px solid #30363d; padding: 8px 0; font-size: 11px; text-transform: uppercase; transition: 0.2s;">
+                            Extrair Blueprint Tático 🎯
                         </button>
                     </div>
                 `;
