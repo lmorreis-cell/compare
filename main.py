@@ -788,16 +788,23 @@ def api_comparar(ticker1, ticker2):
     # Converte para dicionário para podermos injetar dados extra
     dados = df_comparacao.to_dict(orient='records')
     
-    # --- INJEÇÃO: PRICE TARGETS DE WALL STREET (Via Yahoo Finance Gratuito) ---
+   # --- INJEÇÃO: PRICE TARGETS DE WALL STREET COM MOEDA DINÂMICA ---
     for ativo in dados:
         try:
             tk = yf.Ticker(ativo['Ticker'])
-            target = tk.info.get('targetMeanPrice', 0)
+            info_tk = tk.info
+            target = info_tk.get('targetMeanPrice', 0)
+            moeda = info_tk.get('currency', 'USD')
             preco_atual = float(ativo['Preço'])
+            
+            # Deteta se é europeia pela moeda ou pelo sufixo da bolsa (.LS, .PA, .DE, etc.)
+            sufixos_eur = ('.LS', '.PA', '.DE', '.MC', '.AS', '.BR', '.MI', '.VI', '.IR', '.HE')
+            is_eur = moeda == 'EUR' or any(ativo['Ticker'].upper().endswith(s) for s in sufixos_eur)
+            simb = "€" if is_eur else "$"
             
             if target > 0 and preco_atual > 0:
                 upside = ((target / preco_atual) - 1) * 100
-                ativo['WallSt Target'] = f"${target:.2f}"
+                ativo['WallSt Target'] = f"{target:.2f} {simb}" if simb == "€" else f"${target:.2f}"
                 ativo['WallSt Upside'] = f"{upside:+.1f}%"
             else:
                 ativo['WallSt Target'] = "N/A"
@@ -805,6 +812,7 @@ def api_comparar(ticker1, ticker2):
         except:
             ativo['WallSt Target'] = "N/A"
             ativo['WallSt Upside'] = "N/A"
+    # -------------------------------------------------------------------------
     # -------------------------------------------------------------------------
             
     return jsonify(dados)
@@ -1216,6 +1224,20 @@ def api_sniper(ticker, timeframe):
         try:
             tk = yf.Ticker(ticker)
             info = tk.info
+
+            # Detetar moeda oficial do ativo
+            moeda_ativo = "USD"
+            try:
+                moeda_ativo = info.get('currency', 'USD')
+            except:
+                pass
+                
+            sufixos_eur = ('.LS', '.PA', '.DE', '.MC', '.AS', '.BR', '.MI', '.VI', '.IR', '.HE')
+            if moeda_ativo == 'EUR' or any(ticker.upper().endswith(s) for s in sufixos_eur):
+                simb_sniper = "€"
+            else:
+                simb_sniper = "$"
+            
             
             if mkt_cap == 0 or mkt_cap is None:
                 mkt_cap = float(info.get('marketCap', 0))
@@ -1277,9 +1299,10 @@ def api_sniper(ticker, timeframe):
 
                 def fmt_money(val):
                     v = abs(val)
-                    if v >= 1e9: return f"${v/1e9:.2f}B"
-                    if v >= 1e6: return f"${v/1e6:.2f}M"
-                    return f"${v:.2f}"
+                    suf = "B" if v >= 1e9 else ("M" if v >= 1e6 else "")
+                    div = 1e9 if v >= 1e9 else (1e6 if v >= 1e6 else 1)
+                    num = v / div
+                    return f"{num:.2f}{suf} {simb_sniper}" if simb_sniper == "€" else f"{simb_sniper}{num:.2f}{suf}"
 
                 if rev > 0:
                     waterfall_data = {
@@ -1727,9 +1750,9 @@ def api_sniper(ticker, timeframe):
                 val_bull = eps_bull * pe_bull
                 
                 cenarios_valuation = [
-                    {"nome": "Bear", "cor": "#d9534f", "eps": f"${eps_bear:.2f}", "per": f"{pe_bear:.1f}x", "valor": f"${val_bear:.2f}"},
-                    {"nome": "Base", "cor": "#f0ad4e", "eps": f"${eps_base:.2f}", "per": f"{pe_base_val:.1f}x", "valor": f"${val_base:.2f}"},
-                    {"nome": "Bull", "cor": "#5cb85c", "eps": f"${eps_bull:.2f}", "per": f"{pe_bull:.1f}x", "valor": f"${val_bull:.2f}"}
+                    {"nome": "Bear", "cor": "#d9534f", "eps": f"{eps_bear:.2f} {simb_sniper}" if simb_sniper == "€" else f"\({eps_bear:.2f}", "per": f"{pe_bear:.1f}x", "valor": f"{val_bear:.2f} {simb_sniper}" if simb_sniper == "€" else f"\){val_bear:.2f}"},
+                    {"nome": "Base", "cor": "#f0ad4e", "eps": f"{eps_base:.2f} {simb_sniper}" if simb_sniper == "€" else f"\({eps_base:.2f}", "per": f"{pe_base_val:.1f}x", "valor": f"{val_base:.2f} {simb_sniper}" if simb_sniper == "€" else f"\){val_base:.2f}"},
+                    {"nome": "Bull", "cor": "#5cb85c", "eps": f"{eps_bull:.2f} {simb_sniper}" if simb_sniper == "€" else f"\({eps_bull:.2f}", "per": f"{pe_bull:.1f}x", "valor": f"{val_bull:.2f} {simb_sniper}" if simb_sniper == "€" else f"\){val_bull:.2f}"}
                 ]
         except Exception as e:
             print(f"Erro a calcular cenários de valuation: {e}")
@@ -1737,6 +1760,7 @@ def api_sniper(ticker, timeframe):
         return jsonify({
             "ticker": ticker.upper(),
             "timeframe": timeframe.upper(),
+            "moeda_simbolo": simb_sniper,
             "preco": f"{fecho_atual:.2f}",
             "rsi": f"{rsi_atual:.1f}",
             "atr": f"{atr_14:.2f}",
