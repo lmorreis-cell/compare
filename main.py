@@ -1753,10 +1753,13 @@ def api_sniper(ticker, timeframe):
                 pe_bull = min(pe_normal * 1.20, 70.0) # Teto máximo 
                 val_bull = eps_bull * pe_bull
                 
+                def formata_valor(valor):
+                    return f"{valor:.2f} €" if simb_sniper == "€" else chr(36) + f"{valor:.2f}"
+
                 cenarios_valuation = [
-                    {"nome": "Bear", "cor": "#d9534f", "eps": f"{eps_bear:.2f} {simb_sniper}" if simb_sniper == "€" else f"\({eps_bear:.2f}", "per": f"{pe_bear:.1f}x", "valor": f"{val_bear:.2f} {simb_sniper}" if simb_sniper == "€" else f"\){val_bear:.2f}"},
-                    {"nome": "Base", "cor": "#f0ad4e", "eps": f"{eps_base:.2f} {simb_sniper}" if simb_sniper == "€" else f"\({eps_base:.2f}", "per": f"{pe_base_val:.1f}x", "valor": f"{val_base:.2f} {simb_sniper}" if simb_sniper == "€" else f"\){val_base:.2f}"},
-                    {"nome": "Bull", "cor": "#5cb85c", "eps": f"{eps_bull:.2f} {simb_sniper}" if simb_sniper == "€" else f"\({eps_bull:.2f}", "per": f"{pe_bull:.1f}x", "valor": f"{val_bull:.2f} {simb_sniper}" if simb_sniper == "€" else f"\){val_bull:.2f}"}
+                    {"nome": "Bear", "cor": "#d9534f", "eps": formata_valor(eps_bear), "per": f"{pe_bear:.1f}x", "valor": formata_valor(val_bear)},
+                    {"nome": "Base", "cor": "#f0ad4e", "eps": formata_valor(eps_base), "per": f"{pe_base_val:.1f}x", "valor": formata_valor(val_base)},
+                    {"nome": "Bull", "cor": "#5cb85c", "eps": formata_valor(eps_bull), "per": f"{pe_bull:.1f}x", "valor": formata_valor(val_bull)}
                 ]
         except Exception as e:
             print(f"Erro a calcular cenários de valuation: {e}")
