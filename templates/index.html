@@ -2836,6 +2836,11 @@
             }
 
             window.blueprintAtual = dados;
+
+            const simbCripto = '$';
+            const precoCriptoFmt = '$' + dados.preco;
+            const atrCriptoFmt = '$' + dados.atr;
+    
             guardarHistorico('sniper_cripto', dados.ticker, null, dados.timeframe.toLowerCase());
 
             const suportes_str = dados.suportes.join(" → ");
