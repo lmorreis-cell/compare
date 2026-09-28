@@ -1641,6 +1641,7 @@
             }
 
             window.blueprintAtual = dados;
+            const simb = dados.moeda_simbolo || (dados.ticker.includes('.') ? '€' : '$');
             guardarHistorico('sniper', dados.ticker, null, dados.timeframe);
 
             const container = document.getElementById('sniper-resultado');
@@ -1743,7 +1744,7 @@
                                         </span>
                                     </span>
                                     <span style="background: #121212; color: #fff; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 11px; letter-spacing: 1px; border: 1px solid #333; white-space: nowrap;">
-                                        Cotação: $${dados.preco}
+                                        Cotação: \({simb === '€' ? dados.preco + ' €' : '\)' + dados.preco}
                                     </span>
                                 </div>
                             </div>
@@ -1773,7 +1774,7 @@
                         </span>
                         
                         <span class="sniper-tt">
-                            <strong>Volatilidade (ATR):</strong> $${dados.atr}
+                            <strong>**Volatilidade (ATR):** \({simb === '€' ? dados.atr + ' €' : '\)' + dados.atr}
                             <span class="sniper-tt-text">
                                 <strong style="color: #4da6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Average True Range</strong>
                                 A amplitude média que a ação respira numa vela. O sistema usa esta métrica para posicionar os Stops cirurgicamente fora da zona de ruído normal do mercado.
@@ -1787,11 +1788,11 @@
                         <h4 style="margin-top: 0; color: #121212; text-transform: uppercase; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Key Levels</h4>
                         <div style="margin-bottom: 15px;">
                             <span style="color: #d9534f; font-weight: bold; font-size: 13px;">Support</span><br>
-                            <span style="font-family: monospace; font-size: 14px; font-weight: bold;">$ ${suportes_str}</span>
+                            <span style="font-family: monospace; font-size: 14px; font-weight: bold;">\({simb}\){suportes_str}</span>
                         </div>
                         <div>
                             <span style="color: #5cb85c; font-weight: bold; font-size: 13px;">Resistance</span><br>
-                            <span style="font-family: monospace; font-size: 14px; font-weight: bold;">$ ${resist_str}</span>
+                            <span style="font-family: monospace; font-size: 14px; font-weight: bold;">\({simb}\){resist_str}</span>
                         </div>
 
                         <h4 style="margin-top: 35px; color: #121212; text-transform: uppercase; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Raio-X Dinâmico</h4>
@@ -2055,7 +2056,7 @@
                             </span>
                         </span>
                         <div style="font-size: 28px; font-weight: 900; color: #e3b341; line-height: 1;">
-                            $${dados.target_consensus}
+                            \({simb === '€' ? dados.target_consensus + ' €' : '\)' + dados.target_consensus}
                         </div>
                         <div style="margin-top: 5px; font-size: 10px; font-weight: bold; color: ${parseFloat(dados.target_upside) > 0 ? '#5cb85c' : '#d9534f'};">
                             PROJEÇÃO: ${dados.target_upside}
