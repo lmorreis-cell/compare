@@ -788,19 +788,21 @@ def api_comparar(ticker1, ticker2):
     # Converte para dicionário para podermos injetar dados extra
     dados = df_comparacao.to_dict(orient='records')
     
-   # --- INJEÇÃO: PRICE TARGETS DE WALL STREET COM MOEDA DINÂMICA ---
+   
+    # --- INJEÇÃO: PRICE TARGETS DE WALL STREET COM MOEDA DINÂMICA ---
     for ativo in dados:
+        # Fallback base caso a API do Yahoo falhe
+        simb = "€" if any(ativo['Ticker'].upper().endswith(s) for s in ('.LS', '.PA', '.DE', '.MC', '.AS', '.BR', '.MI', '.VI', '.IR', '.HE')) else "$"
         try:
             tk = yf.Ticker(ativo['Ticker'])
             info_tk = tk.info
             target = info_tk.get('targetMeanPrice', 0)
-            moeda = info_tk.get('currency', 'USD')
-            preco_atual = float(ativo['Preço'])
+            moeda = info_tk.get('currency', '')
             
-            # Deteta se é europeia pela moeda ou pelo sufixo da bolsa (.LS, .PA, .DE, etc.)
-            sufixos_eur = ('.LS', '.PA', '.DE', '.MC', '.AS', '.BR', '.MI', '.VI', '.IR', '.HE')
-            is_eur = moeda == 'EUR' or any(ativo['Ticker'].upper().endswith(s) for s in sufixos_eur)
-            simb = "€" if is_eur else "$"
+            if moeda:
+                simb = "€" if moeda == 'EUR' else "$"
+                
+            preco_atual = float(ativo['Preço'])
             
             if target > 0 and preco_atual > 0:
                 upside = ((target / preco_atual) - 1) * 100
@@ -812,7 +814,9 @@ def api_comparar(ticker1, ticker2):
         except:
             ativo['WallSt Target'] = "N/A"
             ativo['WallSt Upside'] = "N/A"
-    # -------------------------------------------------------------------------
+            
+        ativo['Moeda_Simb'] = simb
+    
     # -------------------------------------------------------------------------
             
     return jsonify(dados)
@@ -2159,6 +2163,11 @@ def webhook_duelo():
     vencedor = t1 if float(t1['Mansfield RS']) > float(t2['Mansfield RS']) else t2
     perdedor = t2 if float(t1['Mansfield RS']) > float(t2['Mansfield RS']) else t1
 
+    # Formatador de Moeda para o Discord
+    s_v = vencedor.get('Moeda_Simb', '€' if '.' in vencedor['Ticker'] else '$')
+    s_p = perdedor.get('Moeda_Simb', '€' if '.' in perdedor['Ticker'] else '$')
+    def fmt(val, s): return f"{val} €" if s == "€" else f"${val}"
+
     # Constrói o Veredicto Comportamental para apoiar a decisão na mensagem
     if float(t1['Mansfield RS']) < 0 and float(t2['Mansfield RS']) < 0:
         justificacao = f"⚠️ **Alerta de Degradação:** Ambas as ações apresentam Força Relativa institucional negativa. O capital está a fugir de ambas as frentes. A alocação na **{vencedor['Ticker']}** é apenas o 'mal menor' matemático, mas estruturalmente o mercado está a rejeitar ambos os ativos neste momento."
@@ -2168,22 +2177,18 @@ def webhook_duelo():
     embed = {
         "embeds": [
             {
-                #"author": {
-                #    "name": "Partilha de Ideias - Luís Reis",
-                #    "icon_url": "https://cdn-icons-png.flaticon.com/512/3594/3594191.png" # Ícone elegante de bolsa/finanças
-                #},
                 "title": f"⚔️ ROTAÇÃO TÁTICA DE CAPITAL: {t1['Ticker']} vs {t2['Ticker']}",
                 "color": 15965184, # Laranja Portal Bolsa
                 "description": justificacao,
                 "fields": [
                     {
                         "name": f"🟢 ALOCAÇÃO: {vencedor['Ticker']}",
-                        "value": f"**Cotação:** {vencedor['Preço']} €\n**Mansfield RS:** {vencedor['Mansfield RS']}\n**ROC 6M:** {vencedor['ROC 6M (%)']}%\n**RSI (14):** {vencedor['RSI (14)']}\n\n**Alvos (PT1/PT2):** {vencedor['Alvo T1 (€)']} € / {vencedor['Alvo T2 (€)']} €\n**Stop Loss:** Abaixo de {vencedor['Stop Loss (€)']} €",
+                        "value": f"**Cotação:** {fmt(vencedor['Preço'], s_v)}\n**Mansfield RS:** {vencedor['Mansfield RS']}\n**ROC 6M:** {vencedor['ROC 6M (%)']}%\n**RSI (14):** {vencedor['RSI (14)']}\n\n**Alvos (PT1/PT2):** {fmt(vencedor['Alvo T1 (€)'], s_v)} / {fmt(vencedor['Alvo T2 (€)'], s_v)}\n**Stop Loss:** Abaixo de {fmt(vencedor['Stop Loss (€)'], s_v)}",
                         "inline": True
                     },
                     {
                         "name": f"🔴 LIQUIDAÇÃO: {perdedor['Ticker']}",
-                        "value": f"**Cotação:** {perdedor['Preço']} €\n**Mansfield RS:** {perdedor['Mansfield RS']}\n**ROC 6M:** {perdedor['ROC 6M (%)']}%\n**RSI (14):** {perdedor['RSI (14)']}\n\n**Alvos (PT1/PT2):** {perdedor['Alvo T1 (€)']} € / {perdedor['Alvo T2 (€)']} €\n**Stop Loss:** Acima de {perdedor['Stop Loss (€)']} €",
+                        "value": f"**Cotação:** {fmt(perdedor['Preço'], s_p)}\n**Mansfield RS:** {perdedor['Mansfield RS']}\n**ROC 6M:** {perdedor['ROC 6M (%)']}%\n**RSI (14):** {perdedor['RSI (14)']}\n\n**Alvos (PT1/PT2):** {fmt(perdedor['Alvo T1 (€)'], s_p)} / {fmt(perdedor['Alvo T2 (€)'], s_p)}\n**Stop Loss:** Acima de {fmt(perdedor['Stop Loss (€)'], s_p)}",
                         "inline": True
                     }
                 ],
