@@ -2458,8 +2458,8 @@
                         <tbody>
                             <tr>
                                 <td>Cotação Atual</td>
-                                <td>${t1.Preço} €</td>
-                                <td>${t2.Preço} €</td>
+                                <td>${fmt(t1.Preço, s1)}</td>
+                                <td>${fmt(t2.Preço, s2)}</td>
                             </tr>
                             <tr>
                                 <td>Mansfield RS (Força Institucional)</td>
@@ -2507,18 +2507,18 @@
                         <div style="background: #eafaf1; border: 1px solid #c3e6cb; border-radius: 6px; padding: 15px;">
                             <h4 style="margin-top: 0; color: #2b542c; font-size: 14px; margin-bottom: 10px; border-bottom: 1px solid #c3e6cb; padding-bottom: 5px;">🟢 ALOCAÇÃO (${vencedor.Ticker})</h4>
                             <div style="font-size: 13px; line-height: 1.8; color: #121212;">
-                                <span style="color: #4caf50; font-weight: 900;">PT 1</span> ${vencedor['Alvo T1 (€)']} € (Parcial)<br>
-                                <span style="color: #2196f3; font-weight: 900;">PT 2</span> ${vencedor['Alvo T2 (€)']} € (Final)<br>
-                                <span style="color: #d9534f; font-weight: 900;">🛡️ Stop</span> Abaixo de ${vencedor['Stop Loss (€)']} €<br>
+                                <span style="color: #4caf50; font-weight: 900;">PT 1</span> ${fmt(vencedor['Alvo T1 (€)'], s_v)} (Parcial)<br>
+                                <span style="color: #2196f3; font-weight: 900;">PT 2</span> ${fmt(vencedor['Alvo T2 (€)'], s_v)} (Final)<br>
+                                <span style="color: #d9534f; font-weight: 900;">🛡️ Stop</span> Abaixo de ${fmt(vencedor['Stop Loss (€)'], s_v)}<br>
                             </div>
                         </div>
 
                         <div style="background: #fdf2f2; border: 1px solid #f5c6cb; border-radius: 6px; padding: 15px;">
                             <h4 style="margin-top: 0; color: #843534; font-size: 14px; margin-bottom: 10px; border-bottom: 1px solid #f5c6cb; padding-bottom: 5px;">🔴 LIQUIDAÇÃO (${perdedor.Ticker})</h4>
                             <div style="font-size: 13px; line-height: 1.8; color: #121212;">
-                                <span style="color: #4caf50; font-weight: 900;">PT 1</span> ${perdedor['Alvo T1 (€)']} € (Parcial)<br>
-                                <span style="color: #2196f3; font-weight: 900;">PT 2</span> ${perdedor['Alvo T2 (€)']} € (Final)<br>
-                                <span style="color: #d9534f; font-weight: 900;">🛡️ Stop</span> Acima de ${perdedor['Stop Loss (€)']} €<br>
+                                <span style="color: #4caf50; font-weight: 900;">PT 1</span> ${fmt(perdedor['Alvo T1 (€)'], s_p)} (Parcial)<br>
+                                <span style="color: #2196f3; font-weight: 900;">PT 2</span> ${fmt(perdedor['Alvo T2 (€)'], s_p)} (Final)<br>
+                                <span style="color: #d9534f; font-weight: 900;">🛡️ Stop</span> Acima de ${fmt(perdedor['Stop Loss (€)'], s_p)}<br>
                             </div>
                         </div>
 
