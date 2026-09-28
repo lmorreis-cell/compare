@@ -2108,19 +2108,30 @@ def webhook_sniper():
     if not webhook_url:
         return jsonify({"erro": "Webhook não configurado no servidor."}), 500
 
-    # Limpar as tags HTML que injetámos no Python para não sujarem o texto do Discord
+    # 1. Extrair o símbolo da moeda do payload
+    simb = dados.get('moeda_simbolo')
+    if not simb:
+        sufixos_eur = ('.LS', '.PA', '.DE', '.MC', '.AS', '.BR', '.MI', '.VI', '.IR', '.HE')
+        simb = "€" if any(dados.get('ticker', '').upper().endswith(s) for s in sufixos_eur) else "$"
+
+    # Função de formatação segura (chr(36) = Dólar)
+    def fmt(valor):
+        return f"{valor} €" if simb == "€" else chr(36) + str(valor)
+
+    # 2. Limpar as tags HTML que injetámos no Python para não sujarem o texto do Discord
     import re
     notas_limpas = re.sub(r'<[^>]+>', '', dados.get('notas', ''))
 
     bull = dados['bull_plan']
     bear = dados['bear_plan']
 
+    # 3. Aplicar a formatação (fmt) na Cotação e no ATR
     embed = {
         "embeds": [
             {
                 "title": f"🎯 SNIPER BLUEPRINT: {dados['ticker']} ({dados['timeframe']})",
                 "color": 11765967, # Roxo Portal Bolsa
-                "description": f"**Cotação Atual:** ${dados['preco']} | **RSI:** {dados['rsi']} | **ATR:** ${dados['atr']}\n\n**Sniper Notes:**\n{notas_limpas}",
+                "description": f"**Cotação Atual:** {fmt(dados['preco'])} | **RSI:** {dados['rsi']} | **ATR:** {fmt(dados['atr'])}\n\n**Sniper Notes:**\n{notas_limpas}",
                 "fields": [
                     {
                         "name": "📈 Bull Plan",
