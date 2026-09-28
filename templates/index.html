@@ -2378,6 +2378,13 @@
         let vencedor = parseFloat(t1['Mansfield RS']) > parseFloat(t2['Mansfield RS']) ? t1 : t2;
         let perdedor = parseFloat(t1['Mansfield RS']) > parseFloat(t2['Mansfield RS']) ? t2 : t1;
 
+
+        let s1 = t1['Moeda_Simb'] || (t1.Ticker.includes('.') ? '€' : '$');
+        let s2 = t2['Moeda_Simb'] || (t2.Ticker.includes('.') ? '€' : '$');
+        let s_v = vencedor['Moeda_Simb'] || (vencedor.Ticker.includes('.') ? '€' : '$');
+        let s_p = perdedor['Moeda_Simb'] || (perdedor.Ticker.includes('.') ? '€' : '$');
+        let fmt = (val, s) => s === '€' ? val + ' €' : '$' + val;
+
         let nlpText = "";
         
         // 1. Mansfield RS
