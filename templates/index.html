@@ -1641,7 +1641,13 @@
             }
 
             window.blueprintAtual = dados;
+
             const simb = dados.moeda_simbolo || (dados.ticker.includes('.') ? '€' : '$');
+            const precoFmt = simb === '€' ? dados.preco + ' €' : '$' + dados.preco;
+            const atrFmt = simb === '€' ? dados.atr + ' €' : '$' + dados.atr;
+            const targetFmt = simb === '€' ? dados.target_consensus + ' €' : '$' + dados.target_consensus;
+            
+           
             guardarHistorico('sniper', dados.ticker, null, dados.timeframe);
 
             const container = document.getElementById('sniper-resultado');
@@ -1744,7 +1750,7 @@
                                         </span>
                                     </span>
                                     <span style="background: #121212; color: #fff; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 11px; letter-spacing: 1px; border: 1px solid #333; white-space: nowrap;">
-                                        Cotação: \({simb === '€' ? dados.preco + ' €' : '\)' + dados.preco}
+                                        Cotação: ${precoFmt}
                                     </span>
                                 </div>
                             </div>
@@ -1774,7 +1780,7 @@
                         </span>
                         
                         <span class="sniper-tt">
-                            <strong>Volatilidade (ATR):</strong> \({simb === '€' ? dados.atr + ' €' : '\)' + dados.atr}
+                            **Volatilidade (ATR):** ${atrFmt}
                             <span class="sniper-tt-text">
                                 <strong style="color: #4da6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Average True Range</strong>
                                 A amplitude média que a ação respira numa vela. O sistema usa esta métrica para posicionar os Stops cirurgicamente fora da zona de ruído normal do mercado.
