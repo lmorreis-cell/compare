@@ -12,7 +12,9 @@ ARQUIVO_WATCHLIST = "watchlist.json"
 WEBHOOK_WATCHLIST = os.environ.get("WEBHOOK_WATCHLIST")
 
 def processar_vigia():
-    print(f"[{datetime.now()}] A iniciar Motor de Vigia Algorítmico...")
+    agora = datetime.now()
+    dia_semana = agora.weekday() # 0 = Seg, ..., 5 = Sáb, 6 = Dom
+    print(f"[{agora}] A iniciar Motor de Vigia Algorítmico...")
 
     if not WEBHOOK_WATCHLIST:
         print("Erro: WEBHOOK_WATCHLIST não configurado no .env")
@@ -28,12 +30,21 @@ def processar_vigia():
     if not watchlist:
         return
 
+    # 1. FILTRO DE FIM DE SEMANA NA RAIZ (Poupa a API do Yahoo)
     tickers_unicos = set()
     for user_id, alertas in watchlist.items():
         for alerta in alertas:
-            tickers_unicos.add(alerta['ticker'])
+            ticker = alerta['ticker']
+            is_crypto = "-" in ticker
+            
+            # Se for Sábado (5) ou Domingo (6) e NÃO for cripto, ignoramos o ticker
+            if dia_semana in [5, 6] and not is_crypto:
+                continue
+                
+            tickers_unicos.add(ticker)
 
     if not tickers_unicos:
+        print("Nenhum ativo elegível para processamento neste momento (Fim de semana em vigor para TradFi).")
         return
 
     tickers_lista = list(tickers_unicos)
@@ -43,12 +54,18 @@ def processar_vigia():
     dados = yf.download(string_tickers, period="1y", interval="1d", group_by="ticker", threads=True, progress=False)
 
     gatilhos_acionados = {}
+    info_mercado = {} # Dicionário novo para guardar Fechos e ATRs e usar no Cooldown
 
     for ticker in tickers_lista:
         try:
             df = dados.dropna() if len(tickers_lista) == 1 else dados[ticker].dropna()
             if df.empty or len(df) < 200:
                 continue
+
+            # --- CÁLCULO DE ATR (Volatilidade/Ruído) ---
+            df['PrevClose'] = df['Close'].shift(1)
+            df['TR'] = df[['High', 'PrevClose']].max(axis=1) - df[['Low', 'PrevClose']].min(axis=1)
+            df['ATR'] = df['TR'].rolling(window=14).mean()
 
             df['SMA200'] = df['Close'].rolling(200).mean()
             df['EMA20'] = df['Close'].ewm(span=20, adjust=False).mean()
@@ -65,12 +82,15 @@ def processar_vigia():
             df['BB_Lower'] = df['BB_Mid'] - (df['BB_Std'] * 2)
             df['BB_Width'] = (df['BB_Upper'] - df['BB_Lower']) / df['BB_Mid']
 
-            # --- NOVOS CÁLCULOS ADICIONADOS ---
             df['Vol_SMA20'] = df['Volume'].rolling(20).mean()
             df['EMA9'] = df['Close'].ewm(span=9, adjust=False).mean()
             df['Max_50'] = df['High'].shift(1).rolling(50).max()
 
             fecho_atual = float(df['Close'].iloc[-1])
+            atr_atual = float(df['ATR'].iloc[-1])
+            
+            # Guarda info vital para a máquina de cooldown
+            info_mercado[ticker] = {'fecho': fecho_atual, 'atr': atr_atual}
             gatilhos_acionados[ticker] = []
 
             if fecho_atual > df['SMA200'].iloc[-1]:
@@ -83,7 +103,6 @@ def processar_vigia():
             if df['RSI'].iloc[-1] < 30:
                 gatilhos_acionados[ticker].append('oversold')
 
-                # --- NOVAS VALIDAÇÕES TÁTICAS ---
             if df['Volume'].iloc[-1] > (df['Vol_SMA20'].iloc[-1] * 3):
                 gatilhos_acionados[ticker].append('volume_spike')
 
@@ -105,7 +124,6 @@ def processar_vigia():
     alertas_enviados = 0
     mensagens_discord = []
     houve_alteracao_json = False
-    agora = datetime.now()
 
     descricoes_setup = {
         'pullback': "📉 **Pullback Tático Confirmado:** O ativo suportou milimetricamente na média móvel de 20 dias (EMA 20). Setup clássico de Trend Following de baixo risco.",
@@ -125,34 +143,45 @@ def processar_vigia():
             # Verifica se o ticker tem algum gatilho acionado hoje
             if ticker in gatilhos_acionados:
                 
+                fecho_atual = info_mercado[ticker]['fecho']
+                atr_atual = info_mercado[ticker]['atr']
+                
                 # A LÓGICA DO "QUALQUER" ANOMALIA
                 gatilho_valido = None
                 if setup == 'qualquer' and len(gatilhos_acionados[ticker]) > 0:
-                    # O utilizador quer qualquer anomalia. Apanhamos a primeira que ocorreu no array.
                     gatilho_valido = gatilhos_acionados[ticker][0]
                 elif setup in gatilhos_acionados[ticker]:
-                    # O utilizador pediu um setup específico e ele ocorreu.
                     gatilho_valido = setup
 
                 # Se encontrámos um gatilho válido para notificar
                 if gatilho_valido:
                     
-                    # BARREIRA DE ESTADO: Verificação das últimas 24 horas
-                    ultimo_alerta_str = alerta.get('ultimo_alerta')
+                    # ==========================================
+                    # NOVO COOLDOWN CONDICIONAL (DIVERGÊNCIA DE ATR)
+                    # ==========================================
+                    ultimo_preco = alerta.get('preco_alerta')
+                    ultima_data_str = alerta.get('data_alerta')
                     pode_enviar = True
 
-                    if ultimo_alerta_str:
+                    if ultimo_preco and ultima_data_str:
                         try:
-                            ultimo_alerta_data = datetime.fromisoformat(ultimo_alerta_str)
-                            if agora - ultimo_alerta_data < timedelta(hours=24):
+                            ultima_data = datetime.fromisoformat(ultima_data_str)
+                            horas_desde_alerta = (agora - ultima_data).total_seconds() / 3600
+                            distancia_movimento = abs(fecho_atual - ultimo_preco)
+                            margem_ruido = atr_atual * 1.5
+                            
+                            # Proteção contra Stock Splits (se o preço diferir >40% face ao alerta anterior, limpa a memória)
+                            if abs(fecho_atual - ultimo_preco) / ultimo_preco > 0.4:
+                                pode_enviar = True 
+                            # Se o preço não fugiu da margem de ruído E ainda não passaram 72h, bloqueia o alerta
+                            elif (distancia_movimento < margem_ruido) and (horas_desde_alerta < 72):
                                 pode_enviar = False
                         except ValueError:
-                            pass # Ignora bloqueio se a string de data estiver corrompida
+                            pass # Em caso de erro na data, envia o alerta por segurança
 
                     if pode_enviar:
                         texto_alerta = descricoes_setup.get(gatilho_valido, "Gatilho ativado.")
                         
-                        # Se a opção original era "qualquer", adicionamos um aviso visual para o utilizador saber o que disparou
                         if setup == 'qualquer':
                             texto_alerta = f"*(Monitorização Ampla)*\n\n" + texto_alerta
 
@@ -167,8 +196,13 @@ def processar_vigia():
                         }
                         mensagens_discord.append(payload)
 
-                        # Atualiza o carimbo de tempo no dicionário em memória
-                        alerta['ultimo_alerta'] = agora.isoformat()
+                        # Atualiza as âncoras temporais e espaciais no ficheiro JSON
+                        alerta['preco_alerta'] = fecho_atual
+                        alerta['data_alerta'] = agora.isoformat()
+                        # Remove a chave antiga se existir
+                        if 'ultimo_alerta' in alerta:
+                            del alerta['ultimo_alerta']
+                            
                         houve_alteracao_json = True
 
     if mensagens_discord:
@@ -181,9 +215,9 @@ def processar_vigia():
             except Exception as e:
                 print(f"Falha ao enviar webhook: {e}")
     else:
-        print("Nenhum setup atingiu as condições matemáticas ou os alertas encontram-se em período de cooldown (24h).")
+        print("Nenhum setup atingiu as condições matemáticas ou os ativos encontram-se bloqueados pela margem de ruído (Cooldown Condicional).")
 
-    # ESCRITA NO DISCO: Guarda as alterações de estado se novos alertas foram disparados
+    # ESCRITA NO DISCO
     if houve_alteracao_json:
         try:
             with open(ARQUIVO_WATCHLIST, 'w') as f:
