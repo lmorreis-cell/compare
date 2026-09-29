@@ -629,7 +629,8 @@ def dashboard_central():
     meta_tags = """
         <meta property="og:title" content="Portal Bolsa - partilha de ideias">
         <meta property="og:description" content="Ferramentas de análise quantitativa, relatórios de mercado e comparador de ativos.">
-        <meta property="og:image" content="https://comparativo.discloud.app/static/preview.png">
+        <meta property="og:image" content="https://comparativo.discloud.app/static/Lus_Miguel_Reis_Abstract_financial_market_data_visualization_dark_mode_aesthetic_79550174-befa-4ffa-9ee3-ba1f74e4c625.jpg">
+        
         <meta property="og:url" content="https://comparativo.discloud.app/">
         <meta name="twitter:card" content="summary_large_image">
     """
