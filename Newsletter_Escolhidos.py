@@ -4466,12 +4466,31 @@ if __name__ == "__main__":
     }
 
     
-    # CONTROLADOR MACRO (Atualizar manualmente para garantir que o script nunca estoira)
-    datas_macro = {
-        "inflacao": "14 OUTUBRO",
-        "juros": "28 OUTUBRO",
-        "emprego": "06 NOVEMBRO"
-    }
+    import json
+    
+    # MOTOR MACRO AUTOMÁTICO
+    def obter_proximas_datas():
+        try:
+            with open("macro_calendar.json", "r", encoding="utf-8") as f:
+                eventos = json.load(f)
+            
+            hoje = datetime.now().date()
+            proximas = {}
+            
+            # Ordena os eventos cronologicamente
+            eventos.sort(key=lambda x: datetime.strptime(x["data"], "%Y-%m-%d").date())
+            
+            # Extrai apenas o próximo evento futuro para cada categoria
+            for ev in eventos:
+                data_ev = datetime.strptime(ev["data"], "%Y-%m-%d").date()
+                if data_ev >= hoje and ev["tipo"] not in proximas:
+                    proximas[ev["tipo"]] = ev["label"]
+                    
+            return proximas
+        except Exception as e:
+            return {"inflacao": "Sem dados", "juros": "Sem dados", "emprego": "Sem dados"}
+
+    datas_macro = obter_proximas_datas()
     
     
     html_final = Template(html_template).render(
