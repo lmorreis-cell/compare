@@ -1,0 +1,40 @@
+name: Gerar Radares Diários
+
+# O script corre automaticamente às 23h de Lisboa (22h UTC no horário de verão)
+on:
+  schedule:
+    - cron: '0 22 * * *'
+  workflow_dispatch: # Permite-te correr manualmente no GitHub se precisares
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v3
+
+      - name: Configurar o Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Instalar dependências
+        run: |
+          pip install -r requirements.txt
+          # Ou instala diretamente: pip install yfinance pandas plotly jinja2 matplotlib
+
+      - name: Executar Motor Europeu
+        run: python Newsletter_Escolhidos.py
+
+      - name: Executar Motor Americano
+        run: python Newsletter_Escolhidos_States.py
+
+      - name: Commit e Push dos ficheiros HTML
+        run: |
+          git config --global user.name "Bot Quantitativo"
+          git config --global user.email "bot@teudominio.com"
+          git add *.html historico_sinalizacoes.csv
+          # O commit só avança se houver ficheiros novos/alterados
+          git diff --quiet && git diff --staged --quiet || git commit -m "🤖 Auto-update: Relatórios Radar [$(date +'%Y-%m-%d')]"
+          git push
