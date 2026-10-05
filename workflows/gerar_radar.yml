@@ -32,8 +32,8 @@ jobs:
 
       - name: Commit e Push dos ficheiros HTML
         run: |
-          git config --global user.name "Bot Quantitativo"
-          git config --global user.email "bot@teudominio.com"
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add *.html historico_sinalizacoes.csv
           # O commit só avança se houver ficheiros novos/alterados
           git diff --quiet && git diff --staged --quiet || git commit -m "🤖 Auto-update: Relatórios Radar [$(date +'%Y-%m-%d')]"
