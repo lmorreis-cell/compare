@@ -3,7 +3,7 @@ name: Gerar Radares Diários
 # O script corre automaticamente às 23h de Lisboa (22h UTC no horário de verão)
 on:
   schedule:
-    - cron: '53 1 * * *'
+    - cron: '17 22 * * *'
   workflow_dispatch: # Permite-te correr manualmente no GitHub se precisares
 
 jobs:
