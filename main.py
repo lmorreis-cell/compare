@@ -2421,6 +2421,256 @@ def disparar_vigia_remota(token_secreto):
     except Exception as e:
         return jsonify({"erro": f"Falha ao iniciar o motor: {str(e)}"}), 500
 
+# ==========================================
+# MOTOR DA LIGA MENSAL DE CARTEIRAS (OPÇÃO A + B + SNIPER)
+# ==========================================
+ARQUIVO_LIGA = "liga_carteiras.json"
+
+def carregar_dados_liga():
+    if os.path.exists(ARQUIVO_LIGA):
+        try:
+            with open(ARQUIVO_LIGA, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+def guardar_dados_liga(dados):
+    try:
+        with open(ARQUIVO_LIGA, 'w', encoding='utf-8') as f:
+            json.dump(dados, f, indent=4, ensure_ascii=False)
+    except Exception as e:
+        print(f"Erro ao guardar Liga: {e}")
+
+def atualizar_pontuacoes_liga(mes_ref, dados_liga):
+    """Varre o histórico desde o dia 1 do mês para verificar toques nos alvos e fecho sniper."""
+    if mes_ref not in dados_liga or not dados_liga[mes_ref]:
+        return []
+
+    inicio_mes = f"{mes_ref}-01"
+    carteiras_mes = dados_liga[mes_ref]
+
+    for uid, c in carteiras_mes.items():
+        ret_soma = 0.0
+        bonus_soma = 0.0
+
+        for s in c['slots']:
+            try:
+                df = yf.Ticker(s['ticker']).history(start=inicio_mes)
+                if df.empty:
+                    continue
+                p_atual = float(df['Close'].iloc[-1])
+                max_m = float(df['High'].max())
+                min_m = float(df['Low'].min())
+                p0 = float(s['p0'])
+                alvo = float(s['alvo'])
+
+                is_long = alvo > p0
+                ret = ((p_atual - p0) / p0) * 100.0
+                if not is_long:
+                    ret = -ret  # Posição Short ganha na queda
+
+                # Verifica se tocou no alvo durante o mês E mantém direção certa
+                tocou = (max_m >= alvo and p_atual > p0) if is_long else (min_m <= alvo and p_atual < p0)
+                erro_fecho = abs(alvo - p_atual) / p_atual * 100.0
+                sniper = tocou and (erro_fecho <= 1.0)
+
+                bonus_slot = (0.5 if tocou else 0.0) + (1.0 if sniper else 0.0)
+                s['p_atual'] = round(p_atual, 2)
+                s['ret'] = round(ret, 2)
+                s['bonus'] = bonus_slot
+                s['badge'] = "🎯🔥" if sniper else ("✅" if tocou else ("📈" if is_long else "📉"))
+
+                ret_soma += ret
+                bonus_soma += bonus_slot
+            except Exception:
+                pass
+
+        c['retorno_base'] = round(ret_soma / 3.0, 2)
+        c['bonus_total'] = round(bonus_soma, 2)
+        c['score_total'] = round(c['retorno_base'] + c['bonus_total'], 2)
+
+    guardar_dados_liga(dados_liga)
+    lista_ordenada = sorted(carteiras_mes.values(), key=lambda x: x.get('score_total', 0), reverse=True)
+    return lista_ordenada
+
+@app.route('/api/liga', methods=['GET', 'POST'])
+@requer_cargo(nivel_minimo=2)
+def api_liga():
+    user_id = str(session.get('user_id', '')).strip()
+    username = session.get('username', 'Trader')
+    if not user_id:
+        return jsonify({"erro": "Sessão expirada. Faz login novamente."}), 401
+
+    agora = datetime.now()
+    mes_ref = agora.strftime("%Y-%m")
+    # Janela aberta do dia 25 até ao dia 5 de cada mês (ou sempre aberta para o Admin testar)
+    is_admin = (user_id == str(ADMIN_USER_ID).strip())
+    janela_aberta = (agora.day >= 25 or agora.day <= 5) or is_admin
+
+    dados_liga = carregar_dados_liga()
+    if mes_ref not in dados_liga:
+        dados_liga[mes_ref] = {}
+
+    if request.method == 'GET':
+        if request.args.get('atualizar') == '1' or len(dados_liga[mes_ref]) > 0:
+            lista = atualizar_pontuacoes_liga(mes_ref, dados_liga)
+        else:
+            lista = list(dados_liga[mes_ref].values())
+
+        # NOVO: Filtro de Privacidade (Fog of War)
+        lista_segura = []
+        for c in lista:
+            # Censura se a janela estiver aberta E não for a carteira do próprio utilizador E não for Admin
+            if janela_aberta and c['user_id'] != user_id and not is_admin:
+                c_oculto = c.copy()
+                c_oculto['slots'] = [
+                    {"ticker": "🔒 SECRETO", "direcao": "-", "p0": 0.0, "alvo": 0.0, "ret": 0.0, "bonus": 0.0, "badge": "🔒"},
+                    {"ticker": "🔒 SECRETO", "direcao": "-", "p0": 0.0, "alvo": 0.0, "ret": 0.0, "bonus": 0.0, "badge": "🔒"},
+                    {"ticker": "🔒 SECRETO", "direcao": "-", "p0": 0.0, "alvo": 0.0, "ret": 0.0, "bonus": 0.0, "badge": "🔒"}
+                ]
+                c_oculto['tese'] = "🔒 A tese e os ativos estão ocultados até ao fecho das inscrições."
+                lista_segura.append(c_oculto)
+            else:
+                lista_segura.append(c)
+
+        return jsonify({"mes_ref": mes_ref, "janela_aberta": janela_aberta, "carteiras": lista_segura})
+
+    # POST: Submeter e Validar Carteira (Opção A + B + Distância Alvo)
+    if not janela_aberta:
+        return jsonify({"erro": "A janela de inscrição mensal está fechada (abre entre o dia 25 e o dia 5)."}), 403
+
+    body = request.json
+    entradas = [
+        (body.get('t1', ''), float(body.get('a1', 0)), "Large", 3.0),
+        (body.get('t2', ''), float(body.get('a2', 0)), "Mid", 5.0),
+        (body.get('t3', ''), float(body.get('a3', 0)), "Wildcard", 7.0)
+    ]
+    tese = body.get('tese', '')[:160]
+
+    tickers_unicos = {e[0].upper().strip() for e in entradas}
+    if len(tickers_unicos) != 3:
+        return jsonify({"erro": "Tens de escolher 3 cotadas diferentes."}), 400
+
+    slots_validados = []
+    setores_vistos = set()
+
+    for idx, (tk_str, alvo, escalao_exigido, dist_min) in enumerate(entradas):
+        try:
+            info = yf.Ticker(tk_str).info
+            preco = float(info.get('currentPrice') or info.get('regularMarketPrice') or info.get('previousClose') or 0)
+            mcap = float(info.get('marketCap', 0) or 0)
+            qtype = info.get('quoteType', '')
+        except Exception:
+            return jsonify({"erro": f"Não foi possível validar o ticker {tk_str} no Yahoo Finance."}), 400
+
+        if preco < 2.0:
+            return jsonify({"erro": f"{tk_str} é inválido ou negoceia abaixo de $2.00."}), 400
+
+        # Validar Escalão (Opção A) e Setor (Opção B)
+        if qtype == 'ETF':
+            if escalao_exigido != "Wildcard":
+                return jsonify({"erro": f"O ETF {tk_str} só pode ser usado no Slot 3 (Wildcard)."}), 400
+            setor = "ETF_Macro"
+            dist_min = 3.0
+        else:
+            setor = info.get('sector')
+            if not setor:
+                return jsonify({"erro": f"Não foi possível identificar o setor oficial de {tk_str}."}), 400
+            if escalao_exigido == "Large" and mcap < 50_000_000_000:
+                return jsonify({"erro": f"Slot 1 (Âncora): {tk_str} tem menos de 50B$ de Market Cap."}), 400
+            if escalao_exigido == "Mid" and not (2_000_000_000 <= mcap <= 50_000_000_000):
+                return jsonify({"erro": f"Slot 2 (Crescimento): {tk_str} tem de estar entre 2B$ e 50B$ de Market Cap."}), 400
+            if escalao_exigido == "Wildcard" and mcap < 500_000_000:
+                return jsonify({"erro": f"Slot 3 (Wildcard): {tk_str} tem menos de 500M$ de Market Cap."}), 400
+
+        if setor in setores_vistos:
+            return jsonify({"erro": f"Setor repetido ({setor})! As 3 cotadas têm de pertencer a 3 setores distintos."}), 400
+        setores_vistos.add(setor)
+
+        # Validar Travão de Distância do Preço-Alvo
+        dist_pct = abs(alvo - preco) / preco * 100.0
+        if dist_pct < dist_min:
+            return jsonify({
+                "erro": f"Alvo demasiado próximo em {tk_str} (Atual: ${preco:.2f} \vert{} Alvo:${alvo:.2f}). Distância mínima para o Slot {idx+1} é ±{dist_min:.0f}% (estás a {dist_pct:.1f}%)."
+            }), 400
+
+        direcao = "LONG" if alvo > preco else "SHORT"
+        slots_validados.append({
+            "ticker": tk_str, "setor": setor, "p0": round(preco, 2), "p_atual": round(preco, 2),
+            "alvo": round(alvo, 2), "direcao": direcao, "ret": 0.0, "bonus": 0.0,
+            "badge": "📈" if direcao == "LONG" else "📉"
+        })
+
+    dados_liga[mes_ref][user_id] = {
+        "user_id": user_id,
+        "username": username,
+        "mes_ref": mes_ref,
+        "tese": tese,
+        "slots": slots_validados,
+        "retorno_base": 0.0,
+        "bonus_total": 0.0,
+        "score_total": 0.0
+    }
+    guardar_dados_liga(dados_liga)
+
+    # Notificação automática na sala do Discord quando alguém submete (Gera FOMO!)
+    webhook_url = os.environ.get("WEBHOOK_LIGA") or os.environ.get("WEBHOOK_SNIPER")
+    if webhook_url:
+        try:
+            resumo_picks = " | ".join([f"**{s['ticker']}** ({s['direcao']} ➔ ${s['alvo']})" for s in slots_validados])
+            requests.post(webhook_url, json={
+                "embeds": [{
+                    "title": f"🚨 Nova Carteira na Liga Mensal ({mes_ref})",
+                    "color": 14922561,
+                    "description": f"O membro **{username}** acabou de bloquear os seus 3 ativos no Terminal:\n{resumo_picks}\n\n💬 *\"{tese}\"*",
+                    "footer": {"text": "Portal Bolsa — Submete a tua carteira no Separador 'Liga Mensal'"}
+                }]
+            }, timeout=3)
+        except Exception:
+            pass
+
+    return jsonify({"sucesso": True, "mensagem": f"Carteira validada! Setores: {', '.join(setores_vistos)}."})
+
+@app.route('/api/webhook/liga', methods=['POST'])
+@requer_cargo(nivel_minimo=2)
+def webhook_liga():
+    webhook_url = os.environ.get("WEBHOOK_LIGA") or os.environ.get("WEBHOOK_SNIPER")
+    if not webhook_url:
+        return jsonify({"erro": "Webhook não configurado no .env"}), 500
+
+    mes_ref = datetime.now().strftime("%Y-%m")
+    dados_liga = carregar_dados_liga()
+    ranking = atualizar_pontuacoes_liga(mes_ref, dados_liga)
+
+    if not ranking:
+        return jsonify({"erro": "Não existem carteiras submetidas este mês."}), 400
+
+    linhas_podio = []
+    for idx, c in enumerate(ranking[:10]):
+        med = "🥇" if idx == 0 else ("🥈" if idx == 1 else ("🥉" if idx == 2 else f"**{idx+1}.**"))
+        t_str = " · ".join([f"`{s['ticker']}` {s['badge']}" for s in c['slots']])
+        linhas_podio.append(
+            f"{med} **{c['username']}** — Score: **{c['score_total']:+.2f}%** *(Base: {c['retorno_base']:+.2f}% | Bónus: +{c['bonus_total']:.1f}%)*\n└ {t_str}"
+        )
+
+    embed = {
+        "embeds": [{
+            "title": f"🏆 CLASSIFICAÇÃO LIGA BOLSISTA — {mes_ref}",
+            "color": 14922561, # Dourado (#e3b341)
+            "description": "Atualização oficial das carteiras triplas (Retorno Médio + Bónus de Alvo Sniper):\n\n" + "\n\n".join(linhas_podio),
+            "footer": {"text": "Portal Bolsa - Consulta a tabela completa no Terminal Analítico Integrado"}
+        }]
+    }
+
+    try:
+        r = requests.post(webhook_url, json=embed, timeout=5)
+        r.raise_for_status()
+        return jsonify({"sucesso": True})
+    except Exception as e:
+        return jsonify({"erro": str(e)}), 500
+
+
 if __name__ == "__main__":
     import os
     
