@@ -5871,7 +5871,18 @@ function atualizarDiarioBordo() {
     }
     async function verificarAtivoLiga(ticker, divId, escalao) {
         const div = document.getElementById(divId);
-        if (!ticker) { div.innerHTML = ''; return; }
+        
+        // Identificar qual é o input que disparou a função
+        let inputId = 'liga-t1';
+        if (divId === 'info-t2') inputId = 'liga-t2';
+        if (divId === 'info-t3') inputId = 'liga-t3';
+        const currentInput = document.getElementById(inputId);
+
+        if (!ticker) { 
+            div.innerHTML = ''; 
+            currentInput.dataset.setor = ''; // Limpa a memória se apagares o texto
+            return; 
+        }
         
         div.innerHTML = 'A extrair dados na bolsa...';
         div.style.color = '#8b949e';
@@ -5881,14 +5892,17 @@ function atualizarDiarioBordo() {
             if (!resp.ok) { 
                 div.innerHTML = '⚠️ Ticker não encontrado ou inválido'; 
                 div.style.color = '#d9534f'; 
+                currentInput.dataset.setor = '';
                 return; 
             }
             
             const dados = await resp.json();
+            currentInput.dataset.setor = dados.setor; // Guarda o setor em memória no próprio input
+            
             let msgEscalao = '';
             let corEscalao = '#5cb85c';
             
-            // Lógica de Auditoria Front-End
+            // Lógica de Auditoria Front-End do Market Cap
             if (escalao === 'Large') {
                 if (dados.mcap_raw < 50000000000) { msgEscalao = '❌ Requer >50B$'; corEscalao = '#d9534f'; }
                 else { msgEscalao = '✅ Market Cap Válido'; }
@@ -5899,13 +5913,26 @@ function atualizarDiarioBordo() {
                 if (dados.qtype !== 'ETF' && dados.mcap_raw < 500000000) { msgEscalao = '❌ Requer >500M$'; corEscalao = '#d9534f'; }
                 else { msgEscalao = '✅ Market Cap/ETF Válido'; }
             }
+
+            // NOVA LÓGICA: Deteção de Colisão Setorial em Tempo Real
+            let msgColisao = '';
+            let inputs = ['liga-t1', 'liga-t2', 'liga-t3'];
+            for (let id of inputs) {
+                if (id !== inputId) {
+                    let outroInput = document.getElementById(id);
+                    // Compara com os outros inputs (ignora ETFs macro, pois esses não colidem)
+                    if (outroInput.value.trim() !== '' && outroInput.dataset.setor === dados.setor && dados.setor !== 'ETF_Macro') {
+                        msgColisao = `<br><span style="color: #d9534f; font-weight: bold;">❌ Setor repetido (Colide com ${outroInput.value.toUpperCase()})</span>`;
+                    }
+                }
+            }
             
             div.style.color = '#c9d1d9';
-            // Injeta o Preço, o Market Cap, o Setor e o Veredicto
+            // Injeta a UI final
             div.innerHTML = `
                 Preço: <strong>$${dados.preco.toFixed(2)}</strong> | Cap: <strong>${dados.mcap_fmt}$</strong><br>
                 Setor: <strong style="color:#58a6ff;">${dados.setor}</strong><br>
-                <span style="color: ${corEscalao};">${msgEscalao}</span>
+                <span style="color: ${corEscalao};">${msgEscalao}</span>${msgColisao}
             `;
             
         } catch (e) {
