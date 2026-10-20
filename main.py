@@ -2592,7 +2592,7 @@ def api_liga():
         dist_pct = abs(alvo - preco) / preco * 100.0
         if dist_pct < dist_min:
             return jsonify({
-                "erro": f"Alvo demasiado próximo em {tk_str} (Atual: ${preco:.2f} \vert{} Alvo:${alvo:.2f}). Distância mínima para o Slot {idx+1} é ±{dist_min:.0f}% (estás a {dist_pct:.1f}%)."
+                "erro": f"Alvo demasiado próximo em {tk_str} (Atual: ${preco:.2f} | Alvo: ${alvo:.2f}). Distância mínima para o Slot {idx+1} é ±{dist_min:.0f}% (estás a {dist_pct:.1f}%)."
             }), 400
 
         direcao = "LONG" if alvo > preco else "SHORT"
