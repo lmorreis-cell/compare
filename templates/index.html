@@ -296,6 +296,9 @@
 
             <button class="tab-btn" onclick="abrirSeparador(event, 'tab-risco'); carregarLaboratorioRisco();">🛡️ Risco & Stress</button>
             <button class="tab-btn" onclick="abrirSeparador(event, 'tab-diario'); atualizarDiarioBordo();">📓 Diário de Bordo</button>
+            
+            <button class="tab-btn" onclick="abrirSeparador(event, 'tab-liga'); carregarLiga();" style="color: #e3b341;">🏆 Liga Mensal</button>
+        </div>
         </div>
 
     <!-- ==========================================
@@ -1314,6 +1317,122 @@
             </table>
         </div>
     </div>
+
+    <!-- SEPARADOR 9: LIGA MENSAL DE CARTEIRAS -->
+<div id="tab-liga" class="tab-content">
+    
+    <!-- CABEÇALHO E REGRAS OFICIAIS -->
+    <div style="background-color: #161b22; border: 1px solid #30363d; border-left: 4px solid #e3b341; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+            <div>
+                <h3 style="margin: 0; font-size: 16px; color: #e3b341; text-transform: uppercase;">
+                    🏆 Campeonato Mensal de Alocação (3 Setores + Alvos Sniper)
+                </h3>
+                <p style="margin: 5px 0 0 0; font-size: 12px; color: #8b949e;">
+                    Constrói uma carteira descorrelacionada de 3 ativos. Se definires um preço-alvo abaixo da cotação atual, o motor abre automaticamente posição <strong>SHORT</strong>.
+                </p>
+            </div>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <span id="liga-mes-badge" style="background: #232d3f; color: #58a6ff; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: bold;">Mês Ativo</span>
+                <button onclick="transmitirLigaDiscord()" class="btn-moderno" style="background: #5865F2; color: white; padding: 8px 15px; font-size: 12px;">
+                    📡 Lançar Notas no Discord
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FORMULÁRIO DE SUBMISSÃO DA CARTEIRA -->
+    <div class="painel-controlo borda-azul" id="painel-submissao-liga">
+        <h4 style="margin: 0 0 15px 0; color: #f0f2f5; font-size: 14px; text-transform: uppercase;">
+            🎯 Registar / Atualizar a Minha Carteira do Mês
+        </h4>
+
+        <div class="linha-inputs" style="background: #0d1117; padding: 15px; border-radius: 8px; border: 1px solid #30363d; margin-top: 0;">
+            <!-- SLOT 1: LARGE CAP -->
+            <div style="flex: 1; min-width: 200px;">
+                <label style="display: block; font-size: 11px; color: #58a6ff; margin-bottom: 5px; font-weight: bold;">
+                    1. ÂNCORA (Large Cap >50B$ | Alvo mín. ±3%)
+                </label>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="liga-t1" class="input-moderno" list="dl-liga-t1" placeholder="Ticker (Ex: MSFT)" oninput="pesquisarTickerInteligente(this, 'dl-liga-t1')" style="text-transform: uppercase;">
+                    <datalist id="dl-liga-t1"></datalist>
+                    <input type="number" id="liga-a1" class="input-moderno" placeholder="Alvo ($/€)" step="0.01" style="max-width: 105px;">
+                </div>
+            </div>
+
+            <!-- SLOT 2: MID CAP -->
+            <div style="flex: 1; min-width: 200px;">
+                <label style="display: block; font-size: 11px; color: #f28b24; margin-bottom: 5px; font-weight: bold;">
+                    2. CRESCIMENTO (Mid 2B-50B$ | Alvo mín. ±5%)
+                </label>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="liga-t2" class="input-moderno" list="dl-liga-t2" placeholder="Ticker (Ex: SOFI)" oninput="pesquisarTickerInteligente(this, 'dl-liga-t2')" style="text-transform: uppercase;">
+                    <datalist id="dl-liga-t2"></datalist>
+                    <input type="number" id="liga-a2" class="input-moderno" placeholder="Alvo ($/€)" step="0.01" style="max-width: 105px;">
+                </div>
+            </div>
+
+            <!-- SLOT 3: WILDCARD -->
+            <div style="flex: 1; min-width: 200px;">
+                <label style="display: block; font-size: 11px; color: #b388ff; margin-bottom: 5px; font-weight: bold;">
+                    3. WILDCARD (>500M$ ou ETF | Alvo ±7% / ±3%)
+                </label>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="liga-t3" class="input-moderno" list="dl-liga-t3" placeholder="Ticker (Ex: GLD)" oninput="pesquisarTickerInteligente(this, 'dl-liga-t3')" style="text-transform: uppercase;">
+                    <datalist id="dl-liga-t3"></datalist>
+                    <input type="number" id="liga-a3" class="input-moderno" placeholder="Alvo ($/€)" step="0.01" style="max-width: 105px;">
+                </div>
+            </div>
+        </div>
+
+        <div class="linha-inputs" style="margin-top: 12px;">
+            <input type="text" id="liga-tese" class="input-moderno" placeholder="Racional / Catalisador da Carteira (Máx. 160 caracteres) — Vai aparecer no Discord!" maxlength="160">
+            <button onclick="submeterCarteiraLiga()" id="btn-submeter-liga" class="btn-moderno" style="background: #238636; color: white;">
+                🔒 Validar & Gravar Carteira
+            </button>
+        </div>
+        <div id="liga-feedback" style="display: none; margin-top: 12px; padding: 10px 15px; border-radius: 6px; font-size: 12px; font-weight: bold;"></div>
+    </div>
+
+    <!-- TABELA COMPARATIVA E LEADERBOARD -->
+    <div style="background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+            <h4 style="margin: 0; color: #f0f2f5; font-size: 14px; text-transform: uppercase;">
+                📊 Classificação em Tempo Real (Retorno Base + Bónus de Alvo)
+            </h4>
+            <button onclick="carregarLiga(true)" class="btn-moderno" style="background: #232d3f; color: #58a6ff; border: 1px solid #30363d; padding: 6px 14px; font-size: 11px;">
+                🔄 Recalcular Cotações Agora
+            </button>
+        </div>
+
+        <div id="loading-liga" style="display: none; text-align: center; color: #e3b341; padding: 25px; font-size: 13px; font-weight: bold;">
+            📡 A auditar máximos/mínimos mensais e a calcular bónus Sniper no Yahoo Finance...
+        </div>
+
+        <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 6px; overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 0;">
+                <thead style="background: #161b22; color: #8b949e; text-transform: uppercase; font-size: 11px;">
+                    <tr>
+                        <th style="padding: 12px;">#</th>
+                        <th style="padding: 12px;">Membro</th>
+                        <th style="padding: 12px;">1. Âncora</th>
+                        <th style="padding: 12px;">2. Crescimento</th>
+                        <th style="padding: 12px;">3. Wildcard</th>
+                        <th style="padding: 12px; text-align: right;">Retorno Base</th>
+                        <th style="padding: 12px; text-align: center;">Bónus Alvos</th>
+                        <th style="padding: 12px; text-align: right;">Score Total</th>
+                        <th style="padding: 12px;">Tese</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody-liga"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+
+
+    
 </div>
 
         
