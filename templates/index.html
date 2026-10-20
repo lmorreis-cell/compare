@@ -5738,7 +5738,130 @@ function atualizarDiarioBordo() {
     document.addEventListener('DOMContentLoaded', () => {
         carregarWatchlist(); // <--- INJETA ESTA CHAMADA NO TEU DOMContentLoaded
     });
-            
+
+    // ==========================================
+    // MOTOR CLIENT-SIDE DA LIGA MENSAL
+    // ==========================================
+    async function carregarLiga(forcarRecalculo = false) {
+        const tbody = document.getElementById('tbody-liga');
+        const loading = document.getElementById('loading-liga');
+        const badgeMes = document.getElementById('liga-mes-badge');
+
+        loading.style.display = 'block';
+        try {
+            const url = forcarRecalculo ? '/api/liga?atualizar=1' : '/api/liga';
+            const resp = await fetch(url);
+            const dados = await resp.json();
+            loading.style.display = 'none';
+
+            if (dados.erro) {
+                tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:#d9534f; padding:20px;">${dados.erro}</td></tr>`;
+                return;
+            }
+
+            badgeMes.innerText = `Edição: ${dados.mes_ref} ${dados.janela_aberta ? '🟢 Inscrições Abertas' : '🔒 Em Curso'}`;
+
+            if (!dados.carteiras || dados.carteiras.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#8b949e; padding:20px;">Ainda ninguém submeteu carteira para este mês. Sê o primeiro!</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = dados.carteiras.map((c, idx) => {
+                const medalha = idx === 0 ? '🥇' : (idx === 1 ? '🥈' : (idx === 2 ? '🥉' : `${idx + 1}º`));
+                const corScore = c.score_total >= 0 ? '#5cb85c' : '#d9534f';
+                const corRet = c.retorno_base >= 0 ? '#5cb85c' : '#d9534f';
+
+                const fmtSlot = (s) => `
+                    <div><strong style="color:#fff;">${s.ticker}</strong> <span style="font-size:10px; color:${s.direcao === 'LONG' ? '#5cb85c' : '#d9534f'};">[${s.direcao}]</span></div>
+                    <div style="font-size:10px; color:#8b949e;">$${s.p0.toFixed(2)} ➔ Alvo: $${s.alvo.toFixed(2)}</div>
+                    <div style="font-size:11px; font-weight:bold; color:${s.ret >= 0 ? '#5cb85c' : '#d9534f'};">${s.badge} ${s.ret >= 0 ? '+' : ''}${s.ret.toFixed(2)}%</div>
+                `;
+
+                return `
+                    <tr style="border-bottom: 1px solid #21262d;">
+                        <td style="padding: 12px; font-weight: bold; font-size: 14px;">${medalha}</td>
+                        <td style="padding: 12px; font-weight: bold; color: #58a6ff;">${c.username}</td>
+                        <td style="padding: 12px;">${fmtSlot(c.slots[0])}</td>
+                        <td style="padding: 12px;">${fmtSlot(c.slots[1])}</td>
+                        <td style="padding: 12px;">${fmtSlot(c.slots[2])}</td>
+                        <td style="padding: 12px; text-align: right; font-weight: bold; color: ${corRet};">${c.retorno_base >= 0 ? '+' : ''}${c.retorno_base.toFixed(2)}%</td>
+                        <td style="padding: 12px; text-align: center;"><span style="background:#232d3f; color:#e3b341; padding:3px 8px; border-radius:4px; font-weight:bold;">+${c.bonus_total.toFixed(1)}%</span></td>
+                        <td style="padding: 12px; text-align: right; font-size: 14px; font-weight: 900; color: ${corScore};">${c.score_total >= 0 ? '+' : ''}${c.score_total.toFixed(2)}%</td>
+                        <td style="padding: 12px; color: #8b949e; font-style: italic; max-width: 220px;">"${c.tese}"</td>
+                    </tr>
+                `;
+            }).join('');
+        } catch (e) {
+            loading.style.display = 'none';
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#d9534f;">Erro ao carregar classificação.</td></tr>';
+        }
+    }
+
+    async function submeterCarteiraLiga() {
+        const feedback = document.getElementById('liga-feedback');
+        const btn = document.getElementById('btn-submeter-liga');
+        
+        const payload = {
+            t1: document.getElementById('liga-t1').value.trim().toUpperCase(),
+            a1: parseFloat(document.getElementById('liga-a1').value),
+            t2: document.getElementById('liga-t2').value.trim().toUpperCase(),
+            a2: parseFloat(document.getElementById('liga-a2').value),
+            t3: document.getElementById('liga-t3').value.trim().toUpperCase(),
+            a3: parseFloat(document.getElementById('liga-a3').value),
+            tese: document.getElementById('liga-tese').value.trim()
+        };
+
+        if (!payload.t1 || !payload.t2 || !payload.t3 || isNaN(payload.a1) || isNaN(payload.a2) || isNaN(payload.a3) || !payload.tese) {
+            alert("⚠️ Preenche os 3 Tickers, os 3 Preços-Alvo e a Tese!");
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerText = "⏳ A Validar Setores & Market Cap...";
+        feedback.style.display = 'none';
+
+        try {
+            const resp = await fetch('/api/liga', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const res = await resp.json();
+            btn.disabled = false;
+            btn.innerText = "🔒 Validar & Gravar Carteira";
+
+            feedback.style.display = 'block';
+            if (!resp.ok || res.erro) {
+                feedback.style.background = 'rgba(217, 83, 79, 0.15)';
+                feedback.style.color = '#d9534f';
+                feedback.style.borderLeft = '4px solid #d9534f';
+                feedback.innerText = "❌ " + (res.erro || "Falha na validação.");
+                return;
+            }
+
+            feedback.style.background = 'rgba(92, 184, 92, 0.15)';
+            feedback.style.color = '#5cb85c';
+            feedback.style.borderLeft = '4px solid #5cb85c';
+            feedback.innerText = "✅ " + res.mensagem;
+            carregarLiga(true);
+        } catch (e) {
+            btn.disabled = false;
+            btn.innerText = "🔒 Validar & Gravar Carteira";
+            alert("Erro de comunicação com o servidor.");
+        }
+    }
+
+    async function transmitirLigaDiscord() {
+        if (!confirm("Queres lançar o Boletim Atualizado da Liga Mensal na sala do Discord?")) return;
+        try {
+            const resp = await fetch('/api/webhook/liga', { method: 'POST' });
+            const dados = await resp.json();
+            if (resp.ok) alert("📡 Notas da Liga transmitidas para o Discord com sucesso!");
+            else alert("⚠️ Erro: " + (dados.erro || "Falha no envio."));
+        } catch (e) {
+            alert("Erro de ligação ao servidor.");
+        }
+    }
 </script>
 
     
