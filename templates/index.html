@@ -1351,41 +1351,46 @@
         <div style="display: flex; flex-direction: column; gap: 12px; background: #0d1117; padding: 15px; border-radius: 8px; border: 1px solid #30363d;">
             
             <!-- SLOT 1: LARGE CAP -->
-            <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;">
-                <label style="font-size: 11px; color: #58a6ff; font-weight: bold; min-width: 200px; flex: 1;">
-                    1. ÂNCORA (<span style="color:#8b949e;">>50B$ | Alvo ±3%</span>)
+            <div>
+                <label style="display: block; font-size: 10px; color: #58a6ff; margin-bottom: 6px; font-weight: bold;">
+                    1. ÂNCORA (>50B$ | Alvo ±3%)
                 </label>
-                <div style="display: flex; gap: 8px; flex: 2; min-width: 250px;">
-                    <input type="text" id="liga-t1" class="input-moderno" list="dl-liga-t1" placeholder="Ticker (Ex: MSFT)" oninput="pesquisarTickerInteligente(this, 'dl-liga-t1')" style="text-transform: uppercase; padding: 8px 10px; font-size: 12px;">
+                <div style="display: flex; gap: 6px;">
+                    <input type="text" id="liga-t1" class="input-moderno" list="dl-liga-t1" placeholder="Ex: MSFT" oninput="pesquisarTickerInteligente(this, 'dl-liga-t1')" onchange="verificarAtivoLiga(this.value, 'info-t1', 'Large')" style="text-transform: uppercase; min-width: 0; padding: 8px 10px; font-size: 12px;">
                     <datalist id="dl-liga-t1"></datalist>
-                    <input type="number" id="liga-a1" class="input-moderno" placeholder="Alvo ($/€)" step="0.01" style="max-width: 110px; padding: 8px 10px; font-size: 12px;">
+                    <input type="number" id="liga-a1" class="input-moderno" placeholder="Alvo $" step="0.01" style="max-width: 80px; min-width: 70px; padding: 8px 10px; font-size: 12px;">
                 </div>
+                <!-- NOVO: ZONA DE PRÉ-VALIDAÇÃO -->
+                <div id="info-t1" style="font-size: 10px; color: #8b949e; margin-top: 6px; min-height: 14px;"></div>
             </div>
 
             <!-- SLOT 2: MID CAP -->
-            <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; border-top: 1px dashed #21262d; padding-top: 10px;">
-                <label style="font-size: 11px; color: #f28b24; font-weight: bold; min-width: 200px; flex: 1;">
-                    2. CRESCIMENTO (<span style="color:#8b949e;">2-50B$ | Alvo ±5%</span>)
+            <div>
+                <label style="display: block; font-size: 10px; color: #f28b24; margin-bottom: 6px; font-weight: bold;">
+                    2. CRESCIMENTO (2-50B$ | ±5%)
                 </label>
-                <div style="display: flex; gap: 8px; flex: 2; min-width: 250px;">
-                    <input type="text" id="liga-t2" class="input-moderno" list="dl-liga-t2" placeholder="Ticker (Ex: SOFI)" oninput="pesquisarTickerInteligente(this, 'dl-liga-t2')" style="text-transform: uppercase; padding: 8px 10px; font-size: 12px;">
+                <div style="display: flex; gap: 6px;">
+                    <input type="text" id="liga-t2" class="input-moderno" list="dl-liga-t2" placeholder="Ex: SOFI" oninput="pesquisarTickerInteligente(this, 'dl-liga-t2')" onchange="verificarAtivoLiga(this.value, 'info-t2', 'Mid')" style="text-transform: uppercase; min-width: 0; padding: 8px 10px; font-size: 12px;">
                     <datalist id="dl-liga-t2"></datalist>
-                    <input type="number" id="liga-a2" class="input-moderno" placeholder="Alvo ($/€)" step="0.01" style="max-width: 110px; padding: 8px 10px; font-size: 12px;">
+                    <input type="number" id="liga-a2" class="input-moderno" placeholder="Alvo $" step="0.01" style="max-width: 80px; min-width: 70px; padding: 8px 10px; font-size: 12px;">
                 </div>
+                <!-- NOVO: ZONA DE PRÉ-VALIDAÇÃO -->
+                <div id="info-t2" style="font-size: 10px; color: #8b949e; margin-top: 6px; min-height: 14px;"></div>
             </div>
 
             <!-- SLOT 3: WILDCARD -->
-            <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; border-top: 1px dashed #21262d; padding-top: 10px;">
-                <label style="font-size: 11px; color: #b388ff; font-weight: bold; min-width: 200px; flex: 1;">
-                    3. WILDCARD (<span style="color:#8b949e;">>500M$ ou ETF | ±7%</span>)
+            <div>
+                <label style="display: block; font-size: 10px; color: #b388ff; margin-bottom: 6px; font-weight: bold;">
+                    3. WILDCARD (Livre/ETF | ±7%)
                 </label>
-                <div style="display: flex; gap: 8px; flex: 2; min-width: 250px;">
-                    <input type="text" id="liga-t3" class="input-moderno" list="dl-liga-t3" placeholder="Ticker (Ex: GLD)" oninput="pesquisarTickerInteligente(this, 'dl-liga-t3')" style="text-transform: uppercase; padding: 8px 10px; font-size: 12px;">
+                <div style="display: flex; gap: 6px;">
+                    <input type="text" id="liga-t3" class="input-moderno" list="dl-liga-t3" placeholder="Ex: GLD" oninput="pesquisarTickerInteligente(this, 'dl-liga-t3')" onchange="verificarAtivoLiga(this.value, 'info-t3', 'Wildcard')" style="text-transform: uppercase; min-width: 0; padding: 8px 10px; font-size: 12px;">
                     <datalist id="dl-liga-t3"></datalist>
-                    <input type="number" id="liga-a3" class="input-moderno" placeholder="Alvo ($/€)" step="0.01" style="max-width: 110px; padding: 8px 10px; font-size: 12px;">
+                    <input type="number" id="liga-a3" class="input-moderno" placeholder="Alvo $" step="0.01" style="max-width: 80px; min-width: 70px; padding: 8px 10px; font-size: 12px;">
                 </div>
+                <!-- NOVO: ZONA DE PRÉ-VALIDAÇÃO -->
+                <div id="info-t3" style="font-size: 10px; color: #8b949e; margin-top: 6px; min-height: 14px;"></div>
             </div>
-
         </div>
 
         <div class="linha-inputs" style="margin-top: 15px;">
@@ -5862,6 +5867,49 @@ function atualizarDiarioBordo() {
             else alert("⚠️ Erro: " + (dados.erro || "Falha no envio."));
         } catch (e) {
             alert("Erro de ligação ao servidor.");
+        }
+    }
+    async function verificarAtivoLiga(ticker, divId, escalao) {
+        const div = document.getElementById(divId);
+        if (!ticker) { div.innerHTML = ''; return; }
+        
+        div.innerHTML = 'A extrair dados na bolsa...';
+        div.style.color = '#8b949e';
+        
+        try {
+            const resp = await fetch(`/api/info_rapida/${ticker.toUpperCase()}`);
+            if (!resp.ok) { 
+                div.innerHTML = '⚠️ Ticker não encontrado ou inválido'; 
+                div.style.color = '#d9534f'; 
+                return; 
+            }
+            
+            const dados = await resp.json();
+            let msgEscalao = '';
+            let corEscalao = '#5cb85c';
+            
+            // Lógica de Auditoria Front-End
+            if (escalao === 'Large') {
+                if (dados.mcap_raw < 50000000000) { msgEscalao = '❌ Requer >50B$'; corEscalao = '#d9534f'; }
+                else { msgEscalao = '✅ Market Cap Válido'; }
+            } else if (escalao === 'Mid') {
+                if (dados.mcap_raw < 2000000000 || dados.mcap_raw > 50000000000) { msgEscalao = '❌ Requer 2B$ a 50B$'; corEscalao = '#d9534f'; }
+                else { msgEscalao = '✅ Market Cap Válido'; }
+            } else if (escalao === 'Wildcard') {
+                if (dados.qtype !== 'ETF' && dados.mcap_raw < 500000000) { msgEscalao = '❌ Requer >500M$'; corEscalao = '#d9534f'; }
+                else { msgEscalao = '✅ Market Cap/ETF Válido'; }
+            }
+            
+            div.style.color = '#c9d1d9';
+            // Injeta o Preço, o Market Cap, o Setor e o Veredicto
+            div.innerHTML = `
+                Preço: <strong>$${dados.preco.toFixed(2)}</strong> | Cap: <strong>${dados.mcap_fmt}$</strong><br>
+                Setor: <strong style="color:#58a6ff;">${dados.setor}</strong><br>
+                <span style="color: ${corEscalao};">${msgEscalao}</span>
+            `;
+            
+        } catch (e) {
+            div.innerHTML = 'Erro ao contactar o mercado.';
         }
     }
 </script>
