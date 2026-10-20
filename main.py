@@ -2624,12 +2624,18 @@ def api_liga():
     webhook_url = os.environ.get("WEBHOOK_LIGA") or os.environ.get("WEBHOOK_SNIPER")
     if webhook_url:
         try:
-            resumo_picks = " | ".join([f"**{s['ticker']}** ({s['direcao']} ➔ ${s['alvo']})" for s in slots_validados])
+            # Lógica de Censura no Discord: Esconde os tickers se a janela estiver aberta
+            if janela_aberta:
+                texto_discord = f"O membro **{username}** acabou de bloquear a sua carteira no Terminal!\n\n🔒 **[ 3 ATIVOS SECRETOS ]**\n\n💬 *\"{tese}\"*"
+            else:
+                resumo_picks = " | ".join([f"**{s['ticker']}** ({s['direcao']} ➔ ${s['alvo']})" for s in slots_validados])
+                texto_discord = f"O membro **{username}** acabou de bloquear os seus 3 ativos no Terminal:\n{resumo_picks}\n\n💬 *\"{tese}\"*"
+
             requests.post(webhook_url, json={
                 "embeds": [{
                     "title": f"🚨 Nova Carteira na Liga Mensal ({mes_ref})",
                     "color": 14922561,
-                    "description": f"O membro **{username}** acabou de bloquear os seus 3 ativos no Terminal:\n{resumo_picks}\n\n💬 *\"{tese}\"*",
+                    "description": texto_discord,
                     "footer": {"text": "Portal Bolsa — Submete a tua carteira no Separador 'Liga Mensal'"}
                 }]
             }, timeout=3)
