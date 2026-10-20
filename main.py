@@ -2553,7 +2553,8 @@ def api_liga():
         return jsonify({"erro": "Tens de escolher 3 cotadas diferentes."}), 400
 
     slots_validados = []
-    setores_vistos = set()
+    # SUBSTITUI O SET POR UM DICIONÁRIO DE RASTREIO
+    mapa_setores = {}
 
     for idx, (tk_str, alvo, escalao_exigido, dist_min) in enumerate(entradas):
         try:
@@ -2584,9 +2585,14 @@ def api_liga():
             if escalao_exigido == "Wildcard" and mcap < 500_000_000:
                 return jsonify({"erro": f"Slot 3 (Wildcard): {tk_str} tem menos de 500M$ de Market Cap."}), 400
 
-        if setor in setores_vistos:
-            return jsonify({"erro": f"Setor repetido ({setor})! As 3 cotadas têm de pertencer a 3 setores distintos."}), 400
-        setores_vistos.add(setor)
+        # A NOVA LÓGICA DE COLISÃO EXPLICATIVA
+        if setor not in mapa_setores:
+            mapa_setores[setor] = []
+        mapa_setores[setor].append(tk_str)
+
+        if len(mapa_setores[setor]) > 1:
+            tks_repetidos = " e ".join(mapa_setores[setor])
+            return jsonify({"erro": f"Colisão de Setor! As ações {tks_repetidos} pertencem ambas ao setor '{setor}'. Substitui uma delas."}), 400
 
         # Validar Travão de Distância do Preço-Alvo
         dist_pct = abs(alvo - preco) / preco * 100.0
@@ -2631,6 +2637,32 @@ def api_liga():
             pass
 
     return jsonify({"sucesso": True, "mensagem": f"Carteira validada! Setores: {', '.join(setores_vistos)}."})
+
+@app.route('/api/info_rapida/<ticker>')
+@cache.cached(timeout=86400) # Cache de 24h poupa imensos recursos
+def api_info_rapida(ticker):
+    try:
+        info = yf.Ticker(ticker).info
+        mcap = float(info.get('marketCap', 0))
+        preco = float(info.get('currentPrice') or info.get('regularMarketPrice') or info.get('previousClose') or 0)
+        qtype = info.get('quoteType', '')
+        setor = "ETF" if qtype == 'ETF' else info.get('sector', 'Desconhecido')
+        
+        def formatar_mcap(v):
+            if v >= 1e12: return f"{v/1e12:.2f}T"
+            if v >= 1e9: return f"{v/1e9:.1f}B"
+            if v >= 1e6: return f"{v/1e6:.1f}M"
+            return str(v)
+            
+        return jsonify({
+            "preco": round(preco, 2),
+            "setor": setor,
+            "mcap_raw": mcap,
+            "mcap_fmt": formatar_mcap(mcap),
+            "qtype": qtype
+        })
+    except Exception:
+        return jsonify({"erro": "Ativo não encontrado."}), 400
 
 @app.route('/api/webhook/liga', methods=['POST'])
 @requer_cargo(nivel_minimo=2)
