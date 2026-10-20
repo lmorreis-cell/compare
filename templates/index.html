@@ -1343,52 +1343,54 @@
     </div>
 
     <!-- FORMULÁRIO DE SUBMISSÃO DA CARTEIRA -->
-    <div class="painel-controlo borda-azul" id="painel-submissao-liga">
+    <div class="painel-controlo borda-azul" id="painel-submissao-liga" style="padding: 20px;">
         <h4 style="margin: 0 0 15px 0; color: #f0f2f5; font-size: 14px; text-transform: uppercase;">
             🎯 Registar / Atualizar a Minha Carteira do Mês
         </h4>
 
-        <div class="linha-inputs" style="background: #0d1117; padding: 15px; border-radius: 8px; border: 1px solid #30363d; margin-top: 0;">
+        <div style="display: flex; flex-direction: column; gap: 12px; background: #0d1117; padding: 15px; border-radius: 8px; border: 1px solid #30363d;">
+            
             <!-- SLOT 1: LARGE CAP -->
-            <div style="flex: 1; min-width: 200px;">
-                <label style="display: block; font-size: 11px; color: #58a6ff; margin-bottom: 5px; font-weight: bold;">
-                    1. ÂNCORA (Large Cap >50B$ | Alvo mín. ±3%)
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;">
+                <label style="font-size: 11px; color: #58a6ff; font-weight: bold; min-width: 200px; flex: 1;">
+                    1. ÂNCORA (<span style="color:#8b949e;">>50B$ | Alvo ±3%</span>)
                 </label>
-                <div style="display: flex; gap: 8px;">
-                    <input type="text" id="liga-t1" class="input-moderno" list="dl-liga-t1" placeholder="Ticker (Ex: MSFT)" oninput="pesquisarTickerInteligente(this, 'dl-liga-t1')" style="text-transform: uppercase;">
+                <div style="display: flex; gap: 8px; flex: 2; min-width: 250px;">
+                    <input type="text" id="liga-t1" class="input-moderno" list="dl-liga-t1" placeholder="Ticker (Ex: MSFT)" oninput="pesquisarTickerInteligente(this, 'dl-liga-t1')" style="text-transform: uppercase; padding: 8px 10px; font-size: 12px;">
                     <datalist id="dl-liga-t1"></datalist>
-                    <input type="number" id="liga-a1" class="input-moderno" placeholder="Alvo ($/€)" step="0.01" style="max-width: 105px;">
+                    <input type="number" id="liga-a1" class="input-moderno" placeholder="Alvo ($/€)" step="0.01" style="max-width: 110px; padding: 8px 10px; font-size: 12px;">
                 </div>
             </div>
 
             <!-- SLOT 2: MID CAP -->
-            <div style="flex: 1; min-width: 200px;">
-                <label style="display: block; font-size: 11px; color: #f28b24; margin-bottom: 5px; font-weight: bold;">
-                    2. CRESCIMENTO (Mid 2B-50B$ | Alvo mín. ±5%)
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; border-top: 1px dashed #21262d; padding-top: 10px;">
+                <label style="font-size: 11px; color: #f28b24; font-weight: bold; min-width: 200px; flex: 1;">
+                    2. CRESCIMENTO (<span style="color:#8b949e;">2-50B$ | Alvo ±5%</span>)
                 </label>
-                <div style="display: flex; gap: 8px;">
-                    <input type="text" id="liga-t2" class="input-moderno" list="dl-liga-t2" placeholder="Ticker (Ex: SOFI)" oninput="pesquisarTickerInteligente(this, 'dl-liga-t2')" style="text-transform: uppercase;">
+                <div style="display: flex; gap: 8px; flex: 2; min-width: 250px;">
+                    <input type="text" id="liga-t2" class="input-moderno" list="dl-liga-t2" placeholder="Ticker (Ex: SOFI)" oninput="pesquisarTickerInteligente(this, 'dl-liga-t2')" style="text-transform: uppercase; padding: 8px 10px; font-size: 12px;">
                     <datalist id="dl-liga-t2"></datalist>
-                    <input type="number" id="liga-a2" class="input-moderno" placeholder="Alvo ($/€)" step="0.01" style="max-width: 105px;">
+                    <input type="number" id="liga-a2" class="input-moderno" placeholder="Alvo ($/€)" step="0.01" style="max-width: 110px; padding: 8px 10px; font-size: 12px;">
                 </div>
             </div>
 
             <!-- SLOT 3: WILDCARD -->
-            <div style="flex: 1; min-width: 200px;">
-                <label style="display: block; font-size: 11px; color: #b388ff; margin-bottom: 5px; font-weight: bold;">
-                    3. WILDCARD (>500M$ ou ETF | Alvo ±7% / ±3%)
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; border-top: 1px dashed #21262d; padding-top: 10px;">
+                <label style="font-size: 11px; color: #b388ff; font-weight: bold; min-width: 200px; flex: 1;">
+                    3. WILDCARD (<span style="color:#8b949e;">>500M$ ou ETF | ±7%</span>)
                 </label>
-                <div style="display: flex; gap: 8px;">
-                    <input type="text" id="liga-t3" class="input-moderno" list="dl-liga-t3" placeholder="Ticker (Ex: GLD)" oninput="pesquisarTickerInteligente(this, 'dl-liga-t3')" style="text-transform: uppercase;">
+                <div style="display: flex; gap: 8px; flex: 2; min-width: 250px;">
+                    <input type="text" id="liga-t3" class="input-moderno" list="dl-liga-t3" placeholder="Ticker (Ex: GLD)" oninput="pesquisarTickerInteligente(this, 'dl-liga-t3')" style="text-transform: uppercase; padding: 8px 10px; font-size: 12px;">
                     <datalist id="dl-liga-t3"></datalist>
-                    <input type="number" id="liga-a3" class="input-moderno" placeholder="Alvo ($/€)" step="0.01" style="max-width: 105px;">
+                    <input type="number" id="liga-a3" class="input-moderno" placeholder="Alvo ($/€)" step="0.01" style="max-width: 110px; padding: 8px 10px; font-size: 12px;">
                 </div>
             </div>
+
         </div>
 
-        <div class="linha-inputs" style="margin-top: 12px;">
-            <input type="text" id="liga-tese" class="input-moderno" placeholder="Racional / Catalisador da Carteira (Máx. 160 caracteres) — Vai aparecer no Discord!" maxlength="160">
-            <button onclick="submeterCarteiraLiga()" id="btn-submeter-liga" class="btn-moderno" style="background: #238636; color: white;">
+        <div class="linha-inputs" style="margin-top: 15px;">
+            <input type="text" id="liga-tese" class="input-moderno" placeholder="Racional / Catalisador da Carteira (Máx. 160 caracteres)" maxlength="160" style="padding: 10px 14px; font-size: 12px;">
+            <button onclick="submeterCarteiraLiga()" id="btn-submeter-liga" class="btn-moderno" style="background: #238636; color: white; padding: 10px 20px; font-size: 12px;">
                 🔒 Validar & Gravar Carteira
             </button>
         </div>
