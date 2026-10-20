@@ -2636,7 +2636,7 @@ def api_liga():
         except Exception:
             pass
 
-    return jsonify({"sucesso": True, "mensagem": f"Carteira validada! Setores: {', '.join(setores_vistos)}."})
+    return jsonify({"sucesso": True, "mensagem": f"Carteira validada! Setores: {', '.join(mapa_setores.keys())}."})
 
 @app.route('/api/info_rapida/<ticker>')
 @cache.cached(timeout=86400) # Cache de 24h poupa imensos recursos
