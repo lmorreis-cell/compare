@@ -2534,7 +2534,12 @@ def api_liga():
             else:
                 lista_segura.append(c)
 
-        return jsonify({"mes_ref": mes_ref, "janela_aberta": janela_aberta, "carteiras": lista_segura})
+        return jsonify({
+            "mes_ref": mes_ref, 
+            "janela_aberta": janela_aberta, 
+            "carteiras": lista_segura,
+            "minha_carteira": minha_carteira
+        })
 
     # POST: Submeter e Validar Carteira (Opção A + B + Distância Alvo)
     if not janela_aberta:
