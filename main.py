@@ -2506,7 +2506,7 @@ def api_liga():
     mes_ref = agora.strftime("%Y-%m")
     # Janela aberta do dia 25 até ao dia 5 de cada mês (ou sempre aberta para o Admin testar)
     is_admin = (user_id == str(ADMIN_USER_ID).strip())
-    janela_aberta = (agora.day >= 25 or agora.day <= 5) or is_admin
+    janela_aberta = (agora.day >= 20 or agora.day <= 5) or is_admin
 
     dados_liga = carregar_dados_liga()
     if mes_ref not in dados_liga:
@@ -2547,7 +2547,7 @@ def api_liga():
 
     # POST: Submeter e Validar Carteira (Opção A + B + Distância Alvo)
     if not janela_aberta:
-        return jsonify({"erro": "A janela de inscrição mensal está fechada (abre entre o dia 25 e o dia 5)."}), 403
+        return jsonify({"erro": "A janela de inscrição mensal está fechada (abre entre o dia 20 e o dia 5)."}), 403
 
     body = request.json
     entradas = [
@@ -2692,7 +2692,7 @@ def api_liga():
     
     is_admin = (user_id == str(ADMIN_USER_ID).strip())
     # O Admin tem sempre a janela aberta para poder testar. Para a comunidade: abre a 20 e fecha a 5.
-    janela_aberta = (agora.day >= 25 or agora.day <= 5) or is_admin
+    janela_aberta = (agora.day >= 20 or agora.day <= 5) or is_admin
 
     dados_liga = carregar_dados_liga()
     if mes_ref not in dados_liga:
