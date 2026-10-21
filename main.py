@@ -2494,164 +2494,6 @@ def atualizar_pontuacoes_liga(mes_ref, dados_liga):
     lista_ordenada = sorted(carteiras_mes.values(), key=lambda x: x.get('score_total', 0), reverse=True)
     return lista_ordenada
 
-@app.route('/api/liga', methods=['GET', 'POST'])
-@requer_cargo(nivel_minimo=2)
-def api_liga():
-    user_id = str(session.get('user_id', '')).strip()
-    username = session.get('username', 'Trader')
-    if not user_id:
-        return jsonify({"erro": "Sessão expirada. Faz login novamente."}), 401
-
-    agora = datetime.now()
-    mes_ref = agora.strftime("%Y-%m")
-    # Janela aberta do dia 25 até ao dia 5 de cada mês (ou sempre aberta para o Admin testar)
-    is_admin = (user_id == str(ADMIN_USER_ID).strip())
-    janela_aberta = (agora.day >= 20 or agora.day <= 5) or is_admin
-
-    dados_liga = carregar_dados_liga()
-    if mes_ref not in dados_liga:
-        dados_liga[mes_ref] = {}
-
-    if request.method == 'GET':
-        if request.args.get('atualizar') == '1' or len(dados_liga[mes_ref]) > 0:
-            lista = atualizar_pontuacoes_liga(mes_ref, dados_liga)
-        else:
-            lista = list(dados_liga[mes_ref].values())
-
-        # NOVO: Filtro de Privacidade (Fog of War)
-        lista_segura = []
-        for c in lista:
-            # Censura as carteiras dos adversários durante a janela de inscrições
-            # Se quiseres testar o nevoeiro como se fosses um utilizador normal, podes apagar o "and not is_admin"
-            if janela_aberta and c['user_id'] != user_id and not is_admin:
-                c_oculto = c.copy()
-                c_oculto['slots'] = [
-                    {"ticker": "🔒 SECRETO", "direcao": "-", "p0": 0.0, "alvo": 0.0, "ret": 0.0, "bonus": 0.0, "badge": "🔒"},
-                    {"ticker": "🔒 SECRETO", "direcao": "-", "p0": 0.0, "alvo": 0.0, "ret": 0.0, "bonus": 0.0, "badge": "🔒"},
-                    {"ticker": "🔒 SECRETO", "direcao": "-", "p0": 0.0, "alvo": 0.0, "ret": 0.0, "bonus": 0.0, "badge": "🔒"}
-                ]
-                c_oculto['tese'] = "🔒 A tese e os ativos estão ocultados até ao fecho das inscrições."
-                lista_segura.append(c_oculto)
-            else:
-                lista_segura.append(c)
-
-        # LINHA CORRIGIDA: Extrair a carteira do próprio utilizador para auto-preencher o formulário
-        minha_carteira = dados_liga[mes_ref].get(user_id)
-
-        return jsonify({
-            "mes_ref": mes_ref, 
-            "janela_aberta": janela_aberta, 
-            "carteiras": lista_segura,
-            "minha_carteira": minha_carteira
-        })
-
-    # POST: Submeter e Validar Carteira (Opção A + B + Distância Alvo)
-    if not janela_aberta:
-        return jsonify({"erro": "A janela de inscrição mensal está fechada (abre entre o dia 20 e o dia 5)."}), 403
-
-    body = request.json
-    entradas = [
-        (body.get('t1', ''), float(body.get('a1', 0)), "Large", 3.0),
-        (body.get('t2', ''), float(body.get('a2', 0)), "Mid", 5.0),
-        (body.get('t3', ''), float(body.get('a3', 0)), "Wildcard", 7.0)
-    ]
-    tese = body.get('tese', '')[:160]
-
-    tickers_unicos = {e[0].upper().strip() for e in entradas}
-    if len(tickers_unicos) != 3:
-        return jsonify({"erro": "Tens de escolher 3 cotadas diferentes."}), 400
-
-    slots_validados = []
-    # SUBSTITUI O SET POR UM DICIONÁRIO DE RASTREIO
-    mapa_setores = {}
-
-    for idx, (tk_str, alvo, escalao_exigido, dist_min) in enumerate(entradas):
-        try:
-            info = yf.Ticker(tk_str).info
-            preco = float(info.get('currentPrice') or info.get('regularMarketPrice') or info.get('previousClose') or 0)
-            mcap = float(info.get('marketCap', 0) or 0)
-            qtype = info.get('quoteType', '')
-        except Exception:
-            return jsonify({"erro": f"Não foi possível validar o ticker {tk_str} no Yahoo Finance."}), 400
-
-        if preco < 2.0:
-            return jsonify({"erro": f"{tk_str} é inválido ou negoceia abaixo de $2.00."}), 400
-
-        # Validar Escalão (Opção A) e Setor (Opção B)
-        if qtype == 'ETF':
-            if escalao_exigido != "Wildcard":
-                return jsonify({"erro": f"O ETF {tk_str} só pode ser usado no Slot 3 (Wildcard)."}), 400
-            setor = "ETF_Macro"
-            dist_min = 3.0
-        else:
-            setor = info.get('sector')
-            if not setor:
-                return jsonify({"erro": f"Não foi possível identificar o setor oficial de {tk_str}."}), 400
-            if escalao_exigido == "Large" and mcap < 50_000_000_000:
-                return jsonify({"erro": f"Slot 1 (Âncora): {tk_str} tem menos de 50B$ de Market Cap."}), 400
-            if escalao_exigido == "Mid" and not (2_000_000_000 <= mcap <= 50_000_000_000):
-                return jsonify({"erro": f"Slot 2 (Crescimento): {tk_str} tem de estar entre 2B$ e 50B$ de Market Cap."}), 400
-            if escalao_exigido == "Wildcard" and mcap < 500_000_000:
-                return jsonify({"erro": f"Slot 3 (Wildcard): {tk_str} tem menos de 500M$ de Market Cap."}), 400
-
-        # A NOVA LÓGICA DE COLISÃO EXPLICATIVA
-        if setor not in mapa_setores:
-            mapa_setores[setor] = []
-        mapa_setores[setor].append(tk_str)
-
-        if len(mapa_setores[setor]) > 1:
-            tks_repetidos = " e ".join(mapa_setores[setor])
-            return jsonify({"erro": f"Colisão de Setor! As ações {tks_repetidos} pertencem ambas ao setor '{setor}'. Substitui uma delas."}), 400
-
-        # Validar Travão de Distância do Preço-Alvo
-        dist_pct = abs(alvo - preco) / preco * 100.0
-        if dist_pct < dist_min:
-            return jsonify({
-                "erro": f"Alvo demasiado próximo em {tk_str} (Atual: ${preco:.2f} | Alvo: ${alvo:.2f}). Distância mínima para o Slot {idx+1} é ±{dist_min:.0f}% (estás a {dist_pct:.1f}%)."
-            }), 400
-
-        direcao = "LONG" if alvo > preco else "SHORT"
-        slots_validados.append({
-            "ticker": tk_str, "setor": setor, "p0": round(preco, 2), "p_atual": round(preco, 2),
-            "alvo": round(alvo, 2), "direcao": direcao, "ret": 0.0, "bonus": 0.0,
-            "badge": "📈" if direcao == "LONG" else "📉"
-        })
-
-    dados_liga[mes_ref][user_id] = {
-        "user_id": user_id,
-        "username": username,
-        "mes_ref": mes_ref,
-        "tese": tese,
-        "slots": slots_validados,
-        "retorno_base": 0.0,
-        "bonus_total": 0.0,
-        "score_total": 0.0
-    }
-    guardar_dados_liga(dados_liga)
-
-    # Notificação automática na sala do Discord quando alguém submete (Gera FOMO!)
-    webhook_url = os.environ.get("WEBHOOK_LIGA") or os.environ.get("WEBHOOK_SNIPER")
-    if webhook_url:
-        try:
-            # Lógica de Censura no Discord: Esconde os tickers se a janela estiver aberta
-            if janela_aberta:
-                texto_discord = f"O membro **{username}** acabou de bloquear a sua carteira no Terminal!\n\n🔒 **[ 3 ATIVOS SECRETOS ]**\n\n💬 *\"{tese}\"*"
-            else:
-                resumo_picks = " | ".join([f"**{s['ticker']}** ({s['direcao']} ➔ ${s['alvo']})" for s in slots_validados])
-                texto_discord = f"O membro **{username}** acabou de bloquear os seus 3 ativos no Terminal:\n{resumo_picks}\n\n💬 *\"{tese}\"*"
-
-            requests.post(webhook_url, json={
-                "embeds": [{
-                    "title": f"🚨 Nova Carteira na Liga Mensal ({mes_ref})",
-                    "color": 14922561,
-                    "description": texto_discord,
-                    "footer": {"text": "Portal Bolsa — Submete a tua carteira no Separador 'Liga Mensal'"}
-                }]
-            }, timeout=3)
-        except Exception:
-            pass
-
-    return jsonify({"sucesso": True, "mensagem": f"Carteira validada! Setores: {', '.join(mapa_setores.keys())}."})
 
 @app.route('/api/info_rapida/<ticker>')
 @cache.cached(timeout=86400) # Cache de 24h poupa imensos recursos
@@ -2708,7 +2550,6 @@ def api_liga():
             # Filtro de Privacidade (Fog of War)
             lista_segura = []
             for c in lista:
-                # O uso de .get() impede que a base de dados rebente se houverem carteiras velhas sem 'user_id'
                 dono_id = c.get('user_id', '')
                 if janela_aberta and dono_id != user_id and not is_admin:
                     c_oculto = c.copy()
@@ -2722,7 +2563,7 @@ def api_liga():
                 else:
                     lista_segura.append(c)
 
-            # A CORREÇÃO ESTÁ AQUI: a variável minha_carteira agora é declarada em todas as branches!
+            # Extração segura da carteira do utilizador
             minha_carteira = dados_liga.get(mes_ref, {}).get(user_id, None)
 
             return jsonify({
@@ -2734,10 +2575,10 @@ def api_liga():
         except Exception as e:
             print(f"Erro no GET Liga: {e}")
             return jsonify({"erro": "Falha interna ao processar a classificação."}), 500
-            
-    # POST: Submeter e Validar Carteira (Opção A + B + Distância Alvo)
+
+    # POST: Submeter e Validar Carteira
     if not janela_aberta:
-        return jsonify({"erro": "A janela de inscrição mensal está fechada (abre entre o dia 20 e o dia 5)."}), 403
+        return jsonify({"erro": "A janela de inscrição mensal está fechada."}), 403
 
     body = request.json
     entradas = [
@@ -2766,7 +2607,6 @@ def api_liga():
         if preco < 2.0:
             return jsonify({"erro": f"{tk_str} é inválido ou negoceia abaixo de $2.00."}), 400
 
-        # Validar Escalão e Setor
         if qtype == 'ETF':
             if escalao_exigido != "Wildcard":
                 return jsonify({"erro": f"O ETF {tk_str} só pode ser usado no Slot 3 (Wildcard)."}), 400
@@ -2837,7 +2677,6 @@ def api_liga():
             pass
 
     return jsonify({"sucesso": True, "mensagem": f"Carteira validada! Setores: {', '.join(mapa_setores.keys())}."})
-
 
 if __name__ == "__main__":
     import os
