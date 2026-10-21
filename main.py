@@ -2519,6 +2519,7 @@ def api_info_rapida(ticker):
     except Exception:
         return jsonify({"erro": "Ativo não encontrado."}), 400
 
+
 @app.route('/api/liga', methods=['GET', 'POST'])
 @requer_cargo(nivel_minimo=2)
 def api_liga():
@@ -2531,6 +2532,7 @@ def api_liga():
     mes_ref = agora.strftime("%Y-%m")
     
     is_admin = (user_id == str(ADMIN_USER_ID).strip())
+    # O Admin tem sempre a janela aberta para poder testar. Para a comunidade: abre a 20 e fecha a 5.
     janela_aberta = (agora.day >= 20 or agora.day <= 5) or is_admin
 
     dados_liga = carregar_dados_liga()
@@ -2628,7 +2630,7 @@ def api_liga():
         dist_pct = abs(alvo - preco) / preco * 100.0
         if dist_pct < dist_min:
             return jsonify({
-                "erro": f"Alvo demasiado próximo em {tk_str} (Atual: ${preco:.2f} \vert{} Alvo:${alvo:.2f}). Distância mínima para o Slot {idx+1} é ±{dist_min:.0f}% (estás a {dist_pct:.1f}%)."
+                "erro": f"Alvo demasiado próximo em {tk_str} (Atual: ${preco:.2f} | Alvo: ${alvo:.2f}). Distância mínima para o Slot {idx+1} é ±{dist_min:.0f}% (estás a {dist_pct:.1f}%)."
             }), 400
 
         direcao = "LONG" if alvo > preco else "SHORT"
@@ -2672,6 +2674,7 @@ def api_liga():
 
     return jsonify({"sucesso": True, "mensagem": f"Carteira validada! Setores: {', '.join(mapa_setores.keys())}."})
 
+
 @app.route('/api/webhook/liga', methods=['POST'])
 @requer_cargo(nivel_minimo=2)
 def webhook_liga():
@@ -2696,7 +2699,7 @@ def webhook_liga():
         if janela_aberta:
             t_str = "🔒 `SECRETO` · 🔒 `SECRETO` · 🔒 `SECRETO`"
         else:
-            t_str = " · ".join([f"`{s['ticker']}` {s['badge']}" for s in c['slots']])
+            t_str = " · ".join([f"`{s['ticker']}** {s['badge']}" for s in c['slots']])
             
         linhas_podio.append(
             f"{med} **{c['username']}** — Score: **{c['score_total']:+.2f}%** *(Base: {c['retorno_base']:+.2f}% | Bónus: +{c['bonus_total']:.1f}%)*\n└ {t_str}"
