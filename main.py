@@ -180,8 +180,8 @@ def requer_cargo(nivel_minimo):
 
 @app.route('/login')
 def login_discord():
-    # Envia o utilizador para o ecrã oficial do Discord pedindo autorização para ler os seus cargos no teu servidor
-    url = f"{API_BASE_URL}/oauth2/authorize?client_id={CLIENT_ID}&redirect_uri={REDIRECT_URI}&response_type=code&scope=identify%guilds.members.read"
+    # Repara no %20 restaurado entre identify e guilds.members.read
+    url = f"{API_BASE_URL}/oauth2/authorize?client_id={CLIENT_ID}&redirect_uri={REDIRECT_URI}&response_type=code&scope=identify%20guilds.members.read"
     return redirect(url)
 
 @app.route('/callback')
@@ -190,7 +190,6 @@ def callback_discord():
     if not codigo:
         return "Erro: O Discord não devolveu um código de acesso.", 400
 
-    # 1. Trocar o código temporário por um Token de Acesso permanente
     dados_token = {
         'client_id': CLIENT_ID,
         'client_secret': CLIENT_SECRET,
@@ -201,34 +200,31 @@ def callback_discord():
     headers = {'Content-Type': 'application/x-www-form-urlencoded'}
     r_token = requests.post(f"{API_BASE_URL}/oauth2/token", data=dados_token, headers=headers)
     
-    if r_token.status_code != 0:
+    # Restaurado para != 200
+    if r_token.status_code != 200:
         return "Falha na autenticação com o servidor do Discord.", 500
         
     token = r_token.json()['access_token']
 
-    # 2. Perguntar ao Discord quais são os cargos deste utilizador no teu servidor (Guild)
     headers_auth = {'Authorization': f'Bearer {token}'}
     r_membro = requests.get(f"{API_BASE_URL}/users/@me/guilds/{GUILD_ID}/member", headers=headers_auth)
 
-    if r_membro.status_code != 0:
+    # Restaurado para != 200
+    if r_membro.status_code != 200:
         return "Acesso Negado: Não fazes parte do servidor de Discord.", 403
 
     cargos_do_utilizador = r_membro.json().get('roles', [])
 
-    # 3. Matemática da Cascata de Privilégios
     nivel = 0
     if ROLE_PATROCINADOR in cargos_do_utilizador:
         nivel = 2
     elif ROLE_ATIVO in cargos_do_utilizador:
         nivel = 1
 
-    # 4. Grava a "pulseira de acesso" no browser
     session['nivel_acesso'] = nivel
 
-    # NOVO: Extrai e grava os dados reais do utilizador
     dados_user = r_membro.json().get('user', {})
     session['user_id'] = dados_user.get('id')
-    # Tenta apanhar o nome global, se não tiver, apanha o username normal
     session['username'] = dados_user.get('global_name') or dados_user.get('username') or 'Membro'
     
     return redirect(url_for('dashboard_central'))
@@ -246,7 +242,7 @@ from MeanReversion import calcular_radar_reversao
 from Radar import calcular_radar_momentum_v2, comparar_ativos
 
 @app.route('/api/ticker_tape')
-@cache.cached(timeout=1) # Cache de 2 minutos para poupar recursos
+@cache.cached(timeout=120) # Cache de 2 minutos para poupar recursos
 def api_ticker_tape():
     import yfinance as yf
     import requests
@@ -341,8 +337,9 @@ def gerir_watchlist():
         wl[user_id] = []
 
     # LER A LISTA
-    
+    if request.method == 'GET':
         return jsonify(wl[user_id])
+        
         
     # ADICIONAR À LISTA
     if request.method == 'POST':
