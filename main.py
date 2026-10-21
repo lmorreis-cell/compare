@@ -2722,7 +2722,8 @@ def api_liga():
                 else:
                     lista_segura.append(c)
 
-            minha_carteira = dados_liga[mes_ref].get(user_id)
+            # A CORREÇÃO ESTÁ AQUI: a variável minha_carteira agora é declarada em todas as branches!
+            minha_carteira = dados_liga.get(mes_ref, {}).get(user_id, None)
 
             return jsonify({
                 "mes_ref": mes_ref, 
@@ -2733,7 +2734,7 @@ def api_liga():
         except Exception as e:
             print(f"Erro no GET Liga: {e}")
             return jsonify({"erro": "Falha interna ao processar a classificação."}), 500
-
+            
     # POST: Submeter e Validar Carteira (Opção A + B + Distância Alvo)
     if not janela_aberta:
         return jsonify({"erro": "A janela de inscrição mensal está fechada (abre entre o dia 20 e o dia 5)."}), 403
