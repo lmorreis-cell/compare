@@ -341,7 +341,7 @@ def gerir_watchlist():
         wl[user_id] = []
 
     # LER A LISTA
-    if request.method == 'GET':
+    
         return jsonify(wl[user_id])
         
     # ADICIONAR À LISTA
@@ -2521,7 +2521,8 @@ def api_liga():
         # NOVO: Filtro de Privacidade (Fog of War)
         lista_segura = []
         for c in lista:
-            # Censura se a janela estiver aberta E não for a carteira do próprio utilizador E não for Admin
+            # Censura as carteiras dos adversários durante a janela de inscrições
+            # Se quiseres testar o nevoeiro como se fosses um utilizador normal, podes apagar o "and not is_admin"
             if janela_aberta and c['user_id'] != user_id and not is_admin:
                 c_oculto = c.copy()
                 c_oculto['slots'] = [
@@ -2533,6 +2534,9 @@ def api_liga():
                 lista_segura.append(c_oculto)
             else:
                 lista_segura.append(c)
+
+        # LINHA CORRIGIDA: Extrair a carteira do próprio utilizador para auto-preencher o formulário
+        minha_carteira = dados_liga[mes_ref].get(user_id)
 
         return jsonify({
             "mes_ref": mes_ref, 
