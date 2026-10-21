@@ -5768,11 +5768,40 @@ function atualizarDiarioBordo() {
 
             badgeMes.innerText = `Edição: ${dados.mes_ref} ${dados.janela_aberta ? '🟢 Inscrições Abertas' : '🔒 Em Curso'}`;
 
+            // NOVO: Lógica de Edição e Bloqueio de Formulário
+            const btnSubmeter = document.getElementById('btn-submeter-liga');
+            if (dados.janela_aberta && dados.minha_carteira) {
+                const mc = dados.minha_carteira;
+                // Preenche os campos apenas se estiverem vazios (para não apagar o que estás a escrever)
+                if (!document.getElementById('liga-t1').value) {
+                    document.getElementById('liga-t1').value = mc.slots[0].ticker;
+                    document.getElementById('liga-a1').value = mc.slots[0].alvo;
+                    document.getElementById('liga-t2').value = mc.slots[1].ticker;
+                    document.getElementById('liga-a2').value = mc.slots[1].alvo;
+                    document.getElementById('liga-t3').value = mc.slots[2].ticker;
+                    document.getElementById('liga-a3').value = mc.slots[2].alvo;
+                    document.getElementById('liga-tese').value = mc.tese;
+
+                    // Despoleta a verificação de API instantaneamente para validar as cores e setores
+                    verificarAtivoLiga(mc.slots[0].ticker, 'info-t1', 'Large');
+                    verificarAtivoLiga(mc.slots[1].ticker, 'info-t2', 'Mid');
+                    verificarAtivoLiga(mc.slots[2].ticker, 'info-t3', 'Wildcard');
+
+                    btnSubmeter.innerHTML = '🔄 Atualizar Carteira';
+                }
+            } else if (!dados.janela_aberta) {
+                // Se a janela fechou (Dia 6 ao dia 24), bloqueia o formulário visualmente
+                document.getElementById('painel-submissao-liga').style.opacity = '0.4';
+                document.getElementById('painel-submissao-liga').style.pointerEvents = 'none';
+                btnSubmeter.innerHTML = '🔒 Inscrições Encerradas';
+            }
+
             if (!dados.carteiras || dados.carteiras.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#8b949e; padding:20px;">Ainda ninguém submeteu carteira para este mês. Sê o primeiro!</td></tr>';
                 return;
             }
 
+            // ... (o resto da função de desenhar o map(c => ...) mantém-se intocável)
             tbody.innerHTML = dados.carteiras.map((c, idx) => {
                 const medalha = idx === 0 ? '🥇' : (idx === 1 ? '🥈' : (idx === 2 ? '🥉' : `${idx + 1}º`));
                 const corScore = c.score_total >= 0 ? '#5cb85c' : '#d9534f';
