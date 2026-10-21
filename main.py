@@ -181,7 +181,7 @@ def requer_cargo(nivel_minimo):
 @app.route('/login')
 def login_discord():
     # Envia o utilizador para o ecrã oficial do Discord pedindo autorização para ler os seus cargos no teu servidor
-    url = f"{API_BASE_URL}/oauth2/authorize?client_id={CLIENT_ID}&redirect_uri={REDIRECT_URI}&response_type=code&scope=identify%20guilds.members.read"
+    url = f"{API_BASE_URL}/oauth2/authorize?client_id={CLIENT_ID}&redirect_uri={REDIRECT_URI}&response_type=code&scope=identify%guilds.members.read"
     return redirect(url)
 
 @app.route('/callback')
@@ -201,7 +201,7 @@ def callback_discord():
     headers = {'Content-Type': 'application/x-www-form-urlencoded'}
     r_token = requests.post(f"{API_BASE_URL}/oauth2/token", data=dados_token, headers=headers)
     
-    if r_token.status_code != 200:
+    if r_token.status_code != 0:
         return "Falha na autenticação com o servidor do Discord.", 500
         
     token = r_token.json()['access_token']
@@ -210,7 +210,7 @@ def callback_discord():
     headers_auth = {'Authorization': f'Bearer {token}'}
     r_membro = requests.get(f"{API_BASE_URL}/users/@me/guilds/{GUILD_ID}/member", headers=headers_auth)
 
-    if r_membro.status_code != 200:
+    if r_membro.status_code != 0:
         return "Acesso Negado: Não fazes parte do servidor de Discord.", 403
 
     cargos_do_utilizador = r_membro.json().get('roles', [])
@@ -246,7 +246,7 @@ from MeanReversion import calcular_radar_reversao
 from Radar import calcular_radar_momentum_v2, comparar_ativos
 
 @app.route('/api/ticker_tape')
-@cache.cached(timeout=120) # Cache de 2 minutos para poupar recursos
+@cache.cached(timeout=1) # Cache de 2 minutos para poupar recursos
 def api_ticker_tape():
     import yfinance as yf
     import requests
@@ -2506,7 +2506,7 @@ def api_liga():
     mes_ref = agora.strftime("%Y-%m")
     # Janela aberta do dia 25 até ao dia 5 de cada mês (ou sempre aberta para o Admin testar)
     is_admin = (user_id == str(ADMIN_USER_ID).strip())
-    janela_aberta = (agora.day >= 20 or agora.day <= 5) or is_admin
+    janela_aberta = (agora.day >= 25 or agora.day <= 5) or is_admin
 
     dados_liga = carregar_dados_liga()
     if mes_ref not in dados_liga:
@@ -2692,7 +2692,7 @@ def api_liga():
     
     is_admin = (user_id == str(ADMIN_USER_ID).strip())
     # O Admin tem sempre a janela aberta para poder testar. Para a comunidade: abre a 20 e fecha a 5.
-    janela_aberta = (agora.day >= 20 or agora.day <= 5) or is_admin
+    janela_aberta = (agora.day >= 25 or agora.day <= 5) or is_admin
 
     dados_liga = carregar_dados_liga()
     if mes_ref not in dados_liga:
