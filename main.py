@@ -2506,7 +2506,7 @@ def api_liga():
     mes_ref = agora.strftime("%Y-%m")
     # Janela aberta do dia 25 até ao dia 5 de cada mês (ou sempre aberta para o Admin testar)
     is_admin = (user_id == str(ADMIN_USER_ID).strip())
-    janela_aberta = (agora.day >= 25 or agora.day <= 5) or is_admin
+    janela_aberta = (agora.day >= 20 or agora.day <= 5) or is_admin
 
     dados_liga = carregar_dados_liga()
     if mes_ref not in dados_liga:
