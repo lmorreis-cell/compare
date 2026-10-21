@@ -2443,7 +2443,6 @@ def guardar_dados_liga(dados):
         print(f"Erro ao guardar Liga: {e}")
 
 def atualizar_pontuacoes_liga(mes_ref, dados_liga):
-    """Varre o histórico desde o dia 1 do mês para verificar toques nos alvos e fecho sniper."""
     if mes_ref not in dados_liga or not dados_liga[mes_ref]:
         return []
 
@@ -2470,7 +2469,6 @@ def atualizar_pontuacoes_liga(mes_ref, dados_liga):
                 if not is_long:
                     ret = -ret  # Posição Short ganha na queda
 
-                # Verifica se tocou no alvo durante o mês E mantém direção certa
                 tocou = (max_m >= alvo and p_atual > p0) if is_long else (min_m <= alvo and p_atual < p0)
                 erro_fecho = abs(alvo - p_atual) / p_atual * 100.0
                 sniper = tocou and (erro_fecho <= 1.0)
@@ -2496,7 +2494,7 @@ def atualizar_pontuacoes_liga(mes_ref, dados_liga):
 
 
 @app.route('/api/info_rapida/<ticker>')
-@cache.cached(timeout=86400) # Cache de 24h poupa imensos recursos
+@cache.cached(timeout=86400)
 def api_info_rapida(ticker):
     try:
         info = yf.Ticker(ticker).info
@@ -2533,7 +2531,6 @@ def api_liga():
     mes_ref = agora.strftime("%Y-%m")
     
     is_admin = (user_id == str(ADMIN_USER_ID).strip())
-    # O Admin tem sempre a janela aberta para poder testar. Para a comunidade: abre a 20 e fecha a 5.
     janela_aberta = (agora.day >= 20 or agora.day <= 5) or is_admin
 
     dados_liga = carregar_dados_liga()
@@ -2547,7 +2544,6 @@ def api_liga():
             else:
                 lista = list(dados_liga[mes_ref].values())
 
-            # Filtro de Privacidade (Fog of War)
             lista_segura = []
             for c in lista:
                 dono_id = c.get('user_id', '')
@@ -2563,7 +2559,6 @@ def api_liga():
                 else:
                     lista_segura.append(c)
 
-            # Extração segura da carteira do utilizador
             minha_carteira = dados_liga.get(mes_ref, {}).get(user_id, None)
 
             return jsonify({
@@ -2576,7 +2571,6 @@ def api_liga():
             print(f"Erro no GET Liga: {e}")
             return jsonify({"erro": "Falha interna ao processar a classificação."}), 500
 
-    # POST: Submeter e Validar Carteira
     if not janela_aberta:
         return jsonify({"erro": "A janela de inscrição mensal está fechada."}), 403
 
@@ -2634,7 +2628,7 @@ def api_liga():
         dist_pct = abs(alvo - preco) / preco * 100.0
         if dist_pct < dist_min:
             return jsonify({
-                "erro": f"Alvo demasiado próximo em {tk_str} (Atual: ${preco:.2f} | Alvo: ${alvo:.2f}). Distância mínima para o Slot {idx+1} é ±{dist_min:.0f}% (estás a {dist_pct:.1f}%)."
+                "erro": f"Alvo demasiado próximo em {tk_str} (Atual: ${preco:.2f} \vert{} Alvo:${alvo:.2f}). Distância mínima para o Slot {idx+1} é ±{dist_min:.0f}% (estás a {dist_pct:.1f}%)."
             }), 400
 
         direcao = "LONG" if alvo > preco else "SHORT"
@@ -2678,19 +2672,62 @@ def api_liga():
 
     return jsonify({"sucesso": True, "mensagem": f"Carteira validada! Setores: {', '.join(mapa_setores.keys())}."})
 
+@app.route('/api/webhook/liga', methods=['POST'])
+@requer_cargo(nivel_minimo=2)
+def webhook_liga():
+    webhook_url = os.environ.get("WEBHOOK_LIGA") or os.environ.get("WEBHOOK_SNIPER")
+    if not webhook_url:
+        return jsonify({"erro": "Webhook não configurado no .env"}), 500
+
+    agora = datetime.now()
+    mes_ref = agora.strftime("%Y-%m")
+    janela_aberta = (agora.day >= 20 or agora.day <= 5)
+
+    dados_liga = carregar_dados_liga()
+    ranking = atualizar_pontuacoes_liga(mes_ref, dados_liga)
+
+    if not ranking:
+        return jsonify({"erro": "Não existem carteiras submetidas este mês."}), 400
+
+    linhas_podio = []
+    for idx, c in enumerate(ranking[:10]):
+        med = "🥇" if idx == 0 else ("🥈" if idx == 1 else ("🥉" if idx == 2 else f"**{idx+1}.**"))
+        
+        if janela_aberta:
+            t_str = "🔒 `SECRETO` · 🔒 `SECRETO` · 🔒 `SECRETO`"
+        else:
+            t_str = " · ".join([f"`{s['ticker']}` {s['badge']}" for s in c['slots']])
+            
+        linhas_podio.append(
+            f"{med} **{c['username']}** — Score: **{c['score_total']:+.2f}%** *(Base: {c['retorno_base']:+.2f}% | Bónus: +{c['bonus_total']:.1f}%)*\n└ {t_str}"
+        )
+
+    rodape = "Portal Bolsa - O Nevoeiro levanta no dia 6!" if janela_aberta else "Portal Bolsa - Consulta a tabela completa no Terminal"
+
+    embed = {
+        "embeds": [{
+            "title": f"🏆 CLASSIFICAÇÃO LIGA BOLSISTA — {mes_ref}",
+            "color": 14922561,
+            "description": "Atualização oficial das carteiras triplas:\n\n" + "\n\n".join(linhas_podio),
+            "footer": {"text": rodape}
+        }]
+    }
+
+    try:
+        r = requests.post(webhook_url, json=embed, timeout=5)
+        r.raise_for_status()
+        return jsonify({"sucesso": True})
+    except Exception as e:
+        return jsonify({"erro": str(e)}), 500
+
+
 if __name__ == "__main__":
     import os
-    
-    # 1. Tenta apanhar a porta dinâmica definida pelo Discloud
     porta = int(os.environ.get("PORT", 8080))
-    
-    # 2. Tenta arrancar o servidor profissional Waitress
     try:
         from waitress import serve
         print(f"[*] A iniciar servidor de produção WSGI na porta {porta}...")
         serve(app, host="0.0.0.0", port=porta)
-    
-    # 3. Fallback: Se o pacote 'waitress' não estiver instalado no ambiente, arranca o de desenvolvimento
     except ImportError:
         print(f"[*] Waitress não detetado. A iniciar servidor de desenvolvimento na porta {porta}...")
         app.run(host="0.0.0.0", port=porta, debug=False)
