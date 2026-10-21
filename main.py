@@ -2677,7 +2677,11 @@ def webhook_liga():
     if not webhook_url:
         return jsonify({"erro": "Webhook não configurado no .env"}), 500
 
-    mes_ref = datetime.now().strftime("%Y-%m")
+    agora = datetime.now()
+    mes_ref = agora.strftime("%Y-%m")
+    # Define se estamos na fase de segredo (dias 25 a 5)
+    janela_aberta = (agora.day >= 20 or agora.day <= 5)
+
     dados_liga = carregar_dados_liga()
     ranking = atualizar_pontuacoes_liga(mes_ref, dados_liga)
 
@@ -2687,17 +2691,25 @@ def webhook_liga():
     linhas_podio = []
     for idx, c in enumerate(ranking[:10]):
         med = "🥇" if idx == 0 else ("🥈" if idx == 1 else ("🥉" if idx == 2 else f"**{idx+1}.**"))
-        t_str = " · ".join([f"`{s['ticker']}` {s['badge']}" for s in c['slots']])
+        
+        # LÓGICA DO NEVOEIRO DE GUERRA PARA O LEADERBOARD
+        if janela_aberta:
+            t_str = "🔒 `SECRETO` · 🔒 `SECRETO` · 🔒 `SECRETO`"
+        else:
+            t_str = " · ".join([f"`{s['ticker']}` {s['badge']}" for s in c['slots']])
+            
         linhas_podio.append(
             f"{med} **{c['username']}** — Score: **{c['score_total']:+.2f}%** *(Base: {c['retorno_base']:+.2f}% | Bónus: +{c['bonus_total']:.1f}%)*\n└ {t_str}"
         )
+
+    rodape = "Portal Bolsa - O Nevoeiro levanta no dia 6!" if janela_aberta else "Portal Bolsa - Consulta a tabela completa no Terminal"
 
     embed = {
         "embeds": [{
             "title": f"🏆 CLASSIFICAÇÃO LIGA BOLSISTA — {mes_ref}",
             "color": 14922561, # Dourado (#e3b341)
-            "description": "Atualização oficial das carteiras triplas (Retorno Médio + Bónus de Alvo Sniper):\n\n" + "\n\n".join(linhas_podio),
-            "footer": {"text": "Portal Bolsa - Consulta a tabela completa no Terminal Analítico Integrado"}
+            "description": "Atualização oficial das carteiras triplas:\n\n" + "\n\n".join(linhas_podio),
+            "footer": {"text": rodape}
         }]
     }
 
