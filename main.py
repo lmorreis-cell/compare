@@ -2424,10 +2424,14 @@ def disparar_vigia_remota(token_secreto):
 @app.route('/api/fair_value_lab/<ticker>')
 @cache.cached(timeout=3600)
 def api_fair_value_lab(ticker):
+
     try:
         tk = yf.Ticker(ticker)
         info = tk.info
         
+        if not info or ('regularMarketPrice' not in info and 'currentPrice' not in info and 'previousClose' not in info and 'trailingEps' not in info):
+            return jsonify({"erro": f"Ticker '{ticker}' não encontrado ou sem dados disponíveis no Yahoo Finance."}), 400
+
         preco = float(info.get('currentPrice') or info.get('regularMarketPrice') or info.get('previousClose') or 0)
         eps = float(info.get('forwardEps') or info.get('trailingEps') or 0)
         pe_atual = float(info.get('forwardPE') or info.get('trailingPE') or 18.0)
@@ -2443,10 +2447,23 @@ def api_fair_value_lab(ticker):
             
         ps_atual = float(info.get('priceToSalesTrailing12Months') or 3.5)
         
-        eg = info.get('earningsGrowth') or info.get('revenueGrowth') or 0.10
-        crescimento_est = round(min(max(float(eg) * 100, 2.0), 35.0), 1)
+        # --- MOTOR DE CRESCIMENTO OLINDO PARA O FUTURO (FORWARD CONSENSUS) ---
+        fwd_pe = info.get('forwardPE', 0)
+        peg = info.get('pegRatio', 0)
+        crescimento_est = 0
         
-        moeda = "€" if info.get('currency') == 'EUR' or "." in ticker else "$"
+        # Se o Forward P/E e o PEG estiverem disponíveis, extraímos a taxa implícita dos analistas
+        if fwd_pe > 0 and peg > 0:
+            crescimento_est = fwd_pe / peg
+        else:
+            # Fallback inteligente: baseia-se na projeção de receita ou assume 7% de base estrutural
+            rev_g = info.get('revenueGrowth', 0) or 0.07
+            crescimento_est = max(float(rev_g) * 100, 7.0)
+            
+        crescimento_est = round(min(max(crescimento_est, 4.0), 30.0), 1)
+        # ---------------------------------------------------------------------
+        
+        moeda = "€" if info.get('currency'] == 'EUR' or "." in ticker else "$"
         
         return jsonify({
             "ticker": ticker.upper(),
@@ -2460,7 +2477,9 @@ def api_fair_value_lab(ticker):
             "ps_sugerido": round(min(max(ps_atual, 1.0), 15.0), 1)
         })
     except Exception as e:
-        return jsonify({"erro": f"Não foi possível extrair métricas de {ticker}: {str(e)}"}), 400
+        return jsonify({"erro": f"Erro ao extrair métricas de {ticker}: {str(e)}"}), 400
+
+
 
 @app.route('/api/webhook/fairvalue', methods=['POST'])
 @requer_cargo(nivel_minimo=2)
