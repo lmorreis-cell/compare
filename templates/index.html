@@ -6097,7 +6097,8 @@ function atualizarDiarioBordo() {
             return;
         }
         try {
-            const resp = await fetch(`/api/dados_valuation/${encodeURIComponent(ticker)}`);
+            // URL atualizado para evitar qualquer conflito de cache
+            const resp = await fetch(`/api/fair_value_lab/${encodeURIComponent(ticker)}`);
             const d = await resp.json();
             if (!resp.ok || d.erro) {
                 alert(d.erro || "Erro ao obter dados da cotada.");
@@ -6107,8 +6108,10 @@ function atualizarDiarioBordo() {
             document.getElementById('fv-preco').value = d.preco;
             document.getElementById('fv-eps').value = d.eps;
             document.getElementById('fv-fcf').value = d.fcf_share;
+            document.getElementById('fv-rev').value = d.rev_share;
             document.getElementById('fv-cresc').value = d.crescimento;
             document.getElementById('fv-pe').value = d.pe_sugerido;
+            document.getElementById('fv-ps').value = d.ps_sugerido;
             calcularFairValueLive();
         } catch (e) {
             alert("Erro de ligação ao servidor.");
