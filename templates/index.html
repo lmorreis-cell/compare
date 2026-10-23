@@ -6099,7 +6099,7 @@ function atualizarDiarioBordo() {
             return;
         }
         try {
-            const resp = await fetch(`/api/dados_valuation/${encodeURIComponent(ticker)}`);
+            const resp = await fetch(`/api/fair_value_lab/${encodeURIComponent(ticker)}`);
             const d = await resp.json();
             if (!resp.ok || d.erro) {
                 alert(d.erro || "Erro ao obter dados da cotada.");
