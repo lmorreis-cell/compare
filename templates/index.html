@@ -750,6 +750,10 @@
                 <div id="fv-buy-zone" style="font-size: 20px; font-weight: 900; color: #58a6ff; margin-top: 4px;">$0.00</div>
             </div>
         </div>
+        <!-- CAIXA DE DIAGNÓSTICO NLG (EXPLICAÇÃO DINÂMICA) -->
+        <div id="fv-nlg-diagnostico" style="margin-top: 15px; background: #0d1117; border-left: 4px solid #f28b24; padding: 15px; border-radius: 6px; font-size: 12px; line-height: 1.6; color: #c9d1d9; display: none;">
+            <!-- O texto explicativo gerado em tempo real entra aqui -->
+        </div>
 
         <!-- MATRIZ DE SENSIBILIDADE 3X3 COM TOOLTIP -->
         <div style="margin-top: 15px;">
@@ -6202,7 +6206,7 @@ function atualizarDiarioBordo() {
     }
 
     function calcularFairValueLive() {
-        const ticker = document.getElementById('fv-ticker').value.trim().toUpperCase() || "SIMULAÇÃO";
+        const ticker = document.getElementById('fv-ticker').value.trim().toUpperCase() || "ATIVO";
         const preco = parseFloat(document.getElementById('fv-preco').value) || 0;
         const eps = parseFloat(document.getElementById('fv-eps').value) || 0;
         const fcf = parseFloat(document.getElementById('fv-fcf').value) || 0;
@@ -6245,6 +6249,8 @@ function atualizarDiarioBordo() {
         } else if (fvPs > 0) {
             fvMedio = fvPs;
             labelMetodo.innerText = "🎯 Valor Intrínseco via Receita P/S (Empresa s/ Lucro):";
+        } else {
+            labelMetodo.innerText = "🎯 Valor Intrínseco Indisponível:";
         }
 
         const precoComMargem = fvMedio * (1 - mos);
@@ -6256,13 +6262,13 @@ function atualizarDiarioBordo() {
         document.getElementById('fv-res-graham').innerText = fvGraham > 0 ? fmt(fvGraham) : "N/A (EPS ≤ 0)";
         document.getElementById('fv-res-ps').innerText = fvPs > 0 ? fmt(fvPs) : "N/A (Rev ≤ 0)";
 
-        document.getElementById('fv-media-final').innerText = fmt(fvMedio);
-        document.getElementById('fv-buy-zone').innerText = fmt(precoComMargem);
+        document.getElementById('fv-media-final').innerText = fvMedio > 0 ? fmt(fvMedio) : "$0.00";
+        document.getElementById('fv-buy-zone').innerText = fvMedio > 0 ? fmt(precoComMargem) : "$0.00";
 
         const badge = document.getElementById('fv-upside-badge');
         let upsideStr = "N/A";
         if (fvMedio <= 0) {
-            badge.innerText = "(Insere EPS, FCF ou Receita > 0)";
+            badge.innerText = "(Sem suporte fundamental quantificável)";
             badge.style.color = "#8b949e";
         } else if (upsidePct >= 0) {
             upsideStr = `+${upsidePct.toFixed(1)}% Subavaliada`;
@@ -6274,7 +6280,36 @@ function atualizarDiarioBordo() {
             badge.style.color = "#d9534f";
         }
 
-        // Desenhar Matriz de Sensibilidade 3x3 (g ± 2% vs WACC ± 1.5%)
+        // ==========================================
+        // GERAÇÃO DO DIAGNÓSTICO NLG EM TEMPO REAL
+        // ==========================================
+        const boxNlg = document.getElementById('fv-nlg-diagnostico');
+        let diagnosticoTexto = "";
+        let corBordaNlg = "#f28b24";
+
+        if (eps <= 0 && fcf <= 0 && rev <= 0) {
+            corBordaNlg = "#d9534f";
+            diagnosticoTexto = `⚠️ <strong>Diagnóstico Fundamental (${ticker}): Empresa em Fase Especulativa / Pré-Receita.</strong><br>
+            Todos os quatro modelos falharam em produzir um valor intrínseco porque a cotada apresenta <i>EPS negativo</i> (${eps}), <i>Free Cash Flow destrutivo</i> (${fcf}) e ausência de faturação relevante na API. Os modelos baseados em lucros e caixa não funcionam em empresas que ainda destroem capital operacional. A cotação atual reflete pura expetativa de crescimento futuro e não suporte contabilístico atual.`;
+        } else if (eps <= 0 && fcf <= 0 && rev > 0) {
+            corBordaNlg = "#f28b24";
+            diagnosticoTexto = `⚠️ <strong>Diagnóstico Fundamental (${ticker}): Empresa de Alto Crescimento sem Lucros (Growth/Turnaround).</strong><br>
+            Os modelos de EPS, DCF e Graham deram <i>N/A</i> devido à ausência de lucros e caixa livres positivos. Contudo, o <strong>Modelo 4 (Price-to-Sales)</strong> foi ativado com sucesso com base na receita por ação (${rev}). A avaliação desta empresa depende exclusivamente da sua capacidade de escalar a faturação até atingir o ponto de equilíbrio operacional (breakeven).`;
+        } else if (fvMedio > 0) {
+            corBordaNlg = upsidePct >= 0 ? "#5cb85c" : "#d9534f";
+            diagnosticoTexto = `💡 <strong>Diagnóstico Fundamental (${ticker}): Empresa Rentável com Base Contabilística.</strong><br>
+            O motor ponderou com sucesso os fluxos de caixa e lucros atuais. O valor intrínseco calculado aponta para ${fmt(fvMedio)}, colocando o ativo num patamar de <strong>${upsideStr}</strong> face ao preço de mercado atual (${fmt(preco)}). ${upsidePct >= 0 ? "O ativo oferece margem de segurança face ao preço máximo de compra recomendado." : "Atenção: O preço de mercado já ultrapassou o justo valor modelado, exigindo prémio especulativo."}`;
+        }
+
+        if (diagnosticoTexto) {
+            boxNlg.innerHTML = diagnosticoTexto;
+            boxNlg.style.borderLeftColor = corBordaNlg;
+            boxNlg.style.display = 'block';
+        } else {
+            boxNlg.style.display = 'none';
+        }
+
+        // Desenhar Matriz de Sensibilidade 3x3
         const gVals = [Math.max(0, gPct - 2), gPct, gPct + 2];
         const rVals = [Math.max(1, waccPct - 1.5), waccPct, waccPct + 1.5];
 
