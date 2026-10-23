@@ -591,7 +591,92 @@
         <button onclick="gerarBlueprintSniper()" class="btn-moderno btn-roxo">Extrair Alvos</button>
     </div>
 </div>
+<!-- 3. BLOCO: SIMULADOR INTERATIVO DE VALOR JUSTO (FAIR VALUE LAB) -->
+<div class="painel-controlo" style="border-left: 5px solid #3fbf8f;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 10px;">
+        <h3 class="painel-titulo">
+            <span class="dica-edu">
+                🧮 Laboratório de Valor Justo (Fair Value Interativo)
+                <span class="dica-texto" style="width: 340px;">
+                    <strong style="color: #3fbf8f; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Modelação Fundamentalista</strong>
+                    Puxa os dados oficiais de Wall Street ou insere as tuas próprias estimativas de EPS, FCF, Crescimento e Múltiplo P/E para descobrir o preço justo da ação hoje.
+                </span>
+            </span>
+        </h3>
+        <div style="display: flex; gap: 8px; align-items: center;">
+            <input type="text" id="fv-ticker" class="input-moderno" list="dl-fv-ticker" placeholder="Ticker (Ex: MSFT)" oninput="pesquisarTickerInteligente(this, 'dl-fv-ticker')" style="max-width: 140px; padding: 8px 12px; font-size: 12px; text-transform: uppercase;">
+            <datalist id="dl-fv-ticker"></datalist>
+            <button onclick="carregarDadosFairValue()" class="btn-moderno" style="background: #232d3f; color: #3fbf8f; border: 1px solid #3fbf8f; padding: 8px 14px; font-size: 11px;">
+                📥 Puxar Dados API
+            </button>
+        </div>
+    </div>
 
+    <!-- GRELHA DE INPUTS EDITÁVEIS -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); gap: 12px; background: #0d1117; padding: 15px; border-radius: 8px; border: 1px solid #30363d; margin-top: 15px;">
+        <div>
+            <label style="display:block; font-size:10px; color:#8b949e; font-weight:bold; margin-bottom:4px;">PREÇO ATUAL ($/€)</label>
+            <input type="number" id="fv-preco" class="input-moderno" value="100.00" step="0.01" oninput="calcularFairValueLive()" style="width:100%; box-sizing:border-box; padding:8px; font-size:13px;">
+        </div>
+        <div>
+            <label style="display:block; font-size:10px; color:#58a6ff; font-weight:bold; margin-bottom:4px;">EPS (LUCRO/AÇÃO)</label>
+            <input type="number" id="fv-eps" class="input-moderno" value="5.00" step="0.01" oninput="calcularFairValueLive()" style="width:100%; box-sizing:border-box; padding:8px; font-size:13px;">
+        </div>
+        <div>
+            <label style="display:block; font-size:10px; color:#b388ff; font-weight:bold; margin-bottom:4px;">FCF / AÇÃO (CAIXA)</label>
+            <input type="number" id="fv-fcf" class="input-moderno" value="5.50" step="0.01" oninput="calcularFairValueLive()" style="width:100%; box-sizing:border-box; padding:8px; font-size:13px;">
+        </div>
+        <div>
+            <label style="display:block; font-size:10px; color:#3fbf8f; font-weight:bold; margin-bottom:4px;">CRESCIMENTO 5A (%)</label>
+            <input type="number" id="fv-cresc" class="input-moderno" value="12.0" step="0.5" oninput="calcularFairValueLive()" style="width:100%; box-sizing:border-box; padding:8px; font-size:13px;">
+        </div>
+        <div>
+            <label style="display:block; font-size:10px; color:#e3b341; font-weight:bold; margin-bottom:4px;">P/E ALVO (SAÍDA)</label>
+            <input type="number" id="fv-pe" class="input-moderno" value="20.0" step="0.5" oninput="calcularFairValueLive()" style="width:100%; box-sizing:border-box; padding:8px; font-size:13px;">
+        </div>
+        <div>
+            <label style="display:block; font-size:10px; color:#d9534f; font-weight:bold; margin-bottom:4px;">DESCONTO / WACC (%)</label>
+            <input type="number" id="fv-wacc" class="input-moderno" value="10.0" step="0.5" oninput="calcularFairValueLive()" style="width:100%; box-sizing:border-box; padding:8px; font-size:13px;" title="Retorno anual mínimo que exiges (Custo de Oportunidade)">
+        </div>
+        <div>
+            <label style="display:block; font-size:10px; color:#8b949e; font-weight:bold; margin-bottom:4px;">MARGEM SEGURANÇA (%)</label>
+            <input type="number" id="fv-mos" class="input-moderno" value="20.0" step="5" oninput="calcularFairValueLive()" style="width:100%; box-sizing:border-box; padding:8px; font-size:13px;">
+        </div>
+    </div>
+
+    <!-- PAINEL DE RESULTADOS EM TEMPO REAL -->
+    <div id="fv-painel-resultados" style="margin-top: 15px; background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 18px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 15px;">
+            <div style="background: #0d1117; padding: 12px; border-radius: 6px; border-top: 3px solid #58a6ff;">
+                <span style="font-size: 10px; color: #8b949e; text-transform: uppercase; font-weight: bold;">1. Modelo Múltiplo EPS (5A)</span>
+                <div id="fv-res-pe" style="font-size: 18px; font-weight: 900; color: #f0f2f5; margin-top: 4px;">$0.00</div>
+            </div>
+            <div style="background: #0d1117; padding: 12px; border-radius: 6px; border-top: 3px solid #b388ff;">
+                <span style="font-size: 10px; color: #8b949e; text-transform: uppercase; font-weight: bold;">2. Modelo DCF (Fluxo Caixa)</span>
+                <div id="fv-res-dcf" style="font-size: 18px; font-weight: 900; color: #f0f2f5; margin-top: 4px;">$0.00</div>
+            </div>
+            <div style="background: #0d1117; padding: 12px; border-radius: 6px; border-top: 3px solid #e3b341;">
+                <span style="font-size: 10px; color: #8b949e; text-transform: uppercase; font-weight: bold;">3. Fórmula de Graham</span>
+                <div id="fv-res-graham" style="font-size: 18px; font-weight: 900; color: #f0f2f5; margin-top: 4px;">$0.00</div>
+            </div>
+        </div>
+
+        <!-- VEREDICTO CENTRAL + PREÇO DE ENTRADA COM MARGEM DE SEGURANÇA -->
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; background: #0d1117; padding: 15px; border-radius: 8px; border: 1px solid #30363d;">
+            <div>
+                <span style="font-size: 11px; color: #8b949e; text-transform: uppercase; font-weight: bold;">🎯 Valor Intrínseco Médio (Justo Valor Hoje):</span>
+                <div style="display: flex; align-items: baseline; gap: 10px; margin-top: 4px;">
+                    <span id="fv-media-final" style="font-size: 26px; font-weight: 900; color: #3fbf8f;">$0.00</span>
+                    <span id="fv-upside-badge" style="font-size: 13px; font-weight: bold;">(--%)</span>
+                </div>
+            </div>
+            <div style="text-align: right;">
+                <span style="font-size: 11px; color: #8b949e; text-transform: uppercase; font-weight: bold;">🛡️ Preço Máx. de Compra (c/ Margem Segurança):</span>
+                <div id="fv-buy-zone" style="font-size: 22px; font-weight: 900; color: #58a6ff; margin-top: 4px;">$0.00</div>
+            </div>
+        </div>
+    </div>
+</div>
     </div>
 
     <!-- SEPARADOR 3: CRIPTOATIVOS -->
@@ -1539,6 +1624,10 @@
 
     
 </div> <!-- ✔️ NOVO: FECHA A CAIXA DO TERMINAL GLOBAL AQUI -->
+
+
+
+
     
 <script>
     // ==========================================
@@ -5968,6 +6057,99 @@ function atualizarDiarioBordo() {
             div.innerHTML = 'Erro ao contactar o mercado.';
         }
     }
+// ==========================================
+    // MOTOR INTERATIVO DE VALOR JUSTO (FAIR VALUE LAB)
+    // ==========================================
+    let fvMoedaAtual = '$';
+
+    async function carregarDadosFairValue() {
+        const ticker = document.getElementById('fv-ticker').value.trim().toUpperCase();
+        if (!ticker) {
+            alert("Escreve um Ticker para extrair os dados fundamentais.");
+            return;
+        }
+        try {
+            const resp = await fetch(`/api/dados_valuation/${encodeURIComponent(ticker)}`);
+            const d = await resp.json();
+            if (!resp.ok || d.erro) {
+                alert(d.erro || "Erro ao obter dados da cotada.");
+                return;
+            }
+            fvMoedaAtual = d.moeda || '$';
+            document.getElementById('fv-preco').value = d.preco;
+            document.getElementById('fv-eps').value = d.eps;
+            document.getElementById('fv-fcf').value = d.fcf_share;
+            document.getElementById('fv-cresc').value = d.crescimento;
+            document.getElementById('fv-pe').value = d.pe_sugerido;
+            calcularFairValueLive();
+        } catch (e) {
+            alert("Erro de ligação ao servidor.");
+        }
+    }
+
+    function calcularFairValueLive() {
+        const preco = parseFloat(document.getElementById('fv-preco').value) || 0;
+        const eps = parseFloat(document.getElementById('fv-eps').value) || 0;
+        const fcf = parseFloat(document.getElementById('fv-fcf').value) || 0;
+        const g = (parseFloat(document.getElementById('fv-cresc').value) || 0) / 100.0;
+        const peAlvo = parseFloat(document.getElementById('fv-pe').value) || 15;
+        const r = (parseFloat(document.getElementById('fv-wacc').value) || 10) / 100.0;
+        const mos = (parseFloat(document.getElementById('fv-mos').value) || 20) / 100.0;
+
+        // 1. Modelo Projeção de Múltiplos a 5 Anos descontado para hoje
+        const epsAno5 = eps * Math.pow(1 + g, 5);
+        const precoFuturoAno5 = epsAno5 * peAlvo;
+        const fvMultiplo = eps > 0 ? (precoFuturoAno5 / Math.pow(1 + r, 5)) : 0;
+
+        // 2. Modelo DCF Simplificado (Soma dos FCF de 5 anos descontados + Valor Terminal)
+        let somaFcfDescontado = 0;
+        let fcfAno = fcf;
+        for (let t = 1; t <= 5; t++) {
+            fcfAno = fcfAno * (1 + g);
+            somaFcfDescontado += fcfAno / Math.pow(1 + r, t);
+        }
+        const valorTerminal = (fcfAno * peAlvo) / Math.pow(1 + r, 5);
+        const fvDcf = fcf > 0 ? (somaFcfDescontado + valorTerminal) : 0;
+
+        // 3. Fórmula de Benjamin Graham Revista (Ajustada a Yield de 4.5%)
+        const gPct = g * 100;
+        const fvGraham = eps > 0 ? ((eps * (8.5 + 1.5 * gPct) * 4.4) / 4.5) : 0;
+
+        // Média Ponderada dos modelos válidos (ignora modelos a zero se a empresa tiver EPS negativo mas FCF positivo)
+        const modelosValidos = [fvMultiplo, fvDcf, fvGraham].filter(v => v > 0);
+        const fvMedio = modelosValidos.length > 0 
+            ? modelosValidos.reduce((a, b) => a + b, 0) / modelosValidos.length 
+            : 0;
+
+        const precoComMargem = fvMedio * (1 - mos);
+        const upsidePct = (preco > 0 && fvMedio > 0) ? (((fvMedio / preco) - 1) * 100) : 0;
+
+        const fmt = (v) => fvMoedaAtual === '€' ? `${v.toFixed(2)} €` : `$${v.toFixed(2)}`;
+
+        document.getElementById('fv-res-pe').innerText = fvMultiplo > 0 ? fmt(fvMultiplo) : "N/A (EPS ≤ 0)";
+        document.getElementById('fv-res-dcf').innerText = fvDcf > 0 ? fmt(fvDcf) : "N/A (FCF ≤ 0)";
+        document.getElementById('fv-res-graham').innerText = fvGraham > 0 ? fmt(fvGraham) : "N/A (EPS ≤ 0)";
+
+        document.getElementById('fv-media-final').innerText = fmt(fvMedio);
+        document.getElementById('fv-buy-zone').innerText = fmt(precoComMargem);
+
+        const badge = document.getElementById('fv-upside-badge');
+        if (fvMedio <= 0) {
+            badge.innerText = "(Insere EPS ou FCF positivo)";
+            badge.style.color = "#8b949e";
+        } else if (upsidePct >= 0) {
+            badge.innerText = `(${upsidePct >= 0 ? '+' : ''}${upsidePct.toFixed(1)}% Subavaliada / Desconto)`;
+            badge.style.color = "#5cb85c";
+        } else {
+            badge.innerText = `(${upsidePct.toFixed(1)}% Sobreavaliada / Prémio)`;
+            badge.style.color = "#d9534f";
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', calcularFairValueLive);
+
+
+    
 </script>
 
     
