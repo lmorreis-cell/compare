@@ -2619,39 +2619,6 @@ def api_info_rapida(ticker):
     except Exception:
         return jsonify({"erro": "Ativo não encontrado."}), 400
 
-@app.route('/api/dados_valuation/<ticker>')
-@cache.cached(timeout=3600)
-def api_dados_valuation(ticker):
-    try:
-        tk = yf.Ticker(ticker)
-        info = tk.info
-        
-        preco = float(info.get('currentPrice') or info.get('regularMarketPrice') or info.get('previousClose') or 0)
-        eps = float(info.get('forwardEps') or info.get('trailingEps') or 0)
-        pe_atual = float(info.get('forwardPE') or info.get('trailingPE') or 18.0)
-        
-        # Calcular Free Cash Flow por Ação (FCF / Shares Outstanding)
-        fcf_total = float(info.get('freeCashflow') or 0)
-        shares = float(info.get('sharesOutstanding') or 0)
-        fcf_per_share = (fcf_total / shares) if (fcf_total != 0 and shares > 0) else (eps * 1.1 if eps > 0 else 0)
-        
-        # Estimar crescimento anual esperado (via earningsGrowth ou PEG)
-        eg = info.get('earningsGrowth') or info.get('revenueGrowth') or 0.10
-        crescimento_est = round(min(max(float(eg) * 100, 2.0), 35.0), 1)
-        
-        moeda = "€" if info.get('currency') == 'EUR' or "." in ticker else "$"
-        
-        return jsonify({
-            "ticker": ticker.upper(),
-            "moeda": moeda,
-            "preco": round(preco, 2),
-            "eps": round(eps, 2),
-            "fcf_share": round(fcf_per_share, 2),
-            "crescimento": crescimento_est,
-            "pe_sugerido": round(min(max(pe_atual, 10.0), 40.0), 1)
-        })
-    except Exception as e:
-        return jsonify({"erro": f"Não foi possível extrair métricas de {ticker}: {str(e)}"}), 400
 
 @app.route('/api/liga', methods=['GET', 'POST'])
 @requer_cargo(nivel_minimo=2)
