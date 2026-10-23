@@ -2419,6 +2419,109 @@ def disparar_vigia_remota(token_secreto):
         return jsonify({"erro": f"Falha ao iniciar o motor: {str(e)}"}), 500
 
 # ==========================================
+# MOTOR DO LABORATÓRIO DE VALOR JUSTO (4 MODELOS + WEBHOOK)
+# ==========================================
+@app.route('/api/dados_valuation/<ticker>')
+@cache.cached(timeout=3600)
+def api_dados_valuation(ticker):
+    try:
+        tk = yf.Ticker(ticker)
+        info = tk.info
+        
+        preco = float(info.get('currentPrice') or info.get('regularMarketPrice') or info.get('previousClose') or 0)
+        eps = float(info.get('forwardEps') or info.get('trailingEps') or 0)
+        pe_atual = float(info.get('forwardPE') or info.get('trailingPE') or 18.0)
+        
+        # 1. Free Cash Flow por Ação
+        fcf_total = float(info.get('freeCashflow') or 0)
+        shares = float(info.get('sharesOutstanding') or 0)
+        fcf_per_share = (fcf_total / shares) if (fcf_total != 0 and shares > 0) else (eps * 1.1 if eps > 0 else 0)
+        
+        # 2. Receita por Ação (Sales per Share) e Múltiplo P/S para empresas sem lucro
+        rev_per_share = float(info.get('revenuePerShare') or 0)
+        if rev_per_share == 0 and shares > 0:
+            rev_total = float(info.get('totalRevenue') or 0)
+            rev_per_share = rev_total / shares if rev_total > 0 else 0
+            
+        ps_atual = float(info.get('priceToSalesTrailing12Months') or 3.5)
+        
+        # 3. Crescimento Anual Esperado (CAGR)
+        eg = info.get('earningsGrowth') or info.get('revenueGrowth') or 0.10
+        crescimento_est = round(min(max(float(eg) * 100, 2.0), 35.0), 1)
+        
+        moeda = "€" if info.get('currency') == 'EUR' or "." in ticker else "$"
+        
+        return jsonify({
+            "ticker": ticker.upper(),
+            "moeda": moeda,
+            "preco": round(preco, 2),
+            "eps": round(eps, 2),
+            "fcf_share": round(fcf_per_share, 2),
+            "rev_share": round(rev_per_share, 2),
+            "crescimento": crescimento_est,
+            "pe_sugerido": round(min(max(pe_atual, 8.0), 45.0), 1),
+            "ps_sugerido": round(min(max(ps_atual, 1.0), 15.0), 1)
+        })
+    except Exception as e:
+        return jsonify({"erro": f"Não foi possível extrair métricas de {ticker}: {str(e)}"}), 400
+
+
+@app.route('/api/webhook/fairvalue', methods=['POST'])
+@requer_cargo(nivel_minimo=2)
+def webhook_fairvalue():
+    d = request.json
+    webhook_url = os.environ.get("WEBHOOK_SNIPER") or os.environ.get("WEBHOOK_LIGA")
+    if not webhook_url:
+        return jsonify({"erro": "Webhook não configurado no servidor."}), 500
+
+    autor = session.get('username', 'Analista')
+    cor_embed = 4177807 if d.get('upside_num', 0) >= 0 else 14242639 # Verde se subavaliada, Vermelho se cara
+
+    embed = {
+        "embeds": [{
+            "title": f"🧮 AUDITORIA DE VALOR INTRÍNSECO: {d.get('ticker', 'ATIVO')}",
+            "color": cor_embed,
+            "description": (
+                f"Simulação fundamentalista executada por **{autor}** no Fair Value Lab:\n\n"
+                f"**Cotação Atual:** `{d.get('preco_fmt')}`\n"
+                f"🎯 **Justo Valor Hoje:** **{d.get('fv_medio_fmt')}** *(Margem: {d.get('upside_str')})*\n"
+                f"🛡️ **Zona Máxima de Compra (c/ {d.get('mos')}% MoS):** `{d.get('buy_zone_fmt')}`"
+            ),
+            "fields": [
+                {
+                    "name": "📊 Modelos de Avaliação (5A)",
+                    "value": (
+                        f"• **Múltiplo EPS:** {d.get('m_pe')}\n"
+                        f"• **DCF (Caixa):** {d.get('m_dcf')}\n"
+                        f"• **Graham:** {d.get('m_graham')}\n"
+                        f"• **Receita (P/S):** {d.get('m_ps')}"
+                    ),
+                    "inline": True
+                },
+                {
+                    "name": "⚙️ Pressupostos do Analista",
+                    "value": (
+                        f"• **Crescimento (CAGR):** {d.get('cresc')}%\n"
+                        f"• **P/E Alvo | P/S Alvo:** {d.get('pe')}x | {d.get('ps')}x\n"
+                        f"• **Taxa Desconto (WACC):** {d.get('wacc')}%\n"
+                        f"• **EPS | FCF/sh:** {d.get('eps')} | {d.get('fcf')}"
+                    ),
+                    "inline": True
+                }
+            ],
+            "footer": {"text": "Portal Bolsa — Laboratório Interativo de Valor Justo"}
+        }]
+    }
+
+    try:
+        r = requests.post(webhook_url, json=embed, timeout=5)
+        r.raise_for_status()
+        return jsonify({"sucesso": True})
+    except Exception as e:
+        return jsonify({"erro": str(e)}), 500
+
+
+# ==========================================
 # MOTOR DA LIGA MENSAL DE CARTEIRAS (OPÇÃO A + B + SNIPER)
 # ==========================================
 ARQUIVO_LIGA = "liga_carteiras.json"
