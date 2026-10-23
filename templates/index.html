@@ -591,7 +591,7 @@
         <button onclick="gerarBlueprintSniper()" class="btn-moderno btn-roxo">Extrair Alvos</button>
     </div>
 </div>
-<!-- 3. BLOCO: SIMULADOR INTERATIVO DE VALOR JUSTO (4 MODELOS + MATRIZ 3X3 + DISCORD) -->
+<!-- 3. BLOCO: SIMULADOR INTERATIVO DE VALOR JUSTO (4 MODELOS + MATRIZ 3X3 + DISCORD + TOOLTIPS) -->
 <div class="painel-controlo" style="border-left: 5px solid #3fbf8f;">
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 10px;">
         <h3 class="painel-titulo">
@@ -615,86 +615,148 @@
         </div>
     </div>
 
-    <!-- GRELHA DE INPUTS EDITÁVEIS (9 VARIÁVEIS) -->
+    <!-- GRELHA DE INPUTS EDITÁVEIS COM TOOLTIPS -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(125px, 1fr)); gap: 10px; background: #0d1117; padding: 15px; border-radius: 8px; border: 1px solid #30363d; margin-top: 15px;">
         <div>
-            <label style="display:block; font-size:10px; color:#c9d1d9; font-weight:bold; margin-bottom:4px;">PREÇO ATUAL</label>
+            <label style="display:block; font-size:10px; color:#c9d1d9; font-weight:bold; margin-bottom:4px;">
+                <span class="dica-edu" style="border-bottom: 1px dotted #8b949e;">PREÇO ATUAL
+                    <span class="dica-texto" style="width: 240px; left: 0; transform: none;">Cotação de mercado em tempo real da ação. Serve de referência para comparar com o Valor Justo calculado.</span>
+                </span>
+            </label>
             <input type="number" id="fv-preco" class="input-moderno" value="100.00" step="0.01" oninput="calcularFairValueLive()" style="width:100%; box-sizing:border-box; padding:7px; font-size:12px;">
         </div>
         <div>
-            <label style="display:block; font-size:10px; color:#58a6ff; font-weight:bold; margin-bottom:4px;">EPS (LUCRO/SH)</label>
+            <label style="display:block; font-size:10px; color:#58a6ff; font-weight:bold; margin-bottom:4px;">
+                <span class="dica-edu" style="border-bottom: 1px dotted #58a6ff;">EPS (LUCRO/SH)
+                    <span class="dica-texto" style="width: 250px; left: 0; transform: none;"><strong style="color: #58a6ff; display: block; margin-bottom: 4px;">Earnings Per Share</strong>Lucro líquido da empresa dividido pelas ações em circulação. Base fundamental para os múltiplos de rentabilidade.</span>
+                </span>
+            </label>
             <input type="number" id="fv-eps" class="input-moderno" value="5.00" step="0.01" oninput="calcularFairValueLive()" style="width:100%; box-sizing:border-box; padding:7px; font-size:12px;">
         </div>
         <div>
-            <label style="display:block; font-size:10px; color:#b388ff; font-weight:bold; margin-bottom:4px;">FCF / AÇÃO</label>
+            <label style="display:block; font-size:10px; color:#b388ff; font-weight:bold; margin-bottom:4px;">
+                <span class="dica-edu" style="border-bottom: 1px dotted #b388ff;">FCF / AÇÃO
+                    <span class="dica-texto" style="width: 250px; left: 0; transform: none;"><strong style="color: #b388ff; display: block; margin-bottom: 4px;">Free Cash Flow per Share</strong>Dinheiro real gerado pela operação após despesas e CAPEX. Mais fiável do que o lucro contabilístico.</span>
+                </span>
+            </label>
             <input type="number" id="fv-fcf" class="input-moderno" value="5.50" step="0.01" oninput="calcularFairValueLive()" style="width:100%; box-sizing:border-box; padding:7px; font-size:12px;">
         </div>
         <div>
-            <label style="display:block; font-size:10px; color:#00ffcc; font-weight:bold; margin-bottom:4px;">RECEITA / AÇÃO</label>
+            <label style="display:block; font-size:10px; color:#00ffcc; font-weight:bold; margin-bottom:4px;">
+                <span class="dica-edu" style="border-bottom: 1px dotted #00ffcc;">RECEITA / AÇÃO
+                    <span class="dica-texto" style="width: 250px; left: 0; transform: none;"><strong style="color: #00ffcc; display: block; margin-bottom: 4px;">Sales per Share</strong>Faturação total dividida por ações. Âncora principal para avaliar empresas em hiper-crescimento sem lucros.</span>
+                </span>
+            </label>
             <input type="number" id="fv-rev" class="input-moderno" value="25.00" step="0.01" oninput="calcularFairValueLive()" style="width:100%; box-sizing:border-box; padding:7px; font-size:12px;">
         </div>
         <div>
-            <label style="display:block; font-size:10px; color:#3fbf8f; font-weight:bold; margin-bottom:4px;">CRESC. 5A (%)</label>
+            <label style="display:block; font-size:10px; color:#3fbf8f; font-weight:bold; margin-bottom:4px;">
+                <span class="dica-edu" style="border-bottom: 1px dotted #3fbf8f;">CRESC. 5A (%)
+                    <span class="dica-texto" style="width: 250px; left: 0; transform: none;"><strong style="color: #3fbf8f; display: block; margin-bottom: 4px;">CAGR Estimado</strong>Taxa de crescimento anual composta projetada para os lucros ou fluxo de caixa nos próximos 5 anos.</span>
+                </span>
+            </label>
             <input type="number" id="fv-cresc" class="input-moderno" value="12.0" step="0.5" oninput="calcularFairValueLive()" style="width:100%; box-sizing:border-box; padding:7px; font-size:12px;">
         </div>
         <div>
-            <label style="display:block; font-size:10px; color:#e3b341; font-weight:bold; margin-bottom:4px;">P/E ALVO (x)</label>
+            <label style="display:block; font-size:10px; color:#e3b341; font-weight:bold; margin-bottom:4px;">
+                <span class="dica-edu" style="border-bottom: 1px dotted #e3b341;">P/E ALVO (x)
+                    <span class="dica-texto" style="width: 250px; left: 0; transform: none;"><strong style="color: #e3b341; display: block; margin-bottom: 4px;">Price-to-Earnings Esperado</strong>Múltiplo de saída atribuído aos lucros da empresa no final do ano 5.</span>
+                </span>
+            </label>
             <input type="number" id="fv-pe" class="input-moderno" value="20.0" step="0.5" oninput="calcularFairValueLive()" style="width:100%; box-sizing:border-box; padding:7px; font-size:12px;">
         </div>
         <div>
-            <label style="display:block; font-size:10px; color:#00ffcc; font-weight:bold; margin-bottom:4px;">P/S ALVO (x)</label>
+            <label style="display:block; font-size:10px; color:#00ffcc; font-weight:bold; margin-bottom:4px;">
+                <span class="dica-edu" style="border-bottom: 1px dotted #00ffcc;">P/S ALVO (x)
+                    <span class="dica-texto" style="width: 250px; left: 0; transform: none;"><strong style="color: #00ffcc; display: block; margin-bottom: 4px;">Price-to-Sales Esperado</strong>Múltiplo de saída aplicado sobre a faturação no final do ano 5.</span>
+                </span>
+            </label>
             <input type="number" id="fv-ps" class="input-moderno" value="4.0" step="0.2" oninput="calcularFairValueLive()" style="width:100%; box-sizing:border-box; padding:7px; font-size:12px;">
         </div>
         <div>
-            <label style="display:block; font-size:10px; color:#d9534f; font-weight:bold; margin-bottom:4px;">DESCONTO / WACC (%)</label>
+            <label style="display:block; font-size:10px; color:#d9534f; font-weight:bold; margin-bottom:4px;">
+                <span class="dica-edu" style="border-bottom: 1px dotted #d9534f;">DESCONTO / WACC (%)
+                    <span class="dica-texto" style="width: 250px; left: 0; transform: none;"><strong style="color: #d9534f; display: block; margin-bottom: 4px;">Taxa de Desconto</strong>Retorno anual mínimo exigido para justificar o risco de investir neste ativo.</span>
+                </span>
+            </label>
             <input type="number" id="fv-wacc" class="input-moderno" value="10.0" step="0.5" oninput="calcularFairValueLive()" style="width:100%; box-sizing:border-box; padding:7px; font-size:12px;">
         </div>
         <div>
-            <label style="display:block; font-size:10px; color:#8b949e; font-weight:bold; margin-bottom:4px;">MARGEM SEG. (%)</label>
+            <label style="display:block; font-size:10px; color:#8b949e; font-weight:bold; margin-bottom:4px;">
+                <span class="dica-edu" style="border-bottom: 1px dotted #8b949e;">MARGEM SEG. (%)
+                    <span class="dica-texto" style="width: 250px; left: 0; transform: none;"><strong style="color: #8b949e; display: block; margin-bottom: 4px;">Margin of Safety</strong>Desconto de segurança aplicado sobre o valor intrínseco para definir o teto de compra.</span>
+                </span>
+            </label>
             <input type="number" id="fv-mos" class="input-moderno" value="20.0" step="5" oninput="calcularFairValueLive()" style="width:100%; box-sizing:border-box; padding:7px; font-size:12px;">
         </div>
     </div>
 
-    <!-- OS 4 CARTÕES DE MODELOS -->
+    <!-- OS 4 CARTÕES DE MODELOS COM TOOLTIPS -->
     <div style="margin-top: 15px; background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 15px;">
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 10px; margin-bottom: 15px;">
             <div style="background: #0d1117; padding: 10px; border-radius: 6px; border-top: 3px solid #58a6ff;">
-                <span style="font-size: 10px; color: #8b949e; text-transform: uppercase; font-weight: bold;">1. Múltiplo EPS (5A)</span>
+                <span style="font-size: 10px; color: #8b949e; text-transform: uppercase; font-weight: bold;">
+                    <span class="dica-edu" style="border-bottom: 1px dotted #8b949e;">1. Múltiplo EPS (5A)
+                        <span class="dica-texto" style="width: 240px;">Projeta o EPS a 5 anos com o CAGR estimado, multiplica pelo P/E Alvo e desconta o valor para hoje via WACC.</span>
+                    </span>
+                </span>
                 <div id="fv-res-pe" style="font-size: 16px; font-weight: 900; color: #f0f2f5; margin-top: 4px;">$0.00</div>
             </div>
             <div style="background: #0d1117; padding: 10px; border-radius: 6px; border-top: 3px solid #b388ff;">
-                <span style="font-size: 10px; color: #8b949e; text-transform: uppercase; font-weight: bold;">2. DCF (Fluxo Caixa)</span>
+                <span style="font-size: 10px; color: #8b949e; text-transform: uppercase; font-weight: bold;">
+                    <span class="dica-edu" style="border-bottom: 1px dotted #8b949e;">2. DCF (Fluxo Caixa)
+                        <span class="dica-texto" style="width: 240px;">Desconta para o presente todos os fluxos de caixa livres (FCF) gerados a 5 anos + o valor terminal da empresa.</span>
+                    </span>
+                </span>
                 <div id="fv-res-dcf" style="font-size: 16px; font-weight: 900; color: #f0f2f5; margin-top: 4px;">$0.00</div>
             </div>
             <div style="background: #0d1117; padding: 10px; border-radius: 6px; border-top: 3px solid #e3b341;">
-                <span style="font-size: 10px; color: #8b949e; text-transform: uppercase; font-weight: bold;">3. Benjamin Graham</span>
+                <span style="font-size: 10px; color: #8b949e; text-transform: uppercase; font-weight: bold;">
+                    <span class="dica-edu" style="border-bottom: 1px dotted #8b949e;">3. Benjamin Graham
+                        <span class="dica-texto" style="width: 240px;">Fórmula clássica adaptada do pai do Value Investing com base no EPS e crescimento estimado.</span>
+                    </span>
+                </span>
                 <div id="fv-res-graham" style="font-size: 16px; font-weight: 900; color: #f0f2f5; margin-top: 4px;">$0.00</div>
             </div>
             <div style="background: #0d1117; padding: 10px; border-radius: 6px; border-top: 3px solid #00ffcc;">
-                <span style="font-size: 10px; color: #8b949e; text-transform: uppercase; font-weight: bold;">4. Receita (P/S 5A)</span>
+                <span style="font-size: 10px; color: #8b949e; text-transform: uppercase; font-weight: bold;">
+                    <span class="dica-edu" style="border-bottom: 1px dotted #8b949e;">4. Receita (P/S 5A)
+                        <span class="dica-texto" style="width: 240px;">Projeta a faturação a 5 anos e aplica o múltiplo P/S. Modelo padrão para empresas em fase de crescimento sem lucros.</span>
+                    </span>
+                </span>
                 <div id="fv-res-ps" style="font-size: 16px; font-weight: 900; color: #f0f2f5; margin-top: 4px;">$0.00</div>
             </div>
         </div>
 
-        <!-- VEREDICTO CENTRAL -->
+        <!-- VEREDICTO CENTRAL COM TOOLTIPS -->
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; background: #0d1117; padding: 15px; border-radius: 8px; border: 1px solid #30363d;">
             <div>
-                <span id="fv-metodo-ativo" style="font-size: 10px; color: #8b949e; text-transform: uppercase; font-weight: bold;">🎯 Valor Intrínseco Médio (Justo Valor Hoje):</span>
+                <span style="font-size: 10px; color: #8b949e; text-transform: uppercase; font-weight: bold;">
+                    <span class="dica-edu" style="border-bottom: 1px dotted #8b949e;"><span id="fv-metodo-ativo">Valor Intrínseco Médio</span>
+                        <span class="dica-texto" style="width: 260px;">Média ponderada dos modelos aplicáveis. Representa o preço teórico e justo da ação no presente.</span>
+                    </span>
+                </span>
                 <div style="display: flex; align-items: baseline; gap: 10px; margin-top: 4px;">
                     <span id="fv-media-final" style="font-size: 24px; font-weight: 900; color: #3fbf8f;">$0.00</span>
                     <span id="fv-upside-badge" style="font-size: 12px; font-weight: bold;">(--%)</span>
                 </div>
             </div>
             <div style="text-align: right;">
-                <span style="font-size: 10px; color: #8b949e; text-transform: uppercase; font-weight: bold;">🛡️ Preço Máx. de Compra (c/ Margem Segurança):</span>
+                <span style="font-size: 10px; color: #8b949e; text-transform: uppercase; font-weight: bold;">
+                    <span class="dica-edu" style="border-bottom: 1px dotted #8b949e;">Preço Máx. de Compra (c/ MoS)
+                        <span class="dica-texto" style="width: 260px; left: auto; right: 0; transform: none;">Teto máximo recomendado de entrada no ativo para garantir a margem de segurança configurada.</span>
+                    </span>
+                </span>
                 <div id="fv-buy-zone" style="font-size: 20px; font-weight: 900; color: #58a6ff; margin-top: 4px;">$0.00</div>
             </div>
         </div>
 
-        <!-- MATRIZ DE SENSIBILIDADE 3X3 -->
+        <!-- MATRIZ DE SENSIBILIDADE 3X3 COM TOOLTIP -->
         <div style="margin-top: 15px;">
             <div style="font-size: 11px; color: #8b949e; font-weight: bold; text-transform: uppercase; margin-bottom: 8px;">
-                📐 Matriz de Sensibilidade 3x3 (Crescimento Anual vs. Taxa de Desconto WACC)
+                <span class="dica-edu" style="border-bottom: 1px dotted #8b949e;">📐 Matriz de Sensibilidade 3x3 (Crescimento vs. WACC)
+                    <span class="dica-texto" style="width: 320px;">Permite testar como o valor intrínseco oscila perante diferentes variações no crescimento esperado (colunas) e na taxa de desconto exigida (linhas).</span>
+                </span>
             </div>
             <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 6px; overflow-x: auto;">
                 <table style="width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 0; text-align: center;">
