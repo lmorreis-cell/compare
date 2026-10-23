@@ -2421,9 +2421,9 @@ def disparar_vigia_remota(token_secreto):
 # ==========================================
 # MOTOR DO LABORATÓRIO DE VALOR JUSTO (4 MODELOS + WEBHOOK)
 # ==========================================
-@app.route('/api/dados_valuation/<ticker>')
+@app.route('/api/fair_value_lab/<ticker>')
 @cache.cached(timeout=3600)
-def api_dados_valuation(ticker):
+def api_fair_value_lab(ticker):
     try:
         tk = yf.Ticker(ticker)
         info = tk.info
@@ -2432,12 +2432,10 @@ def api_dados_valuation(ticker):
         eps = float(info.get('forwardEps') or info.get('trailingEps') or 0)
         pe_atual = float(info.get('forwardPE') or info.get('trailingPE') or 18.0)
         
-        # 1. Free Cash Flow por Ação
         fcf_total = float(info.get('freeCashflow') or 0)
         shares = float(info.get('sharesOutstanding') or 0)
         fcf_per_share = (fcf_total / shares) if (fcf_total != 0 and shares > 0) else (eps * 1.1 if eps > 0 else 0)
         
-        # 2. Receita por Ação (Sales per Share) e Múltiplo P/S para empresas sem lucro
         rev_per_share = float(info.get('revenuePerShare') or 0)
         if rev_per_share == 0 and shares > 0:
             rev_total = float(info.get('totalRevenue') or 0)
@@ -2445,7 +2443,6 @@ def api_dados_valuation(ticker):
             
         ps_atual = float(info.get('priceToSalesTrailing12Months') or 3.5)
         
-        # 3. Crescimento Anual Esperado (CAGR)
         eg = info.get('earningsGrowth') or info.get('revenueGrowth') or 0.10
         crescimento_est = round(min(max(float(eg) * 100, 2.0), 35.0), 1)
         
@@ -2464,7 +2461,6 @@ def api_dados_valuation(ticker):
         })
     except Exception as e:
         return jsonify({"erro": f"Não foi possível extrair métricas de {ticker}: {str(e)}"}), 400
-
 
 @app.route('/api/webhook/fairvalue', methods=['POST'])
 @requer_cargo(nivel_minimo=2)
