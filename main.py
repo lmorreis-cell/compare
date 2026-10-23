@@ -2463,7 +2463,8 @@ def api_fair_value_lab(ticker):
         crescimento_est = round(min(max(crescimento_est, 4.0), 30.0), 1)
         # ---------------------------------------------------------------------
         
-        moeda = "€" if info.get('currency'] == 'EUR' or "." in ticker else "$"
+        
+        moeda = "€" if info.get('currency') == 'EUR' or "." in ticker else "$"
         
         return jsonify({
             "ticker": ticker.upper(),
