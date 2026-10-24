@@ -1086,7 +1086,7 @@
             </div>
         </div>
 
-        <!-- 💣 NOVO: CAÇADOR DE ABATE FISCAL (TAX-LOSS HARVESTING) & RADAR DE MINAS -->
+        <!-- 💣 CAÇADOR DE ABATE FISCAL (TAX-LOSS HARVESTING) & RADAR DE MINAS -->
         <div style="background-color: #161b22; border: 1px solid #30363d; border-left: 5px solid #e3b341; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 15px;">
                 <div>
@@ -1103,16 +1103,13 @@
                         Cruza o teu inventário FIFO aberto com as mais-valias do ano civil em curso e o calendário corporativo.
                     </p>
                 </div>
-                <button onclick="executarAuditoriaCarteiraCofre()" id="btn-auditar-cofre" class="btn-moderno" style="background: #232d3f; color: #e3b341; border: 1px solid #e3b341; padding: 8px 16px; font-size: 11px;">
-                    🔍 Auditar Carteira Agora
-                </button>
             </div>
 
             <div id="loading-auditoria-cofre" style="display: none; text-align: center; color: #e3b341; padding: 15px; font-size: 12px; font-weight: bold;">
                 📡 A sincronizar cotações ao vivo, calcular abates fiscais FIFO e varrer datas de Earnings...
             </div>
 
-            <div id="painel-resultado-auditoria-cofre" style="display: none; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 15px; margin-top: 10px;">
+            <div id="painel-resultado-auditoria-cofre" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 15px; margin-top: 10px;">
                 
                 <!-- COLUNA 1: CAÇADOR DE TAX-LOSS HARVESTING -->
                 <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 15px;">
@@ -1126,7 +1123,7 @@
                         </span>
                         <span id="badge-poupanca-potencial" style="background: rgba(92, 184, 92, 0.15); color: #5cb85c; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">Poupança: €0.00</span>
                     </div>
-                    <div id="conteudo-tax-loss" style="font-size: 12px; color: #c9d1d9; line-height: 1.5;"></div>
+                    <div id="conteudo-tax-loss" style="font-size: 12px; color: #c9d1d9; line-height: 1.5;">A calcular lotes em aberto...</div>
                 </div>
 
                 <!-- COLUNA 2: RADAR DE MINAS (EARNINGS & EX-DIVIDEND) -->
@@ -1141,7 +1138,7 @@
                         </span>
                         <span style="font-size: 10px; color: #8b949e;">Lotes em Carteira</span>
                     </div>
-                    <div id="conteudo-radar-minas" style="font-size: 12px; color: #c9d1d9; line-height: 1.5;"></div>
+                    <div id="conteudo-radar-minas" style="font-size: 12px; color: #c9d1d9; line-height: 1.5;">A consultar calendário corporativo...</div>
                 </div>
 
             </div>
