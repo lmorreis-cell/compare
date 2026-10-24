@@ -983,6 +983,7 @@ def api_backtest(ticker, estrategia):
 
 
 @app.route('/api/cotacao/<ticker>')
+@cache.cached(timeout=120)    
 def cotacao_live(ticker):
     try:
         ativo = yf.Ticker(ticker)
@@ -2424,45 +2425,35 @@ def api_risco_portfolio():
 @requer_cargo(nivel_minimo=2)
 def api_radar_eventos_carteira():
     import datetime
-    import pandas as pd
     
     dados = request.json or {}
-    tickers = dados.get('tickers', [])
+    tickers = list(set(dados.get('tickers', [])))[:15] # Limita a 15 ativos únicos
     if not tickers:
         return jsonify({"eventos": []})
 
     hoje = datetime.date.today()
-    hoje_ts = pd.Timestamp(hoje)
     eventos = []
 
-    for tk_str in set(tickers):
+    for tk_str in tickers:
         if "-" in tk_str:
-            continue  # Criptoativos não têm Earnings nem Dividendos corporativos
+            continue
             
         try:
             tk = yf.Ticker(tk_str)
             info = tk.info or {}
             qtype = info.get('quoteType', 'EQUITY')
             
-            # 1. Extrair Próxima Data de Resultados (Earnings)
             prox_earnings_str = "N/A"
             dias_earnings = None
             
-            if qtype == 'EQUITY':
-                try:
-                    ed = tk.get_earnings_dates(limit=8)
-                    if ed is not None and not ed.empty:
-                        if ed.index.tz is not None:
-                            ed.index = ed.index.tz_localize(None)
-                        futuras = ed[ed.index >= hoje_ts]
-                        if not futuras.empty:
-                            dt_e = futuras.index.min().date()
-                            dias_earnings = (dt_e - hoje).days
-                            prox_earnings_str = dt_e.strftime('%Y-%m-%d')
-                except Exception:
-                    pass
+            # Extração rápida via Timestamp direto (sem scraping bloqueante)
+            ts_earn = info.get('earningsTimestamp') or info.get('earningsTimestampStart')
+            if ts_earn and isinstance(ts_earn, (int, float)):
+                dt_e = datetime.date.fromtimestamp(ts_earn)
+                if dt_e >= hoje:
+                    dias_earnings = (dt_e - hoje).days
+                    prox_earnings_str = dt_e.strftime('%Y-%m-%d')
 
-            # 2. Extrair Data Ex-Dividendo e Dividend Yield
             ex_div_str = "N/A"
             dias_ex_div = None
             ex_ts = info.get('exDividendDate')
@@ -2485,7 +2476,6 @@ def api_radar_eventos_carteira():
         except Exception:
             continue
 
-    # Ordena pelos eventos de Earnings mais iminentes primeiro
     eventos.sort(key=lambda x: x['dias_earnings'] if x['dias_earnings'] is not None else 999)
     return jsonify({"eventos": eventos})
 
@@ -2943,7 +2933,8 @@ if __name__ == "__main__":
     try:
         from waitress import serve
         print(f"[*] A iniciar servidor de produção WSGI na porta {porta}...")
-        serve(app, host="0.0.0.0", port=porta)
+        
+        serve(app, host="0.0.0.0", port=porta, threads=12)
     except ImportError:
         print(f"[*] Waitress não detetado. A iniciar servidor de desenvolvimento na porta {porta}...")
         app.run(host="0.0.0.0", port=porta, debug=False)
