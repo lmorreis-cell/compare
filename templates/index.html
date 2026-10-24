@@ -294,6 +294,7 @@
             
             
             <button class="tab-btn" onclick="abrirSeparador(event, 'tab-cofre'); setTimeout(atualizarCofre, 50); setTimeout(sincronizarPrecosLiveCofre, 150);">🏛️ Cofre Fiscal</button>
+            
         
             <button class="tab-btn" onclick="abrirSeparador(event, 'tab-irs'); carregarAnosIRS();">⚖️ Assistente IRS</button>
 
@@ -1364,6 +1365,67 @@
 
     <!-- SEPARADOR 7 DO LABORATÓRIO -->
 <div id="tab-risco" class="tab-content">
+    <!-- 🧪 SIMULADOR "E SE..." (WHAT-IF SANDBOX) -->
+    <div style="background-color: #1c1e24; border: 1px solid #30363d; border-left: 4px solid #b388ff; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+            <h3 style="margin: 0; font-size: 14px; color: #f0f2f5; text-transform: uppercase;">
+                <span class="dica-edu" style="border-bottom: 1px dotted #b388ff;">
+                    🧪 Simulador "E Se..." (What-If Sandbox)
+                    <span class="dica-texto" style="width: 380px; text-transform: none;">
+                        <strong style="color: #b388ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Teste de Impacto de Portefólio</strong>
+                        Adiciona ativos fictícios (ou simula vendas) à tua carteira atual para veres como a correlação, o beta e a exposição ao risco se alteram <strong>antes</strong> de arriscares capital real na corretora.
+                    </span>
+                </span>
+            </h3>
+            <span id="badge-simulador-status" style="background: #232d3f; color: #8b949e; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; border: 1px solid #30363d;">Simulação Inativa</span>
+        </div>
+
+        <!-- Grelha de Input do Simulador -->
+        <div class="linha-inputs" style="background: #0d1117; padding: 15px; border-radius: 6px; border: 1px solid #30363d; margin-bottom: 15px; align-items: flex-end;">
+            <div style="flex: 1; min-width: 150px;">
+                <label style="display: block; font-size: 11px; color: #8b949e; margin-bottom: 5px; font-weight: bold; text-transform: uppercase;">1. Ativo Fictício (Ticker)</label>
+                <input type="text" id="simulador-ticker" class="input-moderno" list="dl-simulador-ticker" placeholder="Ex: TSLA" oninput="pesquisarTickerInteligente(this, 'dl-simulador-ticker')" style="width: 100%; box-sizing: border-box; text-transform: uppercase;">
+                <datalist id="dl-simulador-ticker"></datalist>
+            </div>
+            <div style="flex: 1; min-width: 120px;">
+                <label style="display: block; font-size: 11px; color: #8b949e; margin-bottom: 5px; font-weight: bold; text-transform: uppercase;">2. Operação</label>
+                <select id="simulador-acao" class="input-moderno" style="width: 100%; cursor: pointer;">
+                    <option value="COMPRAR" style="color: #5cb85c; font-weight: bold;">COMPRAR (+)</option>
+                    <option value="VENDER" style="color: #d9534f; font-weight: bold;">VENDER (-)</option>
+                </select>
+            </div>
+            <div style="flex: 1; min-width: 120px;">
+                <label style="display: block; font-size: 11px; color: #8b949e; margin-bottom: 5px; font-weight: bold; text-transform: uppercase;">3. Montante (€)</label>
+                <input type="number" id="simulador-montante" class="input-moderno" placeholder="Ex: 5000" step="100" style="width: 100%; box-sizing: border-box;">
+            </div>
+            <button onclick="adicionarAtivoSimulador()" class="btn-moderno" style="background: #b388ff; color: #121212; border: none; padding: 12px 20px; font-weight: bold; display: flex; align-items: center; gap: 8px; transition: all 0.2s ease;">
+                ➕ Adicionar
+            </button>
+        </div>
+
+        <!-- Lista de Ativos Simulados (Carrinho de Compras) -->
+        <div id="lista-simulador" style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px; min-height: 30px;">
+            <!-- O JS injeta as tags das ações fictícias aqui -->
+        </div>
+
+        <!-- Botões de Ação do Simulador -->
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button onclick="executarSimulacaoRisco()" id="btn-correr-simulacao" class="btn-moderno" style="background: #2ea043; color: white; border: 1px solid #3fb950; flex: 1; min-width: 250px; opacity: 0.5; cursor: not-allowed;" disabled>
+                🔬 Simular Nova Carteira
+            </button>
+            <button onclick="limparSimulador()" class="btn-moderno" style="background: transparent; color: #d9534f; border: 1px dashed #d9534f; padding: 12px 20px;">
+                🗑️ Limpar
+            </button>
+        </div>
+        
+        <!-- Painel de Resultados Comparativos (Antes vs Depois) -->
+        <div id="painel-resultados-simulacao" style="display: none; margin-top: 20px; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 20px;">
+            <h4 style="margin: 0 0 15px 0; color: #8b949e; font-size: 13px; text-transform: uppercase;">⚖️ Impacto Projetado (Antes vs. Depois)</h4>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;" id="grelha-comparativa-simulacao">
+                <!-- JS injeta o Antes/Depois aqui -->
+            </div>
+        </div>
+    </div>
     
     <div style="background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
