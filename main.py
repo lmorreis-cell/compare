@@ -903,7 +903,6 @@ def api_backtest(ticker, estrategia):
         nome_estrategia = ""
         
         if estrategia == 'reversion_rsi':
-            # Compra pânico (RSI < 30), Vende no ressalto (RSI > 50)
             df.loc[df['RSI'] < 30, 'Sinal'] = 1
             df.loc[df['RSI'] > 50, 'Sinal'] = -1
             df['Sinal'] = df['Sinal'].replace(0, np.nan).ffill().fillna(0)
@@ -911,7 +910,6 @@ def api_backtest(ticker, estrategia):
             nome_estrategia = "Mean Reversion (RSI < 30)"
             
         elif estrategia == 'bb_dip':
-            # Compra exaustão da Banda Inferior, Vende na regressão à Média 20
             df.loc[df['Close'] < df['BB_Lower'], 'Sinal'] = 1
             df.loc[df['Close'] > df['SMA20'], 'Sinal'] = -1
             df['Sinal'] = df['Sinal'].replace(0, np.nan).ffill().fillna(0)
@@ -923,15 +921,21 @@ def api_backtest(ticker, estrategia):
             nome_estrategia = "Trend Following (EMA 20)"
 
         # 3. Execução da Simulação Algorítmica
-        df['Retorno_Diario'] = df['Close'].pct_change()
-        df['Retorno_Estrategia'] = df['Sinal'].shift(1) * df['Retorno_Diario']
+        df['Retorno_Diario'] = df['Close'].pct_change().fillna(0)
+        df['Retorno_Estrategia'] = df['Sinal'].shift(1).fillna(0) * df['Retorno_Diario']
         
-        # Gestão de Risco e Drawdown
-        capital_inicial = 10000
+        # Gestão de Risco, Drawdown e Curva Comparativa (Base 10.000$)
+        capital_inicial = 10000.0
         df['Capital'] = capital_inicial * (1 + df['Retorno_Estrategia']).cumprod()
+        df['Capital_BH'] = capital_inicial * (1 + df['Retorno_Diario']).cumprod()
+        
         df['Pico'] = df['Capital'].cummax()
         df['Drawdown'] = (df['Capital'] - df['Pico']) / df['Pico']
         max_dd = df['Drawdown'].min() * 100
+        
+        df['Pico_BH'] = df['Capital_BH'].cummax()
+        df['Drawdown_BH'] = (df['Capital_BH'] - df['Pico_BH']) / df['Pico_BH']
+        max_dd_bh = df['Drawdown_BH'].min() * 100
         
         df['Mudanca'] = df['Sinal'].diff()
         total_trades = len(df[df['Mudanca'] == 1]) 
@@ -940,8 +944,20 @@ def api_backtest(ticker, estrategia):
         dias_perda = len(df[(df['Sinal'].shift(1) == 1) & (df['Retorno_Diario'] < 0)])
         win_rate = (dias_ganho / (dias_ganho + dias_perda) * 100) if (dias_ganho + dias_perda) > 0 else 0
         
+        # Tempo exposto ao mercado (%)
+        tempo_exposto = (df['Sinal'].sum() / len(df)) * 100 if len(df) > 0 else 0
+        
         retorno_total = ((df['Capital'].iloc[-1] - capital_inicial) / capital_inicial) * 100
         retorno_bh = ((df['Close'].iloc[-1] - df['Close'].iloc[0]) / df['Close'].iloc[0]) * 100
+        
+        # Amostragem a cada 5 dias úteis (~1 semana) + último dia garantido para o gráfico ser ultra-rápido
+        df_plot = df.iloc[::5].copy()
+        if df.index[-1] not in df_plot.index:
+            df_plot = pd.concat([df_plot, df.iloc[[-1]]])
+            
+        curva_datas = df_plot.index.strftime('%Y-%m-%d').tolist()
+        curva_estrategia = df_plot['Capital'].round(2).tolist()
+        curva_bh = df_plot['Capital_BH'].round(2).tolist()
         
         return jsonify({
             "ticker": ticker.upper(),
@@ -949,8 +965,17 @@ def api_backtest(ticker, estrategia):
             "win_rate": f"{win_rate:.1f}",
             "total_trades": total_trades,
             "max_dd": f"{max_dd:.1f}",
+            "max_dd_bh": f"{max_dd_bh:.1f}",
+            "tempo_exposto": f"{tempo_exposto:.0f}",
             "retorno_total": f"{retorno_total:.1f}",
             "retorno_bh": f"{retorno_bh:.1f}",
+            "capital_final_est": f"{df['Capital'].iloc[-1]:,.0f}",
+            "capital_final_bh": f"{df['Capital_BH'].iloc[-1]:,.0f}",
+            "curva": {
+                "datas": curva_datas,
+                "estrategia": curva_estrategia,
+                "bh": curva_bh
+            },
             "anos": 5
         })
     except Exception as e:
