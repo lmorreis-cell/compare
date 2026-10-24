@@ -10,6 +10,14 @@ from functools import wraps
 from flask_caching import Cache
 from flask import Flask, render_template, jsonify, request, Response, send_file, render_template_string, redirect, session, url_for
 
+
+# --- BLINDAGEM ANTI-BLOQUEIO DO YAHOO FINANCE ---
+sessao_yf = requests.Session()
+sessao_yf.headers.update({
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+})
+
+
 load_dotenv()
 
 app = Flask(__name__)
