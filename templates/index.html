@@ -292,7 +292,8 @@
             <button class="tab-btn" onclick="abrirSeparador(event, 'tab-screener')">🦅 Screener Algorítmico</button>
             
             
-            <button class="tab-btn" onclick="abrirSeparador(event, 'tab-cofre'); setTimeout(atualizarCofre, 50); setTimeout(executarAuditoriaCarteiraCofre, 150); setTimeout(sincronizarPrecosLiveCofre, 200);">🏛️ Cofre Fiscal</button>
+            
+            <button class="tab-btn" onclick="abrirSeparador(event, 'tab-cofre'); setTimeout(atualizarCofre, 50); setTimeout(sincronizarPrecosLiveCofre, 150);">🏛️ Cofre Fiscal</button>
         
             <button class="tab-btn" onclick="abrirSeparador(event, 'tab-irs'); carregarAnosIRS();">⚖️ Assistente IRS</button>
 
@@ -1093,18 +1094,15 @@
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 15px;">
                 <div>
                     <h4 style="margin: 0; color: #f0f2f5; font-size: 14px; text-transform: uppercase;">
-                        <span class="dica-edu" style="border-bottom: 1px dotted #e3b341;">
-                            💣 Radar de Minas (Earnings) & Otimizador de Abate Fiscal (IRS)
-                            <span class="dica-texto" style="width: 380px; text-transform: none;">
-                                <strong style="color: #e3b341; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Gestão Ativa de Fim de Ano & Proteção de Eventos</strong>
-                                Audita os teus lotes abertos em duas frentes: (1) Deteta posições em perda latente que podes realizar antes de 31 de Dezembro para abater aos lucros já fechados este ano e reduzir o IRS a pagar; (2) Varre o calendário de Wall Street para avisar que ações da tua carteira apresentam resultados nos próximos dias.
-                            </span>
-                        </span>
+                        💣 Radar de Minas (Earnings) & Otimizador de Abate Fiscal (IRS)
                     </h4>
                     <p style="margin: 4px 0 0 0; font-size: 11px; color: #8b949e;">
                         Cruza o teu inventário FIFO aberto com as mais-valias do ano civil em curso e o calendário corporativo.
                     </p>
                 </div>
+                <button onclick="executarAuditoriaCarteiraCofre()" id="btn-auditar-cofre" class="btn-moderno" style="background: #232d3f; color: #e3b341; border: 1px solid #e3b341; padding: 8px 16px; font-size: 11px; cursor: pointer;">
+                    🔍 Auditar Carteira Agora
+                </button>
             </div>
 
             <div id="loading-auditoria-cofre" style="display: none; text-align: center; color: #e3b341; padding: 15px; font-size: 12px; font-weight: bold;">
@@ -5143,33 +5141,36 @@
         atualizarCofre(); 
     }
 
-    // Sincroniza todas as cotações em background
+    // Sincroniza todas as cotações do Cofre num ÚNICO pedido em lote (Zero Rate Limit)
     async function sincronizarPrecosLiveCofre() {
+        if (window._syncCofreEmCurso) return;
+        window._syncCofreEmCurso = true;
+
         let tickersAbertos = [...new Set(cofreAbertas.filter(l => l.qtdRestante > 0).map(l => l.ticker))];
-        if (tickersAbertos.length === 0) return;
+        if (tickersAbertos.length === 0) {
+            window._syncCofreEmCurso = false;
+            return;
+        }
 
-        // Puxa o câmbio
         try {
-            let respCambio = await fetch(`/api/cotacao/EURUSD=X`);
-            if (respCambio.ok) {
-                let dadosCambio = await respCambio.json();
-                if (dadosCambio.preco) cacheCambioLive = dadosCambio.preco;
-            }
-        } catch(e) {}
-
-        // Puxa todos os tickers abertos em paralelo (para ser super rápido)
-        await Promise.all(tickersAbertos.map(async (t) => {
-            try {
-                let resposta = await fetch(`/api/cotacao/${t}`);
-                if (resposta.ok) {
-                    let dados = await resposta.json();
-                    if (dados.preco) cachePrecosAtuais[t] = dados.preco;
+            const resp = await fetch('/api/cotacoes_lote', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tickers: tickersAbertos })
+            });
+            if (resp.ok) {
+                const dados = await resp.json();
+                if (dados.cambio) cacheCambioLive = dados.cambio;
+                if (dados.precos) {
+                    Object.assign(cachePrecosAtuais, dados.precos);
                 }
-            } catch(e) {}
-        }));
+            }
+        } catch(e) {
+            console.warn("Aviso na sincronização em lote:", e);
+        }
 
-        // Atualiza a UI com os novos preços
-        atualizarCofre(); 
+        window._syncCofreEmCurso = false;
+        atualizarCofre();
     }
     
     async function carregarMarketMovers() {
@@ -6518,7 +6519,10 @@ function atualizarDiarioBordo() {
         painel.style.display = 'none';
 
         // 1. Garante que temos as cotações e o câmbio ao segundo antes de fazer contas
-        await sincronizarPrecosLiveCofre();
+        // Só pede cotações se a cache ainda estiver vazia (evita re-renderizar o ecrã aos saltos)
+        if (Object.keys(cachePrecosAtuais).length === 0) {
+            await sincronizarPrecosLiveCofre();
+        }
 
         // 2. Calcular o Saldo Tributável Realizado do ANO ATUAL (Apenas o ano civil corrente conta para abate direto)
         const anoAtual = new Date().getFullYear();
