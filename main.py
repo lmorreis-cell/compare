@@ -10,7 +10,14 @@ from functools import wraps
 from flask_caching import Cache
 from flask import Flask, render_template, jsonify, request, Response, send_file, render_template_string, redirect, session, url_for
 
+import logging
+import urllib3
+from requests.adapters import HTTPAdapter
 
+# Silencia avisos de fila e expande o pool de conexões HTTP de 10 para 100
+urllib3.disable_warnings()
+logging.getLogger("urllib3").setLevel(logging.ERROR)
+logging.getLogger("waitress.queue").setLevel(logging.ERROR)
 
 load_dotenv()
 
