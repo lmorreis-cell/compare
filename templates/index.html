@@ -291,7 +291,9 @@
             <button class="tab-btn" onclick="abrirSeparador(event, 'tab-cripto')">⚡ Criptoativos</button>
             <button class="tab-btn" onclick="abrirSeparador(event, 'tab-screener')">🦅 Screener Algorítmico</button>
             
-            <button class="tab-btn" onclick="abrirSeparador(event, 'tab-cofre'); setTimeout(atualizarCofre, 50); setTimeout(sincronizarPrecosLiveCofre, 100);">🏛️ Cofre Fiscal</button>
+            
+            <button class="tab-btn" onclick="abrirSeparador(event, 'tab-cofre'); setTimeout(atualizarCofre, 50); setTimeout(executarAuditoriaCarteiraCofre, 150); setTimeout(sincronizarPrecosLiveCofre, 200);">🏛️ Cofre Fiscal</button>
+        
             <button class="tab-btn" onclick="abrirSeparador(event, 'tab-irs'); carregarAnosIRS();">⚖️ Assistente IRS</button>
 
             <button class="tab-btn" onclick="abrirSeparador(event, 'tab-risco'); carregarLaboratorioRisco();">🛡️ Risco & Stress</button>
@@ -4633,10 +4635,7 @@
         document.getElementById('contador-abertas').innerText = `${totalLotesAbertos} Lote${totalLotesAbertos !== 1 ? 's' : ''}`;
         document.getElementById('contador-fechadas').innerText = `${cofreFechadas.length} Trade${cofreFechadas.length !== 1 ? 's' : ''}`;
 
-        // 👈 COLOCAS ESTE BLOCO EXATAMENTE AQUI, NO FIM DA FUNÇÃO
-        if (typeof executarAuditoriaCarteiraCofre === 'function' && document.getElementById('conteudo-tax-loss')) {
-            executarAuditoriaCarteiraCofre();
-        }
+        
     
    
         // ==========================================
