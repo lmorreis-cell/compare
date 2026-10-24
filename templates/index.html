@@ -5853,6 +5853,291 @@
     }
 }
 
+    // ==========================================
+    // MOTOR DO SIMULADOR "E SE..." (WHAT-IF SANDBOX)
+    // ==========================================
+    
+    // Memória temporária da Sandbox
+    let ativosSimulados = [];
+
+    // Formatação de moeda para UI
+    const formatter = new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' });
+
+    function adicionarAtivoSimulador() {
+        const tickerInput = document.getElementById('simulador-ticker');
+        const acaoInput = document.getElementById('simulador-acao');
+        const montanteInput = document.getElementById('simulador-montante');
+        
+        const ticker = tickerInput.value.trim().toUpperCase();
+        const acao = acaoInput.value;
+        const montante = parseFloat(montanteInput.value);
+
+        if (!ticker || isNaN(montante) || montante <= 0) {
+            alert("⚠️ Por favor, insere um ticker válido e um montante maior que zero.");
+            return;
+        }
+
+        // Verifica se o ticker já existe na simulação
+        const index = ativosSimulados.findIndex(a => a.ticker === ticker);
+        
+        if (index > -1) {
+            // Atualiza o existente
+            if (acao === 'COMPRAR') {
+                ativosSimulados[index].montante += montante;
+            } else {
+                ativosSimulados[index].montante -= montante;
+                // Se o montante ficar negativo ou zero (assumindo venda a descoberto ou liquidação total)
+                if (ativosSimulados[index].montante <= 0) {
+                   ativosSimulados[index].montante = -Math.abs(ativosSimulados[index].montante); // Guarda como negativo para simular short/venda
+                }
+            }
+            // Limpa se for zero cravado
+             if (ativosSimulados[index].montante === 0) {
+                ativosSimulados.splice(index, 1);
+            }
+        } else {
+            // Adiciona novo
+            ativosSimulados.push({
+                ticker: ticker,
+                montante: acao === 'COMPRAR' ? montante : -montante
+            });
+        }
+
+        // Limpa os inputs
+        tickerInput.value = '';
+        montanteInput.value = '';
+
+        atualizarUISimulador();
+    }
+
+    function removerAtivoSimulador(ticker) {
+        ativosSimulados = ativosSimulados.filter(a => a.ticker !== ticker);
+        atualizarUISimulador();
+    }
+
+    function limparSimulador() {
+        ativosSimulados = [];
+        atualizarUISimulador();
+        document.getElementById('painel-resultados-simulacao').style.display = 'none';
+        
+        // Repõe o status e desativa o botão de simular
+        const badge = document.getElementById('badge-simulador-status');
+        if(badge) {
+            badge.innerText = 'Simulação Inativa';
+            badge.style.background = '#232d3f';
+            badge.style.color = '#8b949e';
+        }
+        const btnSimular = document.getElementById('btn-correr-simulacao');
+        if(btnSimular) {
+            btnSimular.style.opacity = '0.5';
+            btnSimular.style.cursor = 'not-allowed';
+            btnSimular.disabled = true;
+        }
+    }
+
+    function atualizarUISimulador() {
+        const listaDiv = document.getElementById('lista-simulador');
+        listaDiv.innerHTML = '';
+
+        if (ativosSimulados.length === 0) {
+            listaDiv.innerHTML = '<span style="color: #8b949e; font-size: 12px; font-style: italic;">O carrinho de simulação está vazio.</span>';
+            return;
+        }
+
+        ativosSimulados.forEach(ativo => {
+            const isCompra = ativo.montante > 0;
+            const corBg = isCompra ? 'rgba(92, 184, 92, 0.1)' : 'rgba(217, 83, 79, 0.1)';
+            const corTexto = isCompra ? '#5cb85c' : '#d9534f';
+            const sinal = isCompra ? '+' : '';
+            const montanteExibicao = formatter.format(Math.abs(ativo.montante));
+
+            const tag = document.createElement('div');
+            tag.style.cssText = `background: ${corBg}; border: 1px solid ${corTexto}; color: ${corTexto}; padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; display: flex; align-items: center; gap: 8px;`;
+            tag.innerHTML = `
+                <span>${ativo.ticker}</span>
+                <span>${sinal}${montanteExibicao}</span>
+                <span onclick="removerAtivoSimulador('${ativo.ticker}')" style="cursor: pointer; padding: 0 4px; background: rgba(0,0,0,0.2); border-radius: 50%;">✕</span>
+            `;
+            listaDiv.appendChild(tag);
+        });
+
+        // Ativa o botão e atualiza o badge se houver ativos
+        const badge = document.getElementById('badge-simulador-status');
+        const btnSimular = document.getElementById('btn-correr-simulacao');
+        
+        if (ativosSimulados.length > 0) {
+            if(badge) {
+                badge.innerText = '⚠️ Modificações Pendentes';
+                badge.style.background = 'rgba(227, 179, 65, 0.1)';
+                badge.style.color = '#e3b341';
+                badge.style.borderColor = '#e3b341';
+            }
+            if(btnSimular) {
+                btnSimular.style.opacity = '1';
+                btnSimular.style.cursor = 'pointer';
+                btnSimular.disabled = false;
+            }
+        }
+    }
+
+    // -----------------------------------------------------------------
+    // O CÉREBRO DA SIMULAÇÃO (Cruza Real + Fictício e chama a API)
+    // -----------------------------------------------------------------
+    async function executarSimulacaoRisco() {
+        if (ativosSimulados.length === 0) return;
+
+        const painelResultados = document.getElementById('painel-resultados-simulacao');
+        const grelhaResultados = document.getElementById('grelha-comparativa-simulacao');
+        
+        // Muda o estado do botão
+        const btnSimular = document.getElementById('btn-correr-simulacao');
+        const textoOriginalBotao = btnSimular.innerHTML;
+        btnSimular.innerHTML = '⏳ A calcular...';
+        btnSimular.disabled = true;
+
+        // 1. Constrói a Carteira Atual (A mesma lógica do carregarLaboratorioRisco)
+        const filtroSuj = document.getElementById('risco-filtro-sujeito') ? document.getElementById('risco-filtro-sujeito').value : 'TODOS';
+        let alocacaoAtual = {};
+        
+        cofreAbertas.filter(l => l.qtdRestante > 0 && (filtroSuj === 'TODOS' || (l.sujeito || 'A') === filtroSuj)).forEach(lote => {
+            let precoMercadoOriginal = cachePrecosAtuais[lote.ticker] || lote.precoCompraOriginal;
+            let cambioAtual = lote.moeda === 'USD' ? cacheCambioLive : 1.0;
+            let valorMercadoEUR = (lote.qtdRestante * precoMercadoOriginal) / cambioAtual; 
+            
+            if (alocacaoAtual[lote.ticker]) {
+                alocacaoAtual[lote.ticker] += valorMercadoEUR;
+            } else {
+                alocacaoAtual[lote.ticker] = valorMercadoEUR;
+            }
+        });
+
+        // 2. Constrói a Carteira Simulada (Soma a Real + Simulador)
+        let alocacaoSimulada = { ...alocacaoAtual };
+        
+        ativosSimulados.forEach(sim => {
+            if (alocacaoSimulada[sim.ticker]) {
+                alocacaoSimulada[sim.ticker] += sim.montante;
+                // Se a venda exceder o que temos, fica negativo (Short) ou removemos se for 0
+                if (alocacaoSimulada[sim.ticker] === 0) {
+                    delete alocacaoSimulada[sim.ticker];
+                }
+            } else {
+                // Só adiciona se o montante final for positivo (para evitar simular shorts de ativos que não temos)
+                if (sim.montante > 0) {
+                    alocacaoSimulada[sim.ticker] = sim.montante;
+                }
+            }
+        });
+
+        // Prepara os requests em paralelo
+        try {
+            // Pede o Risco da Carteira Atual (Podemos ter isto em cache, mas assim garantimos a comparação no mesmo ms)
+            const reqAtual = fetch('/api/risco/portfolio', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ alocacao: alocacaoAtual })
+            });
+
+            // Pede o Risco da Carteira Simulada
+            const reqSimulado = fetch('/api/risco/portfolio', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ alocacao: alocacaoSimulada })
+            });
+
+            const [resAtual, resSimulado] = await Promise.all([reqAtual, reqSimulado]);
+            
+            const dadosAtual = await resAtual.json();
+            const dadosSimulados = await resSimulado.json();
+
+            if (dadosAtual.erro || dadosSimulados.erro) {
+                throw new Error("Erro na API de Risco.");
+            }
+
+            // 3. Renderiza a Comparação
+            // Vamos analisar: Beta, Correlação Média, Impacto do Crash (-30%)
+            const betaAtual = dadosAtual.beta_global;
+            const betaSimulado = dadosSimulados.beta_global;
+            const difBeta = betaSimulado - betaAtual;
+            
+            const corrAtual = dadosAtual.corr_avg;
+            const corrSimulada = dadosSimulados.corr_avg;
+            const difCorr = corrSimulada - corrAtual;
+
+            // Pega no cenário de Crash (normalmente o último ou o que diz "Crash Sistémico")
+            const crashAtual = dadosAtual.stress_test.find(c => c.cenario.includes('Crash')) || dadosAtual.stress_test[dadosAtual.stress_test.length - 1];
+            const crashSimulado = dadosSimulados.stress_test.find(c => c.cenario.includes('Crash')) || dadosSimulados.stress_test[dadosSimulados.stress_test.length - 1];
+            
+            const difCrashEur = Math.abs(crashSimulado.impacto_eur) - Math.abs(crashAtual.impacto_eur);
+
+            // Função helper para renderizar os cartões
+            const renderCard = (titulo, valAtual, valSimulado, dif, isInverso = false, formato = 'numero') => {
+                // isInverso: true se o aumento for mau (ex: risco, beta)
+                let corDif = '#8b949e';
+                let sinal = dif > 0 ? '+' : '';
+                let textoDif = dif.toFixed(2);
+                
+                if (Math.abs(dif) > 0.001) {
+                    if (dif > 0) {
+                        corDif = isInverso ? '#d9534f' : '#5cb85c'; // Sobe Beta = Mau (Vermelho)
+                    } else {
+                        corDif = isInverso ? '#5cb85c' : '#d9534f'; // Desce Beta = Bom (Verde)
+                    }
+                } else {
+                     textoDif = 'Sem Alt.';
+                     sinal = '';
+                }
+
+                let displayAtual = formato === 'moeda' ? formatter.format(Math.abs(valAtual)) : valAtual.toFixed(2);
+                let displaySimul = formato === 'moeda' ? formatter.format(Math.abs(valSimulado)) : valSimulado.toFixed(2);
+                let displayDif = formato === 'moeda' && Math.abs(dif) > 0.001 ? `${sinal}${formatter.format(Math.abs(dif))}` : `${sinal}${textoDif}`;
+
+
+                return `
+                    <div style="background: #161b22; padding: 15px; border-radius: 6px; border: 1px solid #30363d; display: flex; flex-direction: column;">
+                        <span style="font-size: 11px; color: #8b949e; text-transform: uppercase; font-weight: bold; margin-bottom: 10px;">${titulo}</span>
+                        <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                            <span style="font-size: 14px; color: #c9d1d9;">Atual:</span>
+                            <span style="font-size: 16px; font-weight: bold; color: #fff;">${displayAtual}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 5px; border-bottom: 1px dashed #30363d; padding-bottom: 8px;">
+                            <span style="font-size: 14px; color: #58a6ff; font-weight: bold;">Simulado:</span>
+                            <span style="font-size: 18px; font-weight: 900; color: #58a6ff;">${displaySimul}</span>
+                        </div>
+                        <div style="margin-top: 10px; text-align: right;">
+                            <span style="font-size: 11px; color: #8b949e;">Variação (Impacto): </span>
+                            <span style="font-size: 13px; font-weight: bold; color: ${corDif}; background: ${corDif}1A; padding: 2px 6px; border-radius: 4px;">${displayDif}</span>
+                        </div>
+                    </div>
+                `;
+            };
+
+            grelhaResultados.innerHTML = `
+                ${renderCard('Beta Global (Volatilidade)', betaAtual, betaSimulado, difBeta, true)}
+                ${renderCard('Correlação Média (Concentração)', corrAtual, corrSimulada, difCorr, true)}
+                ${renderCard(`Impacto de ${crashSimulado.cenario}`, crashAtual.impacto_eur, crashSimulado.impacto_eur, difCrashEur, true, 'moeda')}
+            `;
+
+            painelResultados.style.display = 'block';
+
+            // Atualiza o estado visual
+            const badge = document.getElementById('badge-simulador-status');
+            if(badge) {
+                badge.innerText = '✅ Simulação Concluída';
+                badge.style.background = 'rgba(92, 184, 92, 0.1)';
+                badge.style.color = '#5cb85c';
+                badge.style.borderColor = '#5cb85c';
+            }
+
+        } catch (error) {
+            console.error(error);
+            grelhaResultados.innerHTML = `<div style="color: #d9534f; padding: 15px;">Falha ao processar a simulação: ${error.message}</div>`;
+            painelResultados.style.display = 'block';
+        } finally {
+            btnSimular.innerHTML = textoOriginalBotao;
+            btnSimular.disabled = false;
+        }
+    }
 
 
     function classificarTradeBruto(idOrigem, novaEstrategia) {
