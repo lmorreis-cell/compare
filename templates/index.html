@@ -4632,6 +4632,11 @@
 
         document.getElementById('contador-abertas').innerText = `${totalLotesAbertos} Lote${totalLotesAbertos !== 1 ? 's' : ''}`;
         document.getElementById('contador-fechadas').innerText = `${cofreFechadas.length} Trade${cofreFechadas.length !== 1 ? 's' : ''}`;
+
+        // 👈 COLOCAS ESTE BLOCO EXATAMENTE AQUI, NO FIM DA FUNÇÃO
+        if (typeof executarAuditoriaCarteiraCofre === 'function' && document.getElementById('conteudo-tax-loss')) {
+            executarAuditoriaCarteiraCofre();
+        }
     
    
         // ==========================================
