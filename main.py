@@ -10,6 +10,10 @@ from functools import wraps
 from flask_caching import Cache
 from flask import Flask, render_template, jsonify, request, Response, send_file, render_template_string, redirect, session, url_for
 
+import warnings
+warnings.filterwarnings('ignore', category=FutureWarning)
+warnings.filterwarnings('ignore', message='.*inplace.*')
+
 import urllib3
 import logging
 from requests.adapters import HTTPAdapter
