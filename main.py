@@ -2418,6 +2418,78 @@ def api_risco_portfolio():
 
 
 # ==========================================
+# MOTOR DE RADAR DE EVENTOS DA CARTEIRA (EARNINGS & DIVIDENDOS)
+# ==========================================
+@app.route('/api/radar_eventos_carteira', methods=['POST'])
+@requer_cargo(nivel_minimo=2)
+def api_radar_eventos_carteira():
+    import datetime
+    import pandas as pd
+    
+    dados = request.json or {}
+    tickers = dados.get('tickers', [])
+    if not tickers:
+        return jsonify({"eventos": []})
+
+    hoje = datetime.date.today()
+    hoje_ts = pd.Timestamp(hoje)
+    eventos = []
+
+    for tk_str in set(tickers):
+        if "-" in tk_str:
+            continue  # Criptoativos não têm Earnings nem Dividendos corporativos
+            
+        try:
+            tk = yf.Ticker(tk_str)
+            info = tk.info or {}
+            qtype = info.get('quoteType', 'EQUITY')
+            
+            # 1. Extrair Próxima Data de Resultados (Earnings)
+            prox_earnings_str = "N/A"
+            dias_earnings = None
+            
+            if qtype == 'EQUITY':
+                try:
+                    ed = tk.get_earnings_dates(limit=8)
+                    if ed is not None and not ed.empty:
+                        if ed.index.tz is not None:
+                            ed.index = ed.index.tz_localize(None)
+                        futuras = ed[ed.index >= hoje_ts]
+                        if not futuras.empty:
+                            dt_e = futuras.index.min().date()
+                            dias_earnings = (dt_e - hoje).days
+                            prox_earnings_str = dt_e.strftime('%Y-%m-%d')
+                except Exception:
+                    pass
+
+            # 2. Extrair Data Ex-Dividendo e Dividend Yield
+            ex_div_str = "N/A"
+            dias_ex_div = None
+            ex_ts = info.get('exDividendDate')
+            if isinstance(ex_ts, (int, float)) and ex_ts > 0:
+                dt_div = datetime.date.fromtimestamp(ex_ts)
+                dias_ex_div = (dt_div - hoje).days
+                ex_div_str = dt_div.strftime('%Y-%m-%d')
+
+            div_yield = float(info.get('dividendYield') or 0) * 100
+
+            eventos.append({
+                "ticker": tk_str,
+                "tipo_ativo": qtype,
+                "earnings_data": prox_earnings_str,
+                "dias_earnings": dias_earnings,
+                "ex_div_data": ex_div_str,
+                "dias_ex_div": dias_ex_div,
+                "div_yield": round(div_yield, 2)
+            })
+        except Exception:
+            continue
+
+    # Ordena pelos eventos de Earnings mais iminentes primeiro
+    eventos.sort(key=lambda x: x['dias_earnings'] if x['dias_earnings'] is not None else 999)
+    return jsonify({"eventos": eventos})
+
+# ==========================================
 # MOTOR DE VIGIA (GATILHO EXTERNO / CRON)
 # ==========================================
 import threading
