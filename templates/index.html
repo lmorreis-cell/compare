@@ -1086,6 +1086,70 @@
             </div>
         </div>
 
+        <!-- 💣 NOVO: CAÇADOR DE ABATE FISCAL (TAX-LOSS HARVESTING) & RADAR DE MINAS -->
+        <div style="background-color: #161b22; border: 1px solid #30363d; border-left: 5px solid #e3b341; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 15px;">
+                <div>
+                    <h4 style="margin: 0; color: #f0f2f5; font-size: 14px; text-transform: uppercase;">
+                        <span class="dica-edu" style="border-bottom: 1px dotted #e3b341;">
+                            💣 Radar de Minas (Earnings) & Otimizador de Abate Fiscal (IRS)
+                            <span class="dica-texto" style="width: 380px; text-transform: none;">
+                                <strong style="color: #e3b341; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Gestão Ativa de Fim de Ano & Proteção de Eventos</strong>
+                                Audita os teus lotes abertos em duas frentes: (1) Deteta posições em perda latente que podes realizar antes de 31 de Dezembro para abater aos lucros já fechados este ano e reduzir o IRS a pagar; (2) Varre o calendário de Wall Street para avisar que ações da tua carteira apresentam resultados nos próximos dias.
+                            </span>
+                        </span>
+                    </h4>
+                    <p style="margin: 4px 0 0 0; font-size: 11px; color: #8b949e;">
+                        Cruza o teu inventário FIFO aberto com as mais-valias do ano civil em curso e o calendário corporativo.
+                    </p>
+                </div>
+                <button onclick="executarAuditoriaCarteiraCofre()" id="btn-auditar-cofre" class="btn-moderno" style="background: #232d3f; color: #e3b341; border: 1px solid #e3b341; padding: 8px 16px; font-size: 11px;">
+                    🔍 Auditar Carteira Agora
+                </button>
+            </div>
+
+            <div id="loading-auditoria-cofre" style="display: none; text-align: center; color: #e3b341; padding: 15px; font-size: 12px; font-weight: bold;">
+                📡 A sincronizar cotações ao vivo, calcular abates fiscais FIFO e varrer datas de Earnings...
+            </div>
+
+            <div id="painel-resultado-auditoria-cofre" style="display: none; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 15px; margin-top: 10px;">
+                
+                <!-- COLUNA 1: CAÇADOR DE TAX-LOSS HARVESTING -->
+                <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 15px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #21262d; padding-bottom: 8px; margin-bottom: 10px;">
+                        <span class="dica-edu" style="font-size: 12px; font-weight: bold; color: #5cb85c; text-transform: uppercase;">
+                            ✂️ Caçador de Abate Fiscal (Tax-Loss Harvesting)
+                            <span class="dica-texto" style="width: 340px; text-transform: none; left: 0; transform: none;">
+                                <strong style="color: #5cb85c; display: block; margin-bottom: 4px; border-bottom: 1px solid #333; padding-bottom: 4px;">Vantagem Legal em Portugal (Sem Wash-Sale Rule)</strong>
+                                Nos EUA és proibido de recomprar a mesma ação durante 30 dias após realizar uma perda fiscal. Em Portugal (CIRS), essa restrição não existe: podes vender hoje um lote negativo para abater ao lucro do ano corrente (poupando 28% a 48% de imposto) e recomprar a posição se quiseres manter a exposição.
+                            </span>
+                        </span>
+                        <span id="badge-poupanca-potencial" style="background: rgba(92, 184, 92, 0.15); color: #5cb85c; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">Poupança: €0.00</span>
+                    </div>
+                    <div id="conteudo-tax-loss" style="font-size: 12px; color: #c9d1d9; line-height: 1.5;"></div>
+                </div>
+
+                <!-- COLUNA 2: RADAR DE MINAS (EARNINGS & EX-DIVIDEND) -->
+                <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 15px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #21262d; padding-bottom: 8px; margin-bottom: 10px;">
+                        <span class="dica-edu" style="font-size: 12px; font-weight: bold; color: #f28b24; text-transform: uppercase;">
+                            📅 Radar de Minas (Earnings & Dividendos)
+                            <span class="dica-texto" style="width: 320px; text-transform: none; left: auto; right: 0; transform: none;">
+                                <strong style="color: #f28b24; display: block; margin-bottom: 4px; border-bottom: 1px solid #333; padding-bottom: 4px;">Risco de Gap Binário</strong>
+                                Apresentações de resultados trimestrais anulam qualquer Stop-Loss técnico devido aos Gaps de abertura. Se tens lucro relevante num lote e os Earnings são em menos de 7 dias, pondera proteger parte da posição.
+                            </span>
+                        </span>
+                        <span style="font-size: 10px; color: #8b949e;">Lotes em Carteira</span>
+                    </div>
+                    <div id="conteudo-radar-minas" style="font-size: 12px; color: #c9d1d9; line-height: 1.5;"></div>
+                </div>
+
+            </div>
+        </div>    
+
+
+
+            
         <!-- 📅 NOVO: HISTÓRICO FISCAL (ÚLTIMOS 5 ANOS) -->
         <div style="margin-bottom: 25px;">
             <h4 style="margin: 0 0 15px 0; color: #8b949e; font-size: 13px; text-transform: uppercase;">📅 Histórico Fiscal Anual (Critério de Liquidação AT)</h4>
@@ -6431,7 +6495,166 @@ function atualizarDiarioBordo() {
 
     document.addEventListener('DOMContentLoaded', calcularFairValueLive);
     
-    
+    // ==========================================
+    // MOTOR DE AUDITORIA DA CARTEIRA: TAX-LOSS HARVESTING & RADAR DE MINAS
+    // ==========================================
+    async function executarAuditoriaCarteiraCofre() {
+        const loading = document.getElementById('loading-auditoria-cofre');
+        const painel = document.getElementById('painel-resultado-auditoria-cofre');
+        const divTaxLoss = document.getElementById('conteudo-tax-loss');
+        const divMinas = document.getElementById('conteudo-radar-minas');
+        const badgePoupanca = document.getElementById('badge-poupanca-potencial');
+
+        const filtroSuj = document.getElementById('filtro-sujeito-global') ? document.getElementById('filtro-sujeito-global').value : 'TODOS';
+        const lotesAtivos = cofreAbertas.filter(l => l.qtdRestante > 0 && (filtroSuj === 'TODOS' || (l.sujeito || 'A') === filtroSuj));
+
+        if (lotesAtivos.length === 0) {
+            alert("Não tens lotes abertos neste perfil para auditar.");
+            return;
+        }
+
+        loading.style.display = 'block';
+        painel.style.display = 'none';
+
+        // 1. Garante que temos as cotações e o câmbio ao segundo antes de fazer contas
+        await sincronizarPrecosLiveCofre();
+
+        // 2. Calcular o Saldo Tributável Realizado do ANO ATUAL (Apenas o ano civil corrente conta para abate direto)
+        const anoAtual = new Date().getFullYear();
+        let lucroTributavelAnoAtual = 0;
+        let lucroBrutoAnoAtual = 0;
+
+        cofreFechadas.forEach(trade => {
+            if (filtroSuj !== 'TODOS' && (trade.sujeito || 'A') !== filtroSuj) return;
+            const anoTrade = new Date(trade.data).getFullYear();
+            if (anoTrade === anoAtual) {
+                lucroBrutoAnoAtual += trade.pnlEUR;
+                const f = trade.pnlEscaloes || { sub1: trade.pnlEUR, sub2: 0, sub5: 0, sub8: 0, plus8: 0 };
+                // Aplica os coeficientes de exclusão do Art. 43.º CIRS
+                lucroTributavelAnoAtual += f.sub1 + f.sub2 + (f.sub5 * 0.90) + (f.sub8 * 0.80) + (f.plus8 * 0.70);
+            }
+        });
+
+        // 3. Agrupar Lotes em Aberto por Ticker + Carteira + Sujeito e encontrar perdas latentes
+        let perdasLatentes = [];
+        let somaPerdasLatentesEUR = 0;
+
+        lotesAtivos.forEach(lote => {
+            const precoLive = cachePrecosAtuais[lote.ticker] || lote.precoCompraOriginal;
+            const cambioAtual = lote.moeda === 'USD' ? cacheCambioLive : 1.0;
+            const custoTotalEUR = lote.qtdRestante * lote.precoCompraEUR;
+            const valorAtualEUR = (lote.qtdRestante * precoLive) / cambioAtual;
+            const pnlLatenteEUR = valorAtualEUR - custoTotalEUR;
+
+            if (pnlLatenteEUR < -5) { // Filtra ruído abaixo de 5€
+                somaPerdasLatentesEUR += Math.abs(pnlLatenteEUR);
+                perdasLatentes.push({
+                    ticker: lote.ticker,
+                    carteira: lote.carteira,
+                    sujeito: lote.sujeito || 'A',
+                    qtd: parseFloat(lote.qtdRestante.toFixed(4)),
+                    perdaEUR: pnlLatenteEUR,
+                    anexo: lote.ticker.includes('.LS') ? 'Anexo G' : 'Anexo J'
+                });
+            }
+        });
+
+        perdasLatentes.sort((a, b) => a.perdaEUR - b.perdaEUR); // Mais negativos primeiro
+
+        // 4. Construir o Diagnóstico de Tax-Loss Harvesting
+        if (lucroTributavelAnoAtual <= 0) {
+            badgePoupanca.innerText = "IRS Atual: €0.00";
+            divTaxLoss.innerHTML = `
+                <div style="background: rgba(88, 166, 255, 0.08); border-left: 3px solid #58a6ff; padding: 10px; border-radius: 4px;">
+                    ℹ️ <strong>Sem Imposto Acumulado em ${anoAtual}:</strong> O teu saldo realizado no ano corrente é de <strong>€${lucroBrutoAnoAtual.toFixed(2)}</strong>. Como não tens mais-valias líquidas positivas este ano, não precisas de forçar vendas de abate fiscal agora (exceto se quiseres englobar menos-valias para reportar nos próximos 5 anos).
+                </div>
+            `;
+        } else if (perdasLatentes.length === 0) {
+            badgePoupanca.innerText = "Carteira 100% Verde";
+            divTaxLoss.innerHTML = `
+                <div style="background: rgba(92, 184, 92, 0.08); border-left: 3px solid #5cb85c; padding: 10px; border-radius: 4px;">
+                    ✅ <strong>Parabéns!</strong> Tens <strong>€${lucroTributavelAnoAtual.toFixed(2)}</strong> de matéria coletável realizada em ${anoAtual} (IRS estimado a 28%: <strong>€${(lucroTributavelAnoAtual * 0.28).toFixed(2)}</strong>), mas todos os teus lotes abertos estão positivos. Não tens posições perdedoras para abater.
+                </div>
+            `;
+        } else {
+            const abateMaximoUtil = Math.min(lucroTributavelAnoAtual, somaPerdasLatentesEUR);
+            const poupanca28 = abateMaximoUtil * 0.28;
+            const poupanca48 = abateMaximoUtil * 0.48;
+            badgePoupanca.innerText = `Poupa até €${poupanca28.toFixed(2)}`;
+
+            let listaPerdasHtml = perdasLatentes.slice(0, 4).map(p => `
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed #21262d; padding: 6px 0;">
+                    <div>
+                        <strong style="color: #fff;">${p.ticker}</strong> 
+                        <span style="font-size: 10px; color: #8b949e;">(${p.qtd} un. • ${p.carteira} • Suj. ${p.sujeito} • ${p.anexo})</span>
+                    </div>
+                    <div style="text-align: right;">
+                        <span style="color: #d9534f; font-weight: bold;">-€${Math.abs(p.perdaEUR).toFixed(2)}</span>
+                        <span class="dica-edu" style="font-size: 10px; color: #5cb85c; margin-left: 6px;">
+                            (Abate: +€${(Math.abs(p.perdaEUR) * 0.28).toFixed(2)})
+                            <span class="dica-texto" style="width: 240px; left: auto; right: 0; transform: none;">
+                                Se realizares esta menos-valia antes de 31 de Dezembro, reduzes o imposto a pagar em ${anoAtual} em €${(Math.abs(p.perdaEUR) * 0.28).toFixed(2)} (à taxa de 28%) ou €${(Math.abs(p.perdaEUR) * 0.48).toFixed(2)} (se englobado no último escalão).
+                            </span>
+                        </span>
+                    </div>
+                </div>
+            `).join('');
+
+            divTaxLoss.innerHTML = `
+                <div style="margin-bottom: 10px; font-size: 11px; color: #8b949e;">
+                    Lucro Tributável realizado em ${anoAtual}: <strong style="color:#fff;">€${lucroTributavelAnoAtual.toFixed(2)}</strong> (Imposto 28%: <strong style="color:#d9534f;">€${(lucroTributavelAnoAtual * 0.28).toFixed(2)}</strong>).<br>
+                    Podes recuperar <strong style="color:#5cb85c;">€${poupanca28.toFixed(2)}</strong> (28%) a <strong style="color:#e3b341;">€${poupanca48.toFixed(2)}</strong> (48%) liquidando estes lotes antes do fim do ano:
+                </div>
+                ${listaPerdasHtml}
+            `;
+        }
+
+        // 5. Consultar o Radar de Minas (Earnings & Dividendos) no Backend
+        try {
+            const tickersUnicos = [...new Set(lotesAtivos.map(l => l.ticker))];
+            const resp = await fetch('/api/radar_eventos_carteira', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tickers: tickersUnicos })
+            });
+            const dadosEv = await resp.json();
+            
+            if (!dadosEv.eventos || dadosEv.eventos.length === 0) {
+                divMinas.innerHTML = `<div style="color:#8b949e; padding: 10px;">Sem eventos corporativos detetados (apenas Cripto ou ETFs sem calendário).</div>`;
+            } else {
+                divMinas.innerHTML = dadosEv.eventos.map(ev => {
+                    let badgeEarn = `<span style="color:#8b949e;">Sem data / ETF</span>`;
+                    if (ev.dias_earnings !== null) {
+                        if (ev.dias_earnings <= 7) {
+                            badgeEarn = `<span class="dica-edu" style="background: rgba(217, 83, 79, 0.2); color: #d9534f; padding: 2px 6px; border-radius: 4px; font-weight: bold;">⚠️ PERIGO: ${ev.dias_earnings}d (${ev.earnings_data})<span class="dica-texto" style="width:230px; left:auto; right:0; transform:none;">Resultados em menos de uma semana! Risco extremo de Gap na abertura.</span></span>`;
+                        } else if (ev.dias_earnings <= 21) {
+                            badgeEarn = `<span style="color: #e3b341; font-weight: bold;">📅 Em ${ev.dias_earnings} dias (${ev.earnings_data})</span>`;
+                        } else {
+                            badgeEarn = `<span style="color: #8b949e;">📅 ${ev.earnings_data} (${ev.dias_earnings}d)</span>`;
+                        }
+                    }
+
+                    let infoDiv = ev.div_yield > 0 ? `<span style="color:#58a6ff; font-size:10px; margin-left:6px;">💰 Yield: ${ev.div_yield}%</span>` : '';
+
+                    return `
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed #21262d; padding: 6px 0;">
+                            <div>
+                                <strong style="color: #fff;">${ev.ticker}</strong> ${infoDiv}
+                            </div>
+                            <div style="text-align: right; font-size: 11px;">
+                                ${badgeEarn}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+        } catch (e) {
+            divMinas.innerHTML = `<div style="color:#d9534f;">Erro ao consultar calendário de Earnings.</div>`;
+        }
+
+        loading.style.display = 'none';
+        painel.style.display = 'grid';
+    }
 </script>
 
     
