@@ -2422,12 +2422,13 @@ def api_risco_portfolio():
 # MOTOR DE RADAR DE EVENTOS DA CARTEIRA (EARNINGS & DIVIDENDOS)
 # ==========================================
 @app.route('/api/radar_eventos_carteira', methods=['POST'])
-@requer_cargo(nivel_minimo=2)
+@cache.cached(timeout=3600, query_string=True) # Guarda em cache durante 1 hora para evitar novas consultas ao Yahoo
 def api_radar_eventos_carteira():
     import datetime
+    import time
     
     dados = request.json or {}
-    tickers = list(set(dados.get('tickers', [])))[:15] # Limita a 15 ativos únicos
+    tickers = list(set(dados.get('tickers', [])))[:10] # Limita a 10 ativos por segurança
     if not tickers:
         return jsonify({"eventos": []})
 
@@ -2446,7 +2447,6 @@ def api_radar_eventos_carteira():
             prox_earnings_str = "N/A"
             dias_earnings = None
             
-            # Extração rápida via Timestamp direto (sem scraping bloqueante)
             ts_earn = info.get('earningsTimestamp') or info.get('earningsTimestampStart')
             if ts_earn and isinstance(ts_earn, (int, float)):
                 dt_e = datetime.date.fromtimestamp(ts_earn)
@@ -2473,12 +2473,12 @@ def api_radar_eventos_carteira():
                 "dias_ex_div": dias_ex_div,
                 "div_yield": round(div_yield, 2)
             })
+            time.sleep(0.2) # Pausa de 200ms entre cada ticker para proteger contra bloqueios
         except Exception:
             continue
 
     eventos.sort(key=lambda x: x['dias_earnings'] if x['dias_earnings'] is not None else 999)
     return jsonify({"eventos": eventos})
-
 # ==========================================
 # MOTOR DE VIGIA (GATILHO EXTERNO / CRON)
 # ==========================================
