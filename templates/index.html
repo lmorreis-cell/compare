@@ -3787,18 +3787,16 @@
     // document.addEventListener('DOMContentLoaded', carregarBreadth);
 
     // ==========================================
-    // MOTOR DE BACKTESTING & NLG (PROVA DOS 9)
+    // MOTOR DE BACKTESTING & CURVA DE CAPITAL (PROVA DOS 9)
     // ==========================================
     async function executarBacktest(ticker) {
         const estrategiaSelecionada = document.getElementById('select-backtest') ? document.getElementById('select-backtest').value : 'trend_ema20';
         const gaveta = document.getElementById('gaveta-backtest');
         
-        // Efeito de Loading
         gaveta.style.display = 'block';
-        gaveta.innerHTML = `<div style="text-align: center; color: #8b949e; font-size: 13px;">⚙️ A simular 5 anos de transações algorítmicas na ${ticker}...</div>`;
+        gaveta.innerHTML = `<div style="text-align: center; color: #8b949e; font-size: 13px; padding: 20px;">⚙️ A simular 5 anos de transações algorítmicas e a desenhar Curva de Capital (10.000$) na ${ticker}...</div>`;
         
         try {
-            // AQUI MUDAMOS O ENDPOINT PARA ENVIAR A ESTRATÉGIA
             const resposta = await fetch(`/api/backtest/${ticker}/${estrategiaSelecionada}`);
             const dados = await resposta.json();
                            
@@ -3806,63 +3804,121 @@
 
             const vitoria = parseFloat(dados.win_rate) > 50;
             const gerouAlpha = parseFloat(dados.retorno_total) > parseFloat(dados.retorno_bh);
+            const reduziuRisco = Math.abs(parseFloat(dados.max_dd)) < Math.abs(parseFloat(dados.max_dd_bh));
             
-            // Inteligência Textual (NLG) Dinâmica
             let avaliacao = "";
             let nomeEst = dados.estrategia_nome || "Estratégia";
             
-            if(gerouAlpha && vitoria) {
-                avaliacao = `<strong style="color: #5cb85c;">Estratégia com Expectativa Matemática Positiva.</strong> O modelo de <i>${nomeEst}</i> aplicado à ${ticker} bateu o mercado de forma passiva (Buy & Hold) reduzindo substancialmente a exposição temporal ao risco. A taxa de acerto valida o Setup atual.`;
-            } else if (!gerouAlpha && vitoria) {
-                avaliacao = `<strong style="color: #f0ad4e;">Proteção de Capital Ativa.</strong> O modelo teve um ganho inferior ao Buy & Hold passivo, mas protegeu a carteira contra o Max Drawdown severo, tirando o capital do mercado em períodos de distribuição. Setup tático sólido para controlo de risco.`;
+            if (gerouAlpha) {
+                avaliacao = `<strong style="color: #5cb85c;">Geração de Alpha Puro Confirmada.</strong> Transformou <strong>$10,000</strong> em <strong>$${dados.capital_final_est}</strong> (vs. $${dados.capital_final_bh} em Buy & Hold), estando exposto ao risco de mercado apenas <strong>${dados.tempo_exposto}%</strong> do tempo.`;
+            } else if (reduziuRisco) {
+                avaliacao = `<strong style="color: #f0ad4e;">Escudo de Preservação de Capital.</strong> Embora o Buy & Hold tenha rendido mais no final ($${dados.capital_final_bh} vs $${dados.capital_final_est}), o algoritmo protegeu a conta reduzindo o Max Drawdown de <strong>${dados.max_dd_bh}%</strong> para <strong>${dados.max_dd}%</strong> (ficando em liquidez nas quedas severas).`;
             } else {
-                avaliacao = `<strong style="color: #d9534f;">Alerta de Ruído e Ineficácia.</strong> O perfil técnico da ${ticker} gerou muitos sinais falsos no histórico com este modelo. O ativo tem um comportamento errático e destrutivo face à tática de <i>${nomeEst}</i>. Evita esta abordagem ou reduz drasticamente o tamanho da posição.`;
+                avaliacao = `<strong style="color: #d9534f;">Incompatibilidade de Perfil Técnico.</strong> O comportamento histórico da ${ticker} apresenta demasiados falsos sinais para a mecânica de <i>${nomeEst}</i>. Neste ativo específico, a detenção passiva ou outra estratégia do menu oferece melhor relação risco/retorno.`;
             }
 
-            // O HTML injetado na Gaveta, com Tooltips Educacionais
             gaveta.innerHTML = `
-                <h4 style="margin: 0 0 15px 0; color: #58a6ff; font-size: 15px; border-bottom: 1px solid #30363d; padding-bottom: 8px;">
-                    📊 Backtest: ${dados.estrategia_nome} | ${dados.anos} Anos (${ticker})
-                </h4>
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #30363d; padding-bottom: 10px; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                    <h4 style="margin: 0; color: #58a6ff; font-size: 15px;">
+                        <span class="dica-edu" style="border-bottom: 1px dotted #58a6ff;">
+                            ⏳ Máquina do Tempo: ${dados.estrategia_nome} (${dados.anos} Anos)
+                            <span class="dica-texto" style="width: 320px;">
+                                <strong style="color: #58a6ff; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Simulação de $10,000</strong>
+                                Mostra o que teria acontecido a uma conta de $10,000 se tivesses comprado e vendido mecanicamente todos os sinais desta estratégia nos últimos 5 anos, sem emoções humanas.
+                            </span>
+                        </span>
+                    </h4>
+                    <span class="dica-edu" style="background: #161b22; color: #c9d1d9; padding: 4px 10px; border-radius: 4px; font-size: 11px; border: 1px solid #30363d; font-weight: bold;">
+                        ⏱️ Exposição ao Risco: ${dados.tempo_exposto}% do tempo
+                        <span class="dica-texto" style="width: 280px; left: auto; right: 0; transform: none;">
+                            <strong style="color: #e3b341; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Time in Market (Custo de Oportunidade)</strong>
+                            No Buy & Hold o teu dinheiro está 100% do tempo exposto a crashes. Quando a linha verde do gráfico fica perfeitamente horizontal, significa que o algoritmo vendeu tudo e ficou protegido em liquidez (Cash).
+                        </span>
+                    </span>
+                </div>
                 
-                <div style="display: flex; gap: 20px; margin-bottom: 20px; flex-wrap: wrap;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 18px;">
                     
-                    <div style="flex: 1; background: #161b22; padding: 12px; border-radius: 6px; border: 1px solid #30363d;">
-                        <span class="dica-edu" style="font-size: 11px; color: #8b949e;">Win Rate (Tx. Acerto)
+                    <div style="background: #161b22; padding: 12px; border-radius: 6px; border: 1px solid #30363d;">
+                        <span class="dica-edu" style="font-size: 11px; color: #8b949e;">Win Rate (Dias Positivos)
                             <span class="dica-texto" style="width: 250px;">
                                 <strong style="color: #58a6ff; display: block; margin-bottom: 5px;">Rácio de Eficiência</strong>
-                                Percentagem de dias/trades em que a estratégia esteve do lado certo da tendência. Sistemas de <i>Trend Following</i> têm frequentemente Win Rates de 40-50%, compensando matematicamente quando os ganhos são muito superiores às perdas.
+                                Percentagem de sessões ativas a favor da operação. Estratégias seguidoras de tendência ganham dinheiro mesmo com 45% de acerto porque cortam perdas cedo e deixam correr os ganhos.
                             </span>
                         </span><br>
-                        <span style="font-size: 18px; font-weight: bold; color: ${vitoria ? '#5cb85c' : '#d9534f'};">${dados.win_rate}%</span>
+                        <span style="font-size: 18px; font-weight: bold; color: ${vitoria ? '#5cb85c' : '#e3b341'};">${dados.win_rate}%</span>
+                        <span style="font-size: 10px; color: #8b949e; display: block; margin-top: 2px;">${dados.total_trades} entradas geradas</span>
                     </div>
 
-                    <div style="flex: 1; background: #161b22; padding: 12px; border-radius: 6px; border: 1px solid #30363d;">
-                        <span class="dica-edu" style="font-size: 11px; color: #8b949e;">Max Drawdown
-                            <span class="dica-texto" style="width: 250px;">
-                                <strong style="color: #d9534f; display: block; margin-bottom: 5px;">Risco de Ruína (Dor Máxima)</strong>
-                                A maior queda percentual entre um pico da carteira e o fundo subsequente. É a principal métrica de sobrevivência. Se o Buy & Hold tem um Drawdown de -40% e a estratégia tem -15%, o algoritmo poupou-te a uma quebra psicológica severa.
-                            </span>
-                        </span><br>
-                        <span style="font-size: 18px; font-weight: bold; color: #f0ad4e;">${dados.max_dd}%</span>
-                    </div>
-
-                    <div style="flex: 1; background: #161b22; padding: 12px; border-radius: 6px; border: 1px solid #30363d;">
-                        <span class="dica-edu" style="font-size: 11px; color: #8b949e;">Estratégia vs Buy & Hold
+                    <div style="background: #161b22; padding: 12px; border-radius: 6px; border: 1px solid #30363d;">
+                        <span class="dica-edu" style="font-size: 11px; color: #8b949e;">Max Drawdown (Est. vs B&H)
                             <span class="dica-texto" style="width: 260px;">
-                                <strong style="color: #c9d1d9; display: block; margin-bottom: 5px;">Geração de Alpha</strong>
-                                Compara o retorno acumulado de entrar/sair com o Sniper, face ao cenário passivo de comprar a ação e nunca a vender durante 5 anos (suportando todas as quedas de mercado).
+                                <strong style="color: #d9534f; display: block; margin-bottom: 5px;">Dor Psicológica Máxima</strong>
+                                Compara o maior tombo percentual da estratégia (1.º valor) contra o maior tombo de quem nunca vendeu a ação (2.º valor). Quanto menor o tombo, mais fácil é manter a disciplina.
                             </span>
                         </span><br>
-                        <span style="font-size: 18px; font-weight: bold; color: ${gerouAlpha ? '#5cb85c' : '#8b949e'};">${dados.retorno_total}% vs ${dados.retorno_bh}%</span>
+                        <span style="font-size: 18px; font-weight: bold; color: ${reduziuRisco ? '#5cb85c' : '#f0ad4e'};">${dados.max_dd}%</span>
+                        <span style="font-size: 11px; color: #8b949e;"> vs ${dados.max_dd_bh}% (B&H)</span>
+                    </div>
+
+                    <div style="background: #161b22; padding: 12px; border-radius: 6px; border: 1px solid #30363d;">
+                        <span class="dica-edu" style="font-size: 11px; color: #8b949e;">Capital Final ($10k Inicial)
+                            <span class="dica-texto" style="width: 260px; left: auto; right: 0; transform: none;">
+                                <strong style="color: #3fbf8f; display: block; margin-bottom: 5px;">Balanço Composto a 5 Anos</strong>
+                                Valor final da carteira reinvestindo os lucros em cada sinal algorítmico vs. manter a ação parada durante 5 anos.
+                            </span>
+                        </span><br>
+                        <span style="font-size: 16px; font-weight: 900; color: ${gerouAlpha ? '#5cb85c' : '#c9d1d9'};">$${dados.capital_final_est} (${dados.retorno_total}%)</span>
+                        <span style="font-size: 10px; color: #8b949e; display: block; margin-top: 2px;">Buy & Hold: $${dados.capital_final_bh} (${dados.retorno_bh}%)</span>
                     </div>
 
                 </div>
 
-                <div style="background: rgba(88, 166, 255, 0.1); border-left: 4px solid #58a6ff; padding: 12px 15px; border-radius: 4px; font-size: 13px; line-height: 1.6; color: #c9d1d9;">
-                    💡 ${avaliacao} <span style="color: #8b949e; display: block; margin-top: 5px; font-size: 11px;">(Simulação processada com ${dados.total_trades} interações no mercado, comissões não incluídas).</span>
+                <!-- GRÁFICO PLOTLY DA CURVA DE CAPITAL -->
+                <div style="background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 10px; margin-bottom: 15px;">
+                    <div id="plotly-curva-backtest" style="width: 100%; height: 260px;"></div>
+                </div>
+
+                <div style="background: rgba(88, 166, 255, 0.08); border-left: 4px solid ${gerouAlpha ? '#5cb85c' : (reduziuRisco ? '#f0ad4e' : '#d9534f')}; padding: 12px 15px; border-radius: 4px; font-size: 12px; line-height: 1.6; color: #c9d1d9;">
+                    💡 ${avaliacao}
                 </div>
             `;
+
+            // Desenhar o gráfico da Curva de Capital no Plotly
+            if (dados.curva && dados.curva.datas) {
+                const traceEst = {
+                    x: dados.curva.datas,
+                    y: dados.curva.estrategia,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: `Algoritmo (${dados.estrategia_nome})`,
+                    line: { color: '#3fbf8f', width: 2.5 },
+                    fill: 'tozeroy',
+                    fillcolor: 'rgba(63, 191, 143, 0.08)'
+                };
+
+                const traceBH = {
+                    x: dados.curva.datas,
+                    y: dados.curva.bh,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: `Buy & Hold Passivo (${ticker})`,
+                    line: { color: '#8b949e', width: 1.5, dash: 'dot' }
+                };
+
+                const layoutCurva = {
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    plot_bgcolor: 'rgba(0,0,0,0)',
+                    margin: { l: 50, r: 20, t: 25, b: 30 },
+                    showlegend: true,
+                    legend: { orientation: 'h', y: 1.15, x: 0, font: { color: '#c9d1d9', size: 11 } },
+                    xaxis: { showgrid: false, tickfont: { color: '#8b949e', size: 10 }, nticks: 6 },
+                    yaxis: { showgrid: true, gridcolor: '#21262d', tickprefix: '$', tickfont: { color: '#8b949e', size: 10 } },
+                    hovermode: 'x unified'
+                };
+
+                Plotly.newPlot('plotly-curva-backtest', [traceBH, traceEst], layoutCurva, {responsive: true, displayModeBar: false});
+            }
             
         } catch(erro) {
             gaveta.innerHTML = `<div style="color: #d9534f; padding: 15px;">Falha ao simular: ${erro.message}</div>`;
