@@ -11,12 +11,6 @@ from flask_caching import Cache
 from flask import Flask, render_template, jsonify, request, Response, send_file, render_template_string, redirect, session, url_for
 
 
-# --- BLINDAGEM ANTI-BLOQUEIO DO YAHOO FINANCE ---
-sessao_yf = requests.Session()
-sessao_yf.headers.update({
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-})
-
 
 load_dotenv()
 
@@ -844,30 +838,37 @@ def api_comparar_cripto(ticker1, ticker2):
     return jsonify(df_comparacao.to_dict(orient='records'))
 
 @app.route('/api/breadth')
-@cache.cached(timeout=3600) # Fica em cache durante 1 hora para não abusar do Yahoo
+@cache.cached(timeout=3600, response_filter=lambda resp: resp.status_code == 200)
 def api_breadth():
     import yfinance as yf
     
-    # Os 11 ETFs Setoriais do S&P500 + VIX
     tickers = "XLK XLV XLF XLE XLY XLP XLI XLB XLRE XLU XLC ^VIX"
     
     try:
-        # Puxa os dados todos de uma só vez (muito mais rápido que um a um)
-        dados = yf.download(tickers, period="100d")['Close']
-        
+        dados_raw = yf.download(tickers, period="6mo", interval="1d", progress=False)
+        if dados_raw.empty or 'Close' not in dados_raw:
+            return jsonify({"erro": "Yahoo Finance temporariamente indisponível (Rate Limit)."}), 503
+            
+        dados = dados_raw['Close']
         setores = ['XLK', 'XLV', 'XLF', 'XLE', 'XLY', 'XLP', 'XLI', 'XLB', 'XLRE', 'XLU', 'XLC']
         bull_count = 0
+        setores_validos = 0
         
         for setor in setores:
-            if setor in dados.columns and not dados[setor].isna().all():
-                fecho_atual = dados[setor].dropna().iloc[-1]
-                ema50 = dados[setor].dropna().ewm(span=50, adjust=False).mean().iloc[-1]
+            if setor in dados.columns and not dados[setor].dropna().empty:
+                serie = dados[setor].dropna()
+                setores_validos += 1
+                fecho_atual = float(serie.iloc[-1])
+                ema50 = float(serie.ewm(span=50, adjust=False).mean().iloc[-1])
                 if fecho_atual > ema50:
                     bull_count += 1
                     
-        # Extracção do VIX e cálculo da variação percentual diária
-        vix_atual = 0
-        vix_pct = 0
+        # Se nenhum setor veio preenchido, o download foi bloqueado pelo Yahoo -> Não guarda 0/11!
+        if setores_validos == 0:
+            return jsonify({"erro": "Dados de setores vazios (Rate Limit)."}), 503
+
+        vix_atual = 0.0
+        vix_pct = 0.0
         if '^VIX' in dados.columns and not dados['^VIX'].dropna().empty:
             vix_serie = dados['^VIX'].dropna()
             vix_atual = float(vix_serie.iloc[-1])
@@ -882,7 +883,6 @@ def api_breadth():
         })
     except Exception as e:
         return jsonify({"erro": str(e)}), 500
-
 @app.route('/api/backtest/<ticker>/<estrategia>')
 @cache.cached(timeout=3600) # Mantém em memória durante 1 hora
 def api_backtest(ticker, estrategia):
@@ -2427,66 +2427,105 @@ def api_risco_portfolio():
 
 
 # ==========================================
-# MOTOR DE RADAR DE EVENTOS DA CARTEIRA (EARNINGS & DIVIDENDOS)
+# COTAÇÕES EM LOTE (1 ÚNICO PEDIDO PARA TODO O COFRE)
+# ==========================================
+@app.route('/api/cotacoes_lote', methods=['POST'])
+def api_cotacoes_lote():
+    dados = request.json or {}
+    tickers = list(set(dados.get('tickers', [])))
+    if not tickers:
+        return jsonify({"precos": {}, "cambio": 1.08})
+
+    todos = tickers + ["EURUSD=X"]
+    precos = {}
+    cambio = 1.08
+
+    try:
+        df = yf.download(todos, period="5d", interval="1d", progress=False)['Close']
+        if isinstance(df, pd.Series):
+            ultimo = df.dropna()
+            if not ultimo.empty:
+                precos[todos[0]] = round(float(ultimo.iloc[-1]), 4)
+        else:
+            for t in todos:
+                if t in df.columns:
+                    s = df[t].dropna()
+                    if not s.empty:
+                        val = round(float(s.iloc[-1]), 4)
+                        if t == "EURUSD=X":
+                            cambio = val
+                        else:
+                            precos[t] = val
+    except Exception as e:
+        print(f"Aviso cotacoes_lote: {e}")
+
+    return jsonify({"precos": precos, "cambio": cambio})
+
+
+# ==========================================
+# MOTOR DE RADAR DE EVENTOS DA CARTEIRA (SEM .info PARA NÃO DAR 429)
 # ==========================================
 @app.route('/api/radar_eventos_carteira', methods=['POST'])
-@cache.cached(timeout=3600, query_string=True) # Guarda em cache durante 1 hora para evitar novas consultas ao Yahoo
 def api_radar_eventos_carteira():
     import datetime
-    import time
     
     dados = request.json or {}
-    tickers = list(set(dados.get('tickers', [])))[:10] # Limita a 10 ativos por segurança
+    tickers = list(set(dados.get('tickers', [])))[:12]
     if not tickers:
         return jsonify({"eventos": []})
 
     hoje = datetime.date.today()
+    fmp_key = os.environ.get("FMP_API_KEY")
     eventos = []
 
     for tk_str in tickers:
         if "-" in tk_str:
             continue
             
-        try:
-            tk = yf.Ticker(tk_str)
-            info = tk.info or {}
-            qtype = info.get('quoteType', 'EQUITY')
-            
-            prox_earnings_str = "N/A"
-            dias_earnings = None
-            
-            ts_earn = info.get('earningsTimestamp') or info.get('earningsTimestampStart')
-            if ts_earn and isinstance(ts_earn, (int, float)):
-                dt_e = datetime.date.fromtimestamp(ts_earn)
-                if dt_e >= hoje:
-                    dias_earnings = (dt_e - hoje).days
-                    prox_earnings_str = dt_e.strftime('%Y-%m-%d')
+        prox_earnings_str = "N/A"
+        dias_earnings = None
 
-            ex_div_str = "N/A"
-            dias_ex_div = None
-            ex_ts = info.get('exDividendDate')
-            if isinstance(ex_ts, (int, float)) and ex_ts > 0:
-                dt_div = datetime.date.fromtimestamp(ex_ts)
-                dias_ex_div = (dt_div - hoje).days
-                ex_div_str = dt_div.strftime('%Y-%m-%d')
+        # 1. Tenta primeiro via FMP API (Zero impacto no Yahoo Finance!)
+        if fmp_key and "." not in tk_str:
+            try:
+                url_e = f"https://financialmodelingprep.com/api/v3/earning_calendar?symbol={tk_str}&apikey={fmp_key}"
+                r = requests.get(url_e, timeout=2)
+                if r.status_code == 200 and isinstance(r.json(), list):
+                    futuros = [e for e in r.json() if e.get('date', '') >= hoje.strftime('%Y-%m-%d')]
+                    if futuros:
+                        futuros.sort(key=lambda x: x['date'])
+                        dt_e = datetime.datetime.strptime(futuros[0]['date'], '%Y-%m-%d').date()
+                        dias_earnings = (dt_e - hoje).days
+                        prox_earnings_str = dt_e.strftime('%Y-%m-%d')
+            except Exception:
+                pass
 
-            div_yield = float(info.get('dividendYield') or 0) * 100
+        # 2. Fallback leve via tk.calendar (evita descarregar o quoteSummary/.info completo)
+        if dias_earnings is None:
+            try:
+                cal = yf.Ticker(tk_str).calendar
+                if isinstance(cal, dict) and 'Earnings Date' in cal and cal['Earnings Date']:
+                    datas_cal = [d for d in cal['Earnings Date'] if isinstance(d, datetime.date) and d >= hoje]
+                    if datas_cal:
+                        dt_e = min(datas_cal)
+                        dias_earnings = (dt_e - hoje).days
+                        prox_earnings_str = dt_e.strftime('%Y-%m-%d')
+            except Exception:
+                pass
 
-            eventos.append({
-                "ticker": tk_str,
-                "tipo_ativo": qtype,
-                "earnings_data": prox_earnings_str,
-                "dias_earnings": dias_earnings,
-                "ex_div_data": ex_div_str,
-                "dias_ex_div": dias_ex_div,
-                "div_yield": round(div_yield, 2)
-            })
-            time.sleep(0.2) # Pausa de 200ms entre cada ticker para proteger contra bloqueios
-        except Exception:
-            continue
+        eventos.append({
+            "ticker": tk_str,
+            "tipo_ativo": "EQUITY",
+            "earnings_data": prox_earnings_str,
+            "dias_earnings": dias_earnings,
+            "ex_div_data": "N/A",
+            "dias_ex_div": None,
+            "div_yield": 0
+        })
 
     eventos.sort(key=lambda x: x['dias_earnings'] if x['dias_earnings'] is not None else 999)
     return jsonify({"eventos": eventos})
+    
 # ==========================================
 # MOTOR DE VIGIA (GATILHO EXTERNO / CRON)
 # ==========================================
