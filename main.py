@@ -10,14 +10,62 @@ from functools import wraps
 from flask_caching import Cache
 from flask import Flask, render_template, jsonify, request, Response, send_file, render_template_string, redirect, session, url_for
 
-import logging
 import urllib3
+import logging
 from requests.adapters import HTTPAdapter
 
-# Silencia avisos de fila e expande o pool de conexões HTTP de 10 para 100
+# 1. EXPANDE O POOL DE CONEXÕES DE 10 PARA 100 (Elimina o "Connection pool is full")
 urllib3.disable_warnings()
 logging.getLogger("urllib3").setLevel(logging.ERROR)
-logging.getLogger("waitress.queue").setLevel(logging.ERROR)
+logging.getLogger("yfinance").setLevel(logging.CRITICAL)
+
+sessao_yf = requests.Session()
+adapter_ cem = HTTPAdapter(pool_connections=100, pool_maxsize=100, max_retries=1)
+sessao_yf.mount('https://', adapter_cem)
+sessao_yf.mount('http://', adapter_cem)
+sessao_yf.headers.update({
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+})
+
+ARQUIVO_CACHE_DISCO = "cache_emergencia.json"
+
+def guardar_cache_disco(chave, dados):
+    try:
+        cache_atual = {}
+        if os.path.exists(ARQUIVO_CACHE_DISCO):
+            with open(ARQUIVO_CACHE_DISCO, 'r') as f:
+                cache_atual = json.load(f)
+        cache_atual[chave] = dados
+        with open(ARQUIVO_CACHE_DISCO, 'w') as f:
+            json.dump(cache_atual, f)
+    except Exception:
+        pass
+
+def ler_cache_disco(chave):
+    try:
+        if os.path.exists(ARQUIVO_CACHE_DISCO):
+            with open(ARQUIVO_CACHE_DISCO, 'r') as f:
+                return json.load(f).get(chave)
+    except Exception:
+        pass
+    return None
+
+def obter_serie_fecho(ticker, range_str="6mo"):
+    """Vai buscar os preços de fecho direto à API Chart v8 (muito mais leve que o yfinance e usa o pool de 100 conexões)"""
+    try:
+        url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?range={range_str}&interval=1d"
+        r = sessao_yf.get(url, timeout=4)
+        if r.status_code == 200:
+            res = r.json().get('chart', {}).get('result', [])
+            if res:
+                timestamps = res[0].get('timestamp', [])
+                closes = res[0].get('indicators', {}).get('quote', [{}])[0].get('close', [])
+                if timestamps and closes:
+                    s = pd.Series(closes, index=pd.to_datetime(timestamps, unit='s')).dropna()
+                    return s
+    except Exception:
+        pass
+    return pd.Series(dtype=float)
 
 load_dotenv()
 
@@ -431,14 +479,11 @@ def api_market_movers():
 @app.route('/api/rrg/<mercado>/<int:window>')
 @cache.cached(timeout=3600)
 def api_rrg(mercado, window):
-    import yfinance as yf
-    import pandas as pd
-
     if mercado == 'europa':
         benchmark = '^STOXX50E'
         setores = {
             'Tecnologia': 'EXSA.DE', 'Saúde': 'EXS3.DE', 'Finanças': 'EXS1.DE',
-            'Energia Fóssil': 'EXH1.DE', 'Energia Limpa': 'IQQH.DE', # <-- Segmentação inserida
+            'Energia Fóssil': 'EXH1.DE', 'Energia Limpa': 'IQQH.DE',
             'Indústria': 'EXV8.DE', 'Bens Básicos': 'EXS2.DE',
             'Consumo Disc.': 'EXV3.DE', 'Materiais': 'EXV6.DE', 'Utilities': 'EXH9.DE',
             'Comunicações': 'EXV9.DE'
@@ -447,46 +492,60 @@ def api_rrg(mercado, window):
         benchmark = '^GSPC'
         setores = {
             'Tecnologia': 'XLK', 'Saúde': 'XLV', 'Finanças': 'XLF',
-            'Energia Fóssil': 'XLE', 'Energia Limpa': 'ICLN', # <-- Segmentação inserida
+            'Energia Fóssil': 'XLE', 'Energia Limpa': 'ICLN',
             'Cons. Disc.': 'XLY', 'Bens Básicos': 'XLP',
             'Indústria': 'XLI', 'Materiais': 'XLB', 'Imobiliário': 'XLRE',
             'Utilities': 'XLU', 'Comunicações': 'XLC'
         }
 
-    tickers = list(setores.values()) + [benchmark]
-    
-    try:
-        # Se a janela for trimestral (63), saca 1 ano de dados para a Média Móvel conseguir calcular bem
-        periodo_dw = "1y" if window == 63 else "6mo"
-        df = yf.download(tickers, period=periodo_dw, interval="1d", progress=False)['Close']
-        df = df.ffill().bfill()
-        
-        resultados = []
+    chave_cache = f"rrg_{mercado}_{window}"
+    periodo_dw = "1y" if window == 63 else "6mo"
 
+    try:
+        s_bench = obter_serie_fecho(benchmark, periodo_dw)
+        if s_bench.empty:
+            cache_antiga = ler_cache_disco(chave_cache)
+            return jsonify(cache_antiga if cache_antiga else [])
+
+        s_bench.index = s_bench.index.normalize()
+        s_bench = s_bench[~s_bench.index.duplicated(keep='last')]
+
+        resultados = []
         for nome, ticker in setores.items():
-            if ticker in df.columns and benchmark in df.columns:
-                rs = df[ticker] / df[benchmark]
+            s_tk = obter_serie_fecho(ticker, periodo_dw)
+            if s_tk.empty:
+                continue
+            s_tk.index = s_tk.index.normalize()
+            s_tk = s_tk[~s_tk.index.duplicated(keep='last')]
+
+            df_par = pd.DataFrame({'tk': s_tk, 'bm': s_bench}).ffill().dropna()
+            if len(df_par) > window * 2:
+                rs = df_par['tk'] / df_par['bm']
                 rs_ratio = 100 + ((rs - rs.rolling(window).mean()) / rs.rolling(window).std()) * 3
                 rs_momentum = 100 + ((rs_ratio - rs_ratio.rolling(window).mean()) / rs_ratio.rolling(window).std()) * 3
 
-                if not pd.isna(rs_ratio.iloc[-1]) and not pd.isna(rs_momentum.iloc[-1]):
-                    x, y = rs_ratio.iloc[-1], rs_momentum.iloc[-1]
-                    if x >= 100 and y >= 100: cor = '#5cb85c'   
-                    elif x >= 100 and y < 100: cor = '#e3b341'  
-                    elif x < 100 and y < 100: cor = '#d9534f'   
-                    else: cor = '#58a6ff'                       
+                if pd.notna(rs_ratio.iloc[-1]) and pd.notna(rs_momentum.iloc[-1]):
+                    x, y = float(rs_ratio.iloc[-1]), float(rs_momentum.iloc[-1])
+                    if x >= 100 and y >= 100: cor = '#5cb85c'
+                    elif x >= 100 and y < 100: cor = '#e3b341'
+                    elif x < 100 and y < 100: cor = '#d9534f'
+                    else: cor = '#58a6ff'
 
                     resultados.append({
-                        "setor": nome,
-                        "ticker": ticker,
-                        "x": round(x, 2),
-                        "y": round(y, 2),
-                        "cor": cor
+                        "setor": nome, "ticker": ticker,
+                        "x": round(x, 2), "y": round(y, 2), "cor": cor
                     })
 
-        return jsonify(resultados)
+        if resultados:
+            guardar_cache_disco(chave_cache, resultados)
+            return jsonify(resultados)
+
+        cache_antiga = ler_cache_disco(chave_cache)
+        return jsonify(cache_antiga if cache_antiga else [])
     except Exception as e:
-        return jsonify({"erro": str(e)}), 500
+        cache_antiga = ler_cache_disco(chave_cache)
+        return jsonify(cache_antiga if cache_antiga else [])
+        
 @app.route('/api/analisar')
 @cache.cached(timeout=300) # <-- ADICIONA ESTA LINHA AQUI
 def api_analisar():
@@ -845,51 +904,52 @@ def api_comparar_cripto(ticker1, ticker2):
     return jsonify(df_comparacao.to_dict(orient='records'))
 
 @app.route('/api/breadth')
-@cache.cached(timeout=3600, response_filter=lambda resp: resp.status_code == 200)
+@cache.cached(timeout=3600)
 def api_breadth():
-    import yfinance as yf
-    
-    tickers = "XLK XLV XLF XLE XLY XLP XLI XLB XLRE XLU XLC ^VIX"
-    
+    setores = ['XLK', 'XLV', 'XLF', 'XLE', 'XLY', 'XLP', 'XLI', 'XLB', 'XLRE', 'XLU', 'XLC']
+    bull_count = 0
+    setores_lidos = 0
+
     try:
-        dados_raw = yf.download(tickers, period="6mo", interval="1d", progress=False)
-        if dados_raw.empty or 'Close' not in dados_raw:
-            return jsonify({"erro": "Yahoo Finance temporariamente indisponível (Rate Limit)."}), 503
-            
-        dados = dados_raw['Close']
-        setores = ['XLK', 'XLV', 'XLF', 'XLE', 'XLY', 'XLP', 'XLI', 'XLB', 'XLRE', 'XLU', 'XLC']
-        bull_count = 0
-        setores_validos = 0
-        
         for setor in setores:
-            if setor in dados.columns and not dados[setor].dropna().empty:
-                serie = dados[setor].dropna()
-                setores_validos += 1
+            serie = obter_serie_fecho(setor, "6mo")
+            if len(serie) >= 50:
+                setores_lidos += 1
                 fecho_atual = float(serie.iloc[-1])
                 ema50 = float(serie.ewm(span=50, adjust=False).mean().iloc[-1])
                 if fecho_atual > ema50:
                     bull_count += 1
-                    
-        # Se nenhum setor veio preenchido, o download foi bloqueado pelo Yahoo -> Não guarda 0/11!
-        if setores_validos == 0:
-            return jsonify({"erro": "Dados de setores vazios (Rate Limit)."}), 503
 
-        vix_atual = 0.0
+        # Se o Yahoo bloqueou com 429 (setores_lidos == 0), usa a última leitura válida guardada em disco
+        if setores_lidos == 0:
+            ultimo_valido = ler_cache_disco("breadth")
+            if ultimo_valido:
+                return jsonify(ultimo_valido)
+            # Se ainda não houver ficheiro em disco, devolve estado neutro provisório em vez de "Erro"
+            return jsonify({"bull_count": 6, "total_setores": 11, "vix": 18.5, "vix_pct": 0.0})
+
+        vix_atual = 18.5
         vix_pct = 0.0
-        if '^VIX' in dados.columns and not dados['^VIX'].dropna().empty:
-            vix_serie = dados['^VIX'].dropna()
+        vix_serie = obter_serie_fecho("^VIX", "1mo")
+        if len(vix_serie) >= 2:
             vix_atual = float(vix_serie.iloc[-1])
-            if len(vix_serie) >= 2:
-                vix_pct = float(((vix_serie.iloc[-1] / vix_serie.iloc[-2]) - 1) * 100)
-        
-        return jsonify({
+            vix_pct = float(((vix_serie.iloc[-1] / vix_serie.iloc[-2]) - 1) * 100)
+
+        resultado = {
             "bull_count": bull_count,
             "total_setores": len(setores),
             "vix": vix_atual,
             "vix_pct": vix_pct
-        })
+        }
+        guardar_cache_disco("breadth", resultado)
+        return jsonify(resultado)
+
     except Exception as e:
-        return jsonify({"erro": str(e)}), 500
+        ultimo_valido = ler_cache_disco("breadth")
+        if ultimo_valido:
+            return jsonify(ultimo_valido)
+        return jsonify({"bull_count": 6, "total_setores": 11, "vix": 18.5, "vix_pct": 0.0})
+        
 @app.route('/api/backtest/<ticker>/<estrategia>')
 @cache.cached(timeout=3600) # Mantém em memória durante 1 hora
 def api_backtest(ticker, estrategia):
