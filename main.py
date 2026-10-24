@@ -20,7 +20,8 @@ logging.getLogger("urllib3").setLevel(logging.ERROR)
 logging.getLogger("yfinance").setLevel(logging.CRITICAL)
 
 sessao_yf = requests.Session()
-adapter_ cem = HTTPAdapter(pool_connections=100, pool_maxsize=100, max_retries=1)
+
+adapter_cem = HTTPAdapter(pool_connections=100, pool_maxsize=100, max_retries=1)
 sessao_yf.mount('https://', adapter_cem)
 sessao_yf.mount('http://', adapter_cem)
 sessao_yf.headers.update({
