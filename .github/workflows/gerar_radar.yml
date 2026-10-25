@@ -39,4 +39,5 @@ jobs:
           git add *.html historico_sinalizacoes.csv
           # O commit só avança se houver ficheiros novos/alterados
           git diff --quiet && git diff --staged --quiet || git commit -m "🤖 Auto-update: Relatórios Radar [$(date +'%Y-%m-%d')]"
+          git pull origin main --rebase
           git push
