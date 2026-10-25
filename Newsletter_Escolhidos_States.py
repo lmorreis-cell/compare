@@ -20,16 +20,41 @@ import requests
 from requests.adapters import HTTPAdapter
 
 # --- BLINDAGEM ANTI-BLOQUEIO DO YAHOO (GITHUB ACTIONS) ---
+import time
 urllib3.disable_warnings()
 logging.getLogger("urllib3").setLevel(logging.ERROR)
 
-sessao_yf = requests.Session()
-adapter_cem = HTTPAdapter(pool_connections=100, pool_maxsize=100, max_retries=1)
-sessao_yf.mount('https://', adapter_cem)
-sessao_yf.mount('http://', adapter_cem)
-sessao_yf.headers.update({
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-})
+try:
+    from curl_cffi import requests as cffi_requests
+    sessao_yf = cffi_requests.Session(impersonate="chrome")
+except ImportError:
+    sessao_yf = requests.Session()
+    sessao_yf.headers.update({
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    })
+
+# Wrapper global: injeta a sessão camuflada e faz retry automático se o Yahoo der Rate Limit
+_yf_download_orig = yf.download
+_yf_ticker_orig = yf.Ticker
+
+def _download_blindado(*args, **kwargs):
+    kwargs.setdefault("session", sessao_yf)
+    for tentativa in range(3):
+        try:
+            df = _yf_download_orig(*args, **kwargs)
+            if df is not None and not df.empty:
+                return df
+        except Exception:
+            pass
+        time.sleep(3 * (tentativa + 1))
+    return _yf_download_orig(*args, **kwargs)
+
+def _ticker_blindado(*args, **kwargs):
+    kwargs.setdefault("session", sessao_yf)
+    return _yf_ticker_orig(*args, **kwargs)
+
+yf.download = _download_blindado
+yf.Ticker = _ticker_blindado
 # ---------------------------------------------------------
 
 
