@@ -70,34 +70,41 @@ MESES_PT = {
 # MÓDULO 1: O TERMÓMETRO DE RISCO
 # ==========================================
 def avaliar_risco_mercado():
-    # Trocámos o ^V2TX (europeu falhado) pelo ^VIX (global resiliente)
     tickers = ["^VIX", "^STOXX", "^STOXX50E", "^TNX", "^IRX"]
-    # yf.download agora com o parâmetro show_errors=False para silenciar lixo no terminal
+    dados_raw = yf.download(tickers, period="1y", progress=False, threads=False)
+    dados = dados_raw['Close'].ffill().dropna(how='all') if (dados_raw is not None and not dados_raw.empty and 'Close' in dados_raw) else pd.DataFrame()
     
-    
-    dados = yf.download(tickers, period="1y", progress=False, threads=False)['Close'].ffill().dropna(how='all')
-    
+    def extrair_seguro(col, janela=None, default=20.0):
+        if col in dados and not dados[col].dropna().empty:
+            s = dados[col].dropna()
+            if janela and len(s) >= janela:
+                return float(s.rolling(window=janela).mean().iloc[-1])
+            return float(s.iloc[-1])
+        return default
+
     # Avaliação do VIX Global
-    vix_atual = float(dados['^VIX'].dropna().iloc[-1]) if '^VIX' in dados and not dados['^VIX'].dropna().empty else 20.0
-    vix_m20 = dados['^VIX'].rolling(window=20).mean().iloc[-1] if '^VIX' in dados else 20.0
+    vix_atual = extrair_seguro('^VIX', default=20.0)
+    vix_m20 = extrair_seguro('^VIX', janela=20, default=20.0)
     alerta_vix = vix_atual > vix_m20
 
     # Avaliação do STOXX 600
-    spy_atual = float(dados['^STOXX'].dropna().iloc[-1]) if '^STOXX' in dados and not dados['^STOXX'].dropna().empty else 1.0
-    spy_m50 = dados['^STOXX'].rolling(window=50).mean().iloc[-1] if '^STOXX' in dados else 1.0
+    spy_atual = extrair_seguro('^STOXX', default=1.0)
+    spy_m50 = extrair_seguro('^STOXX', janela=50, default=1.0)
     mercado_em_alta = spy_atual > spy_m50
 
     # Atrito de Amplitude (Europa Geral vs Mega-Caps Europeias)
     try:
-        spy_perf_20d = (spy_atual / dados['^STOXX'].iloc[-20]) - 1
-        rsp_perf_20d = (dados['^STOXX50E'].iloc[-1] / dados['^STOXX50E'].iloc[-20]) - 1
+        s_stoxx = dados['^STOXX'].dropna()
+        s_stoxx50 = dados['^STOXX50E'].dropna()
+        spy_perf_20d = (spy_atual / float(s_stoxx.iloc[-20])) - 1
+        rsp_perf_20d = (float(s_stoxx50.iloc[-1]) / float(s_stoxx50.iloc[-20])) - 1
         amplitude_fraca = (rsp_perf_20d - spy_perf_20d) > 0.015
-    except:
+    except Exception:
         amplitude_fraca = False
 
     # Mantemos a Curva de Juros Americana como a "mãe" da liquidez ocidental
-    t10 = float(dados['^TNX'].dropna().iloc[-1]) if '^TNX' in dados and not dados['^TNX'].dropna().empty else 0.0
-    t3m = float(dados['^IRX'].dropna().iloc[-1]) if '^IRX' in dados and not dados['^IRX'].dropna().empty else 0.0
+    t10 = extrair_seguro('^TNX', default=0.0)
+    t3m = extrair_seguro('^IRX', default=0.0)
     spread_curva = t10 - t3m
     curva_invertida = spread_curva < 0
 
