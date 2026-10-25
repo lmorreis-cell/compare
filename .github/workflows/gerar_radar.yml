@@ -21,7 +21,8 @@ jobs:
 
       - name: Instalar dependências
         run: |
-          pip install --upgrade yfinance requests pandas plotly jinja2 matplotlib
+          python -m pip install --upgrade pip
+          pip install --upgrade yfinance curl_cffi requests pandas numpy plotly jinja2 matplotlib pytz urllib3
           pip install -r requirements.txt
           # Ou instala diretamente: pip install yfinance pandas plotly jinja2 matplotlib
 
