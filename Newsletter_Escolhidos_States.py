@@ -19,84 +19,47 @@ import logging
 import requests
 from requests.adapters import HTTPAdapter
 
-# --- BLINDAGEM ANTI-BLOQUEIO DO YAHOO (BYPASS CRUMB GITHUB ACTIONS) ---
+# --- BLINDAGEM PURA YFINANCE (SESSION & CRUMB RECOVERY) ---
 import time
-from concurrent.futures import ThreadPoolExecutor
-
+import random
+import requests
+from requests.adapters import HTTPAdapter
 urllib3.disable_warnings()
 logging.getLogger("urllib3").setLevel(logging.ERROR)
-logging.getLogger("yfinance").setLevel(logging.CRITICAL)
 
-sessao_http = requests.Session()
-adapter_cem = HTTPAdapter(pool_connections=50, pool_maxsize=50, max_retries=2)
-sessao_http.mount('https://', adapter_cem)
-sessao_http.mount('http://', adapter_cem)
-sessao_http.headers.update({
+# Criamos uma sessão HTTP persistente com headers de browser real
+sessao_yf = requests.Session()
+adapter = HTTPAdapter(pool_connections=20, pool_maxsize=20, max_retries=3)
+sessao_yf.mount('https://', adapter)
+sessao_yf.mount('http://', adapter)
+sessao_yf.headers.update({
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-    "Accept": "application/json, text/plain, */*"
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.5"
 })
 
-def _fetch_chart_v8(ticker, range_str="2y"):
-    """Vai buscar Preço e Volume diretamente à API v8 do Yahoo sem precisar de Crumb"""
-    for host in ["query2.finance.yahoo.com", "query1.finance.yahoo.com"]:
-        url = f"https://{host}/v8/finance/chart/{ticker}?range={range_str}&interval=1d&includePrePost=false"
+# Forçamos o handshake inicial para o Yahoo aceitar os cookies do runner
+try:
+    sessao_yf.get("https://finance.yahoo.com", timeout=10)
+    time.sleep(1)
+except Exception:
+    pass
+
+# Forçamos o yfinance a utilizar a nossa sessão autenticada em todas as operações
+_yf_download_orig = yf.download
+def _download_com_sessao(tickers, *args, **kwargs):
+    kwargs["session"] = sessao_yf
+    for tentativa in range(3):
         try:
-            r = sessao_http.get(url, timeout=8)
-            if r.status_code == 200:
-                res = r.json().get("chart", {}).get("result")
-                if res:
-                    r0 = res[0]
-                    ts = r0.get("timestamp", [])
-                    quote = r0.get("indicators", {}).get("quote", [{}])[0]
-                    closes = quote.get("close", [])
-                    vols = quote.get("volume", [])
-                    if ts and closes:
-                        idx = pd.to_datetime(ts, unit="s").normalize()
-                        s_c = pd.Series(closes, index=idx, name=ticker, dtype="float64")
-                        s_v = pd.Series(vols if vols else [0]*len(ts), index=idx, name=ticker, dtype="float64")
-                        s_c = s_c[~s_c.index.duplicated(keep='last')]
-                        s_v = s_v[~s_v.index.duplicated(keep='last')]
-                        return s_c, s_v
+            df = _yf_download_orig(tickers, *args, **kwargs)
+            if df is not None and not df.empty:
+                return df
         except Exception:
             pass
-    return None, None
+        time.sleep(3 * (tentativa + 1))
+    return _yf_download_orig(tickers, *args, **kwargs)
 
-def _download_blindado(tickers, period="1y", *args, **kwargs):
-    """Substitui o yf.download por extração direta v8 imune ao bloqueio de Crumb do GitHub"""
-    if isinstance(tickers, str):
-        lista_t = [t.strip() for t in tickers.replace(",", " ").split() if t.strip()]
-        unico = (len(lista_t) == 1)
-    else:
-        lista_t = list(tickers)
-        unico = False
-
-    dict_close, dict_vol = {}, {}
-
-    def _worker(t):
-        return t, _fetch_chart_v8(t, range_str=period)
-
-    # Descarrega em paralelo controlado (8 threads) sem acionar o bloqueio de Crumb
-    with ThreadPoolExecutor(max_workers=8) as ex:
-        for t, (sc, sv) in ex.map(_worker, lista_t):
-            if sc is not None and not sc.dropna().empty:
-                dict_close[t] = sc
-                dict_vol[t] = sv
-
-    if not dict_close:
-        # Retorna estrutura vazia mas COM as chaves 'Close' e 'Volume' para nunca dar KeyError
-        vazio = pd.DataFrame(columns=lista_t, dtype="float64")
-        return {"Close": vazio, "Volume": vazio}
-
-    df_close = pd.DataFrame(dict_close).sort_index()
-    df_vol = pd.DataFrame(dict_vol).sort_index()
-
-    if unico and len(lista_t) == 1:
-        t0 = lista_t[0]
-        return pd.DataFrame({"Close": df_close[t0], "Volume": df_vol[t0]})
-
-    return pd.concat({"Close": df_close, "Volume": df_vol}, axis=1)
-
-yf.download = _download_blindado
+yf.download = _download_com_sessao
 # ---------------------------------------------------------
 
 
