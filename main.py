@@ -14,6 +14,14 @@ import warnings
 warnings.filterwarnings('ignore', category=FutureWarning)
 warnings.filterwarnings('ignore', message='.*inplace.*')
 
+
+warnings.filterwarnings('ignore', category=UserWarning)
+warnings.filterwarnings('ignore', message='.*Timestamp.*')
+
+warnings.filterwarnings('ignore', message='.*auto_adjust.*')
+warnings.filterwarnings('ignore', module='yfinance')
+
+
 import urllib3
 import logging
 from requests.adapters import HTTPAdapter
