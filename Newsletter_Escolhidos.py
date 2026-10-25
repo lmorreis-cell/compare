@@ -14,6 +14,25 @@ import hashlib
 import plotly.graph_objects as go
 import pytz
 
+import urllib3
+import logging
+import requests
+from requests.adapters import HTTPAdapter
+
+# --- BLINDAGEM ANTI-BLOQUEIO DO YAHOO (GITHUB ACTIONS) ---
+urllib3.disable_warnings()
+logging.getLogger("urllib3").setLevel(logging.ERROR)
+
+sessao_yf = requests.Session()
+adapter_cem = HTTPAdapter(pool_connections=100, pool_maxsize=100, max_retries=1)
+sessao_yf.mount('https://', adapter_cem)
+sessao_yf.mount('http://', adapter_cem)
+sessao_yf.headers.update({
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+})
+# ---------------------------------------------------------
+
+
 from datetime import datetime
 
 MESES_PT = {
@@ -30,7 +49,8 @@ def avaliar_risco_mercado():
     tickers = ["^VIX", "^STOXX", "^STOXX50E", "^TNX", "^IRX"]
     # yf.download agora com o parâmetro show_errors=False para silenciar lixo no terminal
     
-    dados = yf.download(tickers, period="1y", progress=False, threads=False)['Close'].ffill().dropna(how='all')
+    
+    dados = yf.download(tickers, period="1y", progress=False, threads=False, session=sessao_yf)['Close'].ffill().dropna(how='all')
     
     # Avaliação do VIX Global
     vix_atual = float(dados['^VIX'].dropna().iloc[-1]) if '^VIX' in dados and not dados['^VIX'].dropna().empty else 20.0
@@ -85,7 +105,8 @@ def avaliar_breadth_macro():
         
         tickers = list(etfs.values())
         
-        dados = yf.download(tickers, period="1y", progress=False, threads=True)['Close'].ffill()
+        
+        dados = yf.download(tickers, period="1y", progress=False, threads=False, session=sessao_yf)['Close'].ffill().dropna(how='all')
         
         setores_alta = 0
         for ticker in tickers:
