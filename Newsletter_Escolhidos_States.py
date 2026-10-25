@@ -1435,44 +1435,6 @@ def executar_screener():
         
     fechos = pd.concat(lista_fechos, axis=1).dropna(how='all') if lista_fechos else pd.DataFrame()
     volumes = pd.concat(lista_volumes, axis=1).dropna(how='all') if lista_volumes else pd.DataFrame()
-    
-    # --- NOVA INJEÇÃO GLOBAL EM TEMPO REAL ---
-    print("A sincronizar cotações em tempo real na matriz global...")
-    cache_fundamentais = {}
-    novos_precos = {}
-    novos_volumes = {}
-    
-    for ticker in tickers:
-        try:
-            # Puxa os dados e guarda na cache para não repetir pedidos à API
-            f = auditar_fundamentais(ticker)
-            cache_fundamentais[ticker] = f
-            preco_live = f.get('preco_live')
-            hist = fechos[ticker].dropna()
-            
-            # Se o preço live existe e é diferente do último fecho atrasado do Yahoo
-            if not hist.empty and preco_live and preco_live > 0 and round(preco_live, 2) != round(hist.iloc[-1], 2):
-                novos_precos[ticker] = preco_live
-                novos_volumes[ticker] = volumes[ticker].dropna().iloc[-1]
-        except: pass
-
-    # Atualiza a base de dados central com a vela de hoje ANTES dos relatórios!
-    if novos_precos:
-        hoje_str = datetime.now().strftime('%Y-%m-%d')
-        ultima_data_str = fechos.index[-1].strftime('%Y-%m-%d')
-        
-        if ultima_data_str == hoje_str:
-            # Já existe uma vela com a data de hoje. Vamos SOBRESCREVER para não duplicar.
-            for t, p in novos_precos.items():
-                fechos.iloc[-1, fechos.columns.get_loc(t)] = p
-            for t, v in novos_volumes.items():
-                volumes.iloc[-1, volumes.columns.get_loc(t)] = v
-        else:
-            # A última vela é de ontem. Adicionamos uma nova linha.
-            nova_data = fechos.index[-1] + pd.Timedelta(days=1)
-            fechos = pd.concat([fechos, pd.DataFrame([novos_precos], index=[nova_data])])
-            volumes = pd.concat([volumes, pd.DataFrame([novos_volumes], index=[nova_data])])
-    # -----------------------------------------
 
     # Calcular a força base contra a média europeia
     try:
@@ -1482,7 +1444,6 @@ def executar_screener():
         perf_stoxx_6m = 0
     
     try:
-        # Calcular a variação diária de forma isolada e imune a matrizes desalinhadas
         dict_perf = {}
         for col in fechos.columns:
             if col != '^STOXX':
@@ -1497,7 +1458,6 @@ def executar_screener():
         }
     except: market_movers = {"gainers": [], "losers": []}
 
-    # Como a matriz 'fechos' foi atualizada globalmente, o Exception Report e o Breadth já vão ler a vela de hoje!
     alertas_excecao = gerar_relatorio_excecao(fechos, volumes, tickers)
     dados_breadth = calcular_market_breadth(fechos, tickers)
     breadth_macro = avaliar_breadth_macro()
@@ -1509,20 +1469,18 @@ def executar_screener():
             vol_hist = volumes[ticker].dropna()
             if len(historico) < 200: continue
             
-            # Puxamos os dados da cache (acelera brutalmente a velocidade do código)
-            f = cache_fundamentais.get(ticker, auditar_fundamentais(ticker))
-            
-            # A matemática corre de forma limpa e em tempo real
             preco = historico.iloc[-1]
             m200 = historico.rolling(window=200).mean().iloc[-1]
             m50 = historico.rolling(window=50).mean().iloc[-1]
             perf_6m = ((preco / historico.iloc[-125]) - 1) * 100
-            
             alpha_6m = perf_6m - perf_stoxx_6m
                 
-            base_data = {"ticker": ticker, "perf": perf_6m, "alpha": alpha_6m, "vol": historico.pct_change().std() * (252 ** 0.5) * 100, 
-                         "mdd": ((historico - historico.cummax()) / historico.cummax()).min() * 100, 
-                         "hist": historico, "vol_hist": vol_hist, **f}
+            base_data = {
+                "ticker": ticker, "perf": perf_6m, "alpha": alpha_6m, 
+                "vol": historico.pct_change().std() * (252 ** 0.5) * 100, 
+                "mdd": ((historico - historico.cummax()) / historico.cummax()).min() * 100, 
+                "hist": historico, "vol_hist": vol_hist, "preco": preco, "m200": m200, "m50": m50
+            }
             
             if preco >= m200:
                 cand_alta.append(base_data)
@@ -1531,150 +1489,121 @@ def executar_screener():
                 cand_baixa.append(base_data)
         except: pass
 
-    
     df_alta = pd.DataFrame(cand_alta).sort_values(by="perf", ascending=False) if cand_alta else pd.DataFrame()
     df_baixa = pd.DataFrame(cand_baixa).sort_values(by="perf", ascending=True) if cand_baixa else pd.DataFrame()
 
-   
+    tier_a, tier_b, blacklist, quarentena, dados_plot = [], [], [], [], []
+    cache_fundamentais = {}
 
-    tier_a, tier_b, blacklist, quarentena, dados_plot = [], [], [], [], [] # <-- Nova lista adicionada
+    # Função auxiliar interna para auditar apenas com pausa de segurança anti-ban
+    def obter_fundamentais_seguro(tk):
+        if tk not in cache_fundamentais:
+            time.sleep(0.4) # Pausa estrita para proteger o IP do GitHub
+            cache_fundamentais[tk] = auditar_fundamentais(tk)
+        return cache_fundamentais[tk]
 
-       
     if not df_alta.empty:
         for _, row in df_alta.iterrows():
-            a_comp = row.to_dict()
-            f = a_comp  # Aproveitamos a cache que já está na memória! 
+            ticker = row['ticker']
+            f = obter_fundamentais_seguro(ticker)
+            a_comp = {**row.to_dict(), **f}
             
-            preco_atual = row['hist'].iloc[-1]
+            preco_atual = row['preco']
             target_mean = f.get('target_mean', 0)
             a_comp['upside'] = ((target_mean / preco_atual) - 1) * 100 if target_mean and preco_atual else 0
             
-            # 3º - AGORA SIM, com o a_comp criado, podemos injetar os cálculos
             a_comp['position_size'] = calcular_position_sizing(a_comp)
-            
-            # 4º - O Motor Narrativo que discutimos
             txt_fundo, txt_tatica = gerar_analise_profunda_nlg(a_comp)
             a_comp['analise_fundo_txt'] = txt_fundo
             a_comp['analise_tatica_txt'] = txt_tatica
-
             
-            if f['roe'] > 0.15 and f['margem'] > 0.15:
+            if f.get('roe', 0) > 0.15 and f.get('margem', 0) > 0.15:
                 a_comp['leitura'], a_comp['reservas'], a_comp['conv'] = gerar_texto_nlg(a_comp, "A")
-                a_comp['position_size'] = calcular_position_sizing(a_comp)
                 a_comp['badges'] = calcular_badges_ativo(a_comp)
-                a_comp['sazonalidade'] = calcular_sazonalidade(a_comp['ticker'])
-                a_comp['grafico'] = gerar_grafico_linha(row['hist'], row['vol_hist'], row['ticker'])
+                a_comp['sazonalidade'] = calcular_sazonalidade(ticker)
+                a_comp['grafico'] = gerar_grafico_linha(row['hist'], row['vol_hist'], ticker)
                 a_comp['radar'] = gerar_radar_chart(a_comp)
-                sent_txt, sent_cor = analisar_sentimento_noticias(row['ticker'])
+                sent_txt, sent_cor = analisar_sentimento_noticias(ticker)
                 a_comp['sentimento_txt'] = sent_txt
                 a_comp['sentimento_cor'] = sent_cor
                 tier_a.append(a_comp)
-                dados_plot.append({
-                    "ticker": row['ticker'], 
-                    "perf": row['perf'], 
-                    "volatilidade": row['vol'], 
-                    "cor": "#3fbf8f",  # <- Mantém o código de cor original que lá tens (verde, amarelo, vermelho ou cinza)
-                    "roe": f"{a_comp.get('roe', 0)*100:.1f}%",
-                    "margem": f"{a_comp.get('margem', 0)*100:.1f}%"
-                })
+                cor_plot = "#3fbf8f"
             else:
-                # O CAPTADOR DA ZONA CINZENTA (ALTA TENDÊNCIA, MAUS FUNDAMENTAIS)
                 a_comp['leitura'], a_comp['reservas'], a_comp['conv'] = gerar_texto_nlg(a_comp, "Quarentena")
-                a_comp['position_size'] = calcular_position_sizing(a_comp)
                 a_comp['badges'] = calcular_badges_ativo(a_comp)
-                a_comp['sazonalidade'] = calcular_sazonalidade(a_comp['ticker'])
-                a_comp['grafico'] = gerar_grafico_linha(row['hist'], row['vol_hist'], row['ticker'])
+                a_comp['sazonalidade'] = calcular_sazonalidade(ticker)
+                a_comp['grafico'] = gerar_grafico_linha(row['hist'], row['vol_hist'], ticker)
                 a_comp['radar'] = gerar_radar_chart(a_comp)
-                sent_txt, sent_cor = analisar_sentimento_noticias(row['ticker'])
+                sent_txt, sent_cor = analisar_sentimento_noticias(ticker)
                 a_comp['sentimento_txt'] = sent_txt
                 a_comp['sentimento_cor'] = sent_cor
                 quarentena.append(a_comp)
-                dados_plot.append({
-                    "ticker": row['ticker'], 
-                    "perf": row['perf'], 
-                    "volatilidade": row['vol'], 
-                    "cor": "#8a94a8",  # <- Mantém o código de cor original que lá tens (verde, amarelo, vermelho ou cinza)
-                    "roe": f"{a_comp.get('roe', 0)*100:.1f}%",
-                    "margem": f"{a_comp.get('margem', 0)*100:.1f}%"
-                })
+                cor_plot = "#8a94a8"
+                
+            dados_plot.append({
+                "ticker": ticker, "perf": row['perf'], "volatilidade": row['vol'], "cor": cor_plot,
+                "roe": f"{f.get('roe', 0)*100:.1f}%", "margem": f"{f.get('margem', 0)*100:.1f}%"
+            })
 
     if not df_baixa.empty:
         for _, row in df_baixa.iterrows():
-            a_comp = row.to_dict()
-            f = a_comp  # Aproveitamos a cache que já está na memória!
+            ticker = row['ticker']
+            f = obter_fundamentais_seguro(ticker)
+            a_comp = {**row.to_dict(), **f}
             
-            preco_atual = row['hist'].iloc[-1]
+            preco_atual = row['preco']
             target_mean = f.get('target_mean', 0)
             a_comp['upside'] = ((target_mean / preco_atual) - 1) * 100 if target_mean and preco_atual else 0
             
-            # ADICIONAR O MOTOR AQUI:
             txt_fundo, txt_tatica = gerar_analise_profunda_nlg(a_comp)
             a_comp['analise_fundo_txt'] = txt_fundo
             a_comp['analise_tatica_txt'] = txt_tatica
 
-            if f['roe'] > 0.20 and f['margem'] > 0.20:
+            if f.get('roe', 0) > 0.20 and f.get('margem', 0) > 0.20:
                 a_comp['leitura'], a_comp['reservas'], a_comp['conv'] = gerar_texto_nlg(a_comp, "B")
                 a_comp['position_size'] = calcular_position_sizing(a_comp)
                 a_comp['badges'] = calcular_badges_ativo(a_comp)
-                a_comp['sazonalidade'] = calcular_sazonalidade(a_comp['ticker'])
-                a_comp['grafico'] = gerar_grafico_linha(row['hist'], row['vol_hist'], row['ticker'])
+                a_comp['sazonalidade'] = calcular_sazonalidade(ticker)
+                a_comp['grafico'] = gerar_grafico_linha(row['hist'], row['vol_hist'], ticker)
                 a_comp['radar'] = gerar_radar_chart(a_comp)
-                sent_txt, sent_cor = analisar_sentimento_noticias(row['ticker'])
+                sent_txt, sent_cor = analisar_sentimento_noticias(ticker)
                 a_comp['sentimento_txt'] = sent_txt
                 a_comp['sentimento_cor'] = sent_cor
                 tier_b.append(a_comp)
-                dados_plot.append({
-                    "ticker": row['ticker'], 
-                    "perf": row['perf'], 
-                    "volatilidade": row['vol'], 
-                    "cor": "#f0b90b",  # <- Mantém o código de cor original que lá tens (verde, amarelo, vermelho ou cinza)
-                    "roe": f"{a_comp.get('roe', 0)*100:.1f}%",
-                    "margem": f"{a_comp.get('margem', 0)*100:.1f}%"
-                })
-            elif (f['roe'] < 0 or f['margem'] < 0) and row.get('tendencia_morta', False):
+                cor_plot = "#f0b90b"
+            elif (f.get('roe', 0) < 0 or f.get('margem', 0) < 0) and row.get('tendencia_morta', False):
                 a_comp['leitura'], a_comp['reservas'], a_comp['conv'] = gerar_texto_nlg(a_comp, "Blacklist")
                 a_comp['position_size'] = calcular_position_sizing(a_comp)
                 a_comp['badges'] = calcular_badges_ativo(a_comp)
-                a_comp['grafico'] = gerar_grafico_linha(row['hist'], row['vol_hist'], row['ticker'])
+                a_comp['grafico'] = gerar_grafico_linha(row['hist'], row['vol_hist'], ticker)
                 a_comp['radar'] = gerar_radar_chart(a_comp)
-                sent_txt, sent_cor = analisar_sentimento_noticias(row['ticker'])
+                sent_txt, sent_cor = analisar_sentimento_noticias(ticker)
                 a_comp['sentimento_txt'] = sent_txt
                 a_comp['sentimento_cor'] = sent_cor
                 blacklist.append(a_comp)
-                dados_plot.append({
-                    "ticker": row['ticker'], 
-                    "perf": row['perf'], 
-                    "volatilidade": row['vol'], 
-                    "cor": "#e06a5a",  # <- Mantém o código de cor original que lá tens (verde, amarelo, vermelho ou cinza)
-                    "roe": f"{a_comp.get('roe', 0)*100:.1f}%",
-                    "margem": f"{a_comp.get('margem', 0)*100:.1f}%"
-                })
+                cor_plot = "#e06a5a"
             else:
-                # O CAPTADOR DA ZONA CINZENTA (BAIXA TENDÊNCIA, FUNDAMENTAIS MEDÍOCRES)
                 a_comp['leitura'], a_comp['reservas'], a_comp['conv'] = gerar_texto_nlg(a_comp, "Quarentena")
                 a_comp['position_size'] = calcular_position_sizing(a_comp)
                 a_comp['badges'] = calcular_badges_ativo(a_comp)
-                a_comp['sazonalidade'] = calcular_sazonalidade(a_comp['ticker'])
-                a_comp['grafico'] = gerar_grafico_linha(row['hist'], row['vol_hist'], row['ticker'])
+                a_comp['sazonalidade'] = calcular_sazonalidade(ticker)
+                a_comp['grafico'] = gerar_grafico_linha(row['hist'], row['vol_hist'], ticker)
                 a_comp['radar'] = gerar_radar_chart(a_comp)
-                sent_txt, sent_cor = analisar_sentimento_noticias(row['ticker'])
+                sent_txt, sent_cor = analisar_sentimento_noticias(ticker)
                 a_comp['sentimento_txt'] = sent_txt
                 a_comp['sentimento_cor'] = sent_cor
                 quarentena.append(a_comp)
-                dados_plot.append({
-                    "ticker": row['ticker'], 
-                    "perf": row['perf'], 
-                    "volatilidade": row['vol'], 
-                    "cor": "#8a94a8",  # <- Mantém o código de cor original que lá tens (verde, amarelo, vermelho ou cinza)
-                    "roe": f"{a_comp.get('roe', 0)*100:.1f}%",
-                    "margem": f"{a_comp.get('margem', 0)*100:.1f}%"
-                })
+                cor_plot = "#8a94a8"
+                
+            dados_plot.append({
+                "ticker": ticker, "perf": row['perf'], "volatilidade": row['vol'], "cor": cor_plot,
+                "roe": f"{f.get('roe', 0)*100:.1f}%", "margem": f"{f.get('margem', 0)*100:.1f}%"
+            })
 
     graf_disp = gerar_grafico_dispersao(dados_plot)
     graf_backtest = gerar_grafico_backtest(fechos)
     corr_tier_a = avaliar_correlacao_carteira(tier_a, fechos)
     
-    # === MAPEAMENTO SETORIAL DO UNIVERSO (PADRÃO GICS) ===
     universo_setorial = {
         "Technology": {"nome": "Tecnologia", "tickers": []},
         "Healthcare": {"nome": "Saúde", "tickers": []},
@@ -1690,27 +1619,22 @@ def executar_screener():
         "Unknown": {"nome": "Sem Classificação (ETFs/Outros)", "tickers": []}
     }
     
-    # Varre a lista mestre original que puxaste do ficheiro TXT
     for ticker in tickers:
         f = cache_fundamentais.get(ticker, {})
         setor_raw = f.get('setor', 'Unknown')
-        
         if setor_raw in universo_setorial:
             universo_setorial[setor_raw]["tickers"].append(ticker)
         else:
             universo_setorial["Unknown"]["tickers"].append(ticker)
             
-    # Ordena alfabeticamente para leitura rápida e limpa setores residuais vazios
     for s in universo_setorial:
         universo_setorial[s]["tickers"].sort()
-    
+        
     if not universo_setorial["Unknown"]["tickers"]:
         del universo_setorial["Unknown"]
 
-    # Retorna também a quarentena
     return tier_a, tier_b, quarentena, blacklist, graf_disp, graf_backtest, market_movers, corr_tier_a, alertas_excecao, dados_breadth, breadth_macro, universo_setorial
-     
-
+    
 # ==========================================
 # MÓDULO HISTÓRICO: FORWARD TESTING
 # ==========================================
