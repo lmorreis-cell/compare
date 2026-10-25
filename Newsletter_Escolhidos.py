@@ -1082,7 +1082,7 @@ def calcular_position_sizing(a_comp):
 
 def auditar_fundamentais(ticker):
     try:
-        time.sleep(0.3) # Pausa obrigatória para o YF não cortar o acesso por excesso de velocidade
+        time.sleep(1.5) # Pausa obrigatória para o YF não cortar o acesso por excesso de velocidade
         ticker_obj = yf.Ticker(ticker, session=sessao_yf)
         info = ticker_obj.info or {}
         for tent in range(2):
