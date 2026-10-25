@@ -47,7 +47,7 @@ MESES_PT = {
 def avaliar_risco_mercado():
     tickers = ["^VIX", "SPY", "RSP", "^TNX", "^IRX"]
     # A injeção do .ffill() garante que herda o fecho de 6ª feira se o mercado US estiver fechado
-    dados = yf.download(tickers, period="1y", progress=False, session=sessao_yf, threads=False)['Close'].ffill().dropna(how='all')
+    dados = yf.download(tickers, period="1y", progress=False, threads=False)['Close'].ffill().dropna(how='all')
     
     vix_atual = dados['^VIX'].iloc[-1]
     vix_m20 = dados['^VIX'].rolling(window=20).mean().iloc[-1]
@@ -99,7 +99,7 @@ def avaliar_breadth_macro():
         
         tickers = list(etfs.values())
         # Ffill garante que falhas de feriados num setor sejam colmatadas
-        dados = yf.download(tickers, period="1y", progress=False, session=sessao_yf, threads=True)['Close'].ffill()
+        dados = yf.download(tickers, period="1y", progress=False, threads=True)['Close'].ffill()
         
         setores_alta = 0
         total_setores = len(tickers)
@@ -172,7 +172,7 @@ def avaliar_smart_money():
     
     # 1. Estrutura a Termo do VIX (Contango vs Backwardation)
     try:
-        vix_curve = yf.download(["^VIX", "^VIX3M"], period="5d", progress=False, session=sessao_yf, threads=False)['Close'].ffill()
+        vix_curve = yf.download(["^VIX", "^VIX3M"], period="5d", progress=False, threads=False)['Close'].ffill()
         vix_curto = vix_curve['^VIX'].iloc[-1]
         vix_longo = vix_curve['^VIX3M'].iloc[-1]
         
@@ -235,7 +235,7 @@ def avaliar_smart_money():
 def avaliar_curva_juros():
     """Lê o spread entre a yield do Tesouro a 10 Anos e a 3 Meses"""
     try:
-        dados = yf.download(["^TNX", "^IRX"], period="5d", progress=False, session=sessao_yf, threads=False)['Close'].ffill()
+        dados = yf.download(["^TNX", "^IRX"], period="5d", progress=False, threads=False)['Close'].ffill()
         t10 = dados['^TNX'].iloc[-1]
         t3m = dados['^IRX'].iloc[-1]
         spread = t10 - t3m
@@ -859,7 +859,7 @@ def gerar_rrg_setorial():
                 "Imóveis": "XLRE", "Materiais": "XLB", "SP500": "SPY"}
         
         tickers = list(etfs.values())
-        dados = yf.download(tickers, period="6mo", progress=False, session=sessao_yf, threads=True)['Close'].ffill()
+        dados = yf.download(tickers, period="6mo", progress=False, threads=True)['Close'].ffill()
         
         plt.figure(figsize=(6, 4.5), facecolor='#151a23')
         ax = plt.axes()
@@ -974,7 +974,7 @@ def calcular_sazonalidade(ticker):
     """Calcula a estatística de sucesso do ativo no mês atual (últimos 10 anos)"""
     try:
         # Puxa 10 anos de histórico da ação isolada
-        dados = yf.download(ticker, period="10y", progress=False, session=sessao_yf, threads=False)['Close'].dropna()
+        dados = yf.download(ticker, period="10y", progress=False, threads=False)['Close'].dropna()
         if dados.empty: return ""
         if isinstance(dados, pd.DataFrame): dados = dados.iloc[:, 0]
         
@@ -1369,7 +1369,7 @@ def executar_screener():
     print(f"A descarregar Preço e Volume para {len(tickers_globais)} ações europeias...")
     
     # 1. Alterado de 1y para 2y para alimentar a M200 com histórico profundo
-    dados_raw = yf.download(tickers_globais, period="2y", progress=False, session=sessao_yf, threads=False)
+    dados_raw = yf.download(tickers_globais, period="2y", progress=False, threads=False)
     
     # 2. REMOVIDO o ffill() global que corrompia os calendários com feriados cruzados
     fechos = dados_raw['Close'].dropna(how='all')
@@ -1760,7 +1760,7 @@ def analisar_destaques_pedido(tickers_str):
     # Injeção forçada do SPY para garantir o cálculo do Alpha nos destaques
     tickers_globais = list(set(tickers + ['SPY']))
     # Alterado para 2y
-    dados_raw = yf.download(tickers_globais, period="2y", progress=False, session=sessao_yf, threads=False)
+    dados_raw = yf.download(tickers_globais, period="2y", progress=False, threads=False)
     
     if len(tickers_globais) == 1:
         fechos = pd.DataFrame({tickers_globais[0]: dados_raw['Close']}).dropna(how='all')
@@ -4459,7 +4459,7 @@ if __name__ == "__main__":
 
     
     # 1.5 Capturar o pulso diário dos Índices Globais
-    dados_idx_raw = yf.download(["SPY", "QQQ", "IWM", "^VIX", "PSI20.LS"], period="5d", progress=False, session=sessao_yf, threads=False)['Close']
+    dados_idx_raw = yf.download(["SPY", "QQQ", "IWM", "^VIX", "PSI20.LS"], period="5d", progress=False, threads=False)['Close']
     indices_diarios = []
     for nome, t in [("S&P 500", "SPY"), ("Nasdaq 100", "QQQ"), ("Russell 2000", "IWM"), ("Volatilidade VIX", "^VIX"), ("PSI 20 (Lisboa)", "PSI20.LS")]:
         try:
