@@ -71,26 +71,39 @@ MESES_PT = {
 # ==========================================
 def avaliar_risco_mercado():
     tickers = ["^VIX", "SPY", "RSP", "^TNX", "^IRX"]
-    # A injeção do .ffill() garante que herda o fecho de 6ª feira se o mercado US estiver fechado
-    dados = yf.download(tickers, period="1y", progress=False, threads=False)['Close'].ffill().dropna(how='all')
+    dados_raw = yf.download(tickers, period="1y", progress=False, threads=False)
+    dados = dados_raw['Close'].ffill().dropna(how='all') if (dados_raw is not None and not dados_raw.empty and 'Close' in dados_raw) else pd.DataFrame()
     
-    vix_atual = dados['^VIX'].iloc[-1]
-    vix_m20 = dados['^VIX'].rolling(window=20).mean().iloc[-1]
+    def extrair_seguro(col, janela=None, default=20.0):
+        if col in dados and not dados[col].dropna().empty:
+            s = dados[col].dropna()
+            if janela and len(s) >= janela:
+                return float(s.rolling(window=janela).mean().iloc[-1])
+            return float(s.iloc[-1])
+        return default
+
+    vix_atual = extrair_seguro('^VIX', default=20.0)
+    vix_m20 = extrair_seguro('^VIX', janela=20, default=20.0)
     alerta_vix = vix_atual > vix_m20
 
-    spy_atual = dados['SPY'].iloc[-1]
-    spy_m50 = dados['SPY'].rolling(window=50).mean().iloc[-1]
+    spy_atual = extrair_seguro('SPY', default=1.0)
+    spy_m50 = extrair_seguro('SPY', janela=50, default=1.0)
     mercado_em_alta = spy_atual > spy_m50
 
-    spy_perf_20d = (spy_atual / dados['SPY'].iloc[-20]) - 1
-    rsp_perf_20d = (dados['RSP'].iloc[-1] / dados['RSP'].iloc[-20]) - 1
-    amplitude_fraca = (spy_perf_20d - rsp_perf_20d) > 0.015
+    try:
+        s_spy = dados['SPY'].dropna()
+        s_rsp = dados['RSP'].dropna()
+        spy_perf_20d = (spy_atual / float(s_spy.iloc[-20])) - 1
+        rsp_perf_20d = (float(s_rsp.iloc[-1]) / float(s_rsp.iloc[-20])) - 1
+        amplitude_fraca = (spy_perf_20d - rsp_perf_20d) > 0.015
+    except Exception:
+        amplitude_fraca = False
 
     # --- NOVA MÉTRICA MACRO: INVERSÃO DA CURVA DE JUROS ---
-    yield_10y = dados['^TNX'].iloc[-1]
-    yield_3m = dados['^IRX'].iloc[-1]
+    yield_10y = extrair_seguro('^TNX', default=0.0)
+    yield_3m = extrair_seguro('^IRX', default=0.0)
     spread_curva = yield_10y - yield_3m
-    curva_invertida = spread_curva < 0  # Se menor que zero, a curva está invertida (Sinal de Alerta)
+    curva_invertida = spread_curva < 0
 
     # Penalização de risco recalculada (agora sobre 4 pontos de stress)
     pontos_risco = sum([alerta_vix, not mercado_em_alta, amplitude_fraca, curva_invertida])
