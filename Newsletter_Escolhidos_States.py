@@ -1178,8 +1178,8 @@ def auditar_fundamentais(ticker):
             "adv": adv_calculado,
             "next_earnings": next_date,  # <-- A VARIAVEL CORRETA INJETADA NO DICIONÁRIO
             # --- NOVAS MÉTRICAS INSTITUCIONAIS ---
-            short_pct : info.get('shortPercentOfFloat', 0),
-            insider_pct : info.get('heldPercentInsiders', 0),
+            "short_pct": info.get('shortPercentOfFloat', 0),
+            "insider_pct": info.get('heldPercentInsiders', 0),
             "preco_live": info.get('currentPrice') or info.get('regularMarketPrice')
         }
     except Exception as e:
