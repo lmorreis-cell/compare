@@ -1075,8 +1075,16 @@ def calcular_position_sizing(a_comp):
 
 def auditar_fundamentais(ticker):
     try:
+        time.sleep(0.4)  # Pausa anti-bloqueio para o GitHub Actions
         ticker_obj = yf.Ticker(ticker)
-        info = ticker_obj.info
+        info = {}
+        for tent in range(2):
+            try:
+                info = ticker_obj.info or {}
+                if info and len(info) > 5:
+                    break
+            except Exception:
+                time.sleep(3)
         
         # 1. Tentar via .info (método rápido)
         next_date = info.get('nextEarningsDate')
@@ -1151,8 +1159,8 @@ def auditar_fundamentais(ticker):
             "adv": adv_calculado,
             "next_earnings": next_date,
             # --- NOVAS MÉTRICAS INSTITUCIONAIS ---
-            short_pct : info.get('shortPercentOfFloat', 0),
-            insider_pct : info.get('heldPercentInsiders', 0),
+            "short_pct": info.get('shortPercentOfFloat', 0),
+            "insider_pct": info.get('heldPercentInsiders', 0),
             "preco_live": info.get('currentPrice') or info.get('regularMarketPrice')
         }
     except Exception as e:
