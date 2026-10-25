@@ -1407,17 +1407,27 @@ def executar_screener():
     with open("tickers_escolhidos_states.txt", "r") as f:
         tickers = [linha.strip().upper() for linha in f if linha.strip()]
         
-    # Garante que o SPY está no pacote global de dados para o Backtest cruzar
     tickers_globais = list(set(tickers + ['SPY']))
+    print(f"A descarregar Preço e Volume para {len(tickers_globais)} ações americanas em lotes seguros...")
+    
+    # Download em lotes de 40 tickers para evitar o bloqueio do Yahoo no GitHub Actions
+    lista_fechos, lista_volumes = [], []
+    tamanho_lote = 40
+    for i in range(0, len(tickers_globais), tamanho_lote):
+        lote = tickers_globais[i:i + tamanho_lote]
+        dados_lote = yf.download(lote, period="2y", progress=False, threads=False)
+        if dados_lote is not None and not dados_lote.empty and 'Close' in dados_lote:
+            f_lote = dados_lote['Close']
+            v_lote = dados_lote['Volume']
+            if isinstance(f_lote, pd.Series):
+                f_lote = f_lote.to_frame(name=lote[0])
+                v_lote = v_lote.to_frame(name=lote[0])
+            lista_fechos.append(f_lote)
+            lista_volumes.append(v_lote)
+        time.sleep(2)
         
-    print(f"A descarregar Preço e Volume para {len(tickers_globais)} ações europeias...")
-    
-    # 1. Alterado de 1y para 2y para alimentar a M200 com histórico profundo
-    dados_raw = yf.download(tickers_globais, period="2y", progress=False, threads=False)
-    
-    # 2. REMOVIDO o ffill() global que corrompia os calendários com feriados cruzados
-    fechos = dados_raw['Close'].dropna(how='all')
-    volumes = dados_raw['Volume'].dropna(how='all')
+    fechos = pd.concat(lista_fechos, axis=1).dropna(how='all') if lista_fechos else pd.DataFrame()
+    volumes = pd.concat(lista_volumes, axis=1).dropna(how='all') if lista_volumes else pd.DataFrame()
     
     # --- NOVA INJEÇÃO GLOBAL EM TEMPO REAL ---
     print("A sincronizar cotações em tempo real na matriz global...")
