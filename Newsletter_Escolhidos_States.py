@@ -21,40 +21,38 @@ from requests.adapters import HTTPAdapter
 
 # --- BLINDAGEM ANTI-BLOQUEIO DO YAHOO (GITHUB ACTIONS) ---
 import time
+import random
 urllib3.disable_warnings()
 logging.getLogger("urllib3").setLevel(logging.ERROR)
+logging.getLogger("yfinance").setLevel(logging.CRITICAL)
 
-try:
-    from curl_cffi import requests as cffi_requests
-    sessao_yf = cffi_requests.Session(impersonate="chrome")
-except ImportError:
-    sessao_yf = requests.Session()
-    sessao_yf.headers.update({
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-    })
-
-# Wrapper global: injeta a sessão camuflada e faz retry automático se o Yahoo der Rate Limit
 _yf_download_orig = yf.download
 _yf_ticker_orig = yf.Ticker
 
-def _download_blindado(*args, **kwargs):
-    kwargs.setdefault("session", sessao_yf)
-    for tentativa in range(3):
+def _download_blindado(tickers, *args, **kwargs):
+    # Removemos sessões fixas para deixar o yfinance rodar o crumb/cookie via curl_cffi nativo
+    kwargs.pop("session", None)
+    
+    for tentativa in range(4):
         try:
-            df = _yf_download_orig(*args, **kwargs)
+            df = _yf_download_orig(tickers, *args, **kwargs)
             if df is not None and not df.empty:
-                return df
+                # Verifica se não veio uma tabela só de NaNs
+                if 'Close' in df and not df['Close'].dropna(how='all').empty:
+                    return df
+                elif not df.dropna(how='all').empty:
+                    return df
         except Exception:
             pass
-        time.sleep(3 * (tentativa + 1))
-    return _yf_download_orig(*args, **kwargs)
-
-def _ticker_blindado(*args, **kwargs):
-    kwargs.setdefault("session", sessao_yf)
-    return _yf_ticker_orig(*args, **kwargs)
+        
+        # Espera progressiva (Backoff) para o Rate Limit do Yahoo limpar
+        espera = (tentativa + 1) * 8 + random.uniform(1, 4)
+        print(f"   [Aviso] Rate limit no Yahoo. Nova tentativa ({tentativa+1}/4) em {espera:.1f}s...")
+        time.sleep(espera)
+        
+    return pd.DataFrame()
 
 yf.download = _download_blindado
-yf.Ticker = _ticker_blindado
 # ---------------------------------------------------------
 
 
