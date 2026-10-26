@@ -24,14 +24,15 @@ warnings.filterwarnings('ignore', module='yfinance')
 urllib3.disable_warnings()
 logging.getLogger("yfinance").setLevel(logging.CRITICAL)
 
+# 1. RESTAURAR A SESSÃO (Isto corrige o Erro Fatal "sessao_yf is not defined")
+sessao_yf = requests.Session()
+adapter_cem = HTTPAdapter(pool_connections=100, pool_maxsize=100, max_retries=2)
+sessao_yf.mount('https://', adapter_cem)
+sessao_yf.mount('http://', adapter_cem)
 
-# INSERIR APENAS ISTO AQUI:
-os.environ["http_proxy"] = "http://nkxnzumn:co3v6ml5gr6p@p.webshare.io:80"
-os.environ["https_proxy"] = "http://nkxnzumn:co3v6ml5gr6p@p.webshare.io:80"
-os.environ["HTTP_PROXY"] = "http://nkxnzumn:co3v6ml5gr6p@p.webshare.io:80"
-os.environ["HTTPS_PROXY"] = "http://nkxnzumn:co3v6ml5gr6p@p.webshare.io:80"
-
-
+proxy_url = "http://nkxnzumn:co3v6ml5gr6p@p.webshare.io:80"
+sessao_yf.proxies = {"http": proxy_url, "https": proxy_url}
+sessao_yf.headers.update({"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"})
 
 ARQUIVO_CACHE_DISCO = "cache_emergencia.json"
 
