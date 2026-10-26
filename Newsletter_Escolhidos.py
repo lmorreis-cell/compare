@@ -4502,14 +4502,27 @@ if __name__ == "__main__":
     grafico_rrg = gerar_rrg_setorial()
 
     # Monitoriza os verdadeiros índices do continente europeu
-    dados_idx_raw = yf.download(["^STOXX", "^STOXX50E", "^GDAXI", "^FCHI", "PSI20.LS"], period="5d", progress=False, threads=False)['Close']
+    indices_alvo = [
+        ("STOXX 600", "^STOXX"), 
+        ("Euro Stoxx 50", "^STOXX50E"), 
+        ("DAX (Alemanha)", "^GDAXI"), 
+        ("CAC 40 (França)", "^FCHI"), 
+        ("PSI 20 (Lisboa)", "PSI20.LS")
+    ]
     indices_diarios = []
-    for nome, t in [("STOXX 600", "^STOXX"), ("Euro Stoxx 50", "^STOXX50E"), ("DAX (Alemanha)", "^GDAXI"), ("CAC 40 (França)", "^FCHI"), ("PSI 20 (Lisboa)", "PSI20.LS")]:
+    
+    for nome, ticker in indices_alvo:
         try:
-            serie_limpa = dados_idx_raw[t].dropna() 
-            perf = ((serie_limpa.iloc[-1] / serie_limpa.iloc[-2]) - 1) * 100
-            indices_diarios.append({"nome": nome, "perf": round(perf, 2)})
-        except: pass
+            # Download individual camuflado
+            dados_idx = yf.download(ticker, period="5d", progress=False, threads=False)
+            if dados_idx is not None and not dados_idx.empty and 'Close' in dados_idx:
+                serie_limpa = dados_idx['Close'].dropna()
+                if len(serie_limpa) >= 2:
+                    perf = ((serie_limpa.iloc[-1] / serie_limpa.iloc[-2]) - 1) * 100
+                    indices_diarios.append({"nome": nome, "perf": round(perf, 2)})
+            time.sleep(1) # Pausa tática para não disparar o Rate Limit
+        except Exception:
+            pass
 
     print("=== MODO NEWSLETTER EUROPA ===")
     
