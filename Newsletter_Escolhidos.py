@@ -1407,6 +1407,10 @@ def executar_screener():
         
     fechos = pd.concat(lista_fechos, axis=1).dropna(how='all') if lista_fechos else pd.DataFrame()
     volumes = pd.concat(lista_volumes, axis=1).dropna(how='all') if lista_volumes else pd.DataFrame()
+
+    if fechos.empty or len(fechos.columns) < 5:
+        print("❌ ERRO CRÍTICO: Yahoo Finance bloqueou o download da matriz de preços. A abortar para não gerar HTML vazio.")
+        sys.exit(1)
     
     # --- NOVA INJEÇÃO GLOBAL EM TEMPO REAL ---
     print("A sincronizar cotações em tempo real na matriz global...")
