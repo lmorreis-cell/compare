@@ -317,7 +317,7 @@ def api_ticker_tape():
     
     try:
         for t in tickers_base:
-            tk = yf.Ticker(t)
+            tk = (t)
             preco = tk.fast_info.get('lastPrice', 0)
             prev_close = tk.fast_info.get('previousClose', 1) 
             
@@ -866,7 +866,7 @@ def api_comparar(ticker1, ticker2):
         # Fallback base caso a API do Yahoo falhe
         simb = "€" if any(ativo['Ticker'].upper().endswith(s) for s in ('.LS', '.PA', '.DE', '.MC', '.AS', '.BR', '.MI', '.VI', '.IR', '.HE')) else "$"
         try:
-            tk = yf.Ticker(ativo['Ticker'])
+            tk = (ativo['Ticker'])
             info_tk = tk.info
             target = info_tk.get('targetMeanPrice', 0)
             moeda = info_tk.get('currency', '')
@@ -963,7 +963,7 @@ def api_backtest(ticker, estrategia):
     import numpy as np
     
     try:
-        df = yf.Ticker(ticker).history(period="5y", interval="1d")
+        df = (ticker).history(period="5y", interval="1d")
         if df.empty or len(df) < 50:
             return jsonify({"erro": "Histórico insuficiente para simulação de 5 anos."}), 400
             
@@ -1067,7 +1067,7 @@ def api_backtest(ticker, estrategia):
 @cache.cached(timeout=120)    
 def cotacao_live(ticker):
     try:
-        ativo = yf.Ticker(ticker)
+        ativo = (ticker)
         # fast_info devolve o preço ao segundo
         preco_atual = ativo.fast_info['last_price']
         return jsonify({"preco": preco_atual})
@@ -1088,7 +1088,7 @@ def api_cambio(data):
         data_fim = data_alvo + pd.Timedelta(days=1)
         
         # 3. MUDANÇA CRÍTICA: Usa .history() em vez de .download(). É 100% fiável para extrações únicas.
-        motor_cambio = yf.Ticker("EURUSD=X")
+        motor_cambio = ("EURUSD=X")
         df = motor_cambio.history(start=data_inicio.strftime('%Y-%m-%d'), end=data_fim.strftime('%Y-%m-%d'))
         
         if df.empty:
@@ -1161,7 +1161,7 @@ def api_universo():
         else:
             # 3. Se for uma ação nova, perguntamos ao Yahoo e guardamos
             try:
-                info = yf.Ticker(ticker, session=session).info
+                info = yf.Ticker(ticker).info
                 setor_raw = info.get('sector', 'Unknown')
                 
                 cache_setores[ticker] = setor_raw
