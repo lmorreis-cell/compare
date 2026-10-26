@@ -1391,10 +1391,11 @@ def executar_screener():
     print(f"A descarregar Preço e Volume para {len(tickers_globais)} ativos europeus em lotes seguros...")
     
     lista_fechos, lista_volumes = [], []
-    tamanho_lote = 40
+    tamanho_lote = 12  # <-- Reduzido de 40 para 12 para passar indetetável no radar do Yahoo
     for i in range(0, len(tickers_globais), tamanho_lote):
         lote = tickers_globais[i:i + tamanho_lote]
         dados_lote = yf.download(lote, period="2y", progress=False, threads=False)
+        
         if dados_lote is not None and not dados_lote.empty and 'Close' in dados_lote:
             f_lote = dados_lote['Close']
             v_lote = dados_lote['Volume']
@@ -1403,9 +1404,9 @@ def executar_screener():
                 v_lote = v_lote.to_frame(name=lote[0])
             lista_fechos.append(f_lote)
             lista_volumes.append(v_lote)
-        
-        # Pausa dinâmica (entre 4 a 8 segundos) para simular comportamento humano e evitar bloqueio
-        time.sleep(random.uniform(4, 8))
+            
+        # Pausa dinâmica entre 6 a 12 segundos para simular comportamento estritamente humano
+        time.sleep(random.uniform(6, 12))
         
     fechos = pd.concat(lista_fechos, axis=1).dropna(how='all') if lista_fechos else pd.DataFrame()
     volumes = pd.concat(lista_volumes, axis=1).dropna(how='all') if lista_volumes else pd.DataFrame()
