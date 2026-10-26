@@ -2517,7 +2517,7 @@ def api_cotacoes_lote():
 
     # 1. Extrair o câmbio primeiro (Usamos a sessao_yf que já tens configurada no main.py)
     try:
-        tkr_cambio = yf.Ticker("EURUSD=X", session=sessao_yf)
+        tkr_cambio = yf.Ticker("EURUSD=X")
         hist_c = tkr_cambio.history(period="1d")
         if not hist_c.empty and 'Close' in hist_c:
             cambio = round(float(hist_c['Close'].iloc[-1]), 4)
@@ -2527,7 +2527,7 @@ def api_cotacoes_lote():
     # 2. Extrair cotações furtivamente (ação a ação para evitar o erro 429)
     for t in tickers:
         try:
-            tkr = yf.Ticker(t, session=sessao_yf) 
+            tkr = yf.Ticker(t) 
             hist = tkr.history(period="1d")
             
             if not hist.empty and 'Close' in hist:
