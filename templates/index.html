@@ -5165,43 +5165,39 @@
     let cacheCambioLive = 1.08; // Valor de arranque, será substituído pela API
 
     async function mudarModoGrafico(modo) {
-        modoGraficoAlocacao = modo;
-        
-        document.getElementById('btn-grafico-custo').style.background = modo === 'custo' ? '#232d3f' : 'transparent';
-        document.getElementById('btn-grafico-custo').style.color = modo === 'custo' ? '#58a6ff' : '#8b949e';
-        document.getElementById('btn-grafico-atual').style.background = modo === 'atual' ? '#232d3f' : 'transparent';
-        document.getElementById('btn-grafico-atual').style.color = modo === 'atual' ? '#58a6ff' : '#8b949e';
+    modoGraficoAlocacao = modo;
+    
+    document.getElementById('btn-grafico-custo').style.background = modo === 'custo' ? '#232d3f' : 'transparent';
+    document.getElementById('btn-grafico-custo').style.color = modo === 'custo' ? '#58a6ff' : '#8b949e';
+    document.getElementById('btn-grafico-atual').style.background = modo === 'atual' ? '#232d3f' : 'transparent';
+    document.getElementById('btn-grafico-atual').style.color = modo === 'atual' ? '#58a6ff' : '#8b949e';
 
-        if (modo === 'atual') {
-            document.getElementById('grafico-distribuicao').style.display = 'none';
-            document.getElementById('loading-grafico').style.display = 'block';
-            
-            // 1. Obtém a taxa de câmbio EUR/USD real ao segundo
+    if (modo === 'atual') {
+        document.getElementById('grafico-distribuicao').style.display = 'none';
+        document.getElementById('loading-grafico').style.display = 'block';
+        
+        // Usa o pedido em lote (Batch) num único "tiro" para não bloquear o Yahoo Finance
+        let tickersAbertos = [...new Set(cofreAbertas.filter(l => l.qtdRestante > 0).map(l => l.ticker))];
+        if (tickersAbertos.length > 0) {
             try {
-                let respCambio = await fetch(`/api/cotacao/EURUSD=X`);
-                if (respCambio.ok) {
-                    let dadosCambio = await respCambio.json();
-                    if (dadosCambio.preco) cacheCambioLive = dadosCambio.preco;
+                const resp = await fetch('/api/cotacoes_lote', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tickers: tickersAbertos })
+                });
+                if (resp.ok) {
+                    const dados = await resp.json();
+                    if (dados.cambio) cacheCambioLive = dados.cambio;
+                    if (dados.precos) Object.assign(cachePrecosAtuais, dados.precos);
                 }
-            } catch(e) { console.error("Falha ao obter câmbio live."); }
-
-            // 2. Varre os tickers abertos e força a atualização das cotações
-            let tickersAbertos = [...new Set(cofreAbertas.filter(l => l.qtdRestante > 0).map(l => l.ticker))];
-            
-            for (let t of tickersAbertos) {
-                try {
-                    let resposta = await fetch(`/api/cotacao/${t}`);
-                    if (resposta.ok) {
-                        let dados = await resposta.json();
-                        if (dados.preco) cachePrecosAtuais[t] = dados.preco;
-                    }
-                } catch(e) { console.error("Falha ao atualizar cotação de:", t); }
+            } catch(e) {
+                console.error("Falha ao atualizar gráfico live:", e);
             }
-            document.getElementById('loading-grafico').style.display = 'none';
         }
-        
-        atualizarCofre(); 
+        document.getElementById('loading-grafico').style.display = 'none';
     }
+    atualizarCofre(); 
+}
 
     // Sincroniza todas as cotações do Cofre num ÚNICO pedido em lote (Zero Rate Limit)
     async function sincronizarPrecosLiveCofre() {
