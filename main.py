@@ -8,8 +8,13 @@ from dotenv import load_dotenv
 from functools import wraps
 from flask_caching import Cache
 from flask import Flask, render_template, jsonify, request, Response, send_file, render_template_string, redirect, session, url_for
-
 import warnings
+import urllib3
+import logging
+import requests
+from requests.adapters import HTTPAdapter
+import base64
+
 warnings.filterwarnings('ignore', category=FutureWarning)
 warnings.filterwarnings('ignore', message='.*inplace.*')
 warnings.filterwarnings('ignore', category=UserWarning)
@@ -17,29 +22,37 @@ warnings.filterwarnings('ignore', message='.*Timestamp.*')
 warnings.filterwarnings('ignore', message='.*auto_adjust.*')
 warnings.filterwarnings('ignore', module='yfinance')
 
-import urllib3
-import logging
-import requests
-from requests.adapters import HTTPAdapter
-
 urllib3.disable_warnings()
 logging.getLogger("yfinance").setLevel(logging.CRITICAL)
 
-# SESSÃO PURA (Removemos o curl_cffi que causava o Erro 407)
+# 1. LIMPAR VARIÁVEIS GLOBAIS (Remove a injeção antiga que estoirou o código)
+os.environ.pop("HTTP_PROXY", None)
+os.environ.pop("HTTPS_PROXY", None)
+os.environ.pop("http_proxy", None)
+os.environ.pop("https_proxy", None)
+
+# 2. SESSÃO PURA COM CORREÇÃO DO BUG 407 (Túnel HTTPS)
 sessao_yf = requests.Session()
 adapter_cem = HTTPAdapter(pool_connections=100, pool_maxsize=100, max_retries=2)
 sessao_yf.mount('https://', adapter_cem)
 sessao_yf.mount('http://', adapter_cem)
 
-# INJEÇÃO DO PROXY WEBSHARE
-proxies = {
-    "http": "http://nkxnzumn:co3v6ml5gr6p@p.webshare.io:80/",
-    "https": "http://nkxnzumn:co3v6ml5gr6p@p.webshare.io:80/"
+# O URL do proxy puro (SEM username e password no link)
+proxy_url = "http://p.webshare.io:80"
+sessao_yf.proxies = {
+    "http": proxy_url,
+    "https": proxy_url
 }
-sessao_yf.proxies.update(proxies)
-sessao_yf.headers.update({"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/124.0.0.0 Safari/537.36"})
 
-# ... resto do código (ARQUIVO_CACHE_DISCO, app = Flask(__name__), etc) ...
+# A correção mágica: Injetar a password encriptada diretamente nos headers do robô
+user_pass = "nkxnzumn:co3v6ml5gr6p"
+b64_cred = base64.b64encode(user_pass.encode()).decode()
+
+sessao_yf.headers.update({
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/124.0.0.0 Safari/537.36",
+    "Proxy-Authorization": f"Basic {b64_cred}"
+})
+
 ARQUIVO_CACHE_DISCO = "cache_emergencia.json"
 
 def guardar_cache_disco(chave, dados):
