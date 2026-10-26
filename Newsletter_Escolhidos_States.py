@@ -1003,35 +1003,35 @@ def calcular_badges_ativo(a):
 
     return badges
 
-def calcular_sazonalidade(ticker):
-    """Calcula a estatística de sucesso do ativo no mês atual (últimos 10 anos)"""
+def calcular_sazonalidade(ticker, hist_fallback=None):
+    """Calcula a estatística de sucesso do ativo no mês atual"""
     try:
-        # Puxa 10 anos de histórico da ação isolada
-        dados = yf.download(ticker, period="10y", progress=False, threads=False)['Close'].dropna()
-        if dados.empty: return ""
-        if isinstance(dados, pd.DataFrame): dados = dados.iloc[:, 0]
-        
-        # Agrupa os fechos por fim de mês para obter o retorno mensal puro
-        mensal = dados.resample('ME').last()
+        dados = yf.download(ticker, period="10y", progress=False, threads=False)
+        if dados is not None and not dados.empty and 'Close' in dados:
+            s = dados['Close'].dropna()
+        elif hist_fallback is not None and not hist_fallback.empty:
+            s = hist_fallback.dropna()
+        else:
+            return ""
+            
+        if isinstance(s, pd.DataFrame): s = s.iloc[:, 0]
+        mensal = s.resample('ME').last()
         retornos = mensal.pct_change().dropna() * 100
         
         mes_atual = datetime.now().month
         meses_pt = {1:"Janeiro", 2:"Fevereiro", 3:"Março", 4:"Abril", 5:"Maio", 6:"Junho", 7:"Julho", 8:"Agosto", 9:"Setembro", 10:"Outubro", 11:"Novembro", 12:"Dezembro"}
         nome_mes = meses_pt.get(mes_atual, "")
         
-        # Isolar os retornos históricos apenas do mês atual
         retornos_mes = retornos[retornos.index.month == mes_atual]
-        if len(retornos_mes) < 4: return "" # Ignora se tiver menos de 4 anos de histórico
+        if len(retornos_mes) < 2: return ""
         
-        # Matemática de probabilidades
         win_rate = (len(retornos_mes[retornos_mes > 0]) / len(retornos_mes)) * 100
         media = float(retornos_mes.mean())
-        
         sinal = "+" if media > 0 else ""
         cor = "var(--verde)" if media > 0 else "var(--vermelho)"
         
         return f"⏳ <strong style='color:var(--mudo)'></strong> Historicamente em {nome_mes}, este ativo sobe <strong>{win_rate:.0f}%</strong> das vezes (Retorno Médio: <span style='color:{cor}; font-weight:bold;'>{sinal}{media:.1f}%</span>)."
-    except: 
+    except Exception:
         return ""
 
 # ==========================================
