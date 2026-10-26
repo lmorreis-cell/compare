@@ -1,0 +1,1640 @@
+
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<title>Radar Quantitativo States - Seleção do Discord  - 26 de Outubro de 2026</title>
+
+<!-- METADADOS OPEN GRAPH PARA DISCORD/REDES SOCIAIS a imagem fica neste bloco-->
+<meta property="og:title" content="Radar States -" 26 de Outubro de 2026/>
+<meta property="og:description" content="Relatório de mercado algorítmico. Avaliação de risco, matrizes de contágio e momentum institucional." />
+<meta property="og:image" content="https://lmorreis-cell.github.io/newsletter/21mar26.jpg" />
+<meta property="og:type" content="website" />
+<meta name="theme-color" content="#3fbf8f"> <!-- Opcional: Pinta a barra lateral da embed no Discord com a tua cor verde -->
+
+<style>
+    :root{--fundo:#0b0e14;--painel:#151a23;--linha:#232d3f;--texto:#d7dce6;--mudo:#8a94a8;
+          --verde:#3fbf8f; --amarelo:#f0b90b; --vermelho:#e06a5a; --azul:#4da6ff; --painel-dark:#0e121a;}
+    body{background:var(--fundo);color:var(--texto);font-family: -apple-system, sans-serif; padding:40px; line-height: 1.6;}
+    main{max-width:1100px;margin:0 auto}
+    h1{font-size: 26px; margin-bottom: 5px; color: #fff;}
+    .data{color: var(--mudo); font-size: 14px; margin-bottom: 30px;}
+    .painel-destaque { margin-bottom: 25px; }
+    .card-risco { background: var(--painel); border-left: 5px solid #f0b90b; padding: 25px; border-radius: 6px; }
+    .card-risco h2 { margin: 0 0 10px 0; font-size: 20px; }
+    .metricas { display: flex; gap: 20px; font-size: 14px; color: var(--mudo); margin-top: 15px; border-top: 1px solid var(--linha); padding-top: 15px; }
+    .metricas span strong { color: var(--texto); }
+    .legenda-edu { font-size: 12px; color: var(--mudo); margin-top: 15px; border-top: 1px dashed var(--linha); padding-top: 12px; text-align: justify; line-height: 1.5; }
+    .legenda-edu strong { color: var(--texto); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;}
+    
+    .grid-graficos { display: flex; gap: 20px; margin-bottom: 40px; }
+    .card-dashboard { background: var(--painel); padding: 15px; border-radius: 6px; text-align: center; flex: 1; display: flex; align-items: center; justify-content: center; min-height: 250px;}
+    .card-dashboard img { max-width: 100%; height: auto; border-radius: 4px; }
+    
+    .seccao{margin-bottom: 40px;}
+    .seccao-titulo{font-size: 18px; padding-bottom: 5px; border-bottom: 1px solid var(--linha); margin-bottom: 5px;}
+    .seccao-subtitulo{font-size: 13px; color: var(--mudo); margin-bottom: 15px;}
+    .t-verde{color: var(--verde);} .t-amarelo{color: var(--amarelo);} .t-vermelho{color: var(--vermelho);} .t-azul{color: var(--azul);}
+    
+    table{width:100%;border-collapse:collapse;font-size:13px; background: var(--painel); border-radius: 6px; overflow: hidden;}
+    th{text-align:left;color:var(--mudo);font-size:11px;text-transform:uppercase;padding:12px 15px;border-bottom:1px solid var(--linha); white-space: nowrap;}
+    td{padding:12px 15px;border-bottom:1px solid var(--linha);}
+    .linha-dados{cursor: pointer; transition: background 0.2s;}
+    .linha-dados:hover{background:#1a212c;}
+    .ticker{font-weight: bold; color: #fff;}
+    .vazio{padding: 20px; background: var(--painel); text-align: center; color: var(--mudo); border-radius: 6px;}
+    
+    .nlg-row{display: none; background: var(--painel-dark);}
+    .conteudo-flex{display: flex; gap: 30px; padding: 25px; border-left: 3px solid var(--mudo);}
+    .texto-analise{flex: 1;}
+    .texto-analise p{margin: 8px 0; font-size: 13.5px;}
+    .container-grafico{flex: 0 0 450px; text-align: right;}
+    .container-grafico img{max-width: 100%; border-radius: 4px; border: 1px solid var(--linha);}
+    .seta{color: var(--mudo); font-size: 10px; margin-right: 8px;}
+    .conviccao{float: right; font-weight: bold; font-size: 13px;}
+
+/* CONTAINER DE MÉTRICAS GLOBAIS */
+.tabela-metricas {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 12px 0;
+    margin: 20px 0;
+    overflow: visible !important; /* Força a libertação dos balões para fora da tabela */
+}
+.card-metrica {
+    display: table-cell;
+    width: 33.33%;
+    background: var(--painel);
+    border: 1px solid var(--linha);
+    border-radius: 6px;
+    padding: 15px;
+    vertical-align: top;
+}
+.metrica-label {
+    font-size: 10pt;
+    color: var(--mudo);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+.metrica-valor {
+    font-size: 18pt;
+    font-weight: bold;
+    line-height: 1.2;
+    margin-bottom: 5px;
+}
+.metrica-status {
+    font-size: 9pt;
+    font-weight: 500;
+}
+
+/* BARRAS DE DADOS INLINE */
+.bar-bg { 
+    background: #1a212c; 
+    border-radius: 2px; 
+    height: 6px; 
+    width: 50px; 
+    display: inline-block; 
+    vertical-align: middle; 
+    margin-left: 10px; 
+    overflow: hidden; 
+}
+.bar-fill { height: 100%; border-radius: 2px; transition: width 0.5s ease; }
+.fill-amarelo { background: var(--amarelo); }
+.fill-vermelho { background: var(--vermelho); }
+.fill-verde { background: var(--verde); }
+.td-flex { display: flex; align-items: center; justify-content: space-between; }
+
+
+/* TOOLTIP EDUCACIONAL (HOVER) */
+.dica-edu {
+    position: relative;
+    display: inline-block;
+    cursor: help;
+    border-bottom: 1px dotted var(--mudo); /* Linha tracejada subtil a indicar que é clicável/hover */
+}
+.dica-edu .dica-texto {
+    visibility: hidden;
+    white-space: normal !important;
+    width: 320px;
+    background-color: var(--painel-dark);
+    color: var(--texto);
+    text-align: left;
+    border: 1px solid var(--linha);
+    border-radius: 6px;
+    padding: 15px;
+    position: absolute;
+    z-index: 100;
+    bottom: 130%; /* Posiciona o balão por cima do texto */
+    left: 50%;
+    transform: translateX(-50%);
+    opacity: 0;
+    transition: opacity 0.3s, bottom 0.3s;
+    font-size: 11.5px;
+    font-weight: normal;
+    line-height: 1.5;
+    box-shadow: 0px 8px 16px rgba(0,0,0,0.6);
+    pointer-events: none; /* Evita falhas no rato */
+}
+/* A pequena seta a apontar para baixo */
+.dica-edu .dica-texto::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -6px;
+    border-width: 6px;
+    border-style: solid;
+    border-color: var(--linha) transparent transparent transparent;
+}
+.dica-edu:hover .dica-texto {
+    visibility: visible;
+    opacity: 1;
+    bottom: 140%; /* Efeito de levitação suave */
+}
+/* Variante para tooltips no topo do ecrã (Abrem para baixo) */
+.dica-edu.dica-desce .dica-texto {
+    bottom: auto;
+    top: 130%;
+}
+.dica-edu.dica-desce:hover .dica-texto {
+    bottom: auto;
+    top: 145%; /* Efeito de levitação para baixo */
+}
+/* Inverte a seta para apontar para cima */
+.dica-edu.dica-desce .dica-texto::after {
+    top: auto;
+    bottom: 100%;
+    border-color: transparent transparent var(--linha) transparent;
+}
+
+/* Variante para tooltips colados à margem esquerda (Crescem para a direita) */
+.dica-edu.dica-ancora-esq .dica-texto {
+    left: 0;
+    transform: none; /* Remove a centralização forçada */
+}
+/* Reposiciona a seta para apontar para a esquerda da caixa */
+.dica-edu.dica-ancora-esq .dica-texto::after {
+    left: 30px; 
+    margin-left: 0;
+}
+
+/* Variante para tooltips colados à margem direita (Crescem para a esquerda) */
+.dica-edu.dica-ancora-dir .dica-texto {
+    left: auto;
+    right: 0;
+    transform: none;
+}
+.dica-edu.dica-ancora-dir .dica-texto::after {
+    left: auto;
+    right: 15px; 
+    margin-left: 0;
+}
+
+/* MARCA DE ÁGUA INSTITUCIONAL */
+.marca-agua {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: -1;
+    pointer-events: none;
+    user-select: none;
+    /* O SVG abaixo desenha o texto e repete-o em blocos de 300x300 pixels */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Ctext x='50%25' y='50%25' transform='rotate(-35 150 150)' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='20' font-weight='900' fill='rgba(255, 255, 255, 0.08)'%3EPartilha de Ideias - Luís Reis%3C/text%3E%3C/svg%3E");
+    
+    background-repeat: repeat;
+}
+
+.badge-alerta-vermelho {
+    background-color: var(--vermelho, #d9534f); /* Usa a tua variável de vermelho ou o fallback */
+    color: #ffffff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+    margin-left: 10px;
+    vertical-align: middle;
+    display: inline-block;
+    box-shadow: 0 0 8px rgba(217, 83, 79, 0.4);
+    letter-spacing: 0.5px;
+}
+
+</style>
+    <script>
+        // 1. ALTERNADOR DE LINHAS SEGURO (Com failsafes)
+        function toggleRow(id, setaId) {
+            var el = document.getElementById(id);
+            var seta = document.getElementById(setaId);
+            if(el) {
+                if(el.style.display === 'table-row') { 
+                    el.style.display = 'none'; 
+                    if(seta) seta.innerHTML = '▶'; 
+                } else { 
+                    el.style.display = 'table-row'; 
+                    if(seta) seta.innerHTML = '▼'; 
+                }
+            }
+        }
+
+        // 2. MOTOR QUANTITATIVO DE ORDENAÇÃO DE TABELAS
+        function ordenarTabela(th) {
+            const tabela = th.closest('table');
+            const tbodies = Array.from(tabela.querySelectorAll('tbody.bloco-ativo'));
+            if(tbodies.length === 0) return; 
+            
+            const colIndex = Array.from(th.parentNode.children).indexOf(th);
+            const asc = th.getAttribute('data-ordem') === 'asc';
+            
+            // Reset visual de todas as colunas
+            tabela.querySelectorAll('th').forEach(t => {
+                t.setAttribute('data-ordem', '');
+                const icon = t.querySelector('.sort-icon');
+                if(icon) icon.innerHTML = '↕';
+            });
+
+            // Ativa a coluna clicada
+            th.setAttribute('data-ordem', asc ? 'desc' : 'asc');
+            const icon = th.querySelector('.sort-icon');
+            if(icon) icon.innerHTML = asc ? '↑' : '↓';
+
+            const multiplicador = asc ? -1 : 1;
+
+            tbodies.sort((a, b) => {
+                const trA = a.querySelector('.linha-dados');
+                const trB = b.querySelector('.linha-dados');
+                if(!trA || !trB) return 0;
+                
+                const cellA = trA.children[colIndex].innerText.trim();
+                const cellB = trB.children[colIndex].innerText.trim();
+                
+                const textA = cellA.replace('▶', '').replace('▼', '').trim();
+                const textB = cellB.replace('▶', '').replace('▼', '').trim();
+                
+                // Correção Crítica: Usar regex \s (qualquer espaço vazio) para impedir que o Python quebre a linha
+                const valA = textA.split(/\s/)[0];
+                const valB = textB.split(/\s/)[0];
+
+                // Segurança: Exige que a string comece de facto com um número/sinal para não corromper Tickers como "S92.DE"
+                const isNumA = /^[-+]?[0-9]/.test(valA);
+                const isNumB = /^[-+]?[0-9]/.test(valB);
+
+                if (isNumA && isNumB) {
+                    const numA = parseFloat(valA.replace(/[^0-9.-]/g, ''));
+                    const numB = parseFloat(valB.replace(/[^0-9.-]/g, ''));
+                    return (numA - numB) * multiplicador; 
+                } else if (isNumA) {
+                    return -1 * multiplicador; 
+                } else if (isNumB) {
+                    return 1 * multiplicador;
+                } else {
+                    return textA.localeCompare(textB) * multiplicador; 
+                }
+            });
+
+            // Re-injetar os blocos ordenados de volta na tabela
+            tbodies.forEach(tbody => tabela.appendChild(tbody));
+        }
+
+        // 3. INICIALIZAÇÃO ASSÉPTICA
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('th').forEach((th) => {
+                th.style.cursor = 'pointer';
+                th.title = 'Clique para ordenar';
+                // Usamos uma classe 'sort-icon' para manipular individualmente a seta
+                th.insertAdjacentHTML('beforeend', '<span class="sort-icon" style="font-size:10px; opacity:0.4; margin-left: 6px; display: inline-block; vertical-align: middle;">↕</span>');
+                th.addEventListener('click', function() { ordenarTabela(this); });
+                th.addEventListener('mouseover', function() { this.style.background = 'rgba(255,255,255,0.05)'; });
+                th.addEventListener('mouseout', function() { this.style.background = 'transparent'; });
+            });
+        });
+    </script>
+    </head>
+    <body>
+    
+    <!-- INJEÇÃO DA MARCA DE ÁGUA -->
+    <div class="marca-agua"></div>
+    
+    
+    <main>
+      <header style="padding-bottom: 15px; border-bottom: 1px solid var(--linha); margin-bottom: 30px;">
+
+      <!-- BOTÃO DE RETORNO FLUTUANTE NA NEWSLETTER -->
+<div style="margin-bottom: 15px;">
+    <a href="/" style="background: #151a23; color: #8a94a8; padding: 6px 12px; border-radius: 4px; text-decoration: none; font-size: 12px; font-weight: bold; border: 1px solid #232d3f; display: inline-flex; align-items: center; gap: 6px;">
+        ← Voltar ao Portal Central
+    </a>
+</div>
+    
+    <!-- PRIMEIRA LINHA: Título à esquerda, Autor à direita -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 15px;">
+        <div>
+            <h1 style="margin: 0; font-size: 26px; color: #fff; letter-spacing: -0.5px; text-transform: uppercase;">Radar Quantitativo States - Seleção do Discord</h1>
+            <div style="color: var(--mudo); font-size: 13px; margin-top: 5px; font-weight: 500;">Relatório de Mercado gerado a 26 de Outubro de 2026</div>
+        </div>
+        
+        <div style="text-align: right; background: var(--painel); padding: 8px 15px; border-radius: 4px; border: 1px solid var(--linha);">
+            <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--mudo); margin-bottom: 2px;">Engenharia Quantitativa</div>
+            <div style="font-size: 14px; font-weight: bold; color: var(--azul);">Luís Reis</div>
+        </div>
+    </div>
+    
+    <!-- SEGUNDA LINHA: Disclaimer por baixo, a ocupar a largura toda -->
+    <div style="font-size: 11px; color: var(--mudo); text-align: justify; line-height: 1.4; border-top: 1px dashed var(--linha); padding-top: 10px;">
+        <p style="margin: 0;"><strong>Isenção de Responsabilidade (Disclaimer):</strong> O conteúdo deste relatório gerado automaticamente por via algorítmica destina-se exclusivamente a fins informativos e educacionais. Nenhuma das informações, métricas ou sugestões de dimensionamento de posição aqui expostas constitui uma recomendação de compra, venda ou investimento em ativos financeiros. O mercado de capitais envolve riscos elevados e perdas potenciais de capital. Cabe ao utilizador validar os dados e tomar decisões de forma independente.</p>
+    </div>
+    
+</header>
+
+      <div class="painel-destaque">
+          <div class="card-risco">
+              <h2 style="color: #fff; margin: 0 0 10px 0; font-size: 20px;">Regime Atual: 
+                  <span class="dica-edu dica-desce" style="color: #f0b90b; border-bottom: 2px dotted #f0b90b; padding-bottom: 2px;">
+                      NEUTRO
+                      <span class="dica-texto" style="width: 450px; font-weight: normal; text-transform: none; font-size: 12px;">
+                          <strong style="color: #fff; font-size: 13px; display: block; margin-bottom: 8px; border-bottom: 1px solid var(--linha); padding-bottom: 4px;">Matriz de Risco (Termómetro)</strong>
+                          O algoritmo cruza 4 pilares de stress: Volatilidade (VIX), Tendência (M50), Amplitude Interna e a Curva de Juros.<br><br>
+                          <span style="color: var(--verde);">■ CONSTRUTIVO (0 Alertas):</span> Máxima alocação. Mercado saudável.<br>
+                          <span style="color: var(--amarelo);">■ NEUTRO (1 Alerta):</span> Atrito inicial. Elevar exigência de qualidade.<br>
+                          <span style="color: #f28b24;">■ CAUTELA (2 Alertas):</span> Risco elevado. Focar apenas em valor profundo.<br>
+                          <span style="color: var(--vermelho);">■ DEFENSIVO (3-4 Alertas):</span> Risco de colapso. Fechar posições fracas e acumular liquidez.
+                      </span>
+                  </span>
+              </h2>
+              <p style="font-size: 15px;">Atrito detetado na estrutura técnica ou macro.</p>
+              <div class="metricas">
+                  <span>VIX: <strong>20.0</strong></span>
+                  <span>S&P 500: <strong>Abaixo M50</strong></span>
+                  <span>Amplitude: <strong>Saudável</strong></span>
+                  
+                  <span class="dica-edu dica-desce" style="border-bottom: 1px dotted var(--mudo); cursor: help;">
+                      Curva de Juros (10Y-3M): <strong style="color: var(--verde);">+0.00% (Normal (Saudável))</strong>
+                      <span class="dica-texto" style="width: 400px;">
+                          <strong style="color: #fff; font-size: 12px; display: block; margin-bottom: 6px; border-bottom: 1px solid var(--linha); padding-bottom: 4px;">Spread da Curva de Juros (10Y vs 3M)</strong>
+                          Mede a diferença de rendimento entre obrigações do Tesouro EUA a 10 anos e 3 meses. É a métrica mãe da saúde macroeconómica.<br><br>
+                          <span style="color: var(--verde);">■ Spread Positivo (&gt; 0%):</span> Curva normal. Os investidores exigem mais juros por emprestar a longo prazo. Cenário saudável de crescimento económico.<br><br>
+                          <span style="color: var(--vermelho);">■ Spread Negativo (&lt; 0%):</span> CURVA INVERTIDA. O mercado aceita receber menos juros a longo prazo porque antecipa um colapso económico ou cortes drásticos de taxas pela Fed. Antecedeu todas as grandes recessões modernas.
+                      </span>
+                  </span>
+              </div>
+              <div class="legenda-edu"><strong>Mecânica:</strong> A avaliação quantitativa do Regime define o tamanho das tuas posições. O VIX dita o pânico/complacência institucional. A posição face à M50 do SPY dita a força gravitacional da tendência primária. A Amplitude mede o 'oxigénio': mercados saudáveis sobem com participação alargada; mercados divergentes sobem carregados por meia dúzia de mega-caps, aumentando severamente o risco de colapso invisível.</div>
+          </div>
+      </div>
+
+    <!-- MARKET MOVERS DA CARTEIRA & ÍNDICES -->
+      
+    
+    <!-- CALENDÁRIO MACROECONÓMICO -->
+      <div class="seccao" style="margin-top: 25px; margin-bottom: 25px;">
+          <div style="background: var(--painel); border: 1px solid var(--linha); border-radius: 6px; padding: 20px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--linha); padding-bottom: 10px; margin-bottom: 15px;">
+                  <div>
+                      <h3 style="margin: 0; color: #fff; font-size: 16px; text-transform: uppercase; letter-spacing: 0.5px;">🌍 Escudo Macro (Vigilância de Catalisadores)</h3>
+                      <div style="font-size: 12px; color: var(--mudo); margin-top: 4px;">Vigiar injeções exógenas de volatilidade que anulam a Análise Técnica (Europa & EUA).</div>
+                  </div>
+                  <span class="dica-edu dica-ancora-dir" style="background: var(--painel-dark); border: 1px solid var(--linha); padding: 6px 12px; border-radius: 4px; font-size: 11px; font-weight: bold; color: var(--amarelo); cursor: help;">
+                      ⚠️ REGRA DE OURO MACRO
+                      <span class="dica-texto" style="width: 320px; font-weight: normal; text-transform: none;">
+                          <strong style="color: #fff; font-size: 12px; display: block; margin-bottom: 6px; border-bottom: 1px solid var(--linha); padding-bottom: 4px;">A Supremacia do Risco Macro</strong>
+                          A Análise Técnica pressupõe um mercado fechado. Eventos Macro são <i>Choques Exógenos</i>.<br><br>
+                          <b>Regra Algorítmica:</b> Nunca iniciar posições em ativos europeus ou americanos a menos de 24 horas da publicação destes dados. O risco de gap destrói qualquer cálculo de Stop Loss.
+                      </span>
+                  </span>
+              </div>
+              
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px;">
+                  
+                  <div style="background: #1a212c; padding: 12px; border-radius: 6px; border-left: 3px solid var(--vermelho);">
+                      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                          <div style="font-size: 13px; font-weight: bold; color: #fff;">1. Inflação (CPI EUA & HICP Euro)</div>
+                          <div style="background: #2d1a1a; color: var(--vermelho); border: 1px solid var(--vermelho); font-size: 9px; padding: 2px 6px; border-radius: 3px; font-weight: bold; letter-spacing: 0.5px;">PRÓX: 12 NOVEMBRO</div>
+                      </div>
+                      <div style="font-size: 11.5px; color: var(--mudo); margin-top: 5px; line-height: 1.4;">Se a inflação subir, os juros mantêm-se altos, asfixiando empresas altamente alavancadas no Tier B europeu e na Quarentena. O <b>HICP</b> europeu dita o ritmo de Frankfurt; o <b>CPI</b> dita o resto do mundo.</div>
+                  </div>
+
+                  <div style="background: #1a212c; padding: 12px; border-radius: 6px; border-left: 3px solid #b388ff;">
+                      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                          <div style="font-size: 13px; font-weight: bold; color: #fff;">2. Juros (BCE & FOMC)</div>
+                          <div style="background: #1a1525; color: #b388ff; border: 1px solid #b388ff; font-size: 9px; padding: 2px 6px; border-radius: 3px; font-weight: bold; letter-spacing: 0.5px;">PRÓX: 28 OUTUBRO</div>
+                      </div>
+                      <div style="font-size: 11.5px; color: var(--mudo); margin-top: 5px; line-height: 1.4;">Decisões institucionais do custo do capital. O discurso de Lagarde (BCE) afeta instantaneamente a liquidez e o volume de transação do STOXX 600. Evitar exposição cega técnica em dias de decisão.</div>
+                  </div>
+
+                  <div style="background: #1a212c; padding: 12px; border-radius: 6px; border-left: 3px solid var(--azul);">
+                      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                          <div style="font-size: 13px; font-weight: bold; color: #fff;">3. Atividade (PMI & NFP)</div>
+                          <div style="background: #102533; color: var(--azul); border: 1px solid var(--azul); font-size: 9px; padding: 2px 6px; border-radius: 3px; font-weight: bold; letter-spacing: 0.5px;">PRÓX: 06 NOVEMBRO</div>
+                      </div>
+                      <div style="font-size: 11.5px; color: var(--mudo); margin-top: 5px; line-height: 1.4;">O <b>PMI da Alemanha</b> é o batimento cardíaco da indústria europeia e reverte gráficos do DAX num segundo. O <b>NFP</b> (Emprego EUA) mede a fadiga global. Se ambos colapsarem, é sinal de risco recessivo brutal.</div>
+                  </div>
+              </div>
+          </div>
+      </div>
+
+
+    <!-- MARKET BREADTH (Profundidade de Mercado) -->
+
+
+
+
+<div class="seccao" style="margin-top: 15px; margin-bottom: 25px;">
+    
+    <!-- NOVO: Indicador de Estado -->
+    <div style="margin-bottom: 10px; font-size: 12px; color: var(--mudo); text-align: right;">
+        <span style="padding: 2px 6px; background: var(--painel); border-radius: 4px; border: 1px solid var(--linha);">
+            Dados Históricos
+        </span>
+    </div>
+
+    
+
+
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px;">
+        
+        <!-- 1. Advancing vs Declining -->
+        <div style="background: var(--painel); padding: 15px; border-radius: 6px; border: 1px solid var(--linha);">
+            <div class="dica-edu dica-ancora-esq" style="display: block; width: 100%; border-bottom: none; cursor: help;">
+                <div class="dica-texto">
+                    <strong>Advancing / Declining:</strong><br><br>Mede a participação geral do mercado (Market Breadth). Um mercado em alta saudável exige que a maioria das ações participe na subida. Se os índices principais sobem, mas o número de ações em declínio aumenta (Divergência Negativa), o movimento é frágil, sustentado por poucas empresas de grande capitalização, e propenso a reversões abruptas.
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 800; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">
+                    <span style="color: var(--verde);">Advancing<br><span style="font-size: 13px;">0% <span style="font-weight: normal; font-size: 11px; color: var(--mudo);">(0)</span></span></span>
+                    <span style="color: var(--vermelho); text-align: right;">Declining<br><span style="font-size: 13px;"><span style="font-weight: normal; font-size: 11px; color: var(--mudo);">(0)</span> 0%</span></span>
+                </div>
+            </div>
+            <div style="width: 100%; height: 6px; background: var(--vermelho); border-radius: 3px; overflow: hidden; display: flex;">
+                <div style="width: 0%; height: 100%; background: var(--verde);"></div>
+            </div>
+        </div>
+
+        <!-- 2. New Highs vs New Lows (52w) -->
+        <div style="background: var(--painel); padding: 15px; border-radius: 6px; border: 1px solid var(--linha);">
+            <div class="dica-edu" style="display: block; width: 100%; border-bottom: none; cursor: help;">
+                <div class="dica-texto">
+                    <strong>New High / New Low:</strong><br><br>Mede extremos de força e fraqueza estrutural. A expansão de Novos Máximos confirma que o apetite por risco está intacto e lidera o mercado. Um pico repentino em Novos Mínimos, mesmo com o índice estável, revela que o capital institucional está a liquidar posições debaixo da superfície. Valores acima de 10% em Novos Mínimos exigem postura defensiva.
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 800; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">
+                    <span style="color: var(--verde);">New High<br><span style="font-size: 13px;">0% <span style="font-weight: normal; font-size: 11px; color: var(--mudo);">(0)</span></span></span>
+                    <span style="color: var(--vermelho); text-align: right;">New Low<br><span style="font-size: 13px;"><span style="font-weight: normal; font-size: 11px; color: var(--mudo);">(0)</span> 0%</span></span>
+                </div>
+            </div>
+            <div style="width: 100%; height: 6px; background: var(--vermelho); border-radius: 3px; overflow: hidden; display: flex;">
+                <div style="width: 0%; height: 100%; background: var(--verde);"></div>
+            </div>
+        </div>
+
+        <!-- 3. Acima vs Abaixo SMA50 -->
+        <div style="background: var(--painel); padding: 15px; border-radius: 6px; border: 1px solid var(--linha);">
+            <div class="dica-edu" style="display: block; width: 100%; border-bottom: none; cursor: help;">
+                <div class="dica-texto">
+                    <strong>Above / Below SMA 50:</strong><br><br>Mede o momentum tático. Se >50% do mercado negoceia acima da sua média de 50 dias, o viés de médio prazo é de alta. Valores extremos (>85%) indicam sobrecompra generalizada, elevando o risco de correções iminentes. Valores extremamente baixos (<15%) assinalam pânico e potenciais zonas de capitulação e ressalto.
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 800; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">
+                    <span style="color: var(--verde);">Above SMA50<br><span style="font-size: 13px;">0% <span style="font-weight: normal; font-size: 11px; color: var(--mudo);">(0)</span></span></span>
+                    <span style="color: var(--vermelho); text-align: right;">Below SMA50<br><span style="font-size: 13px;"><span style="font-weight: normal; font-size: 11px; color: var(--mudo);">(0)</span> 0%</span></span>
+                </div>
+            </div>
+            <div style="width: 100%; height: 6px; background: var(--vermelho); border-radius: 3px; overflow: hidden; display: flex;">
+                <div style="width: 0%; height: 100%; background: var(--verde);"></div>
+            </div>
+        </div>
+
+        <!-- 4. Acima vs Abaixo SMA200 -->
+        <div style="background: var(--painel); padding: 15px; border-radius: 6px; border: 1px solid var(--linha);">
+            <div class="dica-edu dica-ancora-dir" style="display: block; width: 100%; border-bottom: none; cursor: help;">
+                <div class="dica-texto">
+                    <strong>Above / Below SMA 200:</strong><br><br>O derradeiro barómetro de regime de mercado. Um Bull Market secular exige que a esmagadora maioria (>60%) dos ativos se mantenha acima da sua média de 200 dias. Uma queda sustentada desta métrica para níveis inferiores a 40% confirma um regime de Bear Market ou distribuição institucional pesada, invalidando estratégias clássicas.
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 800; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">
+                    <span style="color: var(--verde);">Above SMA200<br><span style="font-size: 13px;">0% <span style="font-weight: normal; font-size: 11px; color: var(--mudo);">(0)</span></span></span>
+                    <span style="color: var(--vermelho); text-align: right;">Below SMA200<br><span style="font-size: 13px;"><span style="font-weight: normal; font-size: 11px; color: var(--mudo);">(0)</span> 0%</span></span>
+                </div>
+            </div>
+            <div style="width: 100%; height: 6px; background: var(--vermelho); border-radius: 3px; overflow: hidden; display: flex;">
+                <div style="width: 0%; height: 100%; background: var(--verde);"></div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+
+
+    <!-- RELATÓRIO DE EXCEÇÃO DIÁRIO (FLOW LAYOUT AUTO-EQUILIBRADO) -->
+      
+
+    <div style="display: flex; margin-bottom: 20px; width: 100%;">
+          <div class="seccao">
+    <div class="seccao-titulo">Mapa de Risco e Retorno</div>
+    <div class="seccao-subtitulo">Passe o cursor sobre os pontos para isolar a performance exata e a classificação algorítmica de cada ativo. Arraste para fazer zoom nas zonas de maior densidade.</div>
+    
+    <!-- O filtro 'safe' é estritamente obrigatório para o Python não quebrar as tags HTML geradas pelo Plotly -->
+    <div class="grafico-container" style="border: 1px solid var(--borda); border-radius: 8px; overflow: hidden; background: #0d1117; margin-bottom: 15px;">
+        <div style="height:100%; width:100%;">                        <script>window.PlotlyConfig = {MathJaxConfig: 'local'};</script>
+        <script charset="utf-8" src="https://cdn.plot.ly/plotly-4.1.1.min.js" integrity="sha256-O24V1F27f8pb0glCkelh3cVHLNiHAJ5gCaVtq2aNch8=" crossorigin="anonymous"></script>                <div id="7e7b2ad3-fec1-4a99-b3ad-0842c6cbdff0" class="plotly-graph-div" style="height:100%; width:100%;"></div>            <script>                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("7e7b2ad3-fec1-4a99-b3ad-0842c6cbdff0")) {                    Plotly.newPlot(                        "7e7b2ad3-fec1-4a99-b3ad-0842c6cbdff0",                        [],                        {"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05}}},"title":{"font":{"color":"white","size":16},"text":"Risco vs Retorno 6M","x":0.5,"xanchor":"center"},"xaxis":{"title":{"text":"Volatilidade (Risco)"},"color":"#8a94a8","gridcolor":"#2d333b","zeroline":false},"yaxis":{"title":{"text":"Retorno % (Lucro)"},"color":"#8a94a8","gridcolor":"#2d333b","zerolinecolor":"#8a94a8","zerolinewidth":1},"margin":{"l":50,"r":10,"t":60,"b":50},"hoverlabel":{"font":{"size":12,"family":"monospace"},"bgcolor":"#161b22"},"plot_bgcolor":"#0d1117","paper_bgcolor":"#0d1117","showlegend":false,"autosize":true,"shapes":[{"line":{"color":"#8a94a8","dash":"dot","width":1.5},"type":"line","x0":0,"x1":1,"xref":"x domain","y0":0,"y1":0,"yref":"y"}]},                        {"responsive": true}                    )                };            </script>        </div>
+    </div>
+    
+    <div class="nota-tecnica" style="font-size: 12px; color: var(--mudo); border-top: 1px dashed var(--borda); padding-top: 10px;">
+        <strong>A MATEMÁTICA:</strong> O Eixo Y avalia o lucro, o Eixo X mede o "preço" pago sob a forma de oscilações bruscas (Volatilidade). O quadrante ideal é o Superior Esquerdo. Ações no extremo direito sofrem de 'Risco de Ruína'.
+    </div>
+</div>
+      </div>
+      
+      <div class="grid-graficos" style="margin-bottom: 40px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
+          <!-- 1. Concentração Setorial (Donut Original) -->
+          <div class="card-dashboard" style="flex-direction: column; align-items: stretch; justify-content: space-between;">
+              <div style="text-align: center; width: 100%;">
+                  
+              </div>
+              <div class="legenda-edu">
+                  <strong>Alojamento Macro:</strong> Sem ativos no Tier A para calcular exposição.<br><br>
+                  <span class="dica-edu">
+                      <strong style="color: var(--verde);">AUDITORIA CONTÁGIO:</strong>
+                      <span class="dica-texto">Valores &gt; 0.70 indicam Risco Sistémico. A carteira move-se em bloco.</span>
+                  </span> 0.00
+              </div>
+          </div>
+
+          <!-- 2. Rotação Setorial RRG (O Novo Motor) -->
+          <div class="card-dashboard" style="flex-direction: column; align-items: stretch; justify-content: flex-start;">
+              <div style="text-align: center; width: 100%; margin-bottom: 10px;">
+                  
+              </div>
+              <div class="legenda-edu" style="text-align: left; margin-top: 0;">
+                  <span class="dica-edu dica-desce">
+                      <strong>FLUXO INTELIGENTE (RRG):</strong>
+                      <span class="dica-texto" style="width: 350px;">
+                          <strong style="color: #fff; font-size: 12px; display: block; border-bottom: 1px solid var(--linha); padding-bottom: 4px;">A Viagem do Capital</strong>
+                          O Eixo X (Força Relativa) e o Eixo Y (Momentum) revelam para onde as "baleias" estão a mover o dinheiro. Quadrantes à direita significam liderança; quadrantes acima significam aceleração de compras.
+                      </span>
+                  </span><br><br>
+                  <p style="margin-top: 0; margin-bottom: 15px; text-align: justify;">Falha matemática ao gerar Rotação Setorial.</p>
+
+                  <details style="border-top: 1px dashed #2d333b; padding-top: 12px;">
+                      <summary style="font-size: 11px; font-weight: bold; color: #8a94a8; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: 6px; outline: none;">
+                          <span style="color: var(--azul); font-size: 14px;">▸</span> ANATOMIA DA ROTAÇÃO
+                      </summary>
+                      
+                      <div style="margin-top: 12px; font-size: 11.5px; line-height: 1.6; color: #c9d1d9; background: rgba(13, 17, 23, 0.5); padding: 15px; border-radius: 6px; border-left: 3px solid var(--azul);">
+                          <strong style="color: #fff; display: block; margin-bottom: 8px;">O Ciclo Institucional:</strong>
+                          O capital nunca dorme, apenas muda de setor. Num ciclo completo, o dinheiro viaja sempre no sentido dos ponteiros do relógio através de 4 fases matemáticas:<br><br>
+                          
+                          <span style="color: var(--verde); font-weight: bold;">1. LÍDERES (Top-Right):</span> Forte Momentum e Forte Preço. O setor está a esmagar o mercado base. Aqui mora a euforia.<br><br>
+                          
+                          <span style="color: var(--amarelo); font-weight: bold;">2. A ENFRAQUECER (Bottom-Right):</span> O preço ainda está alto (Força > 100), mas o Momentum quebrou. Os institucionais pararam de comprar e começaram a distribuir lucros (vender) secretamente ao retalho.<br><br>
+                          
+                          <span style="color: var(--vermelho); font-weight: bold;">3. ATRASADOS (Bottom-Left):</span> Capitulação total. Preço esmagado e sem ignição. Ninguém quer exposição a este setor.<br><br>
+                          
+                          <span style="color: var(--azul); font-weight: bold;">4. A MELHORAR (Top-Left):</span> <b>A Zona de Ouro.</b> O preço ainda está a transacionar abaixo da média (Barato), mas o Momentum disparou de forma anómala (>100). O <i>Smart Money</i> começou a acumular estas ações a desconto para preparar o próximo ciclo de Liderança.
+                      </div>
+                  </details>
+              </div>
+          </div>
+
+          <!-- 3. Walk-Forward Backtest (Original) -->
+          <div class="card-dashboard" style="flex-direction: column; align-items: stretch; justify-content: space-between;">
+              <div style="text-align: center; width: 100%;">
+                  
+              </div>
+              <div class="legenda-edu">
+                  <span class="dica-edu dica-desce dica-ancora-dir">
+                      <strong>TESTE DE STRESS:</strong>
+                      <span class="dica-texto" style="width: 350px;">Simulação cega. Ignora o futuro e testa as métricas do algoritmo há 6 meses atrás. Prova matemática de Alfa autêntico.</span>
+                  </span><br><br>
+                  Dados insuficientes (mín. 250 dias úteis) no dataset para executar simulação dinâmica.
+              </div>
+          </div>
+      </div>
+      
+
+    <table class="tabela-metricas">
+      <tr>
+        <td class="card-metrica" style="border-left: 4px solid var(--amarelo);">
+          <div class="metrica-status" style="color: var(--mudo);">Regime Atual: <span style="color: var(--texto); font-weight: bold;">NEUTRO</span></div>
+          <div class="metrica-status" style="color: var(--mudo); margin-top: 6px; border-top: 1px dashed var(--linha); padding-top: 4px;">
+              <span class="dica-edu dica-ancora-esq" style="border-bottom: 1px dotted var(--mudo); cursor: help;">Curva Juros (10Y-3M)
+                  <span class="dica-texto" style="width: 250px;"><strong style="color: #fff; font-size: 12px; display: block; margin-bottom: 6px; border-bottom: 1px solid var(--linha); padding-bottom: 4px;">Motor de Liquidez Institucional</strong>O ditador do risco de recessão. Subtrai a yield do Tesouro a 3 Meses à yield a 10 Anos. Uma curva abaixo de 0 (Invertida) sinaliza asfixia de liquidez.</span>
+              </span>: 
+              <span style="color: var(--mudo); font-weight: bold;">0.00 (N/A)</span>
+          </div>
+          
+        </td>
+
+        <td class="card-metrica" style="border-left: 4px solid var(--azul);">
+          <div class="metrica-label">
+              <span class="dica-edu dica-desce" style="border-bottom: 1px dotted var(--mudo); cursor: help;">
+                  ALOCAÇÃO DA CARTEIRA
+                  <span class="dica-texto" style="width: 280px; text-transform: none; letter-spacing: normal;">
+                      <strong style="color: #fff; font-size: 12px; display: block; margin-bottom: 6px; border-bottom: 1px solid var(--linha); padding-bottom: 4px;">Exposição Tática</strong>
+                      A soma do "Position Sizing" recomendado para os ativos. O algoritmo calcula o peso ótimo de cada ação através da matemática de Kelly, penalizada ativamente pelo seu "Risco de Ruína" histórico (Max Drawdown). O remanescente é liquidez de proteção.
+                  </span>
+              </span>
+          </div>
+          <div class="metrica-status" style="color: var(--mudo);">Liquidez em Reserva: <span style="color: var(--verde); font-weight: bold;">100.0%</span></div>
+          <div class="metrica-status" style="color: var(--mudo); margin-top: 6px; border-top: 1px dashed var(--linha); padding-top: 4px;">
+              <span class="dica-edu dica-desce" style="border-bottom: 1px dotted var(--mudo); cursor: help;">Matriz Correlação (Tier A)
+                  <span class="dica-texto" style="width: 260px;"><strong style="color: #fff; font-size: 12px; display: block; margin-bottom: 6px; border-bottom: 1px solid var(--linha); padding-bottom: 4px;">Auditoria de Risco Direcional</strong>Cruza a matriz matemática entre todas as ações do Tier A. Valores &gt; 0.65 indica que a tua carteira sofre de sobrecarga fatorial (vai colapsar toda ao mesmo tempo numa rotação de mercado).</span>
+              </span>: 
+              <span style="color: var(--verde); font-weight: bold;">0.00 (DIVERSIFICADO)</span>
+          </div>
+        </td>
+
+        <td class="card-metrica" style="border-left: 4px solid var(--verde);">
+          <!-- Exemplo da estrutura do teu KPI Card -->
+    <div class="kpi-box">
+        <div class="kpi-box">
+        <div class="kpi-titulo">
+            <span class="dica-edu dica-desce" style="border-bottom:1px dotted var(--mudo); cursor:help;">
+                SCREENER ATIVOS
+                <span class="dica-texto">Volume total de cotadas auditadas na sessão. Um mercado saudável apresenta um rácio equilibrado; um mercado em correção empurra a massa de ativos para a Quarentena ou Blacklist.</span>
+            </span>
+        </div>
+        
+        <div class="kpi-valor" style="color: var(--verde);">0</div>
+        
+        <div class="kpi-sub" style="font-size: 11px; margin-top: 5px;">
+            <span style="color: var(--verde);">↑ 0 Tier A</span> | 
+            <span style="color: var(--amarelo);">↓ 0 Tier B</span> <br>
+            <span style="color: var(--mudo); margin-top: 3px; display: inline-block;">⚪ 0 Quarentena</span> | 
+            <span style="color: var(--vermelho);">🔴 0 Blacklist</span>
+        </div>
+    </div>
+          <!--<div class="metrica-valor t-verde">0</div>
+          div class="metrica-status" style="color: var(--mudo);"><span class="t-verde">↑ 0 Tier A</span> | <span class="t-amarelo">↓ 0 Tier B</span></div> -->
+        </td>
+      </tr>
+    </table>
+    <div style="margin-bottom: 30px; background: var(--painel); padding: 15px; border-radius: 6px; border: 1px solid var(--linha);">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+              <span class="dica-edu dica-desce" style="font-weight: bold; font-size: 12px; color: var(--mudo); border-bottom: 1px dotted var(--mudo); cursor: help;">
+                  LARGURA DE MERCADO (BREADTH SETORIAL)
+                  <span class="dica-texto" style="width: 350px; font-weight: normal; text-transform: none;">
+                      <strong style="color: #fff; font-size: 12px; display: block; margin-bottom: 6px; border-bottom: 1px solid var(--linha); padding-bottom: 4px;">Participação Interna da Economia</strong>
+                      O algoritmo audita a força dos 11 ETFs Setoriais do S&P 500 (Tecnologia, Saúde, Energia, etc).<br><br>
+                      Se o mercado subir mas a barra de Breadth estiver vermelha/amarela, é um "falso rally" carregado por poucas empresas gigantes. Se a barra for verde (maioria dos setores acima da sua M200), a expansão de capital é estrutural e segura.
+                  </span>
+              </span>
+              <span style="font-weight: bold; color: var(--mudo); font-size: 13px;">Erro Algorítmico (0/11 Setores &gt; M200)</span>
+          </div>
+          <div style="background: #1a212c; height: 6px; border-radius: 3px; overflow: hidden; width: 100%;">
+               <div style="height: 100%; width: 0%; background: var(--mudo); transition: width 1s ease-in-out;"></div> 
+              <!-- <div style="height: 100%; width: 0%; background: var(--mudo); transition: width 1s ease-in-out;"></div> -->
+          </div>
+          
+      </div>
+    
+      <div class="seccao">
+          <div class="seccao-titulo t-verde">🟢 Tier A: Oportunidades (Momentum + Qualidade)</div>
+          <div class="seccao-subtitulo">Líderes de mercado com forte momentum e balanço resiliente. Quadrante Ideal: Alta Força, Baixo Risco.</div>
+          <div class="vazio">Nenhuma ação cumpre os critérios.</div>
+      </div>
+      
+      <div class="seccao">
+          <div class="seccao-titulo t-amarelo">🟡 Tier B: Radar de Valor (Ouro na Lama)</div>
+          <div class="seccao-subtitulo">Empresas excepcionais esmagadas temporariamente abaixo da M200. Vigiar inversão técnica.</div>
+          <div class="vazio">Sem oportunidades de alto valor com desconto detetadas.</div>
+      </div>
+
+
+      <div class="seccao">
+          <div class="seccao-titulo" style="color: var(--mudo);">⚪ Quarentena: Zona Cinzenta (Especulação & Observação)</div>
+          <div class="seccao-subtitulo">Ativos que não cumprem os padrões estritos de qualidade (Tier A/B), mas não confirmam falência técnica (Blacklist).</div>
+          <div class="vazio">Sem ativos retidos na quarentena.</div>
+      </div>
+
+
+      <div class="seccao">
+          <div class="seccao-titulo t-vermelho">🔴 Blacklist: Alertas de Risco</div>
+          <div class="seccao-subtitulo">Empresas com tendência destrutiva e balanço insolvente. Manter distância.</div>
+          <div class="vazio">O sistema não detetou ativos insolventes na listagem.</div>
+      </div>
+
+
+    <!-- MAPA DE COBERTURA (UNIVERSO DE TICKERS) -->
+      <div style="margin-top: 40px; margin-bottom: 20px;">
+          <details style="background: var(--painel-dark); border: 1px solid var(--linha); border-radius: 6px; padding: 15px; cursor: pointer;">
+              <summary style="font-size: 13px; font-weight: bold; color: var(--texto); text-transform: uppercase; list-style: none; display: flex; align-items: center; outline: none; letter-spacing: 0.5px;">
+                  <span style="color: var(--azul); font-size: 16px; margin-right: 8px;">▸</span> UNIVERSO DE COBERTURA (MAPA SETORIAL)
+              </summary>
+              
+              <div style="margin-top: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; cursor: default;">
+                  
+                  <div style="background: var(--painel); border: 1px solid var(--linha); border-radius: 4px; padding: 12px; display: flex; flex-direction: column;">
+                      
+                      <div style="font-size: 11px; font-weight: bold; color: var(--mudo); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; border-bottom: 1px dashed var(--linha); padding-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+                          Tecnologia
+                          <span style="background: #1a2133; color: var(--azul); padding: 2px 6px; border-radius: 3px; font-size: 9px;">0</span>
+                      </div>
+                      
+                      <div style="font-size: 11px; color: var(--mudo); display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start; flex-grow: 1;">
+                          
+                              <span style="font-style: italic; opacity: 0.5; width: 100%; text-align: center; padding: 10px 0;">Setor sem cobertura</span>
+                          
+                      </div>
+                      
+                  </div>
+                  
+                  <div style="background: var(--painel); border: 1px solid var(--linha); border-radius: 4px; padding: 12px; display: flex; flex-direction: column;">
+                      
+                      <div style="font-size: 11px; font-weight: bold; color: var(--mudo); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; border-bottom: 1px dashed var(--linha); padding-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+                          Saúde
+                          <span style="background: #1a2133; color: var(--azul); padding: 2px 6px; border-radius: 3px; font-size: 9px;">0</span>
+                      </div>
+                      
+                      <div style="font-size: 11px; color: var(--mudo); display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start; flex-grow: 1;">
+                          
+                              <span style="font-style: italic; opacity: 0.5; width: 100%; text-align: center; padding: 10px 0;">Setor sem cobertura</span>
+                          
+                      </div>
+                      
+                  </div>
+                  
+                  <div style="background: var(--painel); border: 1px solid var(--linha); border-radius: 4px; padding: 12px; display: flex; flex-direction: column;">
+                      
+                      <div style="font-size: 11px; font-weight: bold; color: var(--mudo); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; border-bottom: 1px dashed var(--linha); padding-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+                          Serviços Financeiros
+                          <span style="background: #1a2133; color: var(--azul); padding: 2px 6px; border-radius: 3px; font-size: 9px;">0</span>
+                      </div>
+                      
+                      <div style="font-size: 11px; color: var(--mudo); display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start; flex-grow: 1;">
+                          
+                              <span style="font-style: italic; opacity: 0.5; width: 100%; text-align: center; padding: 10px 0;">Setor sem cobertura</span>
+                          
+                      </div>
+                      
+                  </div>
+                  
+                  <div style="background: var(--painel); border: 1px solid var(--linha); border-radius: 4px; padding: 12px; display: flex; flex-direction: column;">
+                      
+                      <div style="font-size: 11px; font-weight: bold; color: var(--mudo); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; border-bottom: 1px dashed var(--linha); padding-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+                          Consumo Discricionário
+                          <span style="background: #1a2133; color: var(--azul); padding: 2px 6px; border-radius: 3px; font-size: 9px;">0</span>
+                      </div>
+                      
+                      <div style="font-size: 11px; color: var(--mudo); display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start; flex-grow: 1;">
+                          
+                              <span style="font-style: italic; opacity: 0.5; width: 100%; text-align: center; padding: 10px 0;">Setor sem cobertura</span>
+                          
+                      </div>
+                      
+                  </div>
+                  
+                  <div style="background: var(--painel); border: 1px solid var(--linha); border-radius: 4px; padding: 12px; display: flex; flex-direction: column;">
+                      
+                      <div style="font-size: 11px; font-weight: bold; color: var(--mudo); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; border-bottom: 1px dashed var(--linha); padding-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+                          Bens Básicos
+                          <span style="background: #1a2133; color: var(--azul); padding: 2px 6px; border-radius: 3px; font-size: 9px;">0</span>
+                      </div>
+                      
+                      <div style="font-size: 11px; color: var(--mudo); display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start; flex-grow: 1;">
+                          
+                              <span style="font-style: italic; opacity: 0.5; width: 100%; text-align: center; padding: 10px 0;">Setor sem cobertura</span>
+                          
+                      </div>
+                      
+                  </div>
+                  
+                  <div style="background: var(--painel); border: 1px solid var(--linha); border-radius: 4px; padding: 12px; display: flex; flex-direction: column;">
+                      
+                      <div style="font-size: 11px; font-weight: bold; color: var(--mudo); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; border-bottom: 1px dashed var(--linha); padding-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+                          Indústria
+                          <span style="background: #1a2133; color: var(--azul); padding: 2px 6px; border-radius: 3px; font-size: 9px;">0</span>
+                      </div>
+                      
+                      <div style="font-size: 11px; color: var(--mudo); display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start; flex-grow: 1;">
+                          
+                              <span style="font-style: italic; opacity: 0.5; width: 100%; text-align: center; padding: 10px 0;">Setor sem cobertura</span>
+                          
+                      </div>
+                      
+                  </div>
+                  
+                  <div style="background: var(--painel); border: 1px solid var(--linha); border-radius: 4px; padding: 12px; display: flex; flex-direction: column;">
+                      
+                      <div style="font-size: 11px; font-weight: bold; color: var(--mudo); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; border-bottom: 1px dashed var(--linha); padding-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+                          Energia
+                          <span style="background: #1a2133; color: var(--azul); padding: 2px 6px; border-radius: 3px; font-size: 9px;">0</span>
+                      </div>
+                      
+                      <div style="font-size: 11px; color: var(--mudo); display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start; flex-grow: 1;">
+                          
+                              <span style="font-style: italic; opacity: 0.5; width: 100%; text-align: center; padding: 10px 0;">Setor sem cobertura</span>
+                          
+                      </div>
+                      
+                  </div>
+                  
+                  <div style="background: var(--painel); border: 1px solid var(--linha); border-radius: 4px; padding: 12px; display: flex; flex-direction: column;">
+                      
+                      <div style="font-size: 11px; font-weight: bold; color: var(--mudo); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; border-bottom: 1px dashed var(--linha); padding-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+                          Utilities
+                          <span style="background: #1a2133; color: var(--azul); padding: 2px 6px; border-radius: 3px; font-size: 9px;">0</span>
+                      </div>
+                      
+                      <div style="font-size: 11px; color: var(--mudo); display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start; flex-grow: 1;">
+                          
+                              <span style="font-style: italic; opacity: 0.5; width: 100%; text-align: center; padding: 10px 0;">Setor sem cobertura</span>
+                          
+                      </div>
+                      
+                  </div>
+                  
+                  <div style="background: var(--painel); border: 1px solid var(--linha); border-radius: 4px; padding: 12px; display: flex; flex-direction: column;">
+                      
+                      <div style="font-size: 11px; font-weight: bold; color: var(--mudo); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; border-bottom: 1px dashed var(--linha); padding-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+                          Imobiliário
+                          <span style="background: #1a2133; color: var(--azul); padding: 2px 6px; border-radius: 3px; font-size: 9px;">0</span>
+                      </div>
+                      
+                      <div style="font-size: 11px; color: var(--mudo); display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start; flex-grow: 1;">
+                          
+                              <span style="font-style: italic; opacity: 0.5; width: 100%; text-align: center; padding: 10px 0;">Setor sem cobertura</span>
+                          
+                      </div>
+                      
+                  </div>
+                  
+                  <div style="background: var(--painel); border: 1px solid var(--linha); border-radius: 4px; padding: 12px; display: flex; flex-direction: column;">
+                      
+                      <div style="font-size: 11px; font-weight: bold; color: var(--mudo); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; border-bottom: 1px dashed var(--linha); padding-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+                          Materiais Básicos
+                          <span style="background: #1a2133; color: var(--azul); padding: 2px 6px; border-radius: 3px; font-size: 9px;">0</span>
+                      </div>
+                      
+                      <div style="font-size: 11px; color: var(--mudo); display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start; flex-grow: 1;">
+                          
+                              <span style="font-style: italic; opacity: 0.5; width: 100%; text-align: center; padding: 10px 0;">Setor sem cobertura</span>
+                          
+                      </div>
+                      
+                  </div>
+                  
+                  <div style="background: var(--painel); border: 1px solid var(--linha); border-radius: 4px; padding: 12px; display: flex; flex-direction: column;">
+                      
+                      <div style="font-size: 11px; font-weight: bold; color: var(--mudo); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; border-bottom: 1px dashed var(--linha); padding-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+                          Comunicações
+                          <span style="background: #1a2133; color: var(--azul); padding: 2px 6px; border-radius: 3px; font-size: 9px;">0</span>
+                      </div>
+                      
+                      <div style="font-size: 11px; color: var(--mudo); display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start; flex-grow: 1;">
+                          
+                              <span style="font-style: italic; opacity: 0.5; width: 100%; text-align: center; padding: 10px 0;">Setor sem cobertura</span>
+                          
+                      </div>
+                      
+                  </div>
+                  
+                  <div style="background: var(--painel); border: 1px solid var(--linha); border-radius: 4px; padding: 12px; display: flex; flex-direction: column;">
+                      
+                      <div style="font-size: 11px; font-weight: bold; color: var(--mudo); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; border-bottom: 1px dashed var(--linha); padding-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+                          Sem Classificação (ETFs/Outros)
+                          <span style="background: #1a2133; color: var(--azul); padding: 2px 6px; border-radius: 3px; font-size: 9px;">143</span>
+                      </div>
+                      
+                      <div style="font-size: 11px; color: #fff; display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start; flex-grow: 1;">
+                          
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  AAPL
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  ACHR
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  ACM
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  ACN
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  ADSK
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  AES
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  ALGN
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  AMAT
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  AMZN
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  ARM
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  ARRY
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  AUR
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  AVAV
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  AVGO
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  BABA
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  BAX
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  BBAI
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  BKKT
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  BMNR
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  BULL
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  BYND
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  CAVA
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  CBSH
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  CELH
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  CHTR
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  CLM
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  CMA
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  CMCSA
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  CNC
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  COIN
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  COP
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  CRC
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  CRK
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  CRM
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  CRML
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  CSIQ
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  DBX
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  DKS
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  DOW
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  EEFT
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  ELV
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  ENPH
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  ETOR
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  EXE
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  EXEL
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  FICO
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  FLNC
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  FNB
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  FTNT
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  GAP
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  GETY
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  GGB
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  GIS
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  GOOGL
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  GRBK
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  GTM
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  HAFN
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  HAL
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  HP
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  HPQ
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  HUN
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  IBM
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  INTC
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  IOT
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  IOVA
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  IREN
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  ITUB
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  JHG
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  JPM
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  KDP
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  KHC
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  LAZ
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  LCID
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  LEN
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  LLY
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  LRN
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  MARA
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  MBLY
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  META
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  MGRC
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  MOH
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  MOS
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  MRNA
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  MSFT
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  MTCH
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  MU
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  NFLX
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  NIO
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  NKE
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  NOW
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  NVDA
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  OGS
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  OKE
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  OKLO
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  ORCL
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  PCG
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  PEP
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  PFE
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  PINS
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  PLTR
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  PR
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  PVH
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  QBTS
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  QUBT
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  RDW
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  RGTI
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  RIVN
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  ROST
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  RUN
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  S
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  SEE
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  SFM
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  SHOP
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  SKYE
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  SLDB
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  SLF
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  SMCI
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  SMR
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  SNDK
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  SNPS
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  SOUN
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  SPCX
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  STRIDE
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  TDW
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  TG
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  TKR
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  TSLA
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  TTD
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  UEC
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  UNH
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  UNM
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  UPS
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  UPWK
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  VICI
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  VIPS
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  VRTX
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  WAT
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  WFC
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  WMG
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  WMT
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  WSFS
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  XPEV
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                              <span class="dica-edu dica-desce" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: crosshair;">
+                                  ZION
+                                  <span class="dica-texto" style="width: auto; white-space: nowrap; font-size: 10px; color: var(--mudo); text-transform: none;">Ativo monitorizado na matriz base</span>
+                              </span>
+                              
+                          
+                      </div>
+                      
+                  </div>
+                  
+              </div>
+          </details>
+      </div>
+
+
+    <div style="margin-top: 50px; border-top: 1px solid var(--linha); padding-top: 20px;">
+          <details style="background: var(--painel-dark); border: 1px solid var(--linha); border-radius: 6px; padding: 15px; cursor: pointer;">
+              <summary style="font-size: 13px; font-weight: bold; color: var(--amarelo); user-select: none;">
+                  ⚠️ Termo de Isenção de Responsabilidade & Verificação de Autoria
+              </summary>
+              <div style="margin-top: 15px; font-size: 12px; color: var(--mudo); cursor: default; line-height: 1.6; text-align: justify;">
+                  <p><strong>Isenção de Responsabilidade (Disclaimer):</strong> O conteúdo deste relatório gerado automaticamente por via algorítmica destina-se exclusivamente a fins informativos e educacionais. Nenhuma das informações, métricas ou sugestões de dimensionamento de posição aqui expostas constitui uma recomendação de compra, venda ou investimento em ativos financeiros. O mercado de capitais envolve riscos elevados e perdas potenciais de capital. Cabe ao utilizador validar os dados e tomar decisões de forma independente.</p>
+                  <p style="border-top: 1px dashed var(--linha); padding-top: 10px; margin-top: 10px;">
+                      <strong>Assinatura Digital de Integridade:</strong> <code style="background: #151a23; color: var(--azul); padding: 2px 6px; border-radius: 3px; font-weight: bold; font-size: 11px;">RADAR-A27F0F268E29F923</code>
+                  </p>
+              </div>
+          </details>
+      </div>
+    </main>
+    </body>
+    </html>
