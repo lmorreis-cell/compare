@@ -5,28 +5,27 @@ import time
 import random
 import logging
 import urllib3
+import requests
+from requests.adapters import HTTPAdapter
 
 urllib3.disable_warnings()
 logging.getLogger("yfinance").setLevel(logging.CRITICAL)
 
-try:
-    from curl_cffi import requests as cffi_requests
-    proxies = {
-        "http": "http://nkxnzumn:co3v6ml5gr6p@p.webshare.io:80/",
-        "https": "http://nkxnzumn:co3v6ml5gr6p@p.webshare.io:80/"
-    }
-    sessao_yf = cffi_requests.Session(impersonate="chrome120", proxies=proxies)
-except ImportError:
-    import requests
-    sessao_yf = requests.Session()
-    proxies = {
-        "http": "http://nkxnzumn:co3v6ml5gr6p@p.webshare.io:80/",
-        "https": "http://nkxnzumn:co3v6ml5gr6p@p.webshare.io:80/"
-    }
-    sessao_yf.proxies.update(proxies)
-    sessao_yf.headers.update({"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36"})
+# SESSÃO PURA NO RADAR.PY (Evita o Erro 407)
+sessao_yf = requests.Session()
+adapter_cem = HTTPAdapter(pool_connections=100, pool_maxsize=100, max_retries=2)
+sessao_yf.mount('https://', adapter_cem)
+sessao_yf.mount('http://', adapter_cem)
+
+proxies = {
+    "http": "http://nkxnzumn:co3v6ml5gr6p@p.webshare.io:80/",
+    "https": "http://nkxnzumn:co3v6ml5gr6p@p.webshare.io:80/"
+}
+sessao_yf.proxies.update(proxies)
+sessao_yf.headers.update({"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/124.0.0.0 Safari/537.36"})
 
 def calcular_rsi(serie, periodo=14):
+# ... resto do código ...
     """Cálculo do RSI usando Pandas puro (Exponential Moving Average)"""
     delta = serie.diff()
     ganhos = delta.clip(lower=0).ewm(com=periodo-1, adjust=False).mean()
