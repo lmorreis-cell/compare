@@ -5292,14 +5292,16 @@
 
     // Auto-carregar os Termómetros quando a página inicia
     document.addEventListener('DOMContentLoaded', () => {
-        recalcularTudo();
-        carregarMarketMovers();
-        renderizarHistorico();
-        iniciarTickerTape();
-        carregarBreadth();
-        carregarRRG();
-        sincronizarPrecosLiveCofre();
-    });
+    recalcularTudo();
+    renderizarHistorico();
+    
+    // Espaçar os pedidos à API (Waterfall) para evitar bloqueios do Yahoo Finance
+    setTimeout(() => sincronizarPrecosLiveCofre(), 500); // Dá prioridade máxima ao Cofre
+    setTimeout(() => carregarMarketMovers(), 1500);
+    setTimeout(() => iniciarTickerTape(), 2500);
+    setTimeout(() => carregarBreadth(), 3500);
+    setTimeout(() => carregarRRG(), 4500);
+});
 
     // Memória global do estado do Radar RRG
     let rrgMercadoAtual = 'usa';
