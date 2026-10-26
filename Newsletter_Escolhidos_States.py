@@ -19,49 +19,39 @@ import logging
 import requests
 from requests.adapters import HTTPAdapter
 
-# --- BLINDAGEM PURA YFINANCE (SESSION & CRUMB RECOVERY) ---
+# --- BLINDAGEM TLS REAL (CURL_CFFI IMPERSONATION) ---
 import time
 import random
-import requests
-from requests.adapters import HTTPAdapter
+import urllib3
+import logging
+
 urllib3.disable_warnings()
 logging.getLogger("urllib3").setLevel(logging.ERROR)
+logging.getLogger("yfinance").setLevel(logging.CRITICAL)
 
-# Criamos uma sessão HTTP persistente com headers de browser real
-sessao_yf = requests.Session()
-adapter = HTTPAdapter(pool_connections=20, pool_maxsize=20, max_retries=3)
-sessao_yf.mount('https://', adapter)
-sessao_yf.mount('http://', adapter)
-sessao_yf.headers.update({
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-    "Accept-Language": "en-US,en;q=0.5"
-})
-
-# Forçamos o handshake inicial para o Yahoo aceitar os cookies do runner
 try:
-    sessao_yf.get("https://finance.yahoo.com", timeout=10)
-    time.sleep(1)
-except Exception:
-    pass
+    from curl_cffi import requests as cffi_requests
+    sessao_yf = cffi_requests.Session(impersonate="chrome")
+except ImportError:
+    sessao_yf = None  # O yfinance moderno já instancia curl_cffi internamente se session=None
 
-# Forçamos o yfinance a utilizar a nossa sessão autenticada em todas as operações
 _yf_download_orig = yf.download
 def _download_com_sessao(tickers, *args, **kwargs):
-    kwargs["session"] = sessao_yf
-    for tentativa in range(3):
+    if sessao_yf is not None:
+        kwargs["session"] = sessao_yf
+    for tentativa in range(2):
         try:
             df = _yf_download_orig(tickers, *args, **kwargs)
             if df is not None and not df.empty:
                 return df
         except Exception:
             pass
-        time.sleep(3 * (tentativa + 1))
-    return _yf_download_orig(tickers, *args, **kwargs)
+        # Se falhar, espera tempo real para limpar o rate-limit (15s a 30s), não 3s
+        time.sleep(15 * (tentativa + 1) + random.uniform(1, 5))
+    return pd.DataFrame()
 
 yf.download = _download_com_sessao
 # ---------------------------------------------------------
-
 
 from datetime import datetime
 
