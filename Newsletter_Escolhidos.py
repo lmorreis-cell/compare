@@ -1002,35 +1002,35 @@ def calcular_badges_ativo(a):
 
     return badges
 
-def calcular_sazonalidade(ticker):
-    """Calcula a estatística de sucesso do ativo no mês atual (últimos 10 anos)"""
+def calcular_sazonalidade(ticker, hist_fallback=None):
+    """Calcula a estatística de sucesso do ativo no mês atual"""
     try:
-        # Puxa 10 anos de histórico da ação isolada
-        dados = yf.download(ticker, period="10y", progress=False, threads=False)['Close'].dropna()
-        if dados.empty: return ""
-        if isinstance(dados, pd.DataFrame): dados = dados.iloc[:, 0]
-        
-        # Agrupa os fechos por fim de mês para obter o retorno mensal puro
-        mensal = dados.resample('ME').last()
+        dados = yf.download(ticker, period="10y", progress=False, threads=False)
+        if dados is not None and not dados.empty and 'Close' in dados:
+            s = dados['Close'].dropna()
+        elif hist_fallback is not None and not hist_fallback.empty:
+            s = hist_fallback.dropna()
+        else:
+            return ""
+            
+        if isinstance(s, pd.DataFrame): s = s.iloc[:, 0]
+        mensal = s.resample('ME').last()
         retornos = mensal.pct_change().dropna() * 100
         
         mes_atual = datetime.now().month
         meses_pt = {1:"Janeiro", 2:"Fevereiro", 3:"Março", 4:"Abril", 5:"Maio", 6:"Junho", 7:"Julho", 8:"Agosto", 9:"Setembro", 10:"Outubro", 11:"Novembro", 12:"Dezembro"}
         nome_mes = meses_pt.get(mes_atual, "")
         
-        # Isolar os retornos históricos apenas do mês atual
         retornos_mes = retornos[retornos.index.month == mes_atual]
-        if len(retornos_mes) < 4: return "" # Ignora se tiver menos de 4 anos de histórico
+        if len(retornos_mes) < 2: return ""
         
-        # Matemática de probabilidades
         win_rate = (len(retornos_mes[retornos_mes > 0]) / len(retornos_mes)) * 100
         media = float(retornos_mes.mean())
-        
         sinal = "+" if media > 0 else ""
         cor = "var(--verde)" if media > 0 else "var(--vermelho)"
         
         return f"⏳ <strong style='color:var(--mudo)'></strong> Historicamente em {nome_mes}, este ativo sobe <strong>{win_rate:.0f}%</strong> das vezes (Retorno Médio: <span style='color:{cor}; font-weight:bold;'>{sinal}{media:.1f}%</span>)."
-    except: 
+    except Exception:
         return ""
 
 # ==========================================
@@ -1073,16 +1073,16 @@ def calcular_position_sizing(a_comp):
 
 def auditar_fundamentais(ticker):
     try:
-        time.sleep(1.5) # Pausa obrigatória para o YF não cortar o acesso por excesso de velocidade
-        ticker_obj = yf.Ticker(ticker, session=sessao_yf)
-        info = ticker_obj.info or {}
+        time.sleep(random.uniform(0.6, 1.2))
+        ticker_obj = yf.Ticker(ticker, session=sessao_yf) if sessao_yf else yf.Ticker(ticker)
+        info = {}
         for tent in range(2):
             try:
                 info = ticker_obj.info or {}
                 if info and len(info) > 5:
                     break
             except Exception:
-                time.sleep(3)
+                time.sleep(5)
         
         # 1. Tentar via .info (método rápido)
         next_date = info.get('nextEarningsDate')
@@ -1388,33 +1388,25 @@ def executar_screener():
         tickers = [linha.strip().upper() for linha in f if linha.strip()]
         
     tickers_globais = list(set(tickers + ['^STOXX']))
-    print(f"A descarregar Preço e Volume para {len(tickers_globais)} ativos europeus de forma segura...")
+    print(f"A descarregar Preço e Volume para {len(tickers_globais)} ativos europeus em lotes seguros...")
     
-    lista_fechos = {}
-    lista_volumes = {}
-    
-    # Download individual seguro: praças europeias disparam erros 404/delisted em lote se misturadas
-    for t in tickers_globais:
-        try:
-            df_t = yf.download(t, period="2y", progress=False, threads=False)
-            if df_t is not None and not df_t.empty:
-                # O yfinance às vezes devolve MultiIndex se for um só ticker nas versões novas
-                if isinstance(df_t.columns, pd.MultiIndex):
-                    df_t.columns = df_t.columns.get_level_values(0)
-                
-                if 'Close' in df_t:
-                    lista_fechos[t] = df_t['Close']
-                if 'Volume' in df_t:
-                    lista_volumes[t] = df_t['Volume']
-                elif 'Close' in df_t:
-                    lista_volumes[t] = pd.Series(0, index=df_t.index)
-            time.sleep(0.4) # Pausa estrita para respeitar o rate limit das bolsas europeias no YF
-        except Exception as e:
-            print(f"   [Aviso YF] Ignorado temporariamente o ticker {t}: {e}")
-            continue
-
-    fechos = pd.DataFrame(lista_fechos).dropna(how='all') if lista_fechos else pd.DataFrame()
-    volumes = pd.DataFrame(lista_volumes).dropna(how='all') if lista_volumes else pd.DataFrame()
+    lista_fechos, lista_volumes = [], []
+    tamanho_lote = 40
+    for i in range(0, len(tickers_globais), tamanho_lote):
+        lote = tickers_globais[i:i + tamanho_lote]
+        dados_lote = yf.download(lote, period="2y", progress=False, threads=False)
+        if dados_lote is not None and not dados_lote.empty and 'Close' in dados_lote:
+            f_lote = dados_lote['Close']
+            v_lote = dados_lote['Volume']
+            if isinstance(f_lote, pd.Series):
+                f_lote = f_lote.to_frame(name=lote[0])
+                v_lote = v_lote.to_frame(name=lote[0])
+            lista_fechos.append(f_lote)
+            lista_volumes.append(v_lote)
+        time.sleep(3)
+        
+    fechos = pd.concat(lista_fechos, axis=1).dropna(how='all') if lista_fechos else pd.DataFrame()
+    volumes = pd.concat(lista_volumes, axis=1).dropna(how='all') if lista_volumes else pd.DataFrame()
     
     # --- NOVA INJEÇÃO GLOBAL EM TEMPO REAL ---
     print("A sincronizar cotações em tempo real na matriz global...")
