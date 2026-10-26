@@ -2507,7 +2507,7 @@ def api_risco_portfolio():
 
 
 # ==========================================
-# COTAÇÕES EM LOTE (1 ÚNICO PEDIDO PARA TODO O COFRE)
+# COTAÇÕES EM LOTE (1 ÚNICO PEDIDO FURTIVO PARA TODO O COFRE)
 # ==========================================
 @app.route('/api/cotacoes_lote', methods=['POST'])
 def api_cotacoes_lote():
@@ -2516,28 +2516,35 @@ def api_cotacoes_lote():
     if not tickers:
         return jsonify({"precos": {}, "cambio": 1.08})
 
-    todos = tickers + ["EURUSD=X"]
     precos = {}
     cambio = 1.08
 
+    import time
+    import random
+
+    # 1. Extrair o câmbio primeiro (Usamos a sessao_yf que já tens configurada no main.py)
     try:
-        df = yf.download(todos, period="5d", interval="1d", progress=False)['Close']
-        if isinstance(df, pd.Series):
-            ultimo = df.dropna()
-            if not ultimo.empty:
-                precos[todos[0]] = round(float(ultimo.iloc[-1]), 4)
-        else:
-            for t in todos:
-                if t in df.columns:
-                    s = df[t].dropna()
-                    if not s.empty:
-                        val = round(float(s.iloc[-1]), 4)
-                        if t == "EURUSD=X":
-                            cambio = val
-                        else:
-                            precos[t] = val
+        tkr_cambio = yf.Ticker("EURUSD=X", session=sessao_yf)
+        hist_c = tkr_cambio.history(period="1d")
+        if not hist_c.empty and 'Close' in hist_c:
+            cambio = round(float(hist_c['Close'].iloc[-1]), 4)
     except Exception as e:
-        print(f"Aviso cotacoes_lote: {e}")
+        print(f"Aviso câmbio: {e}")
+
+    # 2. Extrair cotações furtivamente (ação a ação para evitar o erro 429)
+    for t in tickers:
+        try:
+            tkr = yf.Ticker(t, session=sessao_yf) 
+            hist = tkr.history(period="1d")
+            
+            if not hist.empty and 'Close' in hist:
+                precos[t] = round(float(hist['Close'].iloc[-1]), 4)
+                
+        except Exception as e:
+            print(f"Erro a extrair {t}: {e}")
+            
+        # Pausa micro-dinâmica para enganar a Cloudflare (0.5 a 1 segundo entre pedidos)
+        time.sleep(random.uniform(0.5, 1.0))
 
     return jsonify({"precos": precos, "cambio": cambio})
 
