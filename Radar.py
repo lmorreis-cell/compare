@@ -1,6 +1,30 @@
 import yfinance as yf
 import pandas as pd
 import numpy as np
+import time
+import random
+import logging
+import urllib3
+
+urllib3.disable_warnings()
+logging.getLogger("yfinance").setLevel(logging.CRITICAL)
+
+try:
+    from curl_cffi import requests as cffi_requests
+    proxies = {
+        "http": "http://nkxnzumn:co3v6ml5gr6p@p.webshare.io:80/",
+        "https": "http://nkxnzumn:co3v6ml5gr6p@p.webshare.io:80/"
+    }
+    sessao_yf = cffi_requests.Session(impersonate="chrome120", proxies=proxies)
+except ImportError:
+    import requests
+    sessao_yf = requests.Session()
+    proxies = {
+        "http": "http://nkxnzumn:co3v6ml5gr6p@p.webshare.io:80/",
+        "https": "http://nkxnzumn:co3v6ml5gr6p@p.webshare.io:80/"
+    }
+    sessao_yf.proxies.update(proxies)
+    sessao_yf.headers.update({"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36"})
 
 def calcular_rsi(serie, periodo=14):
     """Cálculo do RSI usando Pandas puro (Exponential Moving Average)"""
@@ -15,8 +39,8 @@ def calcular_rsi(serie, periodo=14):
 
 def calcular_radar_momentum_v2(lista_tickers, ticker_indice="^GSPC"):
     print("A descarregar dados do índice de referência...")
-    # Adicionado threads=True
-    indice = yf.download(ticker_indice, period="2y", progress=False, threads=True)['Close']
+    df_indice = yf.download(ticker_indice, period="2y", progress=False, threads=False, session=sessao_yf)
+    indice = df_indice['Close'] if df_indice is not None and not df_indice.empty and 'Close' in df_indice else pd.DataFrame()
     
     if indice.empty:
         print("Erro ao obter o índice.")
@@ -24,8 +48,11 @@ def calcular_radar_momentum_v2(lista_tickers, ticker_indice="^GSPC"):
 
     resultados = []
     print(f"A processar o radar para {len(lista_tickers)} ativos...")
-    # Adicionado threads=True para paralelizar o download maciço
-    dados_acoes = yf.download(lista_tickers, period="2y", progress=False, threads=True)['Close']
+    df_acoes = yf.download(lista_tickers, period="2y", progress=False, threads=False, session=sessao_yf)
+    dados_acoes = df_acoes['Close'] if df_acoes is not None and not df_acoes.empty and 'Close' in df_acoes else pd.DataFrame()
+    
+    if dados_acoes.empty:
+        return pd.DataFrame()
 
     for ticker in lista_tickers:
         try:
@@ -66,11 +93,14 @@ def calcular_radar_momentum_v2(lista_tickers, ticker_indice="^GSPC"):
 
 def comparar_ativos(ticker1, ticker2, ticker_indice="^GSPC"):
     lista = [ticker1.upper(), ticker2.upper()]
-    # Adicionado threads=True
-    indice = yf.download(ticker_indice, period="2y", progress=False, threads=True)['Close']
     
-    # Adicionado threads=True
-    dados = yf.download(lista, period="2y", progress=False, threads=True)
+    df_indice = yf.download(ticker_indice, period="2y", progress=False, threads=False, session=sessao_yf)
+    indice = df_indice['Close'] if df_indice is not None and not df_indice.empty and 'Close' in df_indice else pd.DataFrame()
+    
+    dados = yf.download(lista, period="2y", progress=False, threads=False, session=sessao_yf)
+    
+    if indice.empty or dados is None or dados.empty or 'Close' not in dados:
+        return pd.DataFrame()
     
     resultados = []
     for ticker in lista:
