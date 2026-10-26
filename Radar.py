@@ -7,7 +7,6 @@ import logging
 import urllib3
 import requests
 from requests.adapters import HTTPAdapter
-import base64
 import os
 
 urllib3.disable_warnings()
@@ -23,19 +22,13 @@ adapter_cem = HTTPAdapter(pool_connections=100, pool_maxsize=100, max_retries=2)
 sessao_yf.mount('https://', adapter_cem)
 sessao_yf.mount('http://', adapter_cem)
 
-proxy_url = "http://p.webshare.io:80"
+proxy_url = "http://nkxnzumn:co3v6ml5gr6p@p.webshare.io:80"
+
 sessao_yf.proxies = {
     "http": proxy_url,
     "https": proxy_url
 }
-
-user_pass = "nkxnzumn:co3v6ml5gr6p"
-b64_cred = base64.b64encode(user_pass.encode()).decode()
-
-sessao_yf.headers.update({
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/124.0.0.0 Safari/537.36",
-    "Proxy-Authorization": f"Basic {b64_cred}"
-})
+sessao_yf.headers.update({"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/124.0.0.0 Safari/537.36"})
 
 def calcular_rsi(serie, periodo=14):
 # ... resto do código ...
