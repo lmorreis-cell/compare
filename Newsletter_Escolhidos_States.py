@@ -1426,17 +1426,21 @@ def executar_screener():
     fechos = pd.concat(lista_fechos, axis=1).dropna(how='all') if lista_fechos else pd.DataFrame()
     volumes = pd.concat(lista_volumes, axis=1).dropna(how='all') if lista_volumes else pd.DataFrame()
 
-    # Calcular a força base contra a média europeia
+    if fechos.empty or len(fechos.columns) < 5:
+        print("❌ ERRO CRÍTICO: Yahoo Finance bloqueou o download da matriz de preços. A abortar para não gerar HTML vazio.")
+        sys.exit(1)
+
+   # Calcular a força base contra o S&P 500 (Estava ^STOXX por engano!)
     try:
-        stoxx_limpo = fechos['^STOXX'].dropna()
-        perf_stoxx_6m = ((stoxx_limpo.iloc[-1] / stoxx_limpo.iloc[-125]) - 1) * 100
-    except:
-        perf_stoxx_6m = 0
+        spy_limpo = fechos['SPY'].dropna()
+        perf_spy_6m = ((spy_limpo.iloc[-1] / spy_limpo.iloc[-125]) - 1) * 100
+    except Exception:
+        perf_spy_6m = 0
     
     try:
         dict_perf = {}
         for col in fechos.columns:
-            if col != '^STOXX':
+            if col != 'SPY':
                 hist_limpo = fechos[col].dropna()
                 if len(hist_limpo) >= 2:
                     dict_perf[col] = ((hist_limpo.iloc[-1] / hist_limpo.iloc[-2]) - 1) * 100
@@ -1463,7 +1467,7 @@ def executar_screener():
             m200 = historico.rolling(window=200).mean().iloc[-1]
             m50 = historico.rolling(window=50).mean().iloc[-1]
             perf_6m = ((preco / historico.iloc[-125]) - 1) * 100
-            alpha_6m = perf_6m - perf_stoxx_6m
+            alpha_6m = perf_6m - perf_spy_6m
                 
             base_data = {
                 "ticker": ticker, "perf": perf_6m, "alpha": alpha_6m, 
