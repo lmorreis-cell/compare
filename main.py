@@ -40,6 +40,13 @@ sessao_yf.headers.update({
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 })
 
+# INJEÇÃO DO PROXY WEBSHARE
+proxies = {
+    "http": "http://nkxnzumn:co3v6ml5gr6p@p.webshare.io:80/",
+    "https": "http://nkxnzumn:co3v6ml5gr6p@p.webshare.io:80/"
+}
+sessao_yf.proxies.update(proxies)
+
 ARQUIVO_CACHE_DISCO = "cache_emergencia.json"
 
 def guardar_cache_disco(chave, dados):
