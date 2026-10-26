@@ -1403,7 +1403,9 @@ def executar_screener():
                 v_lote = v_lote.to_frame(name=lote[0])
             lista_fechos.append(f_lote)
             lista_volumes.append(v_lote)
-        time.sleep(3)
+        
+        # Pausa dinâmica (entre 4 a 8 segundos) para simular comportamento humano e evitar bloqueio
+        time.sleep(random.uniform(4, 8))
         
     fechos = pd.concat(lista_fechos, axis=1).dropna(how='all') if lista_fechos else pd.DataFrame()
     volumes = pd.concat(lista_volumes, axis=1).dropna(how='all') if lista_volumes else pd.DataFrame()
