@@ -1074,16 +1074,16 @@ def calcular_position_sizing(a_comp):
 
 def auditar_fundamentais(ticker):
     try:
-        time.sleep(0.3) # Pausa obrigatória para o YF não cortar o acesso por excesso de velocidade
-        ticker_obj = yf.Ticker(ticker, session=sessao_yf)
-        info = ticker_obj.info or {}
+        time.sleep(random.uniform(0.6, 1.2))
+        ticker_obj = yf.Ticker(ticker, session=sessao_yf) if sessao_yf else yf.Ticker(ticker)
+        info = {}
         for tent in range(2):
             try:
                 info = ticker_obj.info or {}
                 if info and len(info) > 5:
                     break
             except Exception:
-                time.sleep(3)
+                time.sleep(5)
         
         # 1. Tentar via .info (método rápido)
         next_date = info.get('nextEarningsDate')
