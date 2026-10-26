@@ -1,6 +1,5 @@
 import os
 import json
-import requests
 import glob
 import yfinance as yf
 import pandas as pd
@@ -13,32 +12,24 @@ from flask import Flask, render_template, jsonify, request, Response, send_file,
 import warnings
 warnings.filterwarnings('ignore', category=FutureWarning)
 warnings.filterwarnings('ignore', message='.*inplace.*')
-
-
 warnings.filterwarnings('ignore', category=UserWarning)
 warnings.filterwarnings('ignore', message='.*Timestamp.*')
-
 warnings.filterwarnings('ignore', message='.*auto_adjust.*')
 warnings.filterwarnings('ignore', module='yfinance')
 
-
 import urllib3
 import logging
+import requests
 from requests.adapters import HTTPAdapter
 
-# 1. EXPANDE O POOL DE CONEXÕES DE 10 PARA 100 (Elimina o "Connection pool is full")
 urllib3.disable_warnings()
-logging.getLogger("urllib3").setLevel(logging.ERROR)
 logging.getLogger("yfinance").setLevel(logging.CRITICAL)
 
+# SESSÃO PURA (Removemos o curl_cffi que causava o Erro 407)
 sessao_yf = requests.Session()
-
-adapter_cem = HTTPAdapter(pool_connections=100, pool_maxsize=100, max_retries=1)
+adapter_cem = HTTPAdapter(pool_connections=100, pool_maxsize=100, max_retries=2)
 sessao_yf.mount('https://', adapter_cem)
 sessao_yf.mount('http://', adapter_cem)
-sessao_yf.headers.update({
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-})
 
 # INJEÇÃO DO PROXY WEBSHARE
 proxies = {
@@ -46,7 +37,9 @@ proxies = {
     "https": "http://nkxnzumn:co3v6ml5gr6p@p.webshare.io:80/"
 }
 sessao_yf.proxies.update(proxies)
+sessao_yf.headers.update({"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/124.0.0.0 Safari/537.36"})
 
+# ... resto do código (ARQUIVO_CACHE_DISCO, app = Flask(__name__), etc) ...
 ARQUIVO_CACHE_DISCO = "cache_emergencia.json"
 
 def guardar_cache_disco(chave, dados):
