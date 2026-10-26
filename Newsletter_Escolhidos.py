@@ -31,7 +31,14 @@ logging.getLogger("yfinance").setLevel(logging.CRITICAL)
 
 try:
     from curl_cffi import requests as cffi_requests
-    sessao_yf = cffi_requests.Session(impersonate="chrome")
+    
+    # INJEÇÃO DO PROXY WEBSHARE
+    proxies = {
+        "http": "http://nkxnzumn:co3v6ml5gr6p@p.webshare.io:80/",
+        "https": "http://nkxnzumn:co3v6ml5gr6p@p.webshare.io:80/"
+    }
+    
+    sessao_yf = cffi_requests.Session(impersonate="chrome120", proxies=proxies)
 except ImportError:
     sessao_yf = None  # O yfinance moderno já instancia curl_cffi internamente se session=None
 
