@@ -12,23 +12,10 @@ import os
 urllib3.disable_warnings()
 logging.getLogger("yfinance").setLevel(logging.CRITICAL)
 
-os.environ.pop("HTTP_PROXY", None)
-os.environ.pop("HTTPS_PROXY", None)
-os.environ.pop("http_proxy", None)
-os.environ.pop("https_proxy", None)
-
-sessao_yf = requests.Session()
-adapter_cem = HTTPAdapter(pool_connections=100, pool_maxsize=100, max_retries=2)
-sessao_yf.mount('https://', adapter_cem)
-sessao_yf.mount('http://', adapter_cem)
-
-proxy_url = "http://nkxnzumn:co3v6ml5gr6p@p.webshare.io:80"
-
-sessao_yf.proxies = {
-    "http": proxy_url,
-    "https": proxy_url
-}
-sessao_yf.headers.update({"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/124.0.0.0 Safari/537.36"})
+os.environ["http_proxy"] = "http://nkxnzumn:co3v6ml5gr6p@p.webshare.io:80"
+os.environ["https_proxy"] = "http://nkxnzumn:co3v6ml5gr6p@p.webshare.io:80"
+os.environ["HTTP_PROXY"] = "http://nkxnzumn:co3v6ml5gr6p@p.webshare.io:80"
+os.environ["HTTPS_PROXY"] = "http://nkxnzumn:co3v6ml5gr6p@p.webshare.io:80"
 
 def calcular_rsi(serie, periodo=14):
 # ... resto do código ...
@@ -44,7 +31,7 @@ def calcular_rsi(serie, periodo=14):
 
 def calcular_radar_momentum_v2(lista_tickers, ticker_indice="^GSPC"):
     print("A descarregar dados do índice de referência...")
-    df_indice = yf.download(ticker_indice, period="2y", progress=False, threads=False, session=sessao_yf)
+    df_indice = yf.download(ticker_indice, period="2y", progress=False, threads=False)
     indice = df_indice['Close'] if df_indice is not None and not df_indice.empty and 'Close' in df_indice else pd.DataFrame()
     
     if indice.empty:
@@ -53,7 +40,7 @@ def calcular_radar_momentum_v2(lista_tickers, ticker_indice="^GSPC"):
 
     resultados = []
     print(f"A processar o radar para {len(lista_tickers)} ativos...")
-    df_acoes = yf.download(lista_tickers, period="2y", progress=False, threads=False, session=sessao_yf)
+    df_acoes = yf.download(lista_tickers, period="2y", progress=False, threads=False)
     dados_acoes = df_acoes['Close'] if df_acoes is not None and not df_acoes.empty and 'Close' in df_acoes else pd.DataFrame()
     
     if dados_acoes.empty:
@@ -99,10 +86,10 @@ def calcular_radar_momentum_v2(lista_tickers, ticker_indice="^GSPC"):
 def comparar_ativos(ticker1, ticker2, ticker_indice="^GSPC"):
     lista = [ticker1.upper(), ticker2.upper()]
     
-    df_indice = yf.download(ticker_indice, period="2y", progress=False, threads=False, session=sessao_yf)
+    df_indice = yf.download(ticker_indice, period="2y", progress=False, threads=False)
     indice = df_indice['Close'] if df_indice is not None and not df_indice.empty and 'Close' in df_indice else pd.DataFrame()
     
-    dados = yf.download(lista, period="2y", progress=False, threads=False, session=sessao_yf)
+    dados = yf.download(lista, period="2y", progress=False, threads=False)
     
     if indice.empty or dados is None or dados.empty or 'Close' not in dados:
         return pd.DataFrame()
