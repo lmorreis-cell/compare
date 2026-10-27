@@ -1,4 +1,10 @@
 import yfinance as yf
+import os as _os
+import time as _time
+# Escudo anti-bloqueio (mesmo motor do portal). O modo "lote" faz o script ESPERAR e tentar
+# de novo quando o Yahoo limita, em vez de gerar uma newsletter vazia.
+_os.environ.setdefault("YG_MODO", "lote")
+import yahoo_guard as yg
 import pandas as pd
 import numpy as np  # NOVO (Essencial para a trigonometria do Radar Chart)
 import os
@@ -30,7 +36,7 @@ def avaliar_risco_mercado():
     tickers = ["^VIX", "^STOXX", "^STOXX50E", "^TNX", "^IRX"]
     # yf.download agora com o parâmetro show_errors=False para silenciar lixo no terminal
     
-    dados = yf.download(tickers, period="1y", progress=False, threads=False)['Close'].ffill().dropna(how='all')
+    dados = yg.download(tickers, period="1y", progress=False, threads=False)['Close'].ffill().dropna(how='all')
     
     # Avaliação do VIX Global
     vix_atual = float(dados['^VIX'].dropna().iloc[-1]) if '^VIX' in dados and not dados['^VIX'].dropna().empty else 20.0
@@ -85,7 +91,7 @@ def avaliar_breadth_macro():
         
         tickers = list(etfs.values())
         
-        dados = yf.download(tickers, period="1y", progress=False, threads=True)['Close'].ffill()
+        dados = yg.download(tickers, period="1y", progress=False, threads=True)['Close'].ffill()
         
         setores_alta = 0
         for ticker in tickers:
@@ -103,9 +109,8 @@ def avaliar_breadth_macro():
 
 def obter_variacao_hibrida(ticker_symbol):
     try:
-        ticker = yf.Ticker(ticker_symbol)
         # Puxamos 5 dias na mesma como rede de segurança contra feriados/fins de semana
-        hist = ticker.history(period="5d")
+        hist = yg.historico(ticker_symbol, period="5d")
         
         if len(hist) < 2:
             return {'variacao': 0.0, 'estado': 'Sem Dados'}
@@ -146,7 +151,7 @@ def avaliar_smart_money():
     
     # 1. Estrutura a Termo do VIX (Contango vs Backwardation)
     try:
-        vix_curve = yf.download(["^VIX", "^VIX3M"], period="5d", progress=False, threads=False)['Close'].ffill()
+        vix_curve = yg.download(["^VIX", "^VIX3M"], period="5d", progress=False, threads=False)['Close'].ffill()
         vix_curto = vix_curve['^VIX'].iloc[-1]
         vix_longo = vix_curve['^VIX3M'].iloc[-1]
         
@@ -209,7 +214,7 @@ def avaliar_smart_money():
 def avaliar_curva_juros():
     """Lê o spread entre a yield do Tesouro a 10 Anos e a 3 Meses com proteção Anti-NaN"""
     try:
-        dados = yf.download(["^TNX", "^IRX"], period="5d", progress=False, threads=False)['Close']
+        dados = yg.download(["^TNX", "^IRX"], period="5d", progress=False, threads=False)['Close']
         
         # O dropna() garante que vai buscar o último valor que é de facto um número real
         t10 = float(dados['^TNX'].dropna().iloc[-1]) if not dados['^TNX'].dropna().empty else 0.0
@@ -419,7 +424,7 @@ def gerar_relatorio_excecao(fechos, volumes, tickers):
     excecoes_finais = excecoes_unicas[:12]
     for ex in excecoes_finais:
         try:
-            info = yf.Ticker(ex['ticker']).info
+            info = yg.info(ex['ticker'])
             ex['nome'] = info.get('shortName', ex['ticker'])
         except Exception:
             ex['nome'] = ex['ticker'] 
@@ -844,7 +849,7 @@ def gerar_rrg_setorial():
                 "Imóveis": "XLRE", "Materiais": "XLB", "SP500": "SPY"}
         
         tickers = list(etfs.values())
-        dados = yf.download(tickers, period="6mo", progress=False, threads=True)['Close'].ffill()
+        dados = yg.download(tickers, period="6mo", progress=False, threads=True)['Close'].ffill()
         
         plt.figure(figsize=(6, 4.5), facecolor='#151a23')
         ax = plt.axes()
@@ -958,7 +963,7 @@ def calcular_sazonalidade(ticker):
     """Calcula a estatística de sucesso do ativo no mês atual (últimos 10 anos)"""
     try:
         # Puxa 10 anos de histórico da ação isolada
-        dados = yf.download(ticker, period="10y", progress=False, threads=False)['Close'].dropna()
+        dados = yg.download(ticker, period="10y", progress=False, threads=False)['Close'].dropna()
         if dados.empty: return ""
         if isinstance(dados, pd.DataFrame): dados = dados.iloc[:, 0]
         
@@ -1025,17 +1030,23 @@ def calcular_position_sizing(a_comp):
 
 def auditar_fundamentais(ticker):
     try:
-        ticker_obj = yf.Ticker(ticker)
-        info = ticker_obj.info
+        ticker_obj = yg.ticker(ticker)
+        info = yg.info(ticker)  # cache em disco: cada ticker só é pedido 1 vez por dia
         
         # 1. Tentar via .info (método rápido)
         next_date = info.get('nextEarningsDate')
+        if next_date is None:
+            for _chave in ('earningsTimestampStart', 'earningsTimestamp', 'earningsTimestampEnd'):
+                _ts = info.get(_chave)
+                if isinstance(_ts, (int, float)) and _ts > _time.time():
+                    next_date = _ts
+                    break
 
         # 2. Fallback robusto (O yfinance moderno usa get_earnings_dates)
         if next_date is None:
             try:
                 import datetime as dt
-                calendario = ticker_obj.get_earnings_dates()
+                calendario = yg.chamar(lambda: ticker_obj.get_earnings_dates())
                 if calendario is not None and not calendario.empty:
                     # O yfinance devolve um DataFrame com o índice em datas futuras e passadas
                     hoje = dt.datetime.now(dt.timezone.utc)
@@ -1297,8 +1308,7 @@ def analisar_sentimento_noticias(ticker):
         url = f"https://feeds.finance.yahoo.com/rss/2.0/headline?s={ticker}&region=US&lang=en-US"
         req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
         
-        with urllib.request.urlopen(req, timeout=3) as response:
-            xml_data = response.read()
+        xml_data = yg.chamar(lambda: urllib.request.urlopen(req, timeout=3).read())
             
         root = ET.fromstring(xml_data)
         titulos = [item.text.lower() for item in root.findall('.//item/title')]
@@ -1338,7 +1348,7 @@ def executar_screener():
     print(f"A descarregar Preço e Volume para {len(tickers_globais)} ações europeias...")
     
     # 1. Alterado de 1y para 2y para alimentar a M200 com histórico profundo
-    dados_raw = yf.download(tickers_globais, period="2y", progress=False, threads=False)
+    dados_raw = yg.download(tickers_globais, period="2y", progress=False, threads=False)
     
        
     # 2. REMOVIDO o ffill() global que corrompia os calendários com feriados cruzados
@@ -1419,7 +1429,7 @@ def executar_screener():
             if len(historico) < 200: continue
             
             # Puxamos os dados da cache (acelera brutalmente a velocidade do código)
-            f = cache_fundamentais.get(ticker, auditar_fundamentais(ticker))
+            f = cache_fundamentais[ticker] if ticker in cache_fundamentais else auditar_fundamentais(ticker)
             
             # A matemática corre de forma limpa e em tempo real
             preco = historico.iloc[-1]
@@ -1738,7 +1748,7 @@ def analisar_destaques_pedido(tickers_str):
     # Injeção forçada do SPY para garantir o cálculo do Alpha nos destaques
     tickers_globais = list(set(tickers + ['SPY']))
     # Alterado para 2y
-    dados_raw = yf.download(tickers_globais, period="2y", progress=False, threads=False)
+    dados_raw = yg.download(tickers_globais, period="2y", progress=False, threads=False)
     
     if len(tickers_globais) == 1:
         fechos = pd.DataFrame({tickers_globais[0]: dados_raw['Close']}).dropna(how='all')
@@ -4435,7 +4445,7 @@ if __name__ == "__main__":
     grafico_rrg = gerar_rrg_setorial()
 
     # Monitoriza os verdadeiros índices do continente europeu
-    dados_idx_raw = yf.download(["^STOXX", "^STOXX50E", "^GDAXI", "^FCHI", "PSI20.LS"], period="5d", progress=False, threads=False)['Close']
+    dados_idx_raw = yg.download(["^STOXX", "^STOXX50E", "^GDAXI", "^FCHI", "PSI20.LS"], period="5d", progress=False, threads=False)['Close']
     indices_diarios = []
     for nome, t in [("STOXX 600", "^STOXX"), ("Euro Stoxx 50", "^STOXX50E"), ("DAX (Alemanha)", "^GDAXI"), ("CAC 40 (França)", "^FCHI"), ("PSI 20 (Lisboa)", "PSI20.LS")]:
         try:
