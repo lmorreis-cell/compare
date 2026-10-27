@@ -1,33 +1,60 @@
 name: Gerar Radares Diários
 
-# O script corre automaticamente às 23h de Lisboa (22h UTC no horário de verão)
+# O script corre automaticamente às 22:17 UTC (22:17 em Lisboa no inverno, 23:17 no verão),
+# de segunda a sexta. Ao fim de semana o mercado está fechado: os dados seriam iguais aos de
+# sexta-feira e só gastaríamos pedidos ao Yahoo. Para incluir o fim de semana, troca 1-5 por *.
 on:
   schedule:
-    - cron: '17 22 * * *'
+    - cron: '17 22 * * 1-5'
   workflow_dispatch: # Permite-te correr manualmente no GitHub se precisares
+
+# Nunca correm duas gerações ao mesmo tempo (ex.: manual + agendada) — evita pedidos em dobro
+concurrency:
+  group: gerar-radares
+  cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 75  # rede de segurança: um ciclo preso nunca corre para sempre
+
+    env:
+      # Escudo anti-bloqueio em "modo lote": se o Yahoo limitar, espera e tenta de novo
+      # (até 25 min no total) em vez de gerar newsletters vazias.
+      YG_MODO: lote
+      YG_ESPERA_MAX_SEG: '1500'
 
     steps:
       - name: Checkout do repositório
-        uses: actions/checkout@v4  # Atualizado de v3 para v4
+        uses: actions/checkout@v4
 
       - name: Configurar o Python
-        uses: actions/setup-python@v5  # Atualizado de v4 para v5
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
+
+      # Guarda os dados fundamentais (.info) entre execuções: se repetires a geração no mesmo
+      # dia (ex.: depois de uma falha), não volta a pedir ao Yahoo o que já tem.
+      - name: Restaurar cache dos fundamentais
+        uses: actions/cache@v4
+        with:
+          path: cache_info_yahoo.json
+          key: yahoo-info-${{ github.run_id }}
+          restore-keys: |
+            yahoo-info-
 
       - name: Instalar dependências
         run: |
           python -m pip install --upgrade pip
           pip install --upgrade yfinance curl_cffi requests pandas numpy plotly jinja2 matplotlib pytz urllib3
           pip install -r requirements.txt
-          # Ou instala diretamente: pip install yfinance pandas plotly jinja2 matplotlib
 
       - name: Executar Motor Europeu
         run: python Newsletter_Escolhidos.py
+
+      # Pausa entre motores: dá ao Yahoo uns minutos de descanso antes do segundo lote
+      - name: Pausa entre motores
+        run: sleep 120
 
       - name: Executar Motor Americano
         run: python Newsletter_Escolhidos_States.py
