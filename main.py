@@ -244,6 +244,7 @@ def logout():
 from Regime import avaliar_regime_mercado
 from MeanReversion import calcular_radar_reversao
 from Radar import calcular_radar_momentum_v2, comparar_ativos
+import snapshot_diario as snap
 
 # ==========================================
 # PROTEÇÃO GLOBAL CONTRA BLOQUEIOS DO YAHOO
@@ -1872,6 +1873,29 @@ def api_screener_paginado(universo, estrategia, lote):
     import pandas as pd
     import numpy as np
 
+    # ==========================================
+    # MODO INSTANTÂNEO: lê o Snapshot diário (zero pedidos ao Yahoo, resposta imediata).
+    # Só cai para o modo ao vivo (abaixo) se ainda não existir snapshot recente.
+    # O Admin pode forçar o modo ao vivo com ?ao_vivo=1 para comparar.
+    # ==========================================
+    forcar_ao_vivo = request.args.get('ao_vivo') == '1' and str(session.get('user_id', '')).strip() == str(ADMIN_USER_ID).strip()
+    if not forcar_ao_vivo and estrategia in snap.ESTRATEGIAS and universo in snap.UNIVERSOS:
+        dados_snap = snap.carregar(universo)
+        if snap.esta_fresco(dados_snap):
+            if lote > 0:  # o snapshot entrega tudo no lote 0: o ciclo do frontend termina logo
+                return jsonify({"resultados": [], "concluido": True,
+                                "total_processado": dados_snap["total_processado"], "total_universo": dados_snap["total_universo"]})
+            return jsonify({
+                "resultados": dados_snap["sinais"].get(estrategia, []),
+                "concluido": True,
+                "total_processado": dados_snap["total_processado"],
+                "total_universo": dados_snap["total_universo"],
+                "fonte": "snapshot",
+                "data_mercado": dados_snap.get("data_mercado"),
+                "gerado_em": dados_snap.get("gerado_em"),
+                "track_record": dados_snap.get("track_record", {}).get(estrategia),
+            })
+
     if universo == 'sp500':
         caminho = 'sp500.txt'
     elif universo == 'ndx':
@@ -2431,6 +2455,117 @@ def api_risco_portfolio():
 
     except Exception as e:
         return jsonify({"erro": f"Falha no motor estatístico: {str(e)}"}), 500
+
+
+# ==========================================
+# SNAPSHOT DIÁRIO + BRIEFING MATINAL (ADMIN)
+# ==========================================
+import relatorio_matinal as rel
+import agendador
+
+
+def _e_admin():
+    user_sess = str(session.get('user_id', '')).strip()
+    return bool(user_sess) and user_sess == str(ADMIN_USER_ID).strip()
+
+
+@app.route('/api/admin/snapshot')
+def admin_snapshot_estado():
+    """Estado da fotografia diária e do briefing (apenas Admin)."""
+    if not _e_admin():
+        return jsonify({"erro": "Acesso negado. Apenas Admin."}), 403
+    resumo = {}
+    for nome in list(snap.UNIVERSOS) + ["macro"]:
+        d = snap.carregar(nome)
+        resumo[nome] = None if not d else {
+            "gerado_em": d.get("gerado_em"), "data_mercado": d.get("data_mercado"), "fresco": snap.esta_fresco(d),
+            "ativos": d.get("total_processado"),
+            "sinais": {k: len(v) for k, v in d.get("sinais", {}).items()} if "sinais" in d else None,
+        }
+    return jsonify({
+        "snapshot": snap.estado(),
+        "ficheiros": resumo,
+        "briefing": rel.estado(),
+        "hora_lisboa": agendador.agora_lisboa().strftime('%Y-%m-%d %H:%M'),
+    })
+
+
+@app.route('/api/admin/snapshot/executar')
+def admin_snapshot_executar():
+    """Força uma fotografia diária agora (apenas Admin). Corre em background (~10-15 min)."""
+    if not _e_admin():
+        return jsonify({"erro": "Acesso negado. Apenas Admin."}), 403
+    if snap.estado().get("a_correr"):
+        return jsonify({"sucesso": False, "mensagem": "O snapshot já está a correr. Acompanha em /api/admin/snapshot."})
+    if yg.esta_bloqueado():
+        return jsonify({"sucesso": False, "mensagem": "Yahoo em pausa de proteção. Tenta mais tarde."})
+    threading.Thread(target=snap.executar_snapshot, daemon=True).start()
+    return jsonify({"sucesso": True, "mensagem": "Snapshot iniciado em background. Demora cerca de 10 a 15 minutos. Acompanha em /api/admin/snapshot."})
+
+
+HTML_PREVIEW_BRIEFING = """
+<!DOCTYPE html><html lang="pt"><head><meta charset="utf-8"><title>Pré-visualização do Briefing</title>
+<style>
+  body { background:#313338; color:#dbdee1; font-family:'Segoe UI',sans-serif; padding:30px; }
+  .barra { max-width:620px; margin:0 auto 20px auto; display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .btn { background:#5865F2; color:#fff; padding:10px 18px; border-radius:6px; text-decoration:none; font-weight:bold; font-size:13px; }
+  .btn.cinza { background:#4e5058; }
+  .embed { max-width:620px; margin:auto; background:#2b2d31; border-left:4px solid {{ cor }}; border-radius:4px; padding:16px 18px; }
+  .titulo { font-weight:700; color:#fff; font-size:16px; margin-bottom:10px; }
+  .desc { white-space:pre-wrap; font-size:14px; line-height:1.6; margin-bottom:12px; }
+  .campos { display:flex; flex-wrap:wrap; gap:12px; }
+  .campo { flex:1 1 100%; } .campo.inline { flex:1 1 30%; min-width:170px; }
+  .nome { font-weight:700; color:#fff; font-size:14px; margin-bottom:4px; }
+  .valor { white-space:pre-wrap; font-size:13px; line-height:1.55; }
+  .rodape { margin-top:14px; font-size:11px; color:#949ba4; }
+  .aviso { max-width:620px; margin:0 auto 20px auto; background:#3b2a1a; border-left:4px solid #f0ad4e; padding:12px 16px; border-radius:4px; font-size:13px; }
+</style></head><body>
+  <div class="barra">
+    <a class="btn" href="/api/admin/relatorio/enviar?forcar=1" onclick="return confirm('Enviar este briefing para o Discord agora?')">📡 Enviar agora para o Discord</a>
+    <a class="btn cinza" href="/api/admin/snapshot">📋 Estado do Snapshot</a>
+    <span style="font-size:12px; color:#949ba4;">Isto é só uma pré-visualização — nada foi enviado.</span>
+  </div>
+  {% if erro %}<div class="aviso">⚠️ {{ erro }}</div>{% else %}
+  <div class="embed">
+    <div class="titulo">{{ e.title }}</div>
+    <div class="desc">{{ e.description | replace('**','') | replace('`','') }}</div>
+    <div class="campos">
+      {% for f in e.fields %}
+      <div class="campo {{ 'inline' if f.inline else '' }}">
+        <div class="nome">{{ f.name }}</div>
+        <div class="valor">{{ f.value | replace('**','') | replace('*','') }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="rodape">{{ e.footer.text }}</div>
+  </div>{% endif %}
+</body></html>
+"""
+
+
+@app.route('/api/admin/relatorio/preview')
+def admin_relatorio_preview():
+    """Mostra como fica o Briefing Matinal no Discord, sem o enviar (apenas Admin)."""
+    if not _e_admin():
+        return jsonify({"erro": "Acesso negado. Apenas Admin."}), 403
+    payload, erro = rel.construir_relatorio()
+    if erro:
+        return render_template_string(HTML_PREVIEW_BRIEFING, erro=erro, e=None, cor="#f0ad4e")
+    e = payload["embeds"][0]
+    return render_template_string(HTML_PREVIEW_BRIEFING, erro=None, e=e, cor=f"#{e['color']:06x}")
+
+
+@app.route('/api/admin/relatorio/enviar')
+def admin_relatorio_enviar():
+    """Envia o Briefing Matinal agora (apenas Admin). ?forcar=1 envia mesmo que já tenha sido enviado hoje."""
+    if not _e_admin():
+        return jsonify({"erro": "Acesso negado. Apenas Admin."}), 403
+    ok, msg = rel.enviar_relatorio(forcar=request.args.get('forcar') == '1')
+    return jsonify({"sucesso": ok, "mensagem": msg}), (200 if ok else 400)
+
+
+# Arranca o relógio interno (snapshot às 22:30 e briefing às 08:00, dias úteis)
+agendador.iniciar()
 
 
 # ==========================================

@@ -1,6 +1,6 @@
 """
 yahoo_guard.py — Camada única de acesso ao Yahoo Finance para o Portal Bolsa.
- 
+
 Objetivo: nunca mais um ciclo descontrolado conseguir "queimar" o IP do servidor.
 
 O que faz:
@@ -231,14 +231,16 @@ def historico(simbolo, **kwargs):
     return _copia(df)
 
 
-def download(tickers, **kwargs):
+def download(tickers, usar_cache=True, **kwargs):
+    """usar_cache=False: para downloads grandes e únicos (ex.: snapshot diário) que não devem
+    ocupar a cache de memória partilhada."""
     lista = tickers.split() if isinstance(tickers, str) else list(tickers)
     kwargs.setdefault("progress", False)
     kwargs["threads"] = False  # threads=True dispara dezenas de pedidos em paralelo — proibido
     kwargs.setdefault("auto_adjust", True)
 
     chave = _chave("dl", tuple(sorted(t.upper() for t in lista)), **kwargs)
-    em_cache = _cache_get(chave)
+    em_cache = _cache_get(chave) if usar_cache else None
     if em_cache is not None:
         return _copia(em_cache)
 
@@ -257,8 +259,10 @@ def download(tickers, **kwargs):
                 _abrir_disjuntor("downloads em lote vazios consecutivos")
     else:
         _falhas_vazias = 0
-        _cache_set(chave, df)
-    return _copia(df)
+        if usar_cache:
+            _cache_set(chave, df)
+            return _copia(df)
+    return df
 
 
 def ultimo_preco(simbolo):

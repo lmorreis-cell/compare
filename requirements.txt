@@ -12,3 +12,4 @@ jinja2
 Flask-Caching
 fundamentalanalysis
 waitress==3.0.0
+tzdata
