@@ -1655,6 +1655,107 @@
         </div>
     </div>
 
+    <!-- 🪞 ESPELHO DO OPERADOR: MELHOR SETUP / PIOR HÁBITO -->
+    <div style="background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
+        <h3 style="margin: 0 0 15px 0; font-size: 14px; color: #f0f2f5; text-transform: uppercase;">
+            <span class="dica-edu">
+                🪞 Espelho do Operador
+                <span class="dica-texto" style="width: 360px; text-transform: none;">
+                    <strong style="color: #58a6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">O Que Os Teus Números Dizem de Ti</strong>
+                    O motor cruza todos os trades fechados com a estratégia que lhes atribuíste. Mostra onde o mercado te paga (o setup a reforçar) e onde estás a servir de liquidez a outros (o hábito a cortar). Quanto mais trades classificares na tabela de baixo, mais fiel fica o espelho.
+                </span>
+            </span>
+        </h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px;">
+            <div id="diario-melhor-setup" style="background: #0d1117; border: 1px solid #30363d; border-left: 4px solid #5cb85c; border-radius: 6px; padding: 15px; font-size: 12px; color: #c9d1d9; line-height: 1.6;">
+                <div style="font-size: 11px; color: #5cb85c; font-weight: bold; text-transform: uppercase; margin-bottom: 6px;">🏆 O Teu Melhor Setup</div>
+                <span style="color: #8b949e;">Sem trades suficientes.</span>
+            </div>
+            <div id="diario-pior-habito" style="background: #0d1117; border: 1px solid #30363d; border-left: 4px solid #d9534f; border-radius: 6px; padding: 15px; font-size: 12px; color: #c9d1d9; line-height: 1.6;">
+                <div style="font-size: 11px; color: #d9534f; font-weight: bold; text-transform: uppercase; margin-bottom: 6px;">⚠️ O Teu Pior Hábito</div>
+                <span style="color: #8b949e;">Sem trades suficientes.</span>
+            </div>
+        </div>
+        <div id="diario-aviso-classificar" style="display: none; margin-top: 12px; font-size: 11px; color: #e3b341; background: rgba(227, 179, 65, 0.06); border-left: 3px solid #e3b341; padding: 8px 12px; border-radius: 4px;"></div>
+    </div>
+
+    <!-- 📈 CURVA DE CAPITAL & DRAWDOWN -->
+    <div style="background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
+        <h3 style="margin: 0 0 15px 0; font-size: 14px; color: #f0f2f5; text-transform: uppercase;">
+            <span class="dica-edu">
+                📈 Curva de Capital & Drawdown
+                <span class="dica-texto" style="width: 360px; text-transform: none;">
+                    <strong style="color: #58a6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">A Linha Que Não Mente</strong>
+                    Lucro realizado acumulado ao longo do tempo (só trades fechados). A área vermelha em baixo é o <strong>drawdown</strong>: quanto estás abaixo do teu melhor momento. Um operador consistente tem uma curva a subir em degraus e drawdowns curtos e rasos.
+                </span>
+            </span>
+        </h3>
+
+        <!-- KPIs AVANÇADOS -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 15px;">
+            <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 10px; text-align: center;">
+                <span class="dica-edu" style="font-size: 10px; color: #8b949e; text-transform: uppercase; font-weight: bold;">PnL Realizado
+                    <span class="dica-texto" style="width: 230px; text-transform: none;">Soma de todos os lucros e prejuízos dos trades fechados, já com comissões, em euros.</span>
+                </span>
+                <div id="diario-kpi-pnl" style="font-size: 18px; font-weight: 900; color: #c9d1d9; margin-top: 4px;">--</div>
+            </div>
+            <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 10px; text-align: center;">
+                <span class="dica-edu" style="font-size: 10px; color: #8b949e; text-transform: uppercase; font-weight: bold;">Drawdown Máximo
+                    <span class="dica-texto" style="width: 260px; text-transform: none;"><strong style="color: #d9534f; display: block; margin-bottom: 4px;">A Maior Queda Desde um Pico</strong>A maior descida do lucro acumulado face ao seu ponto mais alto anterior. Mede a dor máxima que a tua forma de operar já te causou. O teu tamanho de posição deve permitir aguentar o dobro disto sem desistir.</span>
+                </span>
+                <div id="diario-kpi-dd" style="font-size: 18px; font-weight: 900; color: #d9534f; margin-top: 4px;">--</div>
+                <div id="diario-kpi-dd-sub" style="font-size: 9px; color: #8b949e;"></div>
+            </div>
+            <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 10px; text-align: center;">
+                <span class="dica-edu" style="font-size: 10px; color: #8b949e; text-transform: uppercase; font-weight: bold;">Expectativa / Trade
+                    <span class="dica-texto" style="width: 260px; text-transform: none;"><strong style="color: #e3b341; display: block; margin-bottom: 4px;">Expectancy</strong>Quanto ganhas, em média, cada vez que carregas no botão. Positiva = o teu sistema tem vantagem estatística. Negativa = cada trade novo, em média, tira-te dinheiro.</span>
+                </span>
+                <div id="diario-kpi-expect" style="font-size: 18px; font-weight: 900; color: #c9d1d9; margin-top: 4px;">--</div>
+            </div>
+            <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 10px; text-align: center;">
+                <span class="dica-edu" style="font-size: 10px; color: #8b949e; text-transform: uppercase; font-weight: bold;">Ganho vs Perda Médios
+                    <span class="dica-texto" style="width: 260px; text-transform: none;"><strong style="color: #58a6ff; display: block; margin-bottom: 4px;">Payoff Ratio</strong>Ganho médio dos trades vencedores face à perda média dos perdedores. Acima de 1.5x podes ganhar dinheiro mesmo acertando menos de metade das vezes. Abaixo de 1x precisas de uma taxa de acerto muito alta.</span>
+                </span>
+                <div id="diario-kpi-payoff" style="font-size: 18px; font-weight: 900; color: #c9d1d9; margin-top: 4px;">--</div>
+                <div id="diario-kpi-payoff-sub" style="font-size: 9px; color: #8b949e;"></div>
+            </div>
+            <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 10px; text-align: center;">
+                <span class="dica-edu" style="font-size: 10px; color: #8b949e; text-transform: uppercase; font-weight: bold;">Sequências
+                    <span class="dica-texto" style="width: 260px; left: auto; right: 0; transform: none;"><strong style="color: #b388ff; display: block; margin-bottom: 4px;">Ganhos e Perdas Seguidos</strong>A maior série de trades vencedores e de perdedores consecutivos. Séries de perdas longas são normais em Trend Following; o perigo é aumentar o tamanho para "recuperar" (revenge trading).</span>
+                </span>
+                <div id="diario-kpi-streak" style="font-size: 18px; font-weight: 900; color: #c9d1d9; margin-top: 4px;">--</div>
+                <div style="font-size: 9px; color: #8b949e;">melhor ✅ / pior ❌</div>
+            </div>
+        </div>
+
+        <div id="plotly-diario-curva" style="width: 100%; height: 320px;"></div>
+        <div id="diario-curva-vazia" style="display: none; text-align: center; color: #8b949e; font-size: 12px; padding: 30px;">Ainda não há trades fechados para desenhar a curva.</div>
+    </div>
+
+    <!-- 📅 CALENDÁRIO DE PNL -->
+    <div style="background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
+            <h3 style="margin: 0; font-size: 14px; color: #f0f2f5; text-transform: uppercase;">
+                <span class="dica-edu">
+                    📅 Calendário de PnL
+                    <span class="dica-texto" style="width: 340px; text-transform: none;">
+                        <strong style="color: #58a6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">O Teu Mês de Relance</strong>
+                        Cada dia com vendas fica verde (lucro) ou vermelho (prejuízo), mais intenso quanto maior o valor. Passa o rato por cima para ver os trades do dia. Procura padrões: dias da semana em que perdes mais, ou meses em que operas demais.
+                    </span>
+                </span>
+            </h3>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <button onclick="mudarMesDiario(-1)" class="btn-moderno" style="background: #232d3f; color: #c9d1d9; border: 1px solid #30363d; padding: 6px 12px; font-size: 12px;">◀</button>
+                <span id="diario-cal-titulo" style="font-size: 13px; font-weight: bold; color: #fff; min-width: 140px; text-align: center;">--</span>
+                <button onclick="mudarMesDiario(1)" class="btn-moderno" style="background: #232d3f; color: #c9d1d9; border: 1px solid #30363d; padding: 6px 12px; font-size: 12px;">▶</button>
+            </div>
+        </div>
+        <div id="diario-cal-resumo" style="font-size: 12px; color: #8b949e; margin-bottom: 10px;"></div>
+        <div id="diario-calendario" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px;"></div>
+        <div style="margin-top: 15px; font-size: 10px; color: #8b949e; text-transform: uppercase; font-weight: bold;">Resumo mensal do ano (clica para navegar)</div>
+        <div id="diario-cal-meses" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); gap: 6px; margin-top: 6px;"></div>
+    </div>
+
     <!-- LISTA DE CLASSIFICAÇÃO (ONDE AUDITAS OS TRADES) -->
     <div style="background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px;">
         <h4 style="margin: 0 0 15px 0; color: #f0f2f5; font-size: 13px; text-transform: uppercase;">
@@ -1807,6 +1908,94 @@
                 </thead>
                 <tbody id="tbody-liga"></tbody>
             </table>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         GAMIFICAÇÃO DA LIGA: MEDALHAS, HALL OF FAME, CLASSIFICAÇÃO GERAL E HISTÓRICO
+         ========================================== -->
+    <div id="liga-gamificacao-aviso" style="display: none; margin-top: 25px; background: rgba(227, 179, 65, 0.06); border-left: 4px solid #e3b341; border-radius: 4px; padding: 10px 15px; font-size: 12px; color: #c9d1d9;"></div>
+
+    <!-- 🎖️ AS TUAS MEDALHAS -->
+    <div style="background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-top: 25px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
+            <h4 style="margin: 0; color: #f0f2f5; font-size: 14px; text-transform: uppercase;">
+                <span class="dica-edu">
+                    🎖️ As Tuas Medalhas
+                    <span class="dica-texto" style="width: 340px; text-transform: none;">
+                        <strong style="color: #e3b341; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Conquistas por Níveis</strong>
+                        As medalhas contam apenas edições já terminadas (o mês em curso entra quando fechar). A maioria tem 3 níveis — passa o rato por cima de cada uma para ver a regra e quanto te falta para o nível seguinte. As medalhas 🐻 e 💎 são únicas: só um membro as detém de cada vez.
+                    </span>
+                </span>
+            </h4>
+            <span id="liga-minhas-resumo" style="background: #232d3f; color: #e3b341; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: bold;">-- medalhas</span>
+        </div>
+        <div id="liga-minhas-medalhas" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px;">
+            <div style="color: #8b949e; font-size: 12px;">A carregar...</div>
+        </div>
+        <div id="liga-meu-percurso" style="margin-top: 15px;"></div>
+    </div>
+
+    <!-- 🏛️ HALL OF FAME -->
+    <div style="background-color: #161b22; border: 1px solid #30363d; border-left: 4px solid #e3b341; border-radius: 8px; padding: 20px; margin-top: 25px;">
+        <h4 style="margin: 0 0 15px 0; color: #e3b341; font-size: 14px; text-transform: uppercase;">
+            <span class="dica-edu" style="border-bottom: 1px dotted #e3b341;">
+                🏛️ Hall of Fame
+                <span class="dica-texto" style="width: 320px; text-transform: none;">
+                    <strong style="color: #e3b341; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Os Recordes da Comunidade</strong>
+                    Os feitos máximos de todas as edições fechadas da Liga. Cada recorde só muda de dono quando alguém o bater.
+                </span>
+            </span>
+        </h4>
+        <div id="liga-hall" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
+            <div style="color: #8b949e; font-size: 12px;">A carregar...</div>
+        </div>
+    </div>
+
+    <!-- 🏆 CLASSIFICAÇÃO GERAL -->
+    <div style="background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-top: 25px;">
+        <h4 style="margin: 0 0 15px 0; color: #f0f2f5; font-size: 14px; text-transform: uppercase;">
+            <span class="dica-edu">
+                🏆 Classificação Geral (Todas as Edições)
+                <span class="dica-texto" style="width: 320px; text-transform: none;">
+                    <strong style="color: #58a6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">A Tabela Histórica</strong>
+                    Ordenada por títulos, depois pódios e depois pontuação média. A coluna 🔥 mostra a melhor sequência de meses consecutivos no pódio (e, entre parênteses, a sequência atual).
+                </span>
+            </span>
+        </h4>
+        <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 6px; overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 0;">
+                <thead style="background: #161b22; color: #8b949e; font-size: 11px; text-transform: uppercase;">
+                    <tr>
+                        <th style="padding: 10px;">#</th>
+                        <th style="padding: 10px;">Membro</th>
+                        <th style="padding: 10px; text-align: center;"><span class="dica-edu">Edições<span class="dica-texto" style="width: 180px; text-transform: none;">Número de meses em que participou.</span></span></th>
+                        <th style="padding: 10px; text-align: center;"><span class="dica-edu">👑<span class="dica-texto" style="width: 180px; text-transform: none;">Títulos: edições terminadas em 1.º lugar.</span></span></th>
+                        <th style="padding: 10px; text-align: center;"><span class="dica-edu">🏅<span class="dica-texto" style="width: 180px; text-transform: none;">Pódios: edições terminadas nos 3 primeiros.</span></span></th>
+                        <th style="padding: 10px; text-align: center;"><span class="dica-edu">🔥<span class="dica-texto" style="width: 220px; text-transform: none;">Melhor sequência de meses consecutivos no pódio (sequência atual entre parênteses).</span></span></th>
+                        <th style="padding: 10px; text-align: center;"><span class="dica-edu">🎯<span class="dica-texto" style="width: 220px; text-transform: none;">Sniper Hits: alvos atingidos com fecho a menos de 1% do alvo.</span></span></th>
+                        <th style="padding: 10px; text-align: right;"><span class="dica-edu">Média<span class="dica-texto" style="width: 200px; text-transform: none; left: auto; right: 0; transform: none;">Pontuação média por edição (retorno base + bónus).</span></span></th>
+                        <th style="padding: 10px; text-align: center;">Medalhas</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody-liga-geral"><tr><td colspan="9" style="padding: 15px; text-align: center; color: #8b949e;">A carregar...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 📜 HISTÓRICO DE EDIÇÕES -->
+    <div style="background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-top: 25px;">
+        <h4 style="margin: 0 0 15px 0; color: #f0f2f5; font-size: 14px; text-transform: uppercase;">
+            <span class="dica-edu">
+                📜 Histórico de Edições
+                <span class="dica-texto" style="width: 320px; text-transform: none;">
+                    <strong style="color: #58a6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Arquivo da Liga</strong>
+                    Cada edição é fechada automaticamente no início do mês seguinte, com os preços até ao último dia do mês. Clica numa edição para veres a classificação final completa, as carteiras e as teses.
+                </span>
+            </span>
+        </h4>
+        <div id="liga-edicoes" style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="color: #8b949e; font-size: 12px;">A carregar...</div>
         </div>
     </div>
 </div>
@@ -6772,6 +6961,258 @@ function atualizarDiarioBordo() {
     };
 
     Plotly.newPlot('plotly-diario', [traceBar], layoutBar, {responsive: true, displayModeBar: false});
+
+    // Diário avançado: curva de capital, drawdown, calendário e espelho do operador
+    try { renderizarDiarioAvancado(); } catch (e) { console.warn("Diário avançado:", e); }
+}
+
+// ==========================================
+// DIÁRIO DE BORDO AVANÇADO: CURVA DE CAPITAL, DRAWDOWN, CALENDÁRIO E ESPELHO DO OPERADOR
+// ==========================================
+let diarioMesSel = null; // 'AAAA-MM' do mês visível no calendário
+const MESES_PT = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+
+function _fmtEurSinal(v) { return `${v >= 0 ? '+' : '-'}€${Math.abs(v).toFixed(2)}`; }
+function _corPnl(v) { return v > 0 ? '#5cb85c' : (v < 0 ? '#d9534f' : '#8b949e'); }
+
+function mudarMesDiario(delta) {
+    if (!diarioMesSel) return;
+    let [a, m] = diarioMesSel.split('-').map(Number);
+    m += delta;
+    if (m < 1) { m = 12; a--; }
+    if (m > 12) { m = 1; a++; }
+    diarioMesSel = `${a}-${String(m).padStart(2, '0')}`;
+    renderizarCalendarioDiario();
+}
+
+function irParaMesDiario(ym) {
+    diarioMesSel = ym;
+    renderizarCalendarioDiario();
+}
+
+function _tradesDiario() {
+    return cofreFechadas.filter(t => t && t.data && typeof t.pnlEUR === 'number' && !isNaN(t.pnlEUR));
+}
+
+function renderizarDiarioAvancado() {
+    const trades = _tradesDiario().slice().sort((a, b) => new Date(a.data) - new Date(b.data));
+
+    // ---------- KPIs ----------
+    const vencedores = trades.filter(t => t.pnlEUR > 0);
+    const perdedores = trades.filter(t => t.pnlEUR < 0);
+    const pnlTotal = trades.reduce((s, t) => s + t.pnlEUR, 0);
+    const ganhoMedio = vencedores.length ? vencedores.reduce((s, t) => s + t.pnlEUR, 0) / vencedores.length : 0;
+    const perdaMedia = perdedores.length ? Math.abs(perdedores.reduce((s, t) => s + t.pnlEUR, 0) / perdedores.length) : 0;
+    const expectativa = trades.length ? pnlTotal / trades.length : 0;
+
+    let melhorSeq = 0, piorSeq = 0, seqAtual = 0;
+    trades.forEach(t => {
+        if (t.pnlEUR > 0) seqAtual = seqAtual > 0 ? seqAtual + 1 : 1;
+        else if (t.pnlEUR < 0) seqAtual = seqAtual < 0 ? seqAtual - 1 : -1;
+        else seqAtual = 0;
+        melhorSeq = Math.max(melhorSeq, seqAtual);
+        piorSeq = Math.min(piorSeq, seqAtual);
+    });
+
+    // ---------- Curva de capital (agregada por dia) ----------
+    const porDia = {};
+    trades.forEach(t => { const d = String(t.data).slice(0, 10); porDia[d] = (porDia[d] || 0) + t.pnlEUR; });
+    const dias = Object.keys(porDia).sort();
+    let acumulado = 0, pico = 0, maxDD = 0, dataDD = null, inicioDD = null, maiorDuracao = 0, dataPico = dias[0] || null;
+    const curva = [], ddSerie = [];
+    dias.forEach(d => {
+        acumulado += porDia[d];
+        if (acumulado >= pico) { pico = acumulado; dataPico = d; }
+        const dd = acumulado - pico;
+        if (dd < maxDD) { maxDD = dd; dataDD = d; }
+        if (dd < 0 && dataPico) {
+            const dur = Math.round((new Date(d) - new Date(dataPico)) / 86400000);
+            if (dur > maiorDuracao) maiorDuracao = dur;
+        }
+        curva.push(acumulado);
+        ddSerie.push(dd);
+    });
+
+    const setTxt = (id, txt, cor) => { const el = document.getElementById(id); if (el) { el.innerText = txt; if (cor) el.style.color = cor; } };
+    setTxt('diario-kpi-pnl', trades.length ? _fmtEurSinal(pnlTotal) : '--', _corPnl(pnlTotal));
+    setTxt('diario-kpi-dd', trades.length ? (maxDD < 0 ? `-€${Math.abs(maxDD).toFixed(2)}` : '€0.00') : '--');
+    setTxt('diario-kpi-dd-sub', maxDD < 0 ? `fundo em ${new Date(dataDD).toLocaleDateString('pt-PT')} · maior duração: ${maiorDuracao} dias` : (trades.length ? 'sem quedas face ao pico 👏' : ''));
+    setTxt('diario-kpi-expect', trades.length ? _fmtEurSinal(expectativa) : '--', _corPnl(expectativa));
+    setTxt('diario-kpi-payoff', perdaMedia > 0 ? `${(ganhoMedio / perdaMedia).toFixed(2)}x` : (ganhoMedio > 0 ? '∞' : '--'), perdaMedia > 0 ? (ganhoMedio / perdaMedia >= 1.5 ? '#5cb85c' : (ganhoMedio / perdaMedia >= 1 ? '#f0ad4e' : '#d9534f')) : null);
+    setTxt('diario-kpi-payoff-sub', trades.length ? `+€${ganhoMedio.toFixed(2)} vs -€${perdaMedia.toFixed(2)}` : '');
+    setTxt('diario-kpi-streak', trades.length ? `${melhorSeq} / ${Math.abs(piorSeq)}` : '--');
+
+    const divCurva = document.getElementById('plotly-diario-curva');
+    const divVazia = document.getElementById('diario-curva-vazia');
+    if (dias.length === 0) {
+        if (divCurva) divCurva.style.display = 'none';
+        if (divVazia) divVazia.style.display = 'block';
+    } else if (divCurva && typeof Plotly !== 'undefined') {
+        divCurva.style.display = 'block';
+        if (divVazia) divVazia.style.display = 'none';
+        const traceCurva = {
+            x: dias, y: curva, type: 'scatter', mode: 'lines+markers', name: 'Lucro acumulado',
+            line: { color: '#3fbf8f', width: 2.5, shape: 'hv' }, marker: { size: 4 },
+            fill: 'tozeroy', fillcolor: 'rgba(63, 191, 143, 0.08)', yaxis: 'y',
+            hovertemplate: '%{x}<br>Acumulado: €%{y:.2f}<extra></extra>'
+        };
+        const traceDD = {
+            x: dias, y: ddSerie, type: 'scatter', mode: 'lines', name: 'Drawdown',
+            line: { color: '#d9534f', width: 1, shape: 'hv' }, fill: 'tozeroy', fillcolor: 'rgba(217, 83, 79, 0.25)', yaxis: 'y2',
+            hovertemplate: '%{x}<br>Drawdown: €%{y:.2f}<extra></extra>'
+        };
+        const layout = {
+            margin: { l: 55, r: 15, t: 10, b: 35 }, paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+            showlegend: true, legend: { orientation: 'h', y: 1.08, x: 0, font: { color: '#c9d1d9', size: 11 } },
+            xaxis: { showgrid: false, tickfont: { color: '#8b949e', size: 10 } },
+            yaxis: { domain: [0.32, 1], gridcolor: '#21262d', tickprefix: '€', tickfont: { color: '#8b949e', size: 10 }, zerolinecolor: '#30363d' },
+            yaxis2: { domain: [0, 0.24], gridcolor: '#21262d', tickprefix: '€', tickfont: { color: '#8b949e', size: 9 } },
+            hovermode: 'x unified'
+        };
+        Plotly.newPlot('plotly-diario-curva', [traceCurva, traceDD], layout, { responsive: true, displayModeBar: false });
+    }
+
+    renderizarEspelhoOperador(trades);
+
+    // O calendário abre no mês do último trade (ou no mês atual)
+    if (!diarioMesSel) {
+        const ref = dias.length ? new Date(dias[dias.length - 1]) : new Date();
+        diarioMesSel = `${ref.getFullYear()}-${String(ref.getMonth() + 1).padStart(2, '0')}`;
+    }
+    renderizarCalendarioDiario();
+}
+
+function renderizarEspelhoOperador(trades) {
+    const stats = {};
+    let naoClassificados = 0;
+    trades.forEach(t => {
+        const est = t.estrategia || 'Não Classificado';
+        if (est === 'Não Classificado') { naoClassificados++; return; }
+        if (!stats[est]) stats[est] = { n: 0, wins: 0, pnl: 0, bruto: 0, perda: 0 };
+        const s = stats[est];
+        s.n++; s.pnl += t.pnlEUR;
+        if (t.pnlEUR > 0) { s.wins++; s.bruto += t.pnlEUR; } else { s.perda += Math.abs(t.pnlEUR); }
+    });
+    const lista = Object.entries(stats).map(([nome, s]) => ({
+        nome, ...s, wr: s.n ? (s.wins / s.n) * 100 : 0, pf: s.perda > 0 ? s.bruto / s.perda : (s.bruto > 0 ? Infinity : 0), media: s.n ? s.pnl / s.n : 0
+    }));
+    const fmtPF = (pf) => pf === Infinity ? '∞' : pf.toFixed(2);
+
+    const divMelhor = document.getElementById('diario-melhor-setup');
+    const divPior = document.getElementById('diario-pior-habito');
+    const cabMelhor = '<div style="font-size: 11px; color: #5cb85c; font-weight: bold; text-transform: uppercase; margin-bottom: 6px;">🏆 O Teu Melhor Setup</div>';
+    const cabPior = '<div style="font-size: 11px; color: #d9534f; font-weight: bold; text-transform: uppercase; margin-bottom: 6px;">⚠️ O Teu Pior Hábito</div>';
+
+    // Melhor setup: maior lucro entre as estratégias positivas (preferindo as com 2+ trades)
+    const positivas = lista.filter(s => s.pnl > 0);
+    const candidatosMelhor = positivas.filter(s => s.n >= 2).length ? positivas.filter(s => s.n >= 2) : positivas;
+    const melhor = candidatosMelhor.sort((a, b) => b.pnl - a.pnl)[0];
+    if (divMelhor) {
+        divMelhor.innerHTML = cabMelhor + (melhor ? `
+            <div style="font-size: 16px; font-weight: 900; color: #fff; margin-bottom: 4px;">${melhor.nome}</div>
+            <div><strong style="color: #5cb85c;">${_fmtEurSinal(melhor.pnl)}</strong> em ${melhor.n} trade${melhor.n !== 1 ? 's' : ''} · Win Rate <strong>${melhor.wr.toFixed(0)}%</strong> · Profit Factor <strong>${fmtPF(melhor.pf)}</strong></div>
+            <div style="margin-top: 6px; color: #8b949e;">É aqui que o mercado te paga: em média ${_fmtEurSinal(melhor.media)} por trade. ${melhor.n < 5 ? 'Amostra ainda pequena — confirma com mais trades antes de aumentar o tamanho.' : 'Dá-lhe prioridade: este é o teu terreno de vantagem.'}</div>`
+            : '<span style="color: #8b949e;">Ainda nenhuma estratégia classificada com lucro. Classifica os teus trades na tabela de baixo.</span>');
+    }
+
+    // Pior hábito: os hábitos emocionais têm prioridade (são os mais fáceis de cortar)
+    const negativas = lista.filter(s => s.pnl < 0);
+    const emocionais = negativas.filter(s => /FOMO|Erro Operacional/i.test(s.nome));
+    const pior = (emocionais.length ? emocionais : negativas).sort((a, b) => a.pnl - b.pnl)[0];
+    if (divPior) {
+        let conselho = 'Revê as regras de entrada deste setup ou reduz-lhe o tamanho até a amostra melhorar.';
+        if (pior && /FOMO/i.test(pior.nome)) conselho = 'Entradas por impulso. Antes de cada compra, obriga-te a escrever o stop e o alvo — se não os consegues definir, não entras.';
+        else if (pior && /Erro Operacional/i.test(pior.nome)) conselho = 'Falhas de execução custam dinheiro sem qualquer tese de mercado. Usa ordens com stop já anexado e revê o tamanho do lote antes de confirmar.';
+        else if (pior && /Mean Reversion/i.test(pior.nome)) conselho = 'Apanhar facas a cair está a sair caro. Exige confirmação de ressalto (vela verde) antes de entrar e corta o tamanho para metade.';
+        divPior.innerHTML = cabPior + (pior ? `
+            <div style="font-size: 16px; font-weight: 900; color: #fff; margin-bottom: 4px;">${pior.nome}</div>
+            <div><strong style="color: #d9534f;">${_fmtEurSinal(pior.pnl)}</strong> em ${pior.n} trade${pior.n !== 1 ? 's' : ''} · Win Rate <strong>${pior.wr.toFixed(0)}%</strong> · cada trade custa-te em média <strong>€${Math.abs(pior.media).toFixed(2)}</strong></div>
+            <div style="margin-top: 6px; color: #8b949e;">${conselho}</div>`
+            : '<span style="color: #5cb85c;">👏 Nenhuma estratégia classificada está a destruir capital. Mantém a disciplina.</span>');
+    }
+
+    const aviso = document.getElementById('diario-aviso-classificar');
+    if (aviso) {
+        if (naoClassificados > 0) {
+            aviso.innerHTML = `🏷️ Tens <strong>${naoClassificados}</strong> trade${naoClassificados !== 1 ? 's' : ''} por classificar. Atribui-lhes uma estratégia na tabela "Classificação de Trades Fechados" para o espelho ficar fiel.`;
+            aviso.style.display = 'block';
+        } else {
+            aviso.style.display = 'none';
+        }
+    }
+}
+
+function renderizarCalendarioDiario() {
+    const grelha = document.getElementById('diario-calendario');
+    if (!grelha || !diarioMesSel) return;
+    const [ano, mes] = diarioMesSel.split('-').map(Number);
+
+    // Agrega PnL e trades por dia
+    const porDia = {};
+    _tradesDiario().forEach(t => {
+        const d = String(t.data).slice(0, 10);
+        if (!porDia[d]) porDia[d] = { pnl: 0, trades: [] };
+        porDia[d].pnl += t.pnlEUR;
+        porDia[d].trades.push(t);
+    });
+
+    const prefixo = `${ano}-${String(mes).padStart(2, '0')}`;
+    const diasNoMes = new Date(ano, mes, 0).getDate();
+    const offset = (new Date(ano, mes - 1, 1).getDay() + 6) % 7; // segunda-feira = 0
+    const valoresMes = Object.entries(porDia).filter(([d]) => d.startsWith(prefixo));
+    const maxAbs = Math.max(1, ...valoresMes.map(([, v]) => Math.abs(v.pnl)));
+    const hojeStr = new Date().toISOString().slice(0, 10);
+
+    let html = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map(d => `<div style="font-size: 10px; color: #8b949e; text-align: center; font-weight: bold; text-transform: uppercase;">${d}</div>`).join('');
+    for (let i = 0; i < offset; i++) html += '<div></div>';
+
+    for (let dia = 1; dia <= diasNoMes; dia++) {
+        const chave = `${prefixo}-${String(dia).padStart(2, '0')}`;
+        const info = porDia[chave];
+        const contorno = chave === hojeStr ? 'border: 1px solid #58a6ff;' : 'border: 1px solid #30363d;';
+        if (!info) {
+            html += `<div style="background: #0d1117; ${contorno} border-radius: 4px; min-height: 48px; padding: 4px 6px; font-size: 10px; color: #484f58;">${dia}</div>`;
+            continue;
+        }
+        const alfa = (0.25 + 0.75 * Math.abs(info.pnl) / maxAbs).toFixed(2);
+        const fundo = info.pnl >= 0 ? `rgba(92, 184, 92, ${alfa})` : `rgba(217, 83, 79, ${alfa})`;
+        const linhasTrades = info.trades.map(t => `<div style="display: flex; justify-content: space-between; gap: 10px;"><span><strong>${t.ticker}</strong> <span style="color: #8b949e;">${t.estrategia || 'Não Classificado'}</span></span><span style="color: ${_corPnl(t.pnlEUR)}; white-space: nowrap;">${_fmtEurSinal(t.pnlEUR)}</span></div>`).join('');
+        html += `
+            <div class="dica-edu" style="display: block; border-bottom: none; background: ${fundo}; ${contorno} border-radius: 4px; min-height: 48px; padding: 4px 6px; cursor: help;">
+                <div style="font-size: 10px; color: #fff; font-weight: bold;">${dia}</div>
+                <div style="font-size: 11px; color: #fff; font-weight: 900; text-align: right; margin-top: 4px;">${info.pnl >= 0 ? '+' : '-'}€${Math.abs(info.pnl) >= 1000 ? (Math.abs(info.pnl) / 1000).toFixed(1) + 'k' : Math.abs(info.pnl).toFixed(0)}</div>
+                <span class="dica-texto" style="width: 260px; text-transform: none;">
+                    <strong style="color: #58a6ff; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">${new Date(chave).toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' })} · ${_fmtEurSinal(info.pnl)}</strong>
+                    ${linhasTrades}
+                </span>
+            </div>`;
+    }
+    grelha.innerHTML = html;
+
+    // Título e resumo do mês
+    const totalMes = valoresMes.reduce((s, [, v]) => s + v.pnl, 0);
+    const diasVerdes = valoresMes.filter(([, v]) => v.pnl > 0).length;
+    const diasVermelhos = valoresMes.filter(([, v]) => v.pnl < 0).length;
+    const nTrades = valoresMes.reduce((s, [, v]) => s + v.trades.length, 0);
+    document.getElementById('diario-cal-titulo').innerText = `${MESES_PT[mes - 1]} ${ano}`;
+    document.getElementById('diario-cal-resumo').innerHTML = valoresMes.length
+        ? `Total do mês: <strong style="color: ${_corPnl(totalMes)};">${_fmtEurSinal(totalMes)}</strong> · ${nTrades} trade${nTrades !== 1 ? 's' : ''} · <span style="color: #5cb85c;">${diasVerdes} dia${diasVerdes !== 1 ? 's' : ''} verde${diasVerdes !== 1 ? 's' : ''}</span> · <span style="color: #d9534f;">${diasVermelhos} vermelho${diasVermelhos !== 1 ? 's' : ''}</span>`
+        : 'Sem vendas registadas neste mês.';
+
+    // Resumo dos 12 meses do ano visível
+    let htmlMeses = '';
+    for (let m = 1; m <= 12; m++) {
+        const pre = `${ano}-${String(m).padStart(2, '0')}`;
+        const tot = Object.entries(porDia).filter(([d]) => d.startsWith(pre)).reduce((s, [, v]) => s + v.pnl, 0);
+        const temDados = Object.keys(porDia).some(d => d.startsWith(pre));
+        const ativo = m === mes ? 'border: 1px solid #58a6ff;' : 'border: 1px solid #30363d;';
+        htmlMeses += `
+            <div onclick="irParaMesDiario('${pre}')" style="cursor: pointer; background: #0d1117; ${ativo} border-radius: 4px; padding: 5px; text-align: center;">
+                <div style="font-size: 9px; color: #8b949e; text-transform: uppercase;">${MESES_PT[m - 1].slice(0, 3)}</div>
+                <div style="font-size: 11px; font-weight: bold; color: ${temDados ? _corPnl(tot) : '#484f58'};">${temDados ? (tot >= 0 ? '+' : '-') + '€' + Math.abs(tot).toFixed(0) : '—'}</div>
+            </div>`;
+    }
+    document.getElementById('diario-cal-meses').innerHTML = htmlMeses;
 }
 
 // ==========================================
@@ -6881,6 +7322,7 @@ function atualizarDiarioBordo() {
     // MOTOR CLIENT-SIDE DA LIGA MENSAL
     // ==========================================
     async function carregarLiga(forcarRecalculo = false) {
+        carregarHallOfFame(); // medalhas, Hall of Fame e histórico (em paralelo com a classificação)
         const tbody = document.getElementById('tbody-liga');
         const loading = document.getElementById('loading-liga');
         const badgeMes = document.getElementById('liga-mes-badge');
@@ -6947,7 +7389,7 @@ function atualizarDiarioBordo() {
                 return `
                     <tr style="border-bottom: 1px solid #21262d;">
                         <td style="padding: 12px; font-weight: bold; font-size: 14px;">${medalha}</td>
-                        <td style="padding: 12px; font-weight: bold; color: #58a6ff;">${c.username}</td>
+                        <td style="padding: 12px; font-weight: bold; color: #58a6ff;">${c.username} <span class="liga-medalhas" data-uid="${c.user_id || ''}" style="font-size: 12px;">${(window.iconesLiga || {})[c.user_id] || ''}</span></td>
                         <td style="padding: 12px;">${fmtSlot(c.slots[0])}</td>
                         <td style="padding: 12px;">${fmtSlot(c.slots[1])}</td>
                         <td style="padding: 12px;">${fmtSlot(c.slots[2])}</td>
@@ -6961,6 +7403,177 @@ function atualizarDiarioBordo() {
         } catch (e) {
             loading.style.display = 'none';
             tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#d9534f;">Erro ao carregar classificação.</td></tr>';
+        }
+    }
+
+
+    // ==========================================
+    // GAMIFICAÇÃO DA LIGA (HALL OF FAME, MEDALHAS, HISTÓRICO)
+    // ==========================================
+    window.iconesLiga = window.iconesLiga || {};
+
+    function escHTML(t) {
+        return String(t === undefined || t === null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    function nomeMesLiga(ym) {
+        const [a, m] = String(ym).split('-').map(Number);
+        const nomes = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+        return nomes[m - 1] ? `${nomes[m - 1]} ${a}` : ym;
+    }
+
+    function aplicarIconesLiga() {
+        document.querySelectorAll('.liga-medalhas').forEach(el => {
+            el.textContent = window.iconesLiga[el.dataset.uid] || '';
+        });
+    }
+
+    async function carregarHallOfFame() {
+        try {
+            const resp = await fetch('/api/liga/hall_of_fame');
+            if (!resp.ok) return;
+            const d = await resp.json();
+            if (d.erro) return;
+            window.iconesLiga = d.icones || {};
+            aplicarIconesLiga();
+            renderizarGamificacaoLiga(d);
+        } catch (e) {
+            console.warn("Hall of Fame:", e);
+        }
+    }
+
+    function renderizarGamificacaoLiga(d) {
+        const fmtPct = (v) => (v === null || v === undefined) ? 'N/A' : `${v >= 0 ? '+' : ''}${Number(v).toFixed(2)}%`;
+        const corPct = (v) => (v || 0) >= 0 ? '#5cb85c' : '#d9534f';
+
+        // Aviso de edições por fechar (ex.: fonte de dados em pausa)
+        const aviso = document.getElementById('liga-gamificacao-aviso');
+        if (aviso) {
+            if (d.pendentes && d.pendentes.length) {
+                aviso.innerHTML = `⏳ A edição de <strong>${escHTML(nomeMesLiga(d.pendentes[0]))}</strong> ainda está a ser fechada (fonte de dados temporariamente em pausa). O histórico e as medalhas atualizam-se automaticamente numa próxima visita.`;
+                aviso.style.display = 'block';
+            } else {
+                aviso.style.display = 'none';
+            }
+        }
+
+        // ---------- As minhas medalhas ----------
+        const divMed = document.getElementById('liga-minhas-medalhas');
+        const minhas = d.minhas && d.minhas.medalhas ? d.minhas.medalhas : [];
+        if (divMed) {
+            divMed.innerHTML = minhas.map(m => {
+                const pips = m.unica ? '' : Array.from({ length: m.niveis_total }, (_, i) => `<span style="color: ${i < m.nivel ? '#e3b341' : '#30363d'};">●</span>`).join('');
+                const bloqueada = !m.desbloqueada;
+                return `
+                    <div class="dica-edu" style="display: block; border-bottom: none; cursor: help; background: #0d1117; border: 1px solid ${bloqueada ? '#30363d' : '#e3b341'}; border-radius: 8px; padding: 12px; text-align: center; ${bloqueada ? 'opacity: 0.55;' : 'box-shadow: 0 0 12px rgba(227, 179, 65, 0.15);'}">
+                        <div style="font-size: 28px; ${bloqueada ? 'filter: grayscale(1);' : ''}">${m.icone}</div>
+                        <div style="font-size: 12px; font-weight: bold; color: ${bloqueada ? '#8b949e' : '#fff'}; margin-top: 4px;">${escHTML(m.nome)}</div>
+                        <div style="font-size: 12px; letter-spacing: 3px; margin-top: 2px;">${pips || (m.desbloqueada ? '<span style="color:#e3b341; font-size:10px; letter-spacing:0;">ÚNICA · TUA</span>' : '<span style="color:#8b949e; font-size:10px; letter-spacing:0;">ÚNICA</span>')}</div>
+                        <div style="font-size: 10px; color: #8b949e; margin-top: 4px;">${escHTML(m.progresso || '')}</div>
+                        <span class="dica-texto" style="width: 240px; text-transform: none;">
+                            <strong style="color: #e3b341; display: block; margin-bottom: 4px; border-bottom: 1px solid #333; padding-bottom: 4px;">${m.icone} ${escHTML(m.nome)}</strong>
+                            ${escHTML(m.desc)}
+                        </span>
+                    </div>`;
+            }).join('') || '<div style="color: #8b949e; font-size: 12px;">Sem dados.</div>';
+        }
+        const resumo = document.getElementById('liga-minhas-resumo');
+        if (resumo) resumo.innerText = `${minhas.filter(m => m.desbloqueada).length} / ${minhas.length} medalhas`;
+
+        // Percurso pessoal (posição em cada edição)
+        const percurso = document.getElementById('liga-meu-percurso');
+        const hist = d.minhas && d.minhas.historico ? d.minhas.historico : [];
+        if (percurso) {
+            percurso.innerHTML = hist.length ? `
+                <div style="font-size: 10px; color: #8b949e; text-transform: uppercase; font-weight: bold; margin-bottom: 6px;">O teu percurso</div>
+                <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                    ${hist.map(h => `
+                        <span class="dica-edu" style="border-bottom: none; background: #0d1117; border: 1px solid ${h.posicao <= 3 ? '#e3b341' : '#30363d'}; border-radius: 12px; padding: 3px 10px; font-size: 11px; cursor: help;">
+                            ${h.posicao === 1 ? '🥇' : h.posicao === 2 ? '🥈' : h.posicao === 3 ? '🥉' : `${h.posicao}º`} <span style="color: #8b949e;">${escHTML(nomeMesLiga(h.mes).slice(0, 3))} ${String(h.mes).slice(2, 4)}</span>
+                            <span class="dica-texto" style="width: 200px; text-transform: none;">${escHTML(nomeMesLiga(h.mes))}: ${h.posicao}º de ${h.total} · score <strong style="color: ${corPct(h.score)};">${fmtPct(h.score)}</strong></span>
+                        </span>`).join('')}
+                </div>` : '<div style="font-size: 11px; color: #8b949e;">Ainda não terminaste nenhuma edição. Submete a tua carteira acima e entra na história da Liga!</div>';
+        }
+
+        // ---------- Hall of Fame ----------
+        const r = d.recordes || {};
+        const cartao = (icone, titulo, rec, valorFmt, dica) => `
+            <div class="dica-edu" style="display: block; border-bottom: none; cursor: help; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 14px; text-align: center;">
+                <div style="font-size: 26px;">${icone}</div>
+                <div style="font-size: 10px; color: #8b949e; text-transform: uppercase; font-weight: bold; margin-top: 4px;">${titulo}</div>
+                <div style="font-size: 14px; font-weight: 900; color: #fff; margin-top: 6px;">${rec ? escHTML(rec.username) : '—'}</div>
+                <div style="font-size: 12px; color: #e3b341; font-weight: bold;">${rec ? valorFmt(rec) : 'Por conquistar'}</div>
+                <span class="dica-texto" style="width: 220px; text-transform: none;">${dica}</span>
+            </div>`;
+        const divHall = document.getElementById('liga-hall');
+        if (divHall) {
+            divHall.innerHTML = [
+                cartao('💎', 'Recorde Absoluto', r.recorde_absoluto, x => `${fmtPct(x.valor)} · ${escHTML(nomeMesLiga(x.extra))}`, 'A maior pontuação alguma vez conseguida numa única edição.'),
+                cartao('👑', 'Mais Títulos', r.mais_titulos, x => `${x.valor} título${x.valor !== 1 ? 's' : ''}`, 'O membro com mais edições ganhas.'),
+                cartao('🔥', 'Maior Sequência no Pódio', r.maior_sequencia, x => `${x.valor} meses seguidos`, 'O maior número de edições consecutivas terminadas no top 3.'),
+                cartao('🎯', 'Rei dos Snipers', r.rei_snipers, x => `${x.valor} Sniper Hit${x.valor !== 1 ? 's' : ''}`, 'Quem mais vezes acertou no alvo com fecho a menos de 1%.'),
+                cartao('🐻', 'Campeão de Shorts', r.campeao_shorts, x => `${fmtPct(x.valor)} média · ${x.extra} shorts`, 'Melhor retorno médio em posições SHORT (mínimo 3 shorts).'),
+            ].join('');
+        }
+
+        // ---------- Classificação geral ----------
+        const tbodyGeral = document.getElementById('tbody-liga-geral');
+        const meuId = d.minhas && d.minhas.stats ? d.minhas.stats.user_id : null;
+        if (tbodyGeral) {
+            tbodyGeral.innerHTML = (d.geral || []).length ? d.geral.map((g, i) => `
+                <tr style="border-bottom: 1px solid #21262d; ${g.user_id === meuId ? 'background: rgba(88, 166, 255, 0.06);' : ''}">
+                    <td style="padding: 10px; font-weight: bold;">${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}º`}</td>
+                    <td style="padding: 10px; font-weight: bold; color: #58a6ff;">${escHTML(g.username)}${g.user_id === meuId ? ' <span style="font-size: 10px; color: #8b949e;">(tu)</span>' : ''}</td>
+                    <td style="padding: 10px; text-align: center;">${g.participacoes}</td>
+                    <td style="padding: 10px; text-align: center; font-weight: bold; color: #e3b341;">${g.titulos}</td>
+                    <td style="padding: 10px; text-align: center;">${g.podios}</td>
+                    <td style="padding: 10px; text-align: center;">${g.melhor_sequencia} <span style="color: #8b949e; font-size: 10px;">(${g.sequencia_atual})</span></td>
+                    <td style="padding: 10px; text-align: center;">${g.sniper_hits}</td>
+                    <td style="padding: 10px; text-align: right; font-weight: bold; color: ${corPct(g.media_score)};">${fmtPct(g.media_score)}</td>
+                    <td style="padding: 10px; text-align: center; font-size: 13px;">${g.icones || '—'}</td>
+                </tr>`).join('')
+                : '<tr><td colspan="9" style="padding: 15px; text-align: center; color: #8b949e;">Ainda não há edições terminadas. A primeira entra aqui no início do próximo mês.</td></tr>';
+        }
+
+        // ---------- Histórico de edições ----------
+        const divEd = document.getElementById('liga-edicoes');
+        if (divEd) {
+            divEd.innerHTML = (d.edicoes || []).length ? d.edicoes.map(e => {
+                const podio = e.ranking.slice(0, 3).map((x, i) => `${['🥇', '🥈', '🥉'][i]} ${escHTML(x.username)}`).join(' · ');
+                const linhas = e.ranking.map(x => {
+                    const slots = (x.slots || []).map(s => `
+                        <div style="font-size: 11px; white-space: nowrap;">
+                            <strong style="color: #fff;">${escHTML(s.ticker)}</strong>
+                            <span style="font-size: 9px; color: ${s.direcao === 'SHORT' ? '#d9534f' : '#5cb85c'};">[${s.direcao}]</span>
+                            ${s.badge || ''} <span style="color: ${corPct(s.ret)};">${fmtPct(s.ret)}</span>
+                        </div>`).join('');
+                    return `
+                        <tr style="border-bottom: 1px solid #21262d;">
+                            <td style="padding: 8px; font-weight: bold;">${x.posicao === 1 ? '🥇' : x.posicao === 2 ? '🥈' : x.posicao === 3 ? '🥉' : `${x.posicao}º`}</td>
+                            <td style="padding: 8px; color: #58a6ff; font-weight: bold;">${escHTML(x.username)}</td>
+                            <td style="padding: 8px;">${slots}</td>
+                            <td style="padding: 8px; text-align: right; color: ${corPct(x.retorno_base)};">${fmtPct(x.retorno_base)}</td>
+                            <td style="padding: 8px; text-align: center; color: #e3b341;">+${Number(x.bonus_total).toFixed(1)}%</td>
+                            <td style="padding: 8px; text-align: right; font-weight: 900; color: ${corPct(x.score_total)};">${fmtPct(x.score_total)}</td>
+                            <td style="padding: 8px; color: #8b949e; font-style: italic; max-width: 220px;">"${escHTML(x.tese)}"</td>
+                        </tr>`;
+                }).join('');
+                return `
+                    <details style="background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 10px 14px;">
+                        <summary style="cursor: pointer; outline: none; user-select: none; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; font-size: 12px;">
+                            <span><strong style="color: #fff;">${escHTML(nomeMesLiga(e.mes))}</strong> <span style="color: #8b949e;">· ${e.participantes} participante${e.participantes !== 1 ? 's' : ''}</span></span>
+                            <span style="color: #c9d1d9;">${podio}</span>
+                        </summary>
+                        <div style="overflow-x: auto; margin-top: 10px;">
+                            <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 0;">
+                                <thead style="color: #8b949e; font-size: 10px; text-transform: uppercase;">
+                                    <tr><th style="padding: 8px;">#</th><th style="padding: 8px;">Membro</th><th style="padding: 8px;">Carteira</th><th style="padding: 8px; text-align: right;">Retorno</th><th style="padding: 8px; text-align: center;">Bónus</th><th style="padding: 8px; text-align: right;">Score</th><th style="padding: 8px;">Tese</th></tr>
+                                </thead>
+                                <tbody>${linhas}</tbody>
+                            </table>
+                        </div>
+                    </details>`;
+            }).join('') : '<div style="color: #8b949e; font-size: 12px;">Ainda não há edições terminadas.</div>';
         }
     }
 
