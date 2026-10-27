@@ -779,8 +779,20 @@ def visualizar_html(regiao):
     if not lista_ficheiros:
         return "Ainda não existe nenhum relatório gerado para esta região. Pede ao administrador para executar o robô.", 404
 
-    # Ordena os ficheiros por data de modificação para encontrar o mais recente
-    ficheiro_mais_recente = max(lista_ficheiros, key=os.path.getmtime)
+    # Ordena pela data escrita no NOME do ficheiro (ex.: ..._27oct26.html). A data de modificação
+    # não é fiável: quando a Discloud copia o repositório, todos os ficheiros ficam com a mesma data
+    # e o portal podia mostrar uma newsletter antiga. Ficheiros sem data no nome ficam em último.
+    import re as _re
+    def _data_do_nome(caminho):
+        m = _re.search(r"_(\d{2})([a-z]{3})(\d{2})\.html$", os.path.basename(caminho).lower())
+        if m:
+            try:
+                return datetime.strptime(f"{m.group(1)}{m.group(2).capitalize()}{m.group(3)}", "%d%b%y")
+            except ValueError:
+                pass
+        return datetime.min
+
+    ficheiro_mais_recente = max(lista_ficheiros, key=lambda c: (_data_do_nome(c), os.path.getmtime(c)))
     
     # Envia o HTML cru diretamente para o ecrã do utilizador
     return send_file(ficheiro_mais_recente)
