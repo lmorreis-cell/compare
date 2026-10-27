@@ -245,6 +245,7 @@ from Regime import avaliar_regime_mercado
 from MeanReversion import calcular_radar_reversao
 from Radar import calcular_radar_momentum_v2, comparar_ativos
 import snapshot_diario as snap
+import liga_gamificacao as gam
 
 # ==========================================
 # PROTEÇÃO GLOBAL CONTRA BLOQUEIOS DO YAHOO
@@ -3102,6 +3103,20 @@ def api_liga():
             pass
 
     return jsonify({"sucesso": True, "mensagem": f"Carteira validada! Setores: {', '.join(mapa_setores.keys())}."})
+
+
+@app.route('/api/liga/hall_of_fame')
+@requer_cargo(nivel_minimo=2)
+def api_liga_hall_of_fame():
+    """Histórico de edições, Hall of Fame e medalhas. Fecha automaticamente (uma única vez)
+    as edições de meses anteriores que ainda não tinham sido fechadas."""
+    user_id = str(session.get('user_id', '')).strip()
+    mes_atual = datetime.now().strftime("%Y-%m")
+    pendentes = gam.fechar_meses_pendentes(carregar_dados_liga(), mes_atual)
+    resposta = gam.calcular_hall_of_fame(user_id or None)
+    resposta["pendentes"] = pendentes
+    resposta["mes_atual"] = mes_atual
+    return jsonify(resposta)
 
 
 @app.route('/api/webhook/liga', methods=['POST'])
