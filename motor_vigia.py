@@ -1,8 +1,10 @@
 import os
 import json
+import threading
+import time
 import requests
-import yfinance as yf
 import pandas as pd
+import yahoo_guard as yg
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
@@ -11,7 +13,72 @@ load_dotenv()
 ARQUIVO_WATCHLIST = "watchlist.json"
 WEBHOOK_WATCHLIST = os.environ.get("WEBHOOK_WATCHLIST")
 
+# ==========================================
+# TRAVÕES ANTI-LOOP (a causa provável do bloqueio do Yahoo)
+# ==========================================
+# 1. Só pode existir UMA execução de cada vez (o cron já não consegue empilhar threads).
+# 2. Intervalo mínimo entre execuções, persistido em disco para sobreviver a reinícios
+#    (protege contra um cron mal configurado a disparar de minuto a minuto).
+_LOCK_VIGIA = threading.Lock()
+ARQUIVO_ULTIMA_EXECUCAO = "vigia_ultima_execucao.txt"
+INTERVALO_MIN_EXECUCOES_SEG = int(os.environ.get("VIGIA_INTERVALO_MIN_SEG", 20 * 60))
+
+
+def _segundos_desde_ultima_execucao():
+    try:
+        with open(ARQUIVO_ULTIMA_EXECUCAO, 'r') as f:
+            return time.time() - float(f.read().strip())
+    except Exception:
+        return float('inf')
+
+
+def _marcar_execucao():
+    try:
+        with open(ARQUIVO_ULTIMA_EXECUCAO, 'w') as f:
+            f.write(str(time.time()))
+    except Exception:
+        pass
+
+
+def vigia_em_execucao():
+    return _LOCK_VIGIA.locked()
+
+
+def pode_executar_agora():
+    """Devolve (pode, motivo) — usado pela rota do cron para responder sem lançar threads inúteis."""
+    if _LOCK_VIGIA.locked():
+        return False, "O Motor de Vigia já está em execução."
+    decorrido = _segundos_desde_ultima_execucao()
+    if decorrido < INTERVALO_MIN_EXECUCOES_SEG:
+        faltam = int((INTERVALO_MIN_EXECUCOES_SEG - decorrido) // 60) + 1
+        return False, f"Execução recente. Próxima permitida dentro de {faltam} min."
+    if yg.esta_bloqueado():
+        return False, "Yahoo Finance em pausa de proteção (disjuntor aberto)."
+    return True, ""
+
+
 def processar_vigia():
+    """Ponto de entrada público: aplica os travões e só depois corre o motor."""
+    if not _LOCK_VIGIA.acquire(blocking=False):
+        print(f"[{datetime.now()}] Motor de Vigia já em execução. Pedido ignorado.")
+        return
+    try:
+        decorrido = _segundos_desde_ultima_execucao()
+        if decorrido < INTERVALO_MIN_EXECUCOES_SEG:
+            print(f"[{datetime.now()}] Execução ignorada: a última foi há {int(decorrido)}s "
+                  f"(mínimo {INTERVALO_MIN_EXECUCOES_SEG}s).")
+            return
+        _marcar_execucao()  # marca ANTES de correr: se rebentar a meio, não volta a disparar logo
+        _processar_vigia_interno()
+    except yg.YahooIndisponivel as e:
+        print(f"[{datetime.now()}] Motor de Vigia abortado: {e}")
+    except Exception as e:
+        print(f"[{datetime.now()}] Erro inesperado no Motor de Vigia: {e}")
+    finally:
+        _LOCK_VIGIA.release()
+
+
+def _processar_vigia_interno():
     agora = datetime.now()
     dia_semana = agora.weekday() # 0 = Seg, ..., 5 = Sáb, 6 = Dom
     print(f"[{agora}] A iniciar Motor de Vigia Algorítmico...")
@@ -51,14 +118,18 @@ def processar_vigia():
     string_tickers = " ".join(tickers_lista)
     
     print(f"A descarregar dados para {len(tickers_lista)} ativos...")
-    dados = yf.download(string_tickers, period="1y", interval="1d", group_by="ticker", threads=True, progress=False)
+    # Download em lote protegido (sequencial + disjuntor). Se o Yahoo bloquear, aborta limpo.
+    dados = yg.download(string_tickers, period="1y", interval="1d", group_by="ticker")
+    if dados is None or dados.empty:
+        print("Sem dados do Yahoo neste ciclo. Nada a processar.")
+        return
 
     gatilhos_acionados = {}
     info_mercado = {} # Dicionário novo para guardar Fechos e ATRs e usar no Cooldown
 
     for ticker in tickers_lista:
         try:
-            df = dados.dropna() if len(tickers_lista) == 1 else dados[ticker].dropna()
+            df = yg.fatia(dados, ticker).dropna().copy()
             if df.empty or len(df) < 200:
                 continue
 
@@ -209,7 +280,8 @@ def processar_vigia():
         print(f"A transmitir {len(mensagens_discord)} alertas para o servidor Discord...")
         for msg in mensagens_discord:
             try:
-                resp = requests.post(WEBHOOK_WATCHLIST, json=msg)
+                resp = requests.post(WEBHOOK_WATCHLIST, json=msg, timeout=10)
+                time.sleep(0.5)  # respeita também o rate limit do Discord
                 resp.raise_for_status()
                 alertas_enviados += 1
             except Exception as e:

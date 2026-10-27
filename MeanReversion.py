@@ -1,4 +1,4 @@
-import yfinance as yf
+import yahoo_guard as yg
 import pandas as pd
 import numpy as np
 
@@ -13,12 +13,16 @@ def calcular_radar_reversao(lista_tickers):
     resultados = []
     print(f"A processar radar de Mean Reversion para {len(lista_tickers)} ativos...")
     
-    # Adicionado threads=True para extração imediata
-    dados_acoes = yf.download(lista_tickers, period="6mo", progress=False, threads=True)['Close']
+    # Download em lote protegido (sequencial, com cache de 5 min e disjuntor anti-bloqueio)
+    dados_acoes = yg.download(lista_tickers, period="6mo")
+    if dados_acoes is None or dados_acoes.empty:
+        print("Sem dados para o radar de Mean Reversion.")
+        return pd.DataFrame()
+    dados_acoes = dados_acoes['Close']
     
     for ticker in lista_tickers:
         try:
-            fechos = dados_acoes if len(lista_tickers) == 1 else dados_acoes[ticker]
+            fechos = yg.serie(dados_acoes, ticker)
             fechos = fechos.dropna().copy()
             
             if len(fechos) < 30:

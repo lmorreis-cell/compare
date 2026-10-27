@@ -1,4 +1,4 @@
-import yfinance as yf
+import yahoo_guard as yg
 import pandas as pd
 import numpy as np
 
@@ -13,23 +13,35 @@ def calcular_rsi(serie, periodo=14):
     
     return rsi.fillna(100)
 
+def _serie_close(df):
+    """As versões recentes do yfinance devolvem colunas MultiIndex mesmo para 1 ticker.
+    Garante uma Series simples de fechos (necessária para o concat/alinhamento)."""
+    close = df['Close']
+    if isinstance(close, pd.DataFrame):
+        close = close.iloc[:, 0]
+    return close
+
 def calcular_radar_momentum_v2(lista_tickers, ticker_indice="^GSPC"):
     print("A descarregar dados do índice de referência...")
-    # Adicionado threads=True
-    indice = yf.download(ticker_indice, period="2y", progress=False, threads=True)['Close']
+    # Download protegido (rate limiter + disjuntor + cache de 5 min)
+    indice = yg.download(ticker_indice, period="2y")
     
-    if indice.empty:
+    if indice is None or indice.empty:
         print("Erro ao obter o índice.")
-        return []
+        return pd.DataFrame()
+    indice = _serie_close(indice)
 
     resultados = []
     print(f"A processar o radar para {len(lista_tickers)} ativos...")
-    # Adicionado threads=True para paralelizar o download maciço
-    dados_acoes = yf.download(lista_tickers, period="2y", progress=False, threads=True)['Close']
+    # Download em lote sequencial (threads em paralelo eram um dos gatilhos do bloqueio)
+    dados_acoes = yg.download(lista_tickers, period="2y")
+    if dados_acoes is None or dados_acoes.empty:
+        return pd.DataFrame()
+    dados_acoes = dados_acoes['Close']
 
     for ticker in lista_tickers:
         try:
-            fechos = dados_acoes if len(lista_tickers) == 1 else dados_acoes[ticker]
+            fechos = yg.serie(dados_acoes, ticker)
             fechos = fechos.dropna()
             
             if len(fechos) < 252:
@@ -66,18 +78,21 @@ def calcular_radar_momentum_v2(lista_tickers, ticker_indice="^GSPC"):
 
 def comparar_ativos(ticker1, ticker2, ticker_indice="^GSPC"):
     lista = [ticker1.upper(), ticker2.upper()]
-    # Adicionado threads=True
-    indice = yf.download(ticker_indice, period="2y", progress=False, threads=True)['Close']
+    indice = yg.download(ticker_indice, period="2y")
+    if indice is None or indice.empty:
+        return pd.DataFrame()
+    indice = _serie_close(indice)
     
-    # Adicionado threads=True
-    dados = yf.download(lista, period="2y", progress=False, threads=True)
+    dados = yg.download(lista, period="2y")
+    if dados is None or dados.empty:
+        return pd.DataFrame()
     
     resultados = []
     for ticker in lista:
         try:
-            fechos = dados['Close'][ticker].dropna()
-            high = dados['High'][ticker].dropna()
-            low = dados['Low'][ticker].dropna()
+            fechos = yg.serie(dados['Close'], ticker).dropna()
+            high = yg.serie(dados['High'], ticker).dropna()
+            low = yg.serie(dados['Low'], ticker).dropna()
             
             if len(fechos) < 252: continue
             

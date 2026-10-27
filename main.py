@@ -2,8 +2,12 @@ import os
 import json
 import requests
 import glob
+import time
+import threading
 import yfinance as yf
 import pandas as pd
+import yahoo_guard as yg
+from yahoo_guard import YahooIndisponivel
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from functools import wraps
@@ -241,61 +245,85 @@ from Regime import avaliar_regime_mercado
 from MeanReversion import calcular_radar_reversao
 from Radar import calcular_radar_momentum_v2, comparar_ativos
 
+# ==========================================
+# PROTEÇÃO GLOBAL CONTRA BLOQUEIOS DO YAHOO
+# ==========================================
+@app.errorhandler(YahooIndisponivel)
+def yahoo_em_pausa(e):
+    """Qualquer rota que esbarre no disjuntor devolve um erro limpo em vez de insistir com o Yahoo."""
+    return jsonify({"erro": str(e)}), 503
+
+
+@app.route('/api/admin/yahoo')
+def admin_estado_yahoo():
+    """Diagnóstico do escudo anti-bloqueio (apenas Admin)."""
+    user_sess = str(session.get('user_id', '')).strip()
+    if not user_sess or user_sess != str(ADMIN_USER_ID).strip():
+        return jsonify({"erro": "Acesso negado. Apenas Admin."}), 403
+    return jsonify(yg.estado())
+
+
+URL_YAHOO_SCREENER = "https://query1.finance.yahoo.com/v1/finance/screener/predefined/saved?formatted=false&lang=en-US&region=US&scrIds={scr_id}&count=5"
+
+def buscar_quotes_screener_yahoo(scr_id):
+    """Pedido único (e partilhado em cache 5 min) aos screeners predefinidos do Yahoo.
+    O Ticker Tape e os Market Movers reutilizam o mesmo resultado em vez de pedirem duas vezes."""
+    try:
+        dados = yg.get_json(URL_YAHOO_SCREENER.format(scr_id=scr_id), timeout=5)
+        resultado = dados.get('finance', {}).get('result', []) or [{}]
+        return resultado[0].get('quotes', [])
+    except YahooIndisponivel:
+        raise
+    except Exception as e:
+        print(f"Aviso - screener Yahoo '{scr_id}' indisponível: {e}")
+        return []
+
+
 @app.route('/api/ticker_tape')
-@cache.cached(timeout=120) # Cache de 2 minutos para poupar recursos
+@cache.cached(timeout=300) # Cache de 5 minutos para poupar recursos
 def api_ticker_tape():
-    import yfinance as yf
-    import requests
-    
     resultados = []
     
     # 1. CABAZ BASE MACRO (Europa, States, Matérias-Primas, Cripto)
     tickers_base = ["^GSPC", "^IXIC", "^GDAXI", "^STOXX50E", "PSI20.LS", "BTC-USD", "ETH-USD", "GC=F", "CL=F"]
     
+    # Nomes limpos para a interface
+    nomes = {
+        "^GSPC": "S&P 500", "^IXIC": "NASDAQ", "^GDAXI": "DAX 40", "^STOXX50E": "EURO STOXX 50",
+        "PSI20.LS": "PSI 20", "GC=F": "OURO", "CL=F": "PETRÓLEO"
+    }
+    
     try:
-        for t in tickers_base:
-            tk = yf.Ticker(t)
-            preco = tk.fast_info.get('lastPrice', 0)
-            prev_close = tk.fast_info.get('previousClose', 1) 
-            
-            if preco > 0:
-                var_pct = ((preco / prev_close) - 1) * 100
-                
-                # Nomes limpos para a interface
-                nome = t
-                if t == "^GSPC": nome = "S&P 500"
-                if t == "^IXIC": nome = "NASDAQ"
-                if t == "^GDAXI": nome = "DAX 40"
-                if t == "^STOXX50E": nome = "EURO STOXX 50"
-                if t == "PSI20.LS": nome = "PSI 20"  # <--- ADICIONA ESTA LINHA
-                if t == "GC=F": nome = "OURO"
-                if t == "CL=F": nome = "PETRÓLEO"
-                
-                resultados.append({"ticker": nome, "preco": preco, "var": var_pct, "tipo": "macro"})
+        # ANTES: 9 chamadas fast_info (cada uma com vários pedidos). AGORA: 1 único download em lote.
+        dados = yg.download(tickers_base, period="5d", interval="1d")
+        if dados is not None and not dados.empty:
+            fechos = dados['Close']
+            for t in tickers_base:
+                serie_t = yg.serie(fechos, t).dropna()
+                if len(serie_t) < 2:
+                    continue
+                preco = float(serie_t.iloc[-1])
+                prev_close = float(serie_t.iloc[-2])
+                if preco > 0 and prev_close > 0:
+                    var_pct = ((preco / prev_close) - 1) * 100
+                    resultados.append({"ticker": nomes.get(t, t), "preco": preco, "var": var_pct, "tipo": "macro"})
+    except YahooIndisponivel:
+        return jsonify([])
     except Exception as e:
         print(f"Erro no Ticker Tape (Base): {e}")
 
-    # 2. TOP GAINERS E LOSERS (Reaproveita a ligação à API oculta do Yahoo Finance)
+    # 2. TOP GAINERS E LOSERS (partilha o pedido com o painel de Market Movers)
     try:
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36'}
-        def buscar_yf_movers(scr_id):
-            url = f"https://query1.finance.yahoo.com/v1/finance/screener/predefined/saved?formatted=false&lang=en-US&region=US&scrIds={scr_id}&count=5"
-            resp = requests.get(url, headers=headers, timeout=3)
-            if resp.status_code == 200:
-                quotes = resp.json().get('finance', {}).get('result', [])[0].get('quotes', [])
-                return [{"ticker": q.get('symbol'), "preco": q.get('regularMarketPrice', 0), "var": q.get('regularMarketChangePercent', 0)} for q in quotes]
-            return []
-
-        gainers = buscar_yf_movers("day_gainers")
-        for g in gainers:
-            g["tipo"] = "gainer"
-            resultados.append(g)
-
-        losers = buscar_yf_movers("day_losers")
-        for l in losers:
-            l["tipo"] = "loser"
-            resultados.append(l)
-
+        for tipo, scr_id in (("gainer", "day_gainers"), ("loser", "day_losers")):
+            for q in buscar_quotes_screener_yahoo(scr_id):
+                resultados.append({
+                    "ticker": q.get('symbol'),
+                    "preco": q.get('regularMarketPrice', 0),
+                    "var": q.get('regularMarketChangePercent', 0),
+                    "tipo": tipo
+                })
+    except YahooIndisponivel:
+        pass
     except Exception as e:
         print(f"Erro no Ticker Tape (Movers): {e}")
         
@@ -384,26 +412,14 @@ def gerir_watchlist():
 @cache.cached(timeout=300) # Atualiza a cada 5 minutos
 def api_market_movers():
     try:
-        # Disfarçamos o nosso servidor como um browser normal para não sermos bloqueados pelo Yahoo
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36'}
-        
         def buscar_yf(scr_id):
-            # Acesso direto à API oculta do Yahoo Finance
-            url = f"https://query1.finance.yahoo.com/v1/finance/screener/predefined/saved?formatted=false&lang=en-US&region=US&scrIds={scr_id}&count=5"
-            resp = requests.get(url, headers=headers, timeout=5)
-            
-            if resp.status_code == 200:
-                dados = resp.json()
-                quotes = dados.get('finance', {}).get('result', [])[0].get('quotes', [])
-                
-                # Traduzimos o formato do Yahoo para o formato exato que o teu ecrã já está à espera
-                return [{
-                    "symbol": q.get('symbol'),
-                    "name": q.get('shortName', q.get('symbol')),
-                    "price": q.get('regularMarketPrice', 0),
-                    "changesPercentage": q.get('regularMarketChangePercent', 0)
-                } for q in quotes]
-            return []
+            # Traduzimos o formato do Yahoo para o formato exato que o teu ecrã já está à espera
+            return [{
+                "symbol": q.get('symbol'),
+                "name": q.get('shortName', q.get('symbol')),
+                "price": q.get('regularMarketPrice', 0),
+                "changesPercentage": q.get('regularMarketChangePercent', 0)
+            } for q in buscar_quotes_screener_yahoo(scr_id)]
 
         # Extrai os três pilares do mercado
         gainers = buscar_yf("day_gainers")
@@ -416,13 +432,14 @@ def api_market_movers():
             "actives": actives
         })
         
+    except YahooIndisponivel as e:
+        return jsonify({"erro": str(e)}), 503
     except Exception as e:
         return jsonify({"erro": f"Falha na API do Yahoo Finance: {str(e)}"}), 500
 
 @app.route('/api/rrg/<mercado>/<int:window>')
 @cache.cached(timeout=3600)
 def api_rrg(mercado, window):
-    import yfinance as yf
     import pandas as pd
 
     if mercado == 'europa':
@@ -449,8 +466,10 @@ def api_rrg(mercado, window):
     try:
         # Se a janela for trimestral (63), saca 1 ano de dados para a Média Móvel conseguir calcular bem
         periodo_dw = "1y" if window == 63 else "6mo"
-        df = yf.download(tickers, period=periodo_dw, interval="1d", progress=False)['Close']
-        df = df.ffill().bfill()
+        df = yg.download(tickers, period=periodo_dw, interval="1d")
+        if df is None or df.empty:
+            return jsonify({"erro": "Sem dados de mercado para o RRG neste momento."}), 503
+        df = df['Close'].ffill().bfill()
         
         resultados = []
 
@@ -792,9 +811,8 @@ def api_comparar(ticker1, ticker2):
         # Fallback base caso a API do Yahoo falhe
         simb = "€" if any(ativo['Ticker'].upper().endswith(s) for s in ('.LS', '.PA', '.DE', '.MC', '.AS', '.BR', '.MI', '.VI', '.IR', '.HE')) else "$"
         try:
-            tk = yf.Ticker(ativo['Ticker'])
-            info_tk = tk.info
-            target = info_tk.get('targetMeanPrice', 0)
+            info_tk = yg.info(ativo['Ticker'])  # cache de 24h em disco
+            target = info_tk.get('targetMeanPrice') or 0
             moeda = info_tk.get('currency', '')
             
             if moeda:
@@ -838,14 +856,16 @@ def api_comparar_cripto(ticker1, ticker2):
 @app.route('/api/breadth')
 @cache.cached(timeout=3600) # Fica em cache durante 1 hora para não abusar do Yahoo
 def api_breadth():
-    import yfinance as yf
     
     # Os 11 ETFs Setoriais do S&P500 + VIX
     tickers = "XLK XLV XLF XLE XLY XLP XLI XLB XLRE XLU XLC ^VIX"
     
     try:
         # Puxa os dados todos de uma só vez (muito mais rápido que um a um)
-        dados = yf.download(tickers, period="100d")['Close']
+        dados = yg.download(tickers, period="100d")
+        if dados is None or dados.empty:
+            return jsonify({"erro": "Sem dados de mercado para o Breadth neste momento."}), 503
+        dados = dados['Close']
         
         setores = ['XLK', 'XLV', 'XLF', 'XLE', 'XLY', 'XLP', 'XLI', 'XLB', 'XLRE', 'XLU', 'XLC']
         bull_count = 0
@@ -878,12 +898,11 @@ def api_breadth():
 @app.route('/api/backtest/<ticker>/<estrategia>')
 @cache.cached(timeout=3600) # Mantém em memória durante 1 hora
 def api_backtest(ticker, estrategia):
-    import yfinance as yf
     import numpy as np
     
     try:
-        df = yf.Ticker(ticker).history(period="5y", interval="1d")
-        if df.empty or len(df) < 50:
+        df = yg.historico(ticker, period="5y", interval="1d")
+        if df is None or df.empty or len(df) < 50:
             return jsonify({"erro": "Histórico insuficiente para simulação de 5 anos."}), 400
             
         # 1. Cálculo de todos os Indicadores necessários
@@ -983,19 +1002,22 @@ def api_backtest(ticker, estrategia):
 
 
 @app.route('/api/cotacao/<ticker>')
+@cache.cached(timeout=300)
 def cotacao_live(ticker):
     try:
-        ativo = yf.Ticker(ticker)
-        # fast_info devolve o preço ao segundo
-        preco_atual = ativo.fast_info['last_price']
+        # ANTES: fast_info (vários pedidos por chamada). AGORA: 1 pedido, com cache de 5 min.
+        preco_atual = yg.ultimo_preco(ticker)
+        if preco_atual is None:
+            return jsonify({"erro": f"Sem cotação para {ticker}."}), 404
         return jsonify({"preco": preco_atual})
+    except YahooIndisponivel as e:
+        return jsonify({"erro": str(e)}), 503
     except Exception as e:
         return jsonify({"erro": str(e)}), 400
 
 @app.route('/api/cambio/<data>')
+@cache.cached(timeout=86400)  # o câmbio de uma data passada nunca muda
 def api_cambio(data):
-    import yfinance as yf
-    import pandas as pd
     
     try:
         # 1. Lê a data enviada pelo HTML (ex: 2025-06-17)
@@ -1006,10 +1028,9 @@ def api_cambio(data):
         data_fim = data_alvo + pd.Timedelta(days=1)
         
         # 3. MUDANÇA CRÍTICA: Usa .history() em vez de .download(). É 100% fiável para extrações únicas.
-        motor_cambio = yf.Ticker("EURUSD=X")
-        df = motor_cambio.history(start=data_inicio.strftime('%Y-%m-%d'), end=data_fim.strftime('%Y-%m-%d'))
+        df = yg.historico("EURUSD=X", start=data_inicio.strftime('%Y-%m-%d'), end=data_fim.strftime('%Y-%m-%d'))
         
-        if df.empty:
+        if df is None or df.empty:
             print(f"Aviso: Yahoo não devolveu dados de câmbio para {data}")
             return jsonify({"cambio": 1.08})
             
@@ -1024,12 +1045,8 @@ def api_cambio(data):
         return jsonify({"cambio": 1.08}), 500
 
 @app.route('/api/universo')
+@cache.cached(timeout=3600)
 def api_universo():
-    import yfinance as yf
-    import requests
-    import json
-    import os
-    import time
     
     caminho_ficheiro = "tickers_comparacao.txt"
     ficheiro_cache = "setores_cache.json"
@@ -1064,11 +1081,10 @@ def api_universo():
         "Unknown": {"nome": "Sem Classificação (ETFs/Outros)", "tickers": []}
     }
 
-    # Disfarça o pedido web para não ser detetado como Bot pelo Yahoo
-    session = requests.Session()
-    session.headers.update({'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36'})
-
+    # O acesso ao Yahoo passa pelo yahoo_guard (sessão curl_cffi + rate limiter + disjuntor).
+    # NOTA: as versões recentes do yfinance rejeitam um requests.Session() normal.
     atualizou_cache = False
+    yahoo_em_pausa = False
 
     for ticker in meus_tickers:
         setor_raw = "Unknown"
@@ -1076,15 +1092,18 @@ def api_universo():
         # 2. Se a ação já estiver na nossa memória, usamos sem ir à internet
         if ticker in cache_setores:
             setor_raw = cache_setores[ticker]
-        else:
+        elif not yahoo_em_pausa:
             # 3. Se for uma ação nova, perguntamos ao Yahoo e guardamos
             try:
-                info = yf.Ticker(ticker, session=session).info
-                setor_raw = info.get('sector', 'Unknown')
+                info = yg.info(ticker)
+                setor_raw = info.get('sector') or 'Unknown'
                 
+                # Guarda também os 'Unknown' (ETFs) para não voltar a perguntar a cada abertura
                 cache_setores[ticker] = setor_raw
                 atualizou_cache = True
-                time.sleep(0.1) # Pausa de 100ms para não engatilhar o bloqueio do Yahoo
+            except YahooIndisponivel:
+                # Disjuntor aberto: pára de perguntar e classifica o resto como 'Sem Classificação'
+                yahoo_em_pausa = True
             except Exception:
                 pass
 
@@ -1109,40 +1128,21 @@ def api_universo():
 
     return jsonify(resultado_final)
 
-    # Varre a lista mestre
-    for ticker in meus_tickers:
-        try:
-            info = yf.Ticker(ticker).info
-            setor_raw = info.get('sector', 'Unknown')
-            if setor_raw in universo_setorial:
-                universo_setorial[setor_raw]["tickers"].append(ticker)
-            else:
-                universo_setorial["Unknown"]["tickers"].append(ticker)
-        except Exception:
-            universo_setorial["Unknown"]["tickers"].append(ticker)
-
-    # Limpar setores vazios e ordenar alfabeticamente
-    resultado_final = {}
-    for key, setor in universo_setorial.items():
-        if setor["tickers"]:
-            setor["tickers"].sort()
-            resultado_final[key] = setor
-
-    return jsonify(resultado_final)
-
 @app.route('/api/search/<query>')
+# A mesma pesquisa (ex.: "micro") é feita por muitos membros. Não guarda em cache respostas
+# geradas durante uma pausa de proteção (ficariam vazias durante 1 hora).
+@cache.cached(timeout=3600, response_filter=lambda resp: resp.status_code == 200 and not yg.esta_bloqueado())
 def api_search(query):
-    import requests
-    from flask import jsonify
+    from urllib.parse import quote as url_quote
     
+    resultados = []
     try:
-        url = f"https://query2.finance.yahoo.com/v1/finance/search?q={query}&quotesCount=6&newsCount=0"
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
-        resp = requests.get(url, headers=headers, timeout=3)
-        data = resp.json()
-        quotes = data.get('quotes', [])
-        
-        resultados = []
+        url = f"https://query2.finance.yahoo.com/v1/finance/search?q={url_quote(query)}&quotesCount=6&newsCount=0"
+        try:
+            data = yg.get_json(url, timeout=3)
+            quotes = data.get('quotes', [])
+        except YahooIndisponivel:
+            quotes = []  # em pausa: devolve só a pesquisa direta, sem insistir com o Yahoo
         
         # ---------------------------------------------------------
         # NOVA REGRA TÁTICA: FORÇAR BOLSAS EUROPEIAS / PESQUISA EXATA
@@ -1185,7 +1185,6 @@ def api_search(query):
 @cache.cached(timeout=300, response_filter=lambda resp: resp.status_code == 200)
 def api_sniper(ticker, timeframe):
     import numpy as np
-    import yfinance as yf
     import pandas as pd
     import datetime
     import matplotlib
@@ -1208,7 +1207,9 @@ def api_sniper(ticker, timeframe):
         return jsonify({"erro": "Ativo Inválido! Usa o 'Laboratório de Ativos Digitais' para analisar criptomoedas."}), 400
 
     try:
-        df = yf.Ticker(ticker).history(period=periodo, interval=intervalo)
+        df = yg.historico(ticker, period=periodo, interval=intervalo)
+        if df is None or df.empty:
+            return jsonify({"erro": "Sem dados para este ativo."}), 404
         df = df.dropna(subset=['Close', 'High', 'Low'])
         
         if df.empty:
@@ -1227,13 +1228,17 @@ def api_sniper(ticker, timeframe):
                 pass
                 
         if preco_oficial == 0:
-            df_diario = yf.Ticker(ticker).history(period="5d", interval="1d").dropna(subset=['Close'])
-            try:
-                preco_oficial = float(yf.Ticker(ticker).fast_info['lastPrice'])
-            except:
-                preco_oficial = float(df_diario['Close'].iloc[-1]) if not df_diario.empty else float(df['Close'].iloc[-1])
+            # ANTES: +1 histórico de 5 dias + fast_info (vários pedidos). AGORA: zero pedidos extra —
+            # a última vela do histórico já descarregado contém a cotação mais recente da sessão.
+            preco_oficial = float(df['Close'].iloc[-1])
 
         logo_url, setor_final, mkt_cap, exchange = "", "Desconhecido", 0, ""
+
+        # Valores por defeito (evitam que uma falha do Yahoo rebente o relatório inteiro)
+        sufixos_eur = ('.LS', '.PA', '.DE', '.MC', '.AS', '.BR', '.MI', '.VI', '.IR', '.HE')
+        simb_sniper = "€" if any(ticker.upper().endswith(s) for s in sufixos_eur) else "$"
+        info = {}
+        tk = yg.ticker(ticker)
         
         if fmp_key:
             try:
@@ -1249,8 +1254,7 @@ def api_sniper(ticker, timeframe):
                 pass
 
         try:
-            tk = yf.Ticker(ticker)
-            info = tk.info
+            info = yg.info(ticker)  # cache de 24h em disco (1 único pedido por dia por ticker)
 
             # Detetar moeda oficial do ativo
             moeda_ativo = "USD"
@@ -1259,7 +1263,6 @@ def api_sniper(ticker, timeframe):
             except:
                 pass
                 
-            sufixos_eur = ('.LS', '.PA', '.DE', '.MC', '.AS', '.BR', '.MI', '.VI', '.IR', '.HE')
             if moeda_ativo == 'EUR' or any(ticker.upper().endswith(s) for s in sufixos_eur):
                 simb_sniper = "€"
             else:
@@ -1267,7 +1270,7 @@ def api_sniper(ticker, timeframe):
             
             
             if mkt_cap == 0 or mkt_cap is None:
-                mkt_cap = float(info.get('marketCap', 0))
+                mkt_cap = float(info.get('marketCap') or 0)
             if exchange == "":
                 exchange = info.get('exchange', '')
                 
@@ -1286,10 +1289,8 @@ def api_sniper(ticker, timeframe):
         # --- NOVA CASCATA E MÉTRICAS FINANCEIRAS ---
         eps_atual, gross_margin, net_margin_final, debt_equity = "N/A", "N/A", "N/A", "N/A"
         waterfall_data = {}
+        inc_stmt = None  # reaproveitado mais abaixo no motor de valuation (evita pedir 2 vezes)
         try:
-            tk = yf.Ticker(ticker)
-            info = tk.info
-            
             eps_val = info.get('trailingEps')
             eps_atual = f"{eps_val:.2f}" if eps_val else "N/A"
             
@@ -1302,11 +1303,11 @@ def api_sniper(ticker, timeframe):
             de_val = info.get('debtToEquity')
             debt_equity = f"{de_val:.2f}%" if de_val else "N/A"
 
-            inc_stmt = tk.income_stmt
-            if inc_stmt.empty:
-                inc_stmt = tk.financials
+            inc_stmt = yg.chamar(lambda: tk.income_stmt)
+            if inc_stmt is None or inc_stmt.empty:
+                inc_stmt = yg.chamar(lambda: tk.financials)
                 
-            if not inc_stmt.empty:
+            if inc_stmt is not None and not inc_stmt.empty:
                 col = inc_stmt.columns[0] 
                 
                 def safe_get(chaves):
@@ -1355,16 +1356,16 @@ def api_sniper(ticker, timeframe):
             pe_min_5y = 0
             if pe_ratio > 0:
                 try:
-                    inc = tk.income_stmt
+                    inc = inc_stmt if inc_stmt is not None else yg.chamar(lambda: tk.income_stmt)
                     eps_history = None
-                    if not inc.empty:
+                    if inc is not None and not inc.empty:
                         if 'Diluted EPS' in inc.index:
                             eps_history = inc.loc['Diluted EPS'].dropna()
                         elif 'Basic EPS' in inc.index:
                             eps_history = inc.loc['Basic EPS'].dropna()
                             
                     if eps_history is not None and len(eps_history) > 0:
-                        hist = tk.history(period="5y", interval="1mo")
+                        hist = yg.historico(ticker, period="5y", interval="1mo")
                         pe_historicos = []
                         for data_eps, eps_val in eps_history.items():
                             if eps_val > 0:
@@ -1392,7 +1393,7 @@ def api_sniper(ticker, timeframe):
         hoje = datetime.date.today()
         
         try:
-            ed = tk.get_earnings_dates(limit=15)
+            ed = yg.chamar(lambda: tk.get_earnings_dates(limit=15))
             if ed is not None and not ed.empty:
                 hoje_ts = pd.Timestamp(hoje)
                 if ed.index.tz is not None:
@@ -1476,11 +1477,15 @@ def api_sniper(ticker, timeframe):
         news_data = []
         
         try:
-            target_consensus = info.get('targetMeanPrice', 0)
+            target_consensus = info.get('targetMeanPrice') or 0
             if target_consensus > 0 and fecho_atual > 0:
                 target_upside = ((target_consensus / fecho_atual) - 1) * 100
+        except:
+            pass
 
-            raw_news = tk.news
+        # Notícias e Insiders em blocos separados: a falha de um já não apaga o outro
+        try:
+            raw_news = yg.chamar(lambda: tk.news)
             if raw_news:
                 for n in raw_news[:3]:
                     if 'content' in n:
@@ -1499,8 +1504,11 @@ def api_sniper(ticker, timeframe):
                     else:
                         data_pub = hoje.strftime('%Y-%m-%d')
                     news_data.append({"title": titulo, "url": link, "date": data_pub})
+        except:
+            pass
 
-            insiders = tk.insider_transactions
+        try:
+            insiders = yg.chamar(lambda: tk.insider_transactions)
             if insiders is not None and not insiders.empty:
                 textos = insiders.head(15).apply(lambda x: ' '.join(str(v) for v in x), axis=1).str.lower()
                 compras = len(textos[textos.str.contains('buy|purchase|award')])
@@ -1600,9 +1608,9 @@ def api_sniper(ticker, timeframe):
             if passou_divida: score_total += 1
 
             # 5. DIVIDENDOS E WALL ST
-            div_yield = info.get('dividendYield', 0)
+            # O Yahoo mudou o formato do dividendYield (fração → percentagem); a função normaliza
+            div_yield = yg.dividend_yield_pct(info)
             if div_yield is not None:
-                div_yield = div_yield * 100
                 if div_yield > 4.0: radar_scores[4] = 5
                 elif div_yield > 2.0: radar_scores[4] = 3
                 elif div_yield > 0: radar_scores[4] = 1
@@ -1861,7 +1869,6 @@ def api_sniper(ticker, timeframe):
 
 @app.route('/api/screener/<universo>/<estrategia>/<int:lote>')
 def api_screener_paginado(universo, estrategia, lote):
-    import yfinance as yf
     import pandas as pd
     import numpy as np
 
@@ -1895,12 +1902,13 @@ def api_screener_paginado(universo, estrategia, lote):
 
     try:
         string_tickers = " ".join(lote_atual)
-        # O yfinance descarrega apenas as 50 ações e o Python processa-as em <3 segundos!
-        dados = yf.download(string_tickers, period="1y", interval="1d", group_by="ticker", threads=True, progress=False)
+        # Lote de 50 ações descarregado de forma sequencial e protegida (cache de 5 min + disjuntor).
+        # Se o Yahoo bloquear, a exceção YahooIndisponivel devolve erro e o frontend pára o ciclo.
+        dados = yg.download(string_tickers, period="1y", interval="1d", group_by="ticker")
         
         for ticker in lote_atual:
             try:
-                df = dados.dropna() if len(lote_atual) == 1 else dados[ticker].dropna()
+                df = yg.fatia(dados, ticker).dropna().copy()
                 if df.empty or len(df) < 200: 
                     continue 
 
@@ -1946,7 +1954,7 @@ def api_screener_paginado(universo, estrategia, lote):
                     
                     if universo != 'cripto': # Cripto não tem EPS ou Cash Flow
                         try:
-                            info = yf.Ticker(ticker).info
+                            info = yg.info(ticker)  # cache de 24h em disco
                             eps = info.get('trailingEps', 0)
                             fcf = info.get('freeCashflow', 0)
                             peg = info.get('pegRatio', 0)
@@ -2011,7 +2019,6 @@ def api_screener_paginado(universo, estrategia, lote):
 @cache.cached(timeout=60) # Timeout mais curto (60s) devido à volatilidade cripto
 def api_sniper_cripto(ticker, timeframe):
     import numpy as np
-    import yfinance as yf
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
@@ -2033,7 +2040,9 @@ def api_sniper_cripto(ticker, timeframe):
     # ==========================================================
 
     try:
-        df = yf.Ticker(ticker).history(period=periodo, interval=intervalo)
+        df = yg.historico(ticker, period=periodo, interval=intervalo)
+        if df is None or df.empty:
+            return jsonify({"erro": "Sem dados para este criptoativo. Tenta adicionar '-USD' (Ex: SOL-USD)."}), 404
         df = df.dropna(subset=['Close', 'High', 'Low'])
         
         if df.empty:
@@ -2246,7 +2255,6 @@ def webhook_duelo():
 @app.route('/api/risco/portfolio', methods=['POST'])
 @cache.cached(timeout=3600, key_prefix=lambda: f"risco_{hash(str(request.json))}")
 def api_risco_portfolio():
-    import yfinance as yf
     import pandas as pd
     import numpy as np
     
@@ -2274,18 +2282,26 @@ def api_risco_portfolio():
     
     try:
         # Download de 1 ano de histórico para ter relevância estatística
-        df = yf.download(tickers_api, period="1y", interval="1d", group_by="ticker", progress=False)
+        df = yg.download(tickers_api, period="1y", interval="1d", group_by="ticker")
+        if df is None or df.empty:
+            return jsonify({"erro": "Sem dados de mercado para calcular o risco neste momento."}), 503
         
         # Constrói um DataFrame limpo apenas com os fechos (Close)
         df_close = pd.DataFrame()
-        if len(tickers_api) == 1:
-            df_close[tickers_api[0]] = df['Close']
-        else:
-            for t in tickers_api:
-                if t in df.columns.levels[0]:
-                    df_close[t] = df[t]['Close']
-                else:
-                    df_close[t] = df['Close'] # Fallback para 1 ticker (yfinance bug)
+        for t in tickers_api:
+            fatia_t = yg.fatia(df, t)
+            if not fatia_t.empty and 'Close' in fatia_t.columns and not fatia_t['Close'].dropna().empty:
+                df_close[t] = fatia_t['Close']
+        
+        if '^GSPC' not in df_close.columns:
+            return jsonify({"erro": "Não foi possível obter o S&P 500 de referência."}), 503
+        
+        # Ativos sem histórico (ex.: ticker mal escrito) são ignorados em vez de rebentar a análise
+        tickers = [t for t in tickers if t in df_close.columns]
+        if len(tickers) < 1:
+            return jsonify({"erro": "Nenhum dos ativos do cofre devolveu histórico de preços."}), 400
+        capital_total = sum(alocacao[t] for t in tickers)
+        pesos = {t: alocacao[t] / capital_total for t in tickers}
                     
         df_close = df_close.dropna()
         retornos = df_close.pct_change().dropna()
@@ -2418,6 +2434,83 @@ def api_risco_portfolio():
 
 
 # ==========================================
+# COFRE: COTAÇÕES EM LOTE + RADAR DE MINAS (rotas usadas pelo frontend)
+# ==========================================
+@app.route('/api/cotacoes_lote', methods=['POST'])
+def api_cotacoes_lote():
+    """Todas as cotações do Cofre + câmbio EUR/USD num ÚNICO download em lote (zero rate limit)."""
+    corpo = request.json or {}
+    tickers = sorted({str(t).strip().upper() for t in corpo.get('tickers', []) if str(t).strip()})[:60]
+    if not tickers:
+        return jsonify({"precos": {}, "cambio": None})
+
+    try:
+        dados = yg.download(tickers + ["EURUSD=X"], period="5d", interval="1d")
+    except YahooIndisponivel as e:
+        return jsonify({"precos": {}, "cambio": None, "erro": str(e)}), 503
+
+    precos = {}
+    cambio = None
+    if dados is not None and not dados.empty:
+        fechos = dados['Close']
+        for t in tickers:
+            serie_t = yg.serie(fechos, t).dropna()
+            if not serie_t.empty:
+                precos[t] = round(float(serie_t.iloc[-1]), 5)
+        serie_fx = yg.serie(fechos, "EURUSD=X").dropna()
+        if not serie_fx.empty:
+            cambio = round(float(serie_fx.iloc[-1]), 4)
+
+    return jsonify({"precos": precos, "cambio": cambio})
+
+
+@app.route('/api/radar_eventos_carteira', methods=['POST'])
+def api_radar_eventos_carteira():
+    """Próximos Earnings e Dividend Yield dos lotes abertos (usa o .info com cache de 24h)."""
+    import datetime as _dt
+
+    corpo = request.json or {}
+    tickers = sorted({str(t).strip().upper() for t in corpo.get('tickers', []) if str(t).strip()})[:40]
+    hoje = _dt.date.today()
+    eventos = []
+
+    for t in tickers:
+        if "-" in t:  # Cripto não tem calendário corporativo
+            continue
+        try:
+            info = yg.info(t)
+        except YahooIndisponivel:
+            break  # pausa de proteção: devolve o que já tiver, sem insistir
+        except Exception:
+            continue
+
+        dias_earnings, earnings_data = None, None
+        if info.get('quoteType') != 'ETF':
+            candidatos = []
+            for chave in ('earningsTimestampStart', 'earningsTimestamp', 'earningsTimestampEnd'):
+                ts = info.get(chave)
+                if isinstance(ts, (int, float)) and ts > 0:
+                    data = _dt.datetime.fromtimestamp(ts).date()
+                    if data >= hoje:
+                        candidatos.append(data)
+            if candidatos:
+                proxima = min(candidatos)
+                dias_earnings = (proxima - hoje).days
+                earnings_data = proxima.strftime('%d/%m/%Y')
+
+        eventos.append({
+            "ticker": t,
+            "dias_earnings": dias_earnings,
+            "earnings_data": earnings_data,
+            "div_yield": round(yg.dividend_yield_pct(info), 2)
+        })
+
+    # Os mais próximos primeiro (sem data no fim)
+    eventos.sort(key=lambda e: e['dias_earnings'] if e['dias_earnings'] is not None else 99999)
+    return jsonify({"eventos": eventos})
+
+
+# ==========================================
 # MOTOR DE VIGIA (GATILHO EXTERNO / CRON)
 # ==========================================
 import threading
@@ -2435,9 +2528,15 @@ def disparar_vigia_remota(token_secreto):
         # Importamos o ficheiro que criaste na Fase 3
         import motor_vigia
         
+        # TRAVÃO ANTI-LOOP: se já estiver a correr, se correu há pouco tempo, ou se o Yahoo
+        # estiver em pausa de proteção, responde logo sem lançar mais nenhuma thread.
+        pode, motivo = motor_vigia.pode_executar_agora()
+        if not pode:
+            return jsonify({"sucesso": False, "mensagem": motivo}), 200
+        
         # Executamos o motor em Background (Thread paralela)
         # Isto é vital para o Cron não dar "Timeout" enquanto espera pela API do Yahoo
-        threading.Thread(target=motor_vigia.processar_vigia).start()
+        threading.Thread(target=motor_vigia.processar_vigia, daemon=True).start()
         
         return jsonify({"sucesso": True, "mensagem": "Motor de Vigia iniciado em background."}), 200
     except Exception as e:
@@ -2451,8 +2550,7 @@ def disparar_vigia_remota(token_secreto):
 def api_fair_value_lab(ticker):
 
     try:
-        tk = yf.Ticker(ticker)
-        info = tk.info
+        info = yg.info(ticker)  # cache de 24h em disco
         
         if not info or ('regularMarketPrice' not in info and 'currentPrice' not in info and 'previousClose' not in info and 'trailingEps' not in info):
             return jsonify({"erro": f"Ticker '{ticker}' não encontrado ou sem dados disponíveis no Yahoo Finance."}), 400
@@ -2583,6 +2681,19 @@ def guardar_dados_liga(dados):
     except Exception as e:
         print(f"Erro ao guardar Liga: {e}")
 
+# ==========================================
+# CACHE DA LIGA (ANTES: recalculava 3 históricos por carteira em CADA abertura do separador)
+# ==========================================
+LIGA_CACHE_NORMAL_SEG = 15 * 60   # abrir o separador usa a classificação guardada até 15 min
+LIGA_CACHE_FORCADO_SEG = 60       # o botão "Recalcular" só volta a ir ao Yahoo passado 1 min
+_liga_ultimo_calculo = {}         # {mes_ref: timestamp}
+_liga_lock = threading.Lock()
+
+
+def _ordenar_liga(carteiras_mes):
+    return sorted(carteiras_mes.values(), key=lambda x: x.get('score_total', 0), reverse=True)
+
+
 def atualizar_pontuacoes_liga(mes_ref, dados_liga):
     if mes_ref not in dados_liga or not dados_liga[mes_ref]:
         return []
@@ -2590,15 +2701,20 @@ def atualizar_pontuacoes_liga(mes_ref, dados_liga):
     inicio_mes = f"{mes_ref}-01"
     carteiras_mes = dados_liga[mes_ref]
 
+    # ANTES: 1 pedido por slot de cada carteira (20 membros = 60 pedidos).
+    # AGORA: 1 único download em lote com os tickers únicos de todas as carteiras.
+    tickers_unicos = sorted({s['ticker'] for c in carteiras_mes.values() for s in c['slots']})
+    dados_mes = yg.download(tickers_unicos, start=inicio_mes, interval="1d", group_by="ticker")
+
     for uid, c in carteiras_mes.items():
         ret_soma = 0.0
         bonus_soma = 0.0
 
         for s in c['slots']:
             try:
-                df = yf.Ticker(s['ticker']).history(start=inicio_mes)
+                df = yg.fatia(dados_mes, s['ticker']).dropna(subset=['Close'])
                 if df.empty:
-                    continue
+                    raise ValueError("sem dados")
                 p_atual = float(df['Close'].iloc[-1])
                 max_m = float(df['High'].max())
                 min_m = float(df['Low'].min())
@@ -2623,23 +2739,48 @@ def atualizar_pontuacoes_liga(mes_ref, dados_liga):
                 ret_soma += ret
                 bonus_soma += bonus_slot
             except Exception:
-                pass
+                # Sem dados novos para este slot: mantém o último valor conhecido em vez de o zerar
+                ret_soma += float(s.get('ret', 0.0) or 0.0)
+                bonus_soma += float(s.get('bonus', 0.0) or 0.0)
 
         c['retorno_base'] = round(ret_soma / 3.0, 2)
         c['bonus_total'] = round(bonus_soma, 2)
         c['score_total'] = round(c['retorno_base'] + c['bonus_total'], 2)
 
     guardar_dados_liga(dados_liga)
-    lista_ordenada = sorted(carteiras_mes.values(), key=lambda x: x.get('score_total', 0), reverse=True)
-    return lista_ordenada
+    return _ordenar_liga(carteiras_mes)
+
+
+def obter_ranking_liga(mes_ref, dados_liga, forcar=False):
+    """Devolve a classificação, só indo ao Yahoo quando a cache expirou.
+    Se o Yahoo estiver em pausa de proteção, devolve a última classificação guardada."""
+    carteiras_mes = dados_liga.get(mes_ref, {})
+    if not carteiras_mes:
+        return []
+
+    validade = LIGA_CACHE_FORCADO_SEG if forcar else LIGA_CACHE_NORMAL_SEG
+    idade = time.time() - _liga_ultimo_calculo.get(mes_ref, 0)
+    if idade < validade or yg.esta_bloqueado():
+        return _ordenar_liga(carteiras_mes)
+
+    # Só um recálculo de cada vez: pedidos simultâneos usam a classificação guardada
+    if not _liga_lock.acquire(blocking=False):
+        return _ordenar_liga(carteiras_mes)
+    try:
+        _liga_ultimo_calculo[mes_ref] = time.time()
+        return atualizar_pontuacoes_liga(mes_ref, dados_liga)
+    except YahooIndisponivel:
+        return _ordenar_liga(carteiras_mes)
+    finally:
+        _liga_lock.release()
 
 
 @app.route('/api/info_rapida/<ticker>')
 @cache.cached(timeout=86400)
 def api_info_rapida(ticker):
     try:
-        info = yf.Ticker(ticker).info
-        mcap = float(info.get('marketCap', 0))
+        info = yg.info(ticker)  # cache de 24h em disco
+        mcap = float(info.get('marketCap') or 0)
         preco = float(info.get('currentPrice') or info.get('regularMarketPrice') or info.get('previousClose') or 0)
         qtype = info.get('quoteType', '')
         setor = "ETF" if qtype == 'ETF' else info.get('sector', 'Desconhecido')
@@ -2682,10 +2823,9 @@ def api_liga():
 
     if request.method == 'GET':
         try:
-            if request.args.get('atualizar') == '1' or len(dados_liga[mes_ref]) > 0:
-                lista = atualizar_pontuacoes_liga(mes_ref, dados_liga)
-            else:
-                lista = list(dados_liga[mes_ref].values())
+            # Abrir o separador usa a cache (15 min); o botão "Recalcular" força (no máx. 1x/min)
+            forcar = request.args.get('atualizar') == '1'
+            lista = obter_ranking_liga(mes_ref, dados_liga, forcar=forcar)
 
             lista_segura = []
             for c in lista:
@@ -2734,7 +2874,8 @@ def api_liga():
 
     for idx, (tk_str, alvo, escalao_exigido, dist_min) in enumerate(entradas):
         try:
-            info = yf.Ticker(tk_str).info
+            # Preço com no máximo 15 min de idade (o p0 da carteira tem de ser fiel); setor/cap com cache
+            info = yg.info(tk_str, max_idade_seg=15 * 60)
             preco = float(info.get('currentPrice') or info.get('regularMarketPrice') or info.get('previousClose') or 0)
             mcap = float(info.get('marketCap', 0) or 0)
             qtype = info.get('quoteType', '')
@@ -2828,7 +2969,7 @@ def webhook_liga():
     janela_aberta = (agora.day >= 20 or agora.day <= 5)
 
     dados_liga = carregar_dados_liga()
-    ranking = atualizar_pontuacoes_liga(mes_ref, dados_liga)
+    ranking = obter_ranking_liga(mes_ref, dados_liga, forcar=True)
 
     if not ranking:
         return jsonify({"erro": "Não existem carteiras submetidas este mês."}), 400

@@ -1,4 +1,4 @@
-import yfinance as yf
+import yahoo_guard as yg
 import pandas as pd
 import numpy as np
 
@@ -9,10 +9,10 @@ def avaliar_regime_mercado(ticker_indice="^GSPC", periodo="1y"):
     """
     print(f"A extrair dados do índice de referência: {ticker_indice}...")
     
-    indice = yf.Ticker(ticker_indice)
-    df = indice.history(period=periodo)
+    # Acesso protegido (rate limiter + disjuntor + cache de 5 min)
+    df = yg.historico(ticker_indice, period=periodo)
     
-    if df.empty:
+    if df is None or df.empty:
         raise ValueError("Falha na extração de dados. Verifica o ticker.")
 
     # 1. Preparar os dados de preço
