@@ -60,6 +60,17 @@ CACHE_MEMORIA_MAX_ENTRADAS = 400
 CACHE_INFO_FICHEIRO = "cache_info_yahoo.json"
 CACHE_INFO_VALIDADE_SEG = 24 * 3600
 
+# MODO LOTE (scripts noturnos, ex.: newsletters no GitHub Actions): ative-se com YG_MODO=lote.
+# Num servidor web, ao primeiro bloqueio o portal desiste e mostra "em pausa".
+# Num script batch não há ninguém à espera: o melhor é ESPERAR e voltar a tentar.
+MODO_LOTE = os.environ.get("YG_MODO", "").strip().lower() == "lote"
+ESPERA_MAX_LOTE_SEG = int(os.environ.get("YG_ESPERA_MAX_SEG", 25 * 60))  # orçamento total de espera
+TENTATIVAS_LOTE = 3
+if MODO_LOTE:
+    INTERVALO_MIN_SEG = 1.0
+    PAUSA_APOS_BLOQUEIO_SEG = 90
+    PAUSA_MAXIMA_SEG = 10 * 60
+
 
 class YahooIndisponivel(Exception):
     """Lançada quando o disjuntor está aberto ou o Yahoo devolve rate limit."""
@@ -88,6 +99,7 @@ _bloqueado_ate = 0.0
 _falhas_vazias = 0
 _total_pedidos = 0
 _bloqueios_seguidos = 0  # volta a 0 assim que um pedido tem sucesso
+_espera_total_lote = 0.0
 
 
 def estado():
@@ -110,7 +122,13 @@ def esta_bloqueado():
 
 
 def _verificar_disjuntor():
+    global _espera_total_lote
     restante = _bloqueado_ate - time.time()
+    if restante > 0 and MODO_LOTE and _espera_total_lote + restante <= ESPERA_MAX_LOTE_SEG:
+        print(f"[yahoo_guard] Modo lote: a aguardar {int(restante)}s que o Yahoo levante o limite...")
+        time.sleep(restante)
+        _espera_total_lote += restante
+        return
     if restante > 0:
         raise YahooIndisponivel(
             f"Fonte de dados em pausa de proteção ({int(restante // 60) + 1} min restantes). Tenta mais tarde."
@@ -138,7 +156,9 @@ def _abrir_disjuntor(motivo):
     _bloqueios_seguidos += 1
     _bloqueado_ate = time.time() + pausa
     _falhas_vazias = 0
-    print(f"[yahoo_guard] DISJUNTOR ABERTO ({motivo}). Bloqueio n.º {_bloqueios_seguidos}, pausa de {pausa // 60} min.")
+    print(f"[yahoo_guard] DISJUNTOR ABERTO ({motivo}). Bloqueio n.º {_bloqueios_seguidos}, pausa de {int(pausa)}s.")
+    if MODO_LOTE:
+        return  # em modo lote não desiste: a próxima chamada espera pela pausa e tenta de novo
     raise YahooIndisponivel(f"O Yahoo Finance limitou os pedidos. Pausa automática de proteção ativada ({pausa // 60} min).")
 
 
@@ -155,17 +175,21 @@ def _parece_bloqueio(erro):
 
 def _chamar(fn):
     global _bloqueios_seguidos
-    _esperar_vez()
-    try:
-        resultado = fn()
-        _bloqueios_seguidos = 0  # o Yahoo respondeu: o bloqueio acabou
-        return resultado
-    except YahooIndisponivel:
-        raise
-    except Exception as e:
-        if _parece_bloqueio(e):
-            _abrir_disjuntor(type(e).__name__)
-        raise
+    tentativas = TENTATIVAS_LOTE if MODO_LOTE else 1
+    for _ in range(tentativas):
+        _esperar_vez()
+        try:
+            resultado = fn()
+            _bloqueios_seguidos = 0  # o Yahoo respondeu: o bloqueio acabou
+            return resultado
+        except YahooIndisponivel:
+            raise
+        except Exception as e:
+            if _parece_bloqueio(e):
+                _abrir_disjuntor(type(e).__name__)  # no modo normal isto lança a exceção
+                continue                            # no modo lote: espera e tenta outra vez
+            raise
+    raise YahooIndisponivel("O Yahoo continua a limitar os pedidos após várias tentativas.")
 
 
 def chamar(fn):
@@ -231,6 +255,16 @@ def historico(simbolo, **kwargs):
     return _copia(df)
 
 
+def _erros_rate_limit_download():
+    try:
+        import importlib
+        shared = importlib.import_module("yfinance.shared")
+        erros = getattr(shared, "_ERRORS", {}) or {}
+        return [t for t, e in erros.items() if _parece_bloqueio(Exception(str(e)))]
+    except Exception:
+        return []
+
+
 def download(tickers, usar_cache=True, **kwargs):
     """usar_cache=False: para downloads grandes e únicos (ex.: snapshot diário) que não devem
     ocupar a cache de memória partilhada."""
@@ -248,7 +282,16 @@ def download(tickers, usar_cache=True, **kwargs):
     if _DOWNLOAD_ACEITA_SESSION and SESSAO is not None:
         kw["session"] = SESSAO
     alvo = lista[0] if len(lista) == 1 else lista
-    df = _chamar(lambda: yf.download(alvo, **kw))
+
+    def _descarregar():
+        resultado = yf.download(alvo, **kw)
+        # O yf.download não lança exceções: guarda os erros por ticker num dicionário interno.
+        # Se algum foi "Too Many Requests", tratamos como bloqueio (em vez de dados em falta).
+        if _erros_rate_limit_download():
+            raise YFRateLimitError("Too Many Requests (detetado no yf.download)")
+        return resultado
+
+    df = _chamar(_descarregar)
 
     global _falhas_vazias
     if df is None or df.empty:
