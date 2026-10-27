@@ -1,6 +1,6 @@
 """
 yahoo_guard.py — Camada única de acesso ao Yahoo Finance para o Portal Bolsa.
-
+ 
 Objetivo: nunca mais um ciclo descontrolado conseguir "queimar" o IP do servidor.
 
 O que faz:
