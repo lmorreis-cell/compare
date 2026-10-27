@@ -52,7 +52,8 @@ except ImportError:  # versões muito antigas
 # CONFIGURAÇÃO
 # ---------------------------------------------------------------
 INTERVALO_MIN_SEG = 0.6            # espaço mínimo entre dois pedidos ao Yahoo
-PAUSA_APOS_BLOQUEIO_SEG = 15 * 60  # quanto tempo o disjuntor fica aberto após um 429
+PAUSA_APOS_BLOQUEIO_SEG = 15 * 60  # pausa após o 1.º bloqueio
+PAUSA_MAXIMA_SEG = 2 * 3600        # a pausa duplica a cada bloqueio seguido (15 → 30 → 60 → 120 min)
 FALHAS_VAZIAS_PARA_DISPARAR = 3    # downloads em lote vazios seguidos que contam como bloqueio
 CACHE_MEMORIA_SEG = 300            # validade da cache de históricos/downloads
 CACHE_MEMORIA_MAX_ENTRADAS = 400
@@ -86,6 +87,7 @@ _ultimo_pedido = 0.0
 _bloqueado_ate = 0.0
 _falhas_vazias = 0
 _total_pedidos = 0
+_bloqueios_seguidos = 0  # volta a 0 assim que um pedido tem sucesso
 
 
 def estado():
@@ -94,6 +96,7 @@ def estado():
     return {
         "bloqueado": restante > 0,
         "segundos_restantes": restante,
+        "bloqueios_seguidos": _bloqueios_seguidos,
         "falhas_vazias": _falhas_vazias,
         "pedidos_desde_arranque": _total_pedidos,
         "entradas_cache_memoria": len(_cache_mem),
@@ -128,11 +131,15 @@ def _esperar_vez():
 
 
 def _abrir_disjuntor(motivo):
-    global _bloqueado_ate, _falhas_vazias
-    _bloqueado_ate = time.time() + PAUSA_APOS_BLOQUEIO_SEG
+    global _bloqueado_ate, _falhas_vazias, _bloqueios_seguidos
+    # Recuo exponencial: se o Yahoo continua bloqueado após a pausa, a pausa seguinte é o dobro.
+    # Assim, enquanto o bloqueio durar, o portal só "espreita" o Yahoo umas poucas vezes por dia.
+    pausa = min(PAUSA_APOS_BLOQUEIO_SEG * (2 ** _bloqueios_seguidos), PAUSA_MAXIMA_SEG)
+    _bloqueios_seguidos += 1
+    _bloqueado_ate = time.time() + pausa
     _falhas_vazias = 0
-    print(f"[yahoo_guard] DISJUNTOR ABERTO ({motivo}). Pausa de {PAUSA_APOS_BLOQUEIO_SEG // 60} min.")
-    raise YahooIndisponivel("O Yahoo Finance limitou os pedidos. Pausa automática de proteção ativada (15 min).")
+    print(f"[yahoo_guard] DISJUNTOR ABERTO ({motivo}). Bloqueio n.º {_bloqueios_seguidos}, pausa de {pausa // 60} min.")
+    raise YahooIndisponivel(f"O Yahoo Finance limitou os pedidos. Pausa automática de proteção ativada ({pausa // 60} min).")
 
 
 def _parece_bloqueio(erro):
@@ -147,9 +154,12 @@ def _parece_bloqueio(erro):
 
 
 def _chamar(fn):
+    global _bloqueios_seguidos
     _esperar_vez()
     try:
-        return fn()
+        resultado = fn()
+        _bloqueios_seguidos = 0  # o Yahoo respondeu: o bloqueio acabou
+        return resultado
     except YahooIndisponivel:
         raise
     except Exception as e:
