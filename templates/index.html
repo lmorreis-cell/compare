@@ -879,6 +879,8 @@
         </div>
 
         <div id="screener-resultados" style="display: none;">
+            <!-- ORIGEM DOS DADOS + HISTÓRICO DO SETUP (preenchido pelo JS) -->
+            <div id="screener-fonte" style="display: none; margin-bottom: 15px;"></div>
             <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 15px;">
                 <h3 style="margin: 0; color: #f0f2f5;">Alvos Identificados</h3>
                 <span id="screener-contagem" style="background: #232d3f; padding: 4px 10px; border-radius: 4px; font-size: 12px; color: #58a6ff; font-weight: bold;">0 Encontrados</span>
@@ -1148,6 +1150,75 @@
 
 
             
+        <!-- ⏳ RELÓGIO FISCAL (CONTAGEM DECRESCENTE POR LOTE) -->
+        <div style="background-color: #161b22; border: 1px solid #30363d; border-left: 5px solid #b388ff; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 15px;">
+                <div>
+                    <h4 style="margin: 0; color: #f0f2f5; font-size: 14px; text-transform: uppercase;">
+                        <span class="dica-edu" style="border-bottom: 1px dotted #b388ff;">
+                            ⏳ Relógio Fiscal (Contagem Decrescente por Lote)
+                            <span class="dica-texto" style="width: 400px; text-transform: none; left: 0; transform: none;">
+                                <strong style="color: #b388ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">O Tempo Também Paga Imposto</strong>
+                                Cada lote aberto tem um relógio. Vender um lote com lucro poucos dias antes de um marco temporal pode custar caro: antes de 1 ano de detenção o ganho fica exposto ao risco de <strong>englobamento</strong> (até ~48%), e o modelo fiscal do Cofre aplica exclusões progressivas aos 2, 5 e 8 anos (90%, 80% e 70% tributável).<br><br>
+                                Este painel mostra, lote a lote, quantos dias faltam para o próximo marco e quanto imposto estimas poupar se esperares. Usa as cotações ao vivo do Cofre e o mesmo modelo da Provisão IRS.
+                            </span>
+                        </span>
+                    </h4>
+                    <p style="margin: 4px 0 0 0; font-size: 11px; color: #8b949e;">Quanto custa vender hoje vs. esperar pelo próximo marco temporal? Calculado lote a lote, sem pedidos extra ao mercado.</p>
+                </div>
+                <label style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: #8b949e; cursor: pointer; user-select: none;">
+                    <input type="checkbox" id="relogio-so-lucro" onchange="renderizarRelogioFiscal()" style="cursor: pointer;">
+                    Mostrar só lotes com lucro
+                </label>
+            </div>
+
+            <!-- KPIs DO RELÓGIO -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 15px;">
+                <div style="background: #0d1117; border: 1px solid #30363d; border-left: 4px solid #e3b341; border-radius: 6px; padding: 12px;">
+                    <span class="dica-edu" style="font-size: 10px; color: #8b949e; font-weight: bold; text-transform: uppercase;">
+                        Decisões Urgentes (&lt; 30 dias)
+                        <span class="dica-texto" style="width: 250px; text-transform: none; left: 0; transform: none;">Lotes com lucro latente que atingem um marco fiscal nos próximos 30 dias. Vender antes do marco pode significar pagar mais imposto do que o necessário.</span>
+                    </span>
+                    <div id="relogio-kpi-urgentes" style="font-size: 20px; font-weight: 900; color: #e3b341; margin-top: 4px;">0</div>
+                </div>
+                <div style="background: #0d1117; border: 1px solid #30363d; border-left: 4px solid #d9534f; border-radius: 6px; padding: 12px;">
+                    <span class="dica-edu" style="font-size: 10px; color: #8b949e; font-weight: bold; text-transform: uppercase;">
+                        Lucro em Curto Prazo
+                        <span class="dica-texto" style="width: 250px; text-transform: none; left: 0; transform: none;">Lucro latente em lotes detidos há menos de 1 ano. Se for realizado agora, fica exposto ao risco de englobamento às taxas marginais do IRS.</span>
+                    </span>
+                    <div id="relogio-kpi-curto" style="font-size: 20px; font-weight: 900; color: #d9534f; margin-top: 4px;">€0.00</div>
+                </div>
+                <div style="background: #0d1117; border: 1px solid #30363d; border-left: 4px solid #5cb85c; border-radius: 6px; padding: 12px;">
+                    <span class="dica-edu" style="font-size: 10px; color: #8b949e; font-weight: bold; text-transform: uppercase;">
+                        Poupança Potencial (Esperar)
+                        <span class="dica-texto" style="width: 270px; text-transform: none; left: auto; right: 0; transform: none;">Soma do imposto que estimas poupar se cada lote com lucro só for vendido depois do seu próximo marco. Para lotes em curto prazo, considera o cenário de englobamento no último escalão (48%) face aos 28%.</span>
+                    </span>
+                    <div id="relogio-kpi-poupanca" style="font-size: 20px; font-weight: 900; color: #5cb85c; margin-top: 4px;">até €0.00</div>
+                </div>
+            </div>
+
+            <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 6px; overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 0;">
+                    <thead style="background: #161b22; color: #8b949e; text-align: left;">
+                        <tr>
+                            <th style="padding: 10px; border-bottom: 1px solid #30363d;">Lote</th>
+                            <th style="padding: 10px; border-bottom: 1px solid #30363d;">Escalão Atual</th>
+                            <th style="padding: 10px; border-bottom: 1px solid #30363d; min-width: 170px;">Próximo Marco</th>
+                            <th style="padding: 10px; border-bottom: 1px solid #30363d; text-align: right;">Lucro Latente</th>
+                            <th style="padding: 10px; border-bottom: 1px solid #30363d;">Vender Hoje vs. Esperar</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody-relogio-fiscal">
+                        <tr><td colspan="5" style="padding: 15px; text-align: center; color: #8b949e;">Sem lotes abertos neste perfil.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="margin-top: 10px; font-size: 10px; color: #8b949e; line-height: 1.5;">
+                ⚠️ <strong>FIFO:</strong> vender parte de uma posição consome primeiro o lote mais antigo da mesma carteira e titular — não podes escolher vender só o lote mais recente. Estimativas com base no modelo fiscal do Cofre; confirma sempre a tua situação concreta com um contabilista.
+            </div>
+        </div>
+
         <!-- 📅 NOVO: HISTÓRICO FISCAL (ÚLTIMOS 5 ANOS) -->
         <div style="margin-bottom: 25px;">
             <h4 style="margin: 0 0 15px 0; color: #8b949e; font-size: 13px; text-transform: uppercase;">📅 Histórico Fiscal Anual (Critério de Liquidação AT)</h4>
@@ -4099,7 +4170,9 @@
         let ativosEncontrados = 0;
 
         contagem.innerText = `A iniciar radar quantitativo...`;
-        loadingDiv.innerHTML = `<div style="font-size: 24px; margin-bottom: 10px;">⚙️</div>A processar mercado por lotes de 50 ações. Aguarda...`;
+        loadingDiv.innerHTML = `<div style="font-size: 24px; margin-bottom: 10px;">⚙️</div>A carregar a fotografia diária do mercado... (se ainda não existir, o motor analisa ao vivo por lotes de 50 ações)`;
+        const fonteDiv = document.getElementById('screener-fonte');
+        if (fonteDiv) { fonteDiv.style.display = 'none'; fonteDiv.innerHTML = ''; }
 
         while (!concluido) {
             try {
@@ -4113,6 +4186,9 @@
 
                 const dados = await resposta.json();
                 if(dados.erro) throw new Error(dados.erro);
+
+                // Selo de origem (instantâneo vs. ao vivo) + histórico do setup
+                if (loteAtual === 0) renderizarFonteScreener(dados, estrategia);
 
                 // Se encontrou ativos neste pequeno lote, desenha-os JÁ no ecrã!
                 if (dados.resultados && dados.resultados.length > 0) {
@@ -4187,6 +4263,85 @@
         } else if (concluido) {
             contagem.innerText = `${ativosEncontrados} Alvos Táticos Aprovados`;
         }
+    }
+
+    // ==========================================
+    // SELO DO SNAPSHOT DIÁRIO + HISTÓRICO DO SETUP (TRACK RECORD)
+    // ==========================================
+    function renderizarFonteScreener(dados, estrategia) {
+        const div = document.getElementById('screener-fonte');
+        if (!div) return;
+
+        if (dados.fonte !== 'snapshot') {
+            div.innerHTML = `
+                <div style="background: rgba(88, 166, 255, 0.06); border: 1px solid #30363d; border-left: 4px solid #58a6ff; border-radius: 6px; padding: 10px 14px; font-size: 12px; color: #c9d1d9;">
+                    📡 <strong>Análise ao vivo</strong> — a fotografia diária do mercado ainda não está disponível. Fica pronta automaticamente depois do fecho de Wall Street.
+                </div>`;
+            div.style.display = 'block';
+            return;
+        }
+
+        const fmtData = (iso) => { try { return new Date(iso).toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', year: 'numeric' }); } catch (e) { return iso; } };
+        const fmtPct = (v) => (v === null || v === undefined) ? 'N/A' : `${v >= 0 ? '+' : ''}${Number(v).toFixed(2)}%`;
+        const corPct = (v) => (v === null || v === undefined) ? '#8b949e' : (v >= 0 ? '#5cb85c' : '#d9534f');
+
+        let htmlTrack = '';
+        const tr = dados.track_record;
+        if (tr && (tr.s5 || tr.s20)) {
+            const isSqueeze = estrategia === 'squeeze';
+            const bloco = (titulo, st) => {
+                if (!st) return `<div style="flex: 1; min-width: 150px; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 10px;"><span style="font-size: 10px; color: #8b949e; text-transform: uppercase; font-weight: bold;">${titulo}</span><div style="color: #8b949e; margin-top: 4px;">Sem dados suficientes</div></div>`;
+                const principal = isSqueeze
+                    ? `<span style="color: #b388ff;">±${Number(st.media_abs).toFixed(2)}%</span><span style="font-size: 10px; color: #8b949e; font-weight: normal;"> movimento médio</span>`
+                    : `<span style="color: ${corPct(st.media)};">${fmtPct(st.media)}</span><span style="font-size: 10px; color: #8b949e; font-weight: normal;"> retorno médio</span>`;
+                const secundario = isSqueeze
+                    ? `Mediana: ±${Number(st.mediana_abs).toFixed(2)}% · ${st.n} sinais`
+                    : `${Number(st.taxa_acerto).toFixed(0)}% dos sinais positivos · ${st.n} sinais`;
+                return `
+                    <div style="flex: 1; min-width: 150px; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 10px;">
+                        <span style="font-size: 10px; color: #8b949e; text-transform: uppercase; font-weight: bold;">${titulo}</span>
+                        <div style="font-size: 16px; font-weight: 900; margin-top: 4px;">${principal}</div>
+                        <div style="font-size: 10px; color: #8b949e; margin-top: 2px;">${secundario}</div>
+                    </div>`;
+            };
+
+            const recentes = (tr.recentes || []).slice(0, 8).map(r => `
+                <span style="display: inline-flex; align-items: center; gap: 6px; background: #0d1117; border: 1px solid #30363d; border-radius: 12px; padding: 3px 10px; font-size: 11px;">
+                    <strong style="color: #fff; font-family: monospace;">${r.ticker}</strong>
+                    <span style="color: #8b949e;">${r.pos === 0 ? 'hoje' : `há ${r.pos} sess.`}</span>
+                    <strong style="color: ${isSqueeze ? '#b388ff' : corPct(r.desde)};">${r.pos === 0 ? '—' : (isSqueeze ? `±${Math.abs(r.desde).toFixed(1)}%` : fmtPct(r.desde))}</strong>
+                </span>`).join('');
+
+            htmlTrack = `
+                <div style="margin-top: 12px; border-top: 1px dashed #30363d; padding-top: 12px;">
+                    <span class="dica-edu" style="font-size: 11px; color: #c9d1d9; font-weight: bold; text-transform: uppercase;">
+                        📈 Histórico deste Setup (últimos 12 meses neste universo)
+                        <span class="dica-texto" style="width: 360px; text-transform: none; left: 0; transform: none;">
+                            <strong style="color: #e3b341; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Prova dos 9 do Algoritmo</strong>
+                            Cada vez que este setup disparou num ativo deste universo no último ano (contando só o 1.º dia de cada sinal), medimos o que o preço fez 5 e 20 sessões depois. ${isSqueeze ? 'Como o Squeeze não prevê a direção, mostramos a amplitude média do movimento (para cima ou para baixo).' : 'Um retorno médio positivo com mais de 50% de acertos indica que o setup tem tido vantagem estatística.'}<br><br>
+                            <em>Resultados passados não garantem resultados futuros e não incluem custos de transação.</em>
+                        </span>
+                    </span>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px;">
+                        ${bloco('5 sessões depois', tr.s5)}
+                        ${bloco('20 sessões depois', tr.s20)}
+                    </div>
+                    ${recentes ? `<div style="margin-top: 10px; font-size: 10px; color: #8b949e; text-transform: uppercase; font-weight: bold;">Sinais recentes e desempenho desde então</div><div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px;">${recentes}</div>` : ''}
+                </div>`;
+        }
+
+        div.innerHTML = `
+            <div style="background: rgba(63, 191, 143, 0.06); border: 1px solid #30363d; border-left: 4px solid #3fbf8f; border-radius: 6px; padding: 12px 14px; font-size: 12px; color: #c9d1d9;">
+                <span class="dica-edu" style="border-bottom: 1px dotted #3fbf8f;">
+                    ⚡ <strong style="color: #3fbf8f;">Resultado instantâneo</strong> · Dados do fecho de <strong>${fmtData(dados.data_mercado)}</strong> · ${dados.total_processado} de ${dados.total_universo} ativos analisados
+                    <span class="dica-texto" style="width: 340px; text-transform: none; left: 0; transform: none;">
+                        <strong style="color: #3fbf8f; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Fotografia Diária do Mercado</strong>
+                        Todos os dias, depois do fecho de Wall Street, o motor analisa o universo inteiro de uma só vez e guarda o resultado. Por isso o Screener responde num segundo, sem esperas e sem sobrecarregar as fontes de dados. Os setups usam velas diárias, por isso o fecho anterior é a referência certa.
+                    </span>
+                </span>
+                ${htmlTrack}
+            </div>`;
+        div.style.display = 'block';
     }
 
     // ==========================================
@@ -4906,7 +5061,166 @@
             });
             painelAnos.innerHTML = htmlAnos;
         }
+
+        // Relógio Fiscal: recalcula sempre que o Cofre ou as cotações ao vivo mudam
+        try { renderizarRelogioFiscal(); } catch (e) { console.warn("Relógio Fiscal:", e); }
     }
+    // ==========================================
+    // RELÓGIO FISCAL: CONTAGEM DECRESCENTE POR LOTE (ZERO PEDIDOS AO MERCADO)
+    // ==========================================
+    // Marcos do modelo fiscal do Cofre (os mesmos escalões usados na Provisão IRS)
+    const MARCOS_FISCAIS = [
+        { dias: 365,  nome: '1 ano',  depois: 'Longo Prazo (100% tributável)', fracDepois: 1.0 },
+        { dias: 730,  nome: '2 anos', depois: 'Exclusão de 10% (90% tributável)', fracDepois: 0.9 },
+        { dias: 1825, nome: '5 anos', depois: 'Exclusão de 20% (80% tributável)', fracDepois: 0.8 },
+        { dias: 2920, nome: '8 anos', depois: 'Exclusão de 30% (70% tributável)', fracDepois: 0.7 }
+    ];
+
+    function escalaoFiscalPorDias(dias) {
+        if (dias < 365)  return { nome: 'Curto Prazo (&lt; 1 ano)', frac: 1.0, curto: true,  cor: '#d9534f', inicio: 0 };
+        if (dias < 730)  return { nome: '1–2 anos (100%)',       frac: 1.0, curto: false, cor: '#f28b24', inicio: 365 };
+        if (dias < 1825) return { nome: '2–5 anos (90%)',        frac: 0.9, curto: false, cor: '#e3b341', inicio: 730 };
+        if (dias < 2920) return { nome: '5–8 anos (80%)',        frac: 0.8, curto: false, cor: '#5cb85c', inicio: 1825 };
+        return               { nome: '8+ anos (70%)',            frac: 0.7, curto: false, cor: '#3fbf8f', inicio: 2920 };
+    }
+
+    function renderizarRelogioFiscal() {
+        const tbody = document.getElementById('tbody-relogio-fiscal');
+        if (!tbody) return;
+
+        const filtroSuj = document.getElementById('filtro-sujeito-global') ? document.getElementById('filtro-sujeito-global').value : 'TODOS';
+        const soLucro = document.getElementById('relogio-so-lucro') ? document.getElementById('relogio-so-lucro').checked : false;
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+        const fmtEur = (v) => `€${Math.abs(v).toFixed(2)}`;
+        const fmtData = (d) => d.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+        const lotes = cofreAbertas.filter(l => l.qtdRestante > 0 && (filtroSuj === 'TODOS' || (l.sujeito || 'A') === filtroSuj));
+
+        let urgentes = 0, lucroCurto = 0, poupancaTotal = 0;
+        let linhas = [];
+
+        lotes.forEach(lote => {
+            const dataCompra = new Date(lote.data);
+            if (isNaN(dataCompra)) return;
+            dataCompra.setHours(0, 0, 0, 0);
+            const dias = Math.max(0, Math.floor((hoje - dataCompra) / 86400000));
+            const escalao = escalaoFiscalPorDias(dias);
+
+            // Lucro latente com as mesmas cotações e câmbio ao vivo do resto do Cofre
+            const temCotacao = cachePrecosAtuais[lote.ticker] !== undefined;
+            const precoMercado = temCotacao ? cachePrecosAtuais[lote.ticker] : lote.precoCompraOriginal;
+            const cambioAtual = lote.moeda === 'USD' ? cacheCambioLive : 1.0;
+            const custoEUR = lote.qtdRestante * lote.precoCompraEUR;
+            const valorEUR = (lote.qtdRestante * precoMercado) / cambioAtual;
+            const pnl = valorEUR - custoEUR;
+
+            const marco = MARCOS_FISCAIS.find(m => dias < m.dias) || null;
+            const diasFaltam = marco ? marco.dias - dias : null;
+            const dataMarco = marco ? new Date(dataCompra.getTime() + marco.dias * 86400000) : null;
+
+            // Imposto estimado: vender hoje vs. vender depois do próximo marco
+            const impostoHoje28 = pnl > 0 ? pnl * escalao.frac * 0.28 : 0;
+            const impostoHoje48 = (pnl > 0 && escalao.curto) ? pnl * 0.48 : impostoHoje28;
+            const impostoDepois = (pnl > 0 && marco) ? pnl * marco.fracDepois * 0.28 : impostoHoje28;
+            const poupanca28 = Math.max(0, impostoHoje28 - impostoDepois);
+            const poupancaEscudo = Math.max(0, impostoHoje48 - impostoDepois);
+            const poupancaRef = escalao.curto ? poupancaEscudo : poupanca28;
+
+            if (soLucro && !(pnl > 0)) return;
+
+            if (pnl > 0 && marco) {
+                poupancaTotal += poupancaRef;
+                if (diasFaltam <= 30) urgentes++;
+            }
+            if (pnl > 0 && escalao.curto) lucroCurto += pnl;
+
+            // Barra de progresso dentro do escalão atual
+            let barra = '';
+            if (marco) {
+                const total = marco.dias - escalao.inicio;
+                const feito = dias - escalao.inicio;
+                const pct = Math.min(100, Math.max(0, (feito / total) * 100));
+                barra = `
+                    <div style="font-size: 11px; color: #c9d1d9; margin-bottom: 4px;"><strong style="color: #fff;">${marco.nome}</strong> em <strong style="color: ${diasFaltam <= 30 ? '#e3b341' : '#c9d1d9'};">${diasFaltam} dia${diasFaltam !== 1 ? 's' : ''}</strong> <span style="color: #8b949e;">(${fmtData(dataMarco)})</span></div>
+                    <div style="width: 100%; background: #232d3f; border-radius: 4px; height: 6px; overflow: hidden;">
+                        <div style="width: ${pct.toFixed(1)}%; height: 100%; background: ${escalao.cor};"></div>
+                    </div>
+                    <div style="font-size: 9px; color: #8b949e; margin-top: 3px;">Depois: ${marco.depois}</div>`;
+            } else {
+                barra = `<span style="font-size: 11px; color: #3fbf8f; font-weight: bold;">🏁 Escalão máximo de exclusão atingido</span>`;
+            }
+
+            // Veredicto: vender hoje vs. esperar
+            let veredicto = '';
+            let prioridade = 3;
+            if (!temCotacao) {
+                veredicto = `<span style="color: #8b949e;">📡 A aguardar cotação ao vivo...</span>`;
+                prioridade = 4;
+            } else if (pnl <= 0) {
+                veredicto = `<span style="color: #8b949e;">🔴 Em perda — esperar não poupa imposto.</span><br><span style="font-size: 10px; color: #8b949e;">Vê o Caçador de Abate Fiscal acima.</span>`;
+                prioridade = 5;
+            } else if (!marco) {
+                veredicto = `<span style="color: #3fbf8f;">🟢 Já beneficia da exclusão máxima.</span><br><span style="font-size: 10px; color: #8b949e;">IRS estimado se vender hoje: ${fmtEur(impostoHoje28)}</span>`;
+                prioridade = 3;
+            } else if (escalao.curto) {
+                const urgente = diasFaltam <= 45;
+                veredicto = `
+                    <span style="color: ${urgente ? '#e3b341' : '#c9d1d9'}; font-weight: bold;">${urgente ? '⏳ ' : ''}Espera ${diasFaltam} dia${diasFaltam !== 1 ? 's' : ''} para sair do curto prazo</span><br>
+                    <span class="dica-edu" style="font-size: 10px; color: #8b949e;">
+                        Hoje: ${fmtEur(impostoHoje28)} (28%) ou até ${fmtEur(impostoHoje48)} (englobado a 48%)
+                        <span class="dica-texto" style="width: 270px; left: auto; right: 0; transform: none;">A taxa de 28% mantém-se após 1 ano. O que esperar te dá é o <strong>escudo contra o englobamento</strong>: deixas de arriscar que este ganho seja somado aos teus rendimentos e taxado às taxas marginais. Poupança máxima no último escalão: ${fmtEur(poupancaEscudo)}.</span>
+                    </span><br>
+                    <span style="font-size: 10px; color: #5cb85c; font-weight: bold;">Escudo anti-48%: até +${fmtEur(poupancaEscudo)}</span>`;
+                prioridade = urgente ? 1 : 2;
+            } else {
+                const urgente = diasFaltam <= 45;
+                veredicto = `
+                    <span style="color: ${urgente ? '#e3b341' : '#c9d1d9'}; font-weight: bold;">${urgente ? '⏳ ' : ''}Espera ${diasFaltam} dia${diasFaltam !== 1 ? 's' : ''}: poupas ~${fmtEur(poupanca28)}</span><br>
+                    <span style="font-size: 10px; color: #8b949e;">Hoje: ${fmtEur(impostoHoje28)} → depois do marco: ${fmtEur(impostoDepois)}</span>`;
+                prioridade = urgente ? 1 : 2;
+            }
+
+            const simbolo = lote.moeda === 'USD' ? '$' : '€';
+            const corPnl = pnl >= 0 ? '#5cb85c' : '#d9534f';
+            const pnlPct = custoEUR > 0 ? (pnl / custoEUR) * 100 : 0;
+
+            linhas.push({
+                prioridade,
+                ordem: diasFaltam !== null ? diasFaltam : 99999,
+                html: `
+                <tr style="border-bottom: 1px solid #21262d;">
+                    <td style="padding: 10px; vertical-align: top;">
+                        <strong style="color: #fff; font-size: 13px;">${lote.ticker}</strong><br>
+                        <span style="font-size: 10px; color: #8b949e;">${parseFloat(lote.qtdRestante.toFixed(4))} @ ${simbolo}${formatarPreco(lote.precoCompraOriginal)} • ${fmtData(dataCompra)}</span><br>
+                        <span style="font-size: 10px;"><span style="color: #e3b341;">[${lote.carteira || 'Geral'}]</span><span style="color: #58a6ff;">[Suj. ${lote.sujeito || 'A'}]</span></span>
+                    </td>
+                    <td style="padding: 10px; vertical-align: top;">
+                        <span style="display: inline-block; background: ${escalao.cor}22; color: ${escalao.cor}; border: 1px solid ${escalao.cor}; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; white-space: nowrap;">${escalao.nome}</span><br>
+                        <span style="font-size: 10px; color: #8b949e;">Detido há ${dias} dia${dias !== 1 ? 's' : ''}</span>
+                    </td>
+                    <td style="padding: 10px; vertical-align: top;">${barra}</td>
+                    <td style="padding: 10px; text-align: right; vertical-align: top; white-space: nowrap;">
+                        <strong style="color: ${corPnl};">${pnl >= 0 ? '+' : '-'}${fmtEur(pnl)}</strong><br>
+                        <span style="font-size: 10px; color: ${corPnl};">${pnl >= 0 ? '+' : '-'}${Math.abs(pnlPct).toFixed(2)}%</span>
+                    </td>
+                    <td style="padding: 10px; vertical-align: top; font-size: 11px; line-height: 1.5;">${veredicto}</td>
+                </tr>`
+            });
+        });
+
+        // Urgentes primeiro, depois por proximidade do marco; perdas e lotes sem cotação no fim
+        linhas.sort((a, b) => a.prioridade - b.prioridade || a.ordem - b.ordem);
+
+        tbody.innerHTML = linhas.length > 0
+            ? linhas.map(l => l.html).join('')
+            : `<tr><td colspan="5" style="padding: 15px; text-align: center; color: #8b949e;">${soLucro ? 'Nenhum lote com lucro latente neste perfil.' : 'Sem lotes abertos neste perfil.'}</td></tr>`;
+
+        document.getElementById('relogio-kpi-urgentes').innerText = urgentes;
+        document.getElementById('relogio-kpi-curto').innerText = `€${lucroCurto.toFixed(2)}`;
+        document.getElementById('relogio-kpi-poupanca').innerText = `até €${poupancaTotal.toFixed(2)}`;
+    }
+
     // ==========================================
     // SISTEMA DE SEGURANÇA E "DIRTY STATE"
     // ==========================================
