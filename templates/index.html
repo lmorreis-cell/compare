@@ -8145,6 +8145,37 @@ function renderizarCalendarioDiario() {
         <!-- O Javascript injeta os dados de mercado aqui -->
     </div>
 </div>
-    
+
+<script>
+    // ==========================================
+    // ATALHOS DIRETOS (ex.: /interativo#tab-liga abre logo a Liga Mensal)
+    // ==========================================
+    (function () {
+        function botaoDoSeparador(id) {
+            return Array.from(document.querySelectorAll('.tab-btn'))
+                .find(b => (b.getAttribute('onclick') || '').includes("'" + id + "'"));
+        }
+        function abrirPeloHash() {
+            const id = decodeURIComponent((location.hash || '').slice(1));
+            if (!id || !document.getElementById(id)) return;
+            const botao = botaoDoSeparador(id);
+            if (botao && !botao.classList.contains('active')) botao.click(); // corre também os carregamentos do separador
+        }
+        // Mantém o endereço sincronizado para se poder partilhar/recarregar no separador certo
+        document.addEventListener('click', ev => {
+            const botao = ev.target.closest('.tab-btn');
+            if (!botao) return;
+            const m = (botao.getAttribute('onclick') || '').match(/'(tab-[\w-]+)'/);
+            if (m) history.replaceState(null, '', '#' + m[1]);
+        });
+        window.addEventListener('hashchange', abrirPeloHash);
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => setTimeout(abrirPeloHash, 0));
+        } else {
+            setTimeout(abrirPeloHash, 0);
+        }
+    })();
+</script>
+
 </body>
 </html>

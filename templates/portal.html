@@ -1,0 +1,456 @@
+{% extends "portal_base.html" %}
+
+{% block estilos %}
+        /* ---------- BARRA DE TOPO ---------- */
+        .topo {
+            position: sticky; top: 0; z-index: 50;
+            background: rgba(11,14,20,0.82); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--linha);
+        }
+        .topo-inner {
+            max-width: 1120px; margin: 0 auto; padding: 12px 24px;
+            display: flex; align-items: center; justify-content: space-between; gap: 16px;
+        }
+        .topo-acoes { display: flex; align-items: center; gap: 10px; }
+        .chip-user {
+            display: flex; align-items: center; gap: 8px; padding: 4px 12px 4px 4px;
+            border: 1px solid var(--linha); border-radius: 999px; font-size: 13px; color: var(--texto-2);
+        }
+        .avatar {
+            width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
+            background: var(--painel-2); border: 1px solid var(--linha-forte); font-size: 12px; font-weight: 800; color: var(--texto);
+        }
+        .nivel { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; padding: 2px 7px; border-radius: 999px; }
+        .nivel-2 { background: rgba(242,139,36,.14); color: var(--laranja); }
+        .nivel-1 { background: rgba(77,166,255,.14); color: var(--azul); }
+
+        /* Admin integrado na barra */
+        .admin-wrap { position: relative; }
+        .admin-btn {
+            display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 8px; cursor: pointer;
+            background: rgba(242,139,36,.10); border: 1px solid rgba(242,139,36,.35); color: var(--laranja);
+            font-size: 12px; font-weight: 700; font-family: inherit;
+        }
+        .admin-btn .pulso { width: 7px; height: 7px; border-radius: 50%; background: var(--verde); box-shadow: 0 0 0 3px rgba(63,191,143,.2); }
+        .admin-caixa {
+            display: none; position: absolute; top: calc(100% + 8px); right: 0; width: 290px;
+            background: var(--painel); border: 1px solid var(--linha-forte); border-radius: 12px; padding: 14px;
+            box-shadow: 0 16px 40px rgba(0,0,0,.6); text-align: left;
+        }
+        .admin-caixa.aberta { display: block; }
+        .admin-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+        .admin-stat { background: var(--painel-2); border: 1px solid var(--linha); border-radius: 8px; padding: 8px; text-align: center; }
+        .admin-stat b { display: block; font-size: 16px; }
+        .admin-stat span { font-size: 10px; color: var(--mudo); text-transform: uppercase; letter-spacing: .4px; }
+        .admin-caixa h4 { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--mudo); border-bottom: 1px solid var(--linha); padding-bottom: 6px; }
+        .admin-caixa ul { list-style: none; padding: 0; margin: 0 0 12px; font-size: 13px; line-height: 1.8; max-height: 220px; overflow-y: auto; }
+        .admin-caixa li { display: flex; justify-content: space-between; gap: 8px; }
+        .admin-caixa li small { color: var(--azul); font-weight: 700; font-size: 10px; }
+
+        /* ---------- FAIXA DE COTAÇÕES ---------- */
+        .faixa {
+            border-bottom: 1px solid var(--linha); background: rgba(17,22,31,.7);
+            overflow: hidden; white-space: nowrap; height: 36px; display: flex; align-items: center;
+            mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+            -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+        }
+        .faixa-trilho { display: inline-flex; gap: 28px; padding-left: 28px; animation: rolar 60s linear infinite; }
+        .faixa:hover .faixa-trilho { animation-play-state: paused; }
+        @keyframes rolar { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+        .tk { font-size: 12px; display: inline-flex; gap: 7px; align-items: baseline; }
+        .tk b { color: var(--texto); font-weight: 700; }
+        .tk span { color: var(--texto-2); }
+        .tk .sobe { color: var(--verde); font-weight: 700; }
+        .tk .desce { color: var(--vermelho); font-weight: 700; }
+        .tk .tag { font-size: 9px; font-weight: 800; padding: 1px 5px; border-radius: 4px; text-transform: uppercase; letter-spacing: .4px; }
+        .tag-gainer { background: rgba(63,191,143,.14); color: var(--verde); }
+        .tag-loser { background: rgba(242,84,91,.14); color: var(--vermelho); }
+        .faixa-vazia { font-size: 12px; color: var(--mudo); padding-left: 24px; }
+
+        /* ---------- CONTEÚDO ---------- */
+        main { max-width: 1120px; margin: 0 auto; padding: 36px 24px 60px; }
+
+        .hero { display: grid; grid-template-columns: 1fr 340px; gap: 24px; align-items: stretch; margin-bottom: 24px; }
+        .hero-texto { display: flex; flex-direction: column; justify-content: center; }
+        .hero-data { font-size: 12px; font-weight: 700; color: var(--laranja); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+        .hero h1 { font-size: 34px; line-height: 1.15; margin: 0 0 10px; letter-spacing: -0.8px; }
+        .hero p { margin: 0; color: var(--texto-2); font-size: 15px; line-height: 1.6; max-width: 520px; }
+
+        .cartao {
+            background: linear-gradient(180deg, var(--painel-2), var(--painel));
+            border: 1px solid var(--linha); border-radius: var(--raio); padding: 20px;
+            transition: border-color .2s ease, transform .2s ease, box-shadow .2s ease;
+        }
+        a.cartao:hover, .cartao.clicavel:hover { border-color: var(--linha-forte); transform: translateY(-2px); box-shadow: 0 12px 30px rgba(0,0,0,.35); }
+        .rotulo { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .8px; color: var(--mudo); margin: 0 0 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+
+        /* Estado do mercado */
+        .mercado-topo { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; }
+        .regime { font-size: 22px; font-weight: 800; letter-spacing: -0.4px; }
+        .regime-sub { font-size: 12px; color: var(--mudo); }
+        .barra-setores { display: grid; grid-template-columns: repeat(11, 1fr); gap: 3px; margin: 12px 0 14px; }
+        .barra-setores i { height: 8px; border-radius: 2px; background: var(--linha); }
+        .barra-setores i.on { background: var(--verde); }
+        .mercado-linhas { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .metrica { background: rgba(0,0,0,.18); border: 1px solid var(--linha); border-radius: 10px; padding: 10px 12px; }
+        .metrica span { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: .5px; color: var(--mudo); margin-bottom: 3px; }
+        .metrica b { font-size: 18px; }
+        .metrica em { font-style: normal; font-size: 12px; font-weight: 700; margin-left: 6px; }
+        .esqueleto { color: transparent !important; background: linear-gradient(90deg, var(--linha) 25%, var(--linha-forte) 50%, var(--linha) 75%); background-size: 200% 100%; animation: brilho 1.4s infinite; border-radius: 6px; }
+        @keyframes brilho { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+        /* Terminal em destaque */
+        .terminal {
+            position: relative; overflow: hidden; padding: 26px; margin-bottom: 20px;
+            border-color: rgba(242,139,36,.35);
+            background:
+                radial-gradient(600px 240px at 100% 0%, rgba(242,139,36,.12), transparent 70%),
+                linear-gradient(180deg, var(--painel-2), var(--painel));
+        }
+        .terminal-topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; flex-wrap: wrap; margin-bottom: 22px; }
+        .terminal h2 { margin: 0 0 6px; font-size: 22px; letter-spacing: -0.4px; display: flex; align-items: center; gap: 10px; }
+        .terminal p { margin: 0; color: var(--texto-2); font-size: 14px; line-height: 1.55; max-width: 560px; }
+        .selo { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .6px; padding: 3px 8px; border-radius: 999px; background: rgba(242,139,36,.15); color: var(--laranja); }
+        .atalhos { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+        .atalho {
+            display: flex; flex-direction: column; gap: 6px; padding: 14px 12px; border-radius: 11px;
+            background: rgba(0,0,0,.22); border: 1px solid var(--linha); font-size: 13px; font-weight: 700;
+            transition: border-color .15s, background .15s, transform .15s;
+        }
+        .atalho .ic { font-size: 18px; }
+        .atalho small { font-size: 11px; font-weight: 500; color: var(--mudo); line-height: 1.35; }
+        .atalho:hover { border-color: rgba(242,139,36,.5); background: rgba(242,139,36,.06); transform: translateY(-1px); }
+
+        .bloqueado .atalhos { filter: blur(1.5px) grayscale(.6); opacity: .45; pointer-events: none; }
+        .cadeado {
+            position: absolute; inset: auto 26px 26px 26px; display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;
+            background: rgba(11,14,20,.92); border: 1px solid rgba(242,139,36,.45); border-radius: 12px; padding: 14px 18px;
+        }
+        .cadeado b { font-size: 14px; }
+        .cadeado span { font-size: 12px; color: var(--texto-2); display: block; margin-top: 2px; }
+
+        /* Grelha inferior */
+        .grelha { display: grid; grid-template-columns: 1fr 1fr 1.1fr; gap: 20px; }
+        .radar { display: flex; flex-direction: column; gap: 14px; }
+        .radar-cab { display: flex; align-items: center; gap: 12px; }
+        .radar-ic { width: 42px; height: 42px; border-radius: 11px; display: grid; place-items: center; font-size: 20px; }
+        .ic-eu { background: rgba(63,191,143,.13); }
+        .ic-us { background: rgba(77,166,255,.13); }
+        .radar h3 { margin: 0; font-size: 17px; letter-spacing: -0.2px; }
+        .radar p { margin: 0; color: var(--texto-2); font-size: 13px; line-height: 1.55; flex: 1; }
+        .radar-rodape { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; color: var(--mudo); border-top: 1px solid var(--linha); padding-top: 12px; }
+        .radar-rodape .ir { font-weight: 700; }
+        .eu .ir { color: var(--verde); } .us .ir { color: var(--azul); }
+        .nova { font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 999px; background: rgba(63,191,143,.15); color: var(--verde); text-transform: uppercase; letter-spacing: .4px; }
+
+        /* Liga */
+        .liga ol { list-style: none; margin: 0 0 14px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+        .liga li { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 10px; background: rgba(0,0,0,.2); border: 1px solid var(--linha); font-size: 14px; }
+        .liga li.eu-mesmo { border-color: rgba(227,179,65,.5); }
+        .liga .medalha { font-size: 18px; width: 22px; text-align: center; }
+        .liga .nome { flex: 1; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .liga .score { font-weight: 800; }
+        .liga .vazio { font-size: 13px; color: var(--texto-2); line-height: 1.55; margin: 0 0 14px; }
+        .liga .rodape { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--mudo); border-top: 1px solid var(--linha); padding-top: 12px; }
+        .liga .rodape a { color: var(--dourado); font-weight: 700; }
+        .janela { white-space: nowrap; font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 999px; text-transform: uppercase; letter-spacing: .4px; }
+        .janela-on { background: rgba(227,179,65,.15); color: var(--dourado); }
+        .janela-off { background: rgba(125,136,153,.15); color: var(--mudo); }
+
+        footer { max-width: 1120px; margin: 0 auto; padding: 0 24px 40px; font-size: 12px; color: var(--mudo); display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+
+        /* ---------- RESPONSIVO ---------- */
+        @media (max-width: 980px) {
+            .hero { grid-template-columns: 1fr; }
+            .atalhos { grid-template-columns: repeat(3, 1fr); }
+            .grelha { grid-template-columns: 1fr 1fr; }
+            .liga { grid-column: 1 / -1; }
+        }
+        @media (max-width: 620px) {
+            .topo-inner { padding: 10px 16px; }
+            .marca > div:last-child, .chip-user .nome-user, .admin-btn .admin-txt, .admin-btn .admin-online-txt { display: none; }
+            .topo-acoes { gap: 6px; }
+            .tem-admin .chip-user .nivel { display: none; }
+            .tem-admin .chip-user { padding-right: 4px; }
+            .admin-caixa { position: fixed; top: 58px; left: 12px; right: 12px; width: auto; }
+            main { padding: 24px 16px 40px; }
+            .hero h1 { font-size: 26px; }
+            .terminal { padding: 20px; }
+            .atalhos { grid-template-columns: repeat(2, 1fr); }
+            .grelha { grid-template-columns: 1fr; }
+            .cadeado { position: static; margin-top: 16px; }
+            .bloqueado .atalhos { display: none; }
+        }
+{% endblock %}
+
+{% block corpo %}
+<!-- ================= BARRA DE TOPO ================= -->
+<header class="topo">
+    <div class="topo-inner">
+        <a href="/" class="marca">
+            <div class="marca-logo">PB</div>
+            <div>Portal Bolsa<small>partilha de ideias</small></div>
+        </a>
+
+        <div class="topo-acoes{% if is_admin %} tem-admin{% endif %}">
+            {% if is_admin %}
+            <div class="admin-wrap">
+                <button class="admin-btn" id="admin-btn" onclick="verOnline()">
+                    <span class="pulso"></span>
+                    <span class="admin-txt">Admin ·</span> <span id="admin-online">{{ online_agora }}</span><span class="admin-online-txt">&nbsp;online</span>
+                </button>
+                <div class="admin-caixa" id="caixa-online">
+                    <div class="admin-stats">
+                        <div class="admin-stat"><b>{{ online_agora }}</b><span>Online</span></div>
+                        <div class="admin-stat"><b>{{ unicos }}</b><span>Membros</span></div>
+                        <div class="admin-stat"><b>{{ visitas }}</b><span>Visitas</span></div>
+                    </div>
+                    <h4 style="color: var(--verde);">🟢 Em tempo real</h4>
+                    <ul id="lista-online"></ul>
+                    <h4>🕒 Últimos acessos</h4>
+                    <ul id="lista-offline" style="margin-bottom: 0; font-size: 12px; color: var(--texto-2);"></ul>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="chip-user" title="{{ username }}">
+                <div class="avatar">{{ username[:1] | upper }}</div>
+                <span class="nome-user">{{ username }}</span>
+                {% if nivel >= 2 %}<span class="nivel nivel-2">Patrocinador</span>{% else %}<span class="nivel nivel-1">Trader Ativo</span>{% endif %}
+            </div>
+            <a href="/logout" class="btn-secundario">Sair</a>
+        </div>
+    </div>
+</header>
+
+<!-- ================= FAIXA DE COTAÇÕES ================= -->
+<div class="faixa" id="faixa">
+    <div class="faixa-vazia">A carregar cotações…</div>
+</div>
+
+<main>
+    <!-- ================= HERO + ESTADO DO MERCADO ================= -->
+    <section class="hero">
+        <div class="hero-texto">
+            <div class="hero-data" id="hero-data">&nbsp;</div>
+            <h1><span id="saudacao">Olá</span>, {{ username }}.</h1>
+            <p>Relatórios de mercado atualizados, sinais quantitativos e as ferramentas da comunidade num só sítio.</p>
+        </div>
+
+        <div class="cartao" id="cartao-mercado">
+            <div class="rotulo">Estado do mercado (EUA) <span style="font-weight:600; text-transform:none; letter-spacing:0;">Setores &gt; EMA50</span></div>
+            <div class="mercado-topo">
+                <div class="regime esqueleto" id="regime">Risk-on</div>
+                <div class="regime-sub" id="regime-sub"></div>
+            </div>
+            <div class="barra-setores" id="barra-setores">
+                {% for _ in range(11) %}<i></i>{% endfor %}
+            </div>
+            <div class="mercado-linhas">
+                <div class="metrica"><span>Amplitude</span><b id="m-breadth" class="esqueleto">0/11</b></div>
+                <div class="metrica"><span>VIX</span><b id="m-vix" class="esqueleto">00.0</b><em id="m-vix-var"></em></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ================= TERMINAL (DESTAQUE) ================= -->
+    <section class="cartao terminal {% if nivel < 2 %}bloqueado{% endif %}">
+        <div class="terminal-topo">
+            <div>
+                <h2>⚡ Terminal Analítico Integrado <span class="selo">Premium</span></h2>
+                <p>Rotação setorial, screener algorítmico, duelos de ativos, gestão fiscal e de risco. Escolhe por onde queres começar.</p>
+            </div>
+            {% if nivel >= 2 %}
+            <a href="/interativo" class="btn-primario">Abrir terminal →</a>
+            {% endif %}
+        </div>
+
+        <div class="atalhos">
+            <a class="atalho" href="/interativo#tab-radar"><span class="ic">📡</span>Radar Global<small>RRG, regime e sinais</small></a>
+            <a class="atalho" href="/interativo#tab-screener"><span class="ic">🦅</span>Screener<small>Varrimento algorítmico</small></a>
+            <a class="atalho" href="/interativo#tab-acoes"><span class="ic">📈</span>Ações &amp; ETFs<small>Duelos e Sniper</small></a>
+            <a class="atalho" href="/interativo#tab-cofre"><span class="ic">🏛️</span>Cofre Fiscal<small>Carteira e mais-valias</small></a>
+            <a class="atalho" href="/interativo#tab-irs"><span class="ic">⚖️</span>Assistente IRS<small>Mais-valias para a declaração</small></a>
+            <a class="atalho" href="/interativo#tab-risco"><span class="ic">🛡️</span>Risco &amp; Stress<small>Testes à carteira</small></a>
+        </div>
+
+        {% if nivel < 2 %}
+        <div class="cadeado">
+            <div>
+                <b>🔒 Exclusivo Trader Patrocinador</b>
+                <span>O terminal, a watchlist e a Liga Mensal fazem parte do nível Patrocinador no Discord.</span>
+            </div>
+        </div>
+        {% endif %}
+    </section>
+
+    <!-- ================= RADARES + LIGA ================= -->
+    <section class="grelha">
+        <a href="/ver/europa" class="cartao radar eu">
+            <div class="radar-cab">
+                <div class="radar-ic ic-eu">🇪🇺</div>
+                <div><div class="rotulo" style="margin:0 0 2px;">Newsletter</div><h3>Radar Europa</h3></div>
+            </div>
+            <p>Os ativos europeus escolhidos, com momentum, níveis e leitura técnica da semana.</p>
+            <div class="radar-rodape">
+                {% if radares.europa %}
+                <span>Atualizado a {{ radares.europa.data }} {% if radares.europa.nova %}<span class="nova">Nova</span>{% endif %}</span>
+                {% else %}<span>Ainda sem relatório</span>{% endif %}
+                <span class="ir">Ler →</span>
+            </div>
+        </a>
+
+        <a href="/ver/states" class="cartao radar us">
+            <div class="radar-cab">
+                <div class="radar-ic ic-us">🇺🇸</div>
+                <div><div class="rotulo" style="margin:0 0 2px;">Newsletter</div><h3>Radar States</h3></div>
+            </div>
+            <p>A seleção de Wall Street: força relativa, setups ativos e o que vigiar nos EUA.</p>
+            <div class="radar-rodape">
+                {% if radares.states %}
+                <span>Atualizado a {{ radares.states.data }} {% if radares.states.nova %}<span class="nova">Nova</span>{% endif %}</span>
+                {% else %}<span>Ainda sem relatório</span>{% endif %}
+                <span class="ir">Ler →</span>
+            </div>
+        </a>
+
+        <div class="cartao liga">
+            <div class="rotulo">
+                <span>🏆 Liga Mensal · {{ liga.mes_nome }}</span>
+                {% if liga.janela_aberta %}<span class="janela janela-on">Inscrições abertas</span>{% else %}<span class="janela janela-off">Em jogo</span>{% endif %}
+            </div>
+            {% if liga.top %}
+            <ol>
+                {% for c in liga.top %}
+                <li class="{% if c.eu %}eu-mesmo{% endif %}">
+                    <span class="medalha">{{ ['🥇','🥈','🥉'][loop.index0] }}</span>
+                    <span class="nome">{{ c.username }}</span>
+                    <span class="score" style="color: {{ 'var(--verde)' if c.score >= 0 else 'var(--vermelho)' }};">{{ '%+.2f' % c.score }}</span>
+                </li>
+                {% endfor %}
+            </ol>
+            {% else %}
+            <p class="vazio">Ainda ninguém submeteu carteira este mês. As inscrições abrem a dia 20 e fecham a dia 5.</p>
+            {% endif %}
+            <div class="rodape">
+                <span>{{ liga.total }} carteira{{ '' if liga.total == 1 else 's' }} em prova</span>
+                {% if nivel >= 2 %}<a href="/interativo#tab-liga">Ver classificação →</a>{% else %}<span>🔒 Patrocinador</span>{% endif %}
+            </div>
+        </div>
+    </section>
+</main>
+
+<footer>
+    <span>Portal Bolsa · Comunidade Partilha de Ideias</span>
+    <span>Conteúdo educativo. Não constitui recomendação de investimento.</span>
+</footer>
+
+<script>
+    // ---------- Saudação e data (hora local do browser) ----------
+    (function () {
+        const agora = new Date();
+        const h = agora.getHours();
+        document.getElementById('saudacao').textContent = h < 6 ? 'Boa noite' : h < 13 ? 'Bom dia' : h < 20 ? 'Boa tarde' : 'Boa noite';
+        document.getElementById('hero-data').textContent =
+            agora.toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' });
+    })();
+
+    const fmtNum = (v, casas = 2) => Number(v).toLocaleString('pt-PT', { minimumFractionDigits: casas, maximumFractionDigits: casas });
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+    // ---------- Faixa de cotações ----------
+    async function carregarFaixa() {
+        const faixa = document.getElementById('faixa');
+        try {
+            const r = await fetch('/api/ticker_tape');
+            const dados = await r.json();
+            if (!Array.isArray(dados) || dados.length === 0) throw new Error('vazio');
+            const itens = dados.map(d => {
+                const v = Number(d.var) || 0;
+                const tag = d.tipo === 'gainer' ? '<span class="tag tag-gainer">Top</span>'
+                          : d.tipo === 'loser' ? '<span class="tag tag-loser">Flop</span>' : '';
+                return `<span class="tk">${tag}<b>${esc(d.ticker)}</b><span>${fmtNum(d.preco)}</span>` +
+                       `<span class="${v >= 0 ? 'sobe' : 'desce'}">${v >= 0 ? '▲' : '▼'} ${fmtNum(Math.abs(v))}%</span></span>`;
+            }).join('');
+            // Conteúdo duplicado para o loop ser contínuo
+            faixa.innerHTML = `<div class="faixa-trilho">${itens}${itens}</div>`;
+        } catch (e) {
+            faixa.innerHTML = '<div class="faixa-vazia">Cotações temporariamente indisponíveis.</div>';
+        }
+    }
+
+    // ---------- Estado do mercado ----------
+    async function carregarMercado() {
+        const regime = document.getElementById('regime');
+        const sub = document.getElementById('regime-sub');
+        const breadth = document.getElementById('m-breadth');
+        const vix = document.getElementById('m-vix');
+        const vixVar = document.getElementById('m-vix-var');
+        [regime, breadth, vix].forEach(el => el.classList.remove('esqueleto'));
+        try {
+            const r = await fetch('/api/breadth');
+            const d = await r.json();
+            if (!r.ok || d.erro) throw new Error(d.erro || 'erro');
+
+            const n = d.bull_count, total = d.total_setores || 11;
+            let txt, cor, desc;
+            if (n >= 8)      { txt = 'Risk-on';  cor = 'var(--verde)';    desc = 'Participação ampla'; }
+            else if (n >= 4) { txt = 'Misto';    cor = 'var(--dourado)';  desc = 'Mercado seletivo'; }
+            else             { txt = 'Risk-off'; cor = 'var(--vermelho)'; desc = 'Fraqueza generalizada'; }
+            if (d.vix >= 25 && txt !== 'Risk-off') desc = 'Volatilidade elevada';
+
+            regime.textContent = txt; regime.style.color = cor;
+            sub.textContent = desc;
+            breadth.textContent = `${n}/${total}`;
+            document.querySelectorAll('#barra-setores i').forEach((el, i) => el.classList.toggle('on', i < n));
+
+            vix.textContent = fmtNum(d.vix, 1);
+            vix.style.color = d.vix >= 25 ? 'var(--vermelho)' : d.vix >= 18 ? 'var(--dourado)' : 'var(--texto)';
+            const vp = Number(d.vix_pct) || 0;
+            vixVar.textContent = `${vp >= 0 ? '+' : ''}${fmtNum(vp, 1)}%`;
+            vixVar.style.color = vp >= 0 ? 'var(--vermelho)' : 'var(--verde)'; // VIX a subir = medo
+        } catch (e) {
+            regime.textContent = 'Indisponível'; regime.style.color = 'var(--mudo)'; regime.style.fontSize = '18px';
+            sub.textContent = 'Dados de mercado em pausa';
+            breadth.textContent = '—'; vix.textContent = '—';
+        }
+    }
+
+    carregarFaixa();
+    carregarMercado();
+
+    {% if is_admin %}
+    // ---------- Painel de Admin ----------
+    async function verOnline() {
+        const caixa = document.getElementById('caixa-online');
+        const listaOn = document.getElementById('lista-online');
+        const listaOff = document.getElementById('lista-offline');
+        if (caixa.classList.toggle('aberta') === false) return;
+
+        listaOn.innerHTML = '<li style="color: var(--mudo); font-size: 11px;">A varrer servidor…</li>';
+        listaOff.innerHTML = '';
+        try {
+            const resp = await fetch('/api/admin/online');
+            if (!resp.ok) throw new Error('Sem permissão');
+            const dados = await resp.json();
+            document.getElementById('admin-online').textContent = dados.online.length;
+            listaOn.innerHTML = dados.online.length === 0
+                ? '<li style="color: var(--mudo);">Ninguém online.</li>'
+                : dados.online.map(u => `<li><span>👤 <strong>${esc(u)}</strong></span></li>`).join('');
+            listaOff.innerHTML = dados.offline.length === 0
+                ? '<li>Sem histórico registado.</li>'
+                : dados.offline.map(u => `<li><span>${esc(u.nome)}</span><small>${esc(u.tempo)}</small></li>`).join('');
+        } catch (e) {
+            listaOn.innerHTML = '<li style="color: var(--vermelho);">Acesso negado.</li>';
+        }
+    }
+    document.addEventListener('click', ev => {
+        const caixa = document.getElementById('caixa-online');
+        const botao = document.getElementById('admin-btn');
+        if (caixa.classList.contains('aberta') && !caixa.contains(ev.target) && !botao.contains(ev.target)) {
+            caixa.classList.remove('aberta');
+        }
+    });
+    {% endif %}
+</script>
+{% endblock %}
