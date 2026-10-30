@@ -149,14 +149,7 @@ def incrementar_contador():
         pass
     return visitas
 
-# O HTML da barreira (Upsell)
-HTML_UPSELL = """
-<!DOCTYPE html><html><body style="background:#0b0e14; color:#d7dce6; font-family:sans-serif; text-align:center; padding:100px;">
-    <h1 style="color:#f28b24;">Acesso Bloqueado</h1>
-    <p>A ferramenta do Radar Interativo e Comparador de Ativos é um benefício exclusivo dos <strong>Trader Patrocinador</strong>.</p>
-    <a href="/" style="color:#3fbf8f; text-decoration:none;">← Voltar ao Portal</a>
-</body></html>
-"""
+# A página de bloqueio (Upsell) vive em templates/upsell.html
 
 def requer_cargo(nivel_minimo):
     """
@@ -175,7 +168,7 @@ def requer_cargo(nivel_minimo):
                 
             if nivel_atual < nivel_minimo:
                 # Está logado mas não tem cargo suficiente: mostra o Upsell
-                return render_template_string(HTML_UPSELL)
+                return render_template('upsell.html')
                 
             return f(*args, **kwargs)
         return decorated_function
@@ -537,264 +530,125 @@ def api_analisar():
     return jsonify(resposta)
 
 
-# O Dashboard base exige que sejas pelo menos Nível 1 (Trader Ativo)
+# ==========================================
+# PÁGINA INICIAL (templates/portal.html e templates/login.html)
+# ==========================================
+MESES_PT = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
+MESES_PT_LONGO = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho",
+                  "agosto", "setembro", "outubro", "novembro", "dezembro"]
+
+PADROES_RADAR = {
+    "europa": "radar_europeu_escolhidos_*.html",
+    "states": "radar_states_escolhidos_*.html",
+}
+
+
+def _data_do_nome_radar(caminho):
+    """Lê a data escrita no NOME do ficheiro (ex.: ..._27oct26.html). A data de modificação
+    não é fiável: quando a Discloud copia o repositório, todos os ficheiros ficam com a mesma data.
+    Ficheiros sem data no nome ficam em último."""
+    import re as _re
+    m = _re.search(r"_(\d{2})([a-z]{3})(\d{2})\.html$", os.path.basename(caminho).lower())
+    if m:
+        try:
+            return datetime.strptime(f"{m.group(1)}{m.group(2).capitalize()}{m.group(3)}", "%d%b%y")
+        except ValueError:
+            pass
+    return datetime.min
+
+
+def radar_mais_recente(regiao):
+    """Devolve (caminho, data) da newsletter mais recente de uma região, ou (None, None)."""
+    padrao = PADROES_RADAR.get(regiao)
+    lista = glob.glob(padrao) if padrao else []
+    if not lista:
+        return None, None
+    caminho = max(lista, key=lambda c: (_data_do_nome_radar(c), os.path.getmtime(c)))
+    data = _data_do_nome_radar(caminho)
+    if data == datetime.min:
+        data = datetime.fromtimestamp(os.path.getmtime(caminho))
+    return caminho, data
+
+
+def resumo_radares():
+    """Data da última newsletter de cada região, para mostrar nos cartões da página inicial."""
+    hoje = datetime.now().date()
+    resumo = {}
+    for regiao in PADROES_RADAR:
+        _, data = radar_mais_recente(regiao)
+        if data is None:
+            resumo[regiao] = None
+            continue
+        resumo[regiao] = {
+            "data": f"{data.day} {MESES_PT[data.month - 1]}",
+            "nova": (hoje - data.date()).days <= 3,
+        }
+    return resumo
+
+
+def resumo_liga(user_id):
+    """Top 3 da Liga do mês corrente, lido do disco (sem ir ao Yahoo) e sem revelar ativos."""
+    agora = datetime.now()
+    mes_ref = agora.strftime("%Y-%m")
+    try:
+        carteiras = carregar_dados_liga().get(mes_ref, {}) or {}
+    except Exception:
+        carteiras = {}
+    ordenadas = _ordenar_liga(carteiras) if carteiras else []
+    top = [{
+        "username": c.get("username", "Membro"),
+        "score": float(c.get("score_total", 0) or 0),
+        "eu": str(c.get("user_id", "")) == str(user_id),
+    } for c in ordenadas[:3]]
+    return {
+        "mes_nome": MESES_PT_LONGO[agora.month - 1],
+        "top": top,
+        "total": len(ordenadas),
+        "janela_aberta": agora.day >= 20 or agora.day <= 5,
+    }
+
+
 @app.route('/')
-# ATENÇÃO: Retirámos o @requer_cargo daqui para o robô do Discord poder entrar e ler as meta tags!
+# ATENÇÃO: sem @requer_cargo para o robô do Discord poder entrar e ler as meta tags!
 def dashboard_central():
     nivel_atual = session.get('nivel_acesso', 0)
-    user_id = session.get('user_id', '')
 
-    # Lógica de contagem
-    if nivel_atual > 0:
-        total_visitas = incrementar_contador()
-    else:
-        total_visitas = carregar_contador()
-
-    # BLINDAGEM: Converte ambos para string (texto puro) e limpa espaços vazios
-    admin_env = str(ADMIN_USER_ID).strip()
-    user_sess = str(user_id).strip()
-    
-    # Verifica se os IDs batem certo e ignora se estiverem vazios
-    is_admin = (user_sess == admin_env) and (user_sess != "None") and (user_sess != "")
-
-    # Cria a etiqueta visual com Dropdown de Presenças e Histórico
-    badge_admin = ""
-    if is_admin:
-        badge_admin = f"""
-        <div style="position: absolute; top: 20px; left: 20px; z-index: 1000; text-align: left;">
-            <div style="position: relative; display: inline-block;">
-                <button onclick="verOnline()" style="background: #f28b24; color: #121212; border: none; padding: 8px 15px; border-radius: 6px; font-size: 13px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 12px rgba(242, 139, 36, 0.3);">
-                    👑 Admin | {total_visitas} Acessos Globais
-                </button>
-                
-                <!-- A GAVETA SECRETA DIVIDIDA -->
-                <div id="caixa-online" style="display: none; position: absolute; top: 110%; left: 0; background: #1c1e24; border: 1px solid #30363d; border-radius: 6px; padding: 15px; width: 250px; box-shadow: 0 10px 25px rgba(0,0,0,0.8);">
-                    
-                    <h4 style="margin: 0 0 10px 0; color: #5cb85c; font-size: 12px; border-bottom: 1px solid #30363d; padding-bottom: 8px; text-transform: uppercase;">
-                        🟢 Em Tempo Real
-                    </h4>
-                    <ul id="lista-online" style="list-style: none; padding: 0; margin: 0 0 15px 0; font-size: 13px; color: #c9d1d9; line-height: 1.8;">
-                    </ul>
-                    
-                    <h4 style="margin: 0 0 10px 0; color: #8b949e; font-size: 12px; border-bottom: 1px solid #30363d; padding-bottom: 8px; text-transform: uppercase;">
-                        🕒 Últimos Acessos
-                    </h4>
-                    <ul id="lista-offline" style="list-style: none; padding: 0; margin: 0; font-size: 12px; color: #8b949e; line-height: 1.8;">
-                    </ul>
-
-                </div>
-            </div>
-        </div>
-
-        <script>
-            async function verOnline() {{
-                const caixa = document.getElementById('caixa-online');
-                const listaOn = document.getElementById('lista-online');
-                const listaOff = document.getElementById('lista-offline');
-                
-                if (caixa.style.display === 'block') {{
-                    caixa.style.display = 'none';
-                    return;
-                }}
-                
-                caixa.style.display = 'block';
-                listaOn.innerHTML = '<li style="color: #8b949e; font-size: 11px;">A varrer servidor...</li>';
-                listaOff.innerHTML = '';
-                
-                try {{
-                    const resp = await fetch('/api/admin/online');
-                    if (!resp.ok) throw new Error("Sem permissão");
-                    
-                    const dados = await resp.json();
-                    
-                    // 1. Injeta Pessoal Online
-                    if (dados.online.length === 0) {{
-                        listaOn.innerHTML = '<li style="color: #8b949e;">Ninguém online.</li>';
-                    }} else {{
-                        listaOn.innerHTML = dados.online.map(u => `<li>👤 <strong style="color: #fff;">${{u}}</strong></li>`).join('');
-                    }}
-                    
-                    // 2. Injeta Pessoal Offline (Histórico)
-                    if (dados.offline.length === 0) {{
-                        listaOff.innerHTML = '<li>Sem histórico registado.</li>';
-                    }} else {{
-                        listaOff.innerHTML = dados.offline.map(u => `
-                            <li style="display: flex; justify-content: space-between; border-bottom: 1px dashed #30363d; padding: 2px 0;">
-                                <span>👤 ${{u.nome}}</span> 
-                                <span style="font-size: 10px; color: #58a6ff; font-weight: bold;">${{u.tempo}}</span>
-                            </li>
-                        `).join('');
-                    }}
-                    
-                }} catch(e) {{
-                    listaOn.innerHTML = '<li style="color: #d9534f;">Acesso negado.</li>';
-                }}
-            }}
-
-            document.addEventListener('click', function(event) {{
-                const caixa = document.getElementById('caixa-online');
-                if (caixa && caixa.style.display === 'block') {{
-                    const botao = caixa.previousElementSibling;
-                    if (!caixa.contains(event.target) && event.target !== botao) {{
-                        caixa.style.display = 'none';
-                    }}
-                }}
-            }});
-        </script>
-        """
-        
-    # 1. AS ETIQUETAS PARA OS ROBÔS DAS REDES SOCIAIS (OPEN GRAPH)
-    meta_tags = """
-        <meta property="og:title" content="Portal Bolsa - partilha de ideias">
-        <meta property="og:description" content="Ferramentas de análise quantitativa, relatórios de mercado e comparador de ativos.">
-        <meta property="og:image" content="https://comparativo.discloud.app/static/Lus_Miguel_Reis_Abstract_financial_market_data_visualization_dark_mode_aesthetic_79550174-befa-4ffa-9ee3-ba1f74e4c625.jpg">
-        
-        <meta property="og:url" content="https://comparativo.discloud.app/">
-        <meta name="twitter:card" content="summary_large_image">
-    """
-
-    # 2. LOBBY PÚBLICO: O QUE APARECE A QUEM NÃO FEZ LOGIN (E AO ROBÔ DO DISCORD)
+    # LOBBY PÚBLICO: o que aparece a quem não fez login (e ao robô do Discord)
     if nivel_atual == 0:
-        html_login = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="utf-8">
-            {meta_tags}
-            <title>Entrar - Portal Bolsa</title>
-            <style>
-                body {{ background: #0b0e14; color: #d7dce6; font-family: sans-serif; text-align: center; padding-top: 15vh; }}
-                .btn-discord {{ background: #5865F2; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px; display: inline-block; margin-top: 20px; border: none; cursor: pointer; }}
-            </style>
-        </head>
-        <body>
-            <h1>Portal Bolsa - partilha de ideias</h1>
-            <p style="color: #8a94a8;">Acesso restrito aos membros da comunidade.</p>
-            <a href="/login" class="btn-discord">Entrar com o Discord</a>
-        </body>
-        </html>
-        """
-        return render_template_string(html_login)
+        return render_template('login.html')
 
-    # 3. DASHBOARD PRIVADO: O TEU CÓDIGO INTACTO COM MARCA DE ÁGUA E VÍDEO
-    # (Uso f-strings para injetar as chaves css/html sem quebrar o Python, nota os duplos {{ }} no CSS)
-    html_dashboard = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="utf-8">
-        {meta_tags}
-        <title>Portal Bolsa - partilha de ideias</title>
-        <style>
-            :root{{--fundo:#0b0e14;--painel:#151a23;--linha:#232d3f;--texto:#d7dce6;--verde:#3fbf8f;--azul:#4da6ff;--laranja:#f28b24;--mudo:#8a94a8;}}
-            
-            body {{
-                font-family: -apple-system, sans-serif;
-                background: var(--fundo);
-                color: var(--texto);
-                padding: 40px;
-                text-align: center;
-                position: relative;
-                min-height: 100vh;
-            }}
+    user_id = str(session.get('user_id', '')).strip()
+    admin_env = str(ADMIN_USER_ID).strip()
+    is_admin = bool(user_id) and user_id != "None" and user_id == admin_env
 
-            /* MARCA DE ÁGUA INSTITUCIONAL IDÊNTICA ÀS NEWSLETTERS */
-            .marca-agua {{
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100vw;
-                height: 100vh;
-                z-index: -1;
-                pointer-events: none;
-                user-select: none;
-                background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Ctext x='50%25' y='50%25' transform='rotate(-35 150 150)' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='20' font-weight='900' fill='rgba(255, 255, 255, 0.08)'%3EPartilha de Ideias - Luís Reis%3C/text%3E%3C/svg%3E");
-                background-repeat: repeat;
-            }}
+    # Contador de visualizações (cada abertura da página inicial por um membro)
+    total_visitas = incrementar_contador()
 
-            main{{max-width:800px;margin:0 auto; position: relative; z-index: 1;}}
-            .btn {{ display: inline-block; padding: 15px 30px; margin: 10px; background: var(--verde); color: #121212; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 15px; transition: opacity 0.2s;}}
-            .btn:hover {{ opacity: 0.9; }}
-            .btn-states {{ background: var(--azul); }}
-            .btn-interativo {{ background: var(--laranja); }}
-            .box {{ background: var(--painel); border: 1px solid var(--linha); padding: 35px; border-radius: 8px; margin-top: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }}
-            h1 {{ font-size: 24px; margin-bottom: 10px; color: #fff; text-transform: uppercase; letter-spacing: -0.5px; }}
-            p.sub {{ color: var(--mudo); font-size: 13px; margin-bottom: 25px; }}
-        </style>
-    </head>
-    <body>
-        <!-- INJEÇÃO DA ETIQUETA DE ADMIN (Só aparece para ti) -->
-        {badge_admin}
-    
-        <!-- INJEÇÃO DA MARCA DE ÁGUA NO FUNDO -->
-        <div class="marca-agua"></div>
+    limite_online = datetime.now() - timedelta(minutes=5)
+    online_agora = sum(1 for d in utilizadores_ativos.values() if d > limite_online)
 
-        <main>
-            <!-- Botão de Sair elegante no topo direito -->
-            <div style="text-align: right; margin-bottom: 20px;">
-                <a href="/logout" style="color: #8a94a8; text-decoration: none; font-size: 12px; border: 1px solid #232d3f; padding: 5px 10px; border-radius: 4px;">Sair da Conta</a>
-            </div>
-
-            <h1>Portal Bolsa - partilha de ideias</h1>
-            <p class="sub">Aceda aos relatórios de mercado atualizados e ferramentas de análise quantitativa.</p>
-            
-            <div class="box">
-                <h2 style="font-size: 16px; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 0; margin-bottom: 20px; color: #fff; border-bottom: 1px solid var(--linha); padding-bottom: 10px;">Área de Leitura & Ferramentas</h2>
-                <div>
-                    <a href="/ver/europa" class="btn">Visualizar Radar Europa</a>
-                    <a href="/ver/states" class="btn btn-states">Visualizar Radar States</a>
-                </div>
-                <div style="margin-top: 15px; border-top: 1px dashed var(--linha); padding-top: 15px;">
-                    <a href="/interativo" class="btn btn-interativo">⚡ Aceder ao Terminal Analítico Integrado</a>
-                </div>
-            </div>
-            
-            <!-- INJEÇÃO DO VÍDEO CENTRAL EM LOOP -->
-            <div style="margin-top: 50px; text-align: center;">
-                <video autoplay loop muted playsinline style="max-width: 400px; height: auto; opacity: 0.8; border-radius: 8px;">
-                    <!-- O Flask vai procurar o vídeo na pasta /static/ -->
-                    <source src="/static/Black Simple Record Vlog Youtube Intro.mp4" type="video/mp4">
-                    O teu navegador não suporta a reprodução de vídeo.
-                </video>
-            </div>
-        </main>
-    </body>
-    </html>
-    """
-    
-    return render_template_string(html_dashboard)
+    return render_template(
+        'portal.html',
+        username=session.get('username', 'Membro'),
+        nivel=nivel_atual,
+        is_admin=is_admin,
+        visitas=total_visitas,
+        unicos=len(utilizadores_ativos),
+        online_agora=online_agora,
+        radares=resumo_radares(),
+        liga=resumo_liga(user_id),
+    )
 
 @app.route('/ver/<regiao>')
 @requer_cargo(nivel_minimo=1)
 def visualizar_html(regiao):
-    if regiao == "europa":
-        padrao = "radar_europeu_escolhidos_*.html"
-    elif regiao == "states":
-        padrao = "radar_states_escolhidos_*.html"
-    else:
+    if regiao not in PADROES_RADAR:
         return "Região inválida", 400
 
-    # Procura na pasta atual ficheiros que correspondam ao padrão
-    lista_ficheiros = glob.glob(padrao)
-    
-    if not lista_ficheiros:
+    ficheiro_mais_recente, _ = radar_mais_recente(regiao)
+    if not ficheiro_mais_recente:
         return "Ainda não existe nenhum relatório gerado para esta região. Pede ao administrador para executar o robô.", 404
 
-    # Ordena pela data escrita no NOME do ficheiro (ex.: ..._27oct26.html). A data de modificação
-    # não é fiável: quando a Discloud copia o repositório, todos os ficheiros ficam com a mesma data
-    # e o portal podia mostrar uma newsletter antiga. Ficheiros sem data no nome ficam em último.
-    import re as _re
-    def _data_do_nome(caminho):
-        m = _re.search(r"_(\d{2})([a-z]{3})(\d{2})\.html$", os.path.basename(caminho).lower())
-        if m:
-            try:
-                return datetime.strptime(f"{m.group(1)}{m.group(2).capitalize()}{m.group(3)}", "%d%b%y")
-            except ValueError:
-                pass
-        return datetime.min
-
-    ficheiro_mais_recente = max(lista_ficheiros, key=lambda c: (_data_do_nome(c), os.path.getmtime(c)))
-    
     # Envia o HTML cru diretamente para o ecrã do utilizador
     return send_file(ficheiro_mais_recente)
 
