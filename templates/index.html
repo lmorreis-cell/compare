@@ -284,6 +284,83 @@
             🖥️ Terminal Analítico Integrado
         </h1>
     
+    <!-- ==========================================================
+         🔔 NOVO: CENTRAL DE ALERTAS PESSOAIS (100% LOCAL, NO BROWSER)
+         ========================================================== -->
+    <style>
+        #cal-barra { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; background: #1c1e24; border: 1px solid #30363d; border-radius: 8px; padding: 8px 14px; margin: -10px 0 18px; }
+        #cal-btn { background: #232d3f; color: #e6edf3; border: 1px solid #30363d; border-radius: 6px; padding: 7px 14px; font-weight: 800; font-size: 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+        #cal-btn:hover { border-color: #58a6ff; }
+        #cal-badge { background: #d9534f; color: #fff; border-radius: 10px; padding: 1px 7px; font-size: 11px; display: none; }
+        #cal-painel { display: none; background: #0d1117; border: 1px solid #30363d; border-radius: 10px; padding: 16px 18px; margin-bottom: 20px; }
+        .cal-item { display: flex; gap: 12px; align-items: flex-start; border: 1px solid #21262d; border-left: 4px solid #30363d; border-radius: 6px; padding: 10px 12px; margin-top: 8px; background: #161b22; font-size: 12px; color: #c9d1d9; line-height: 1.45; }
+        .cal-item.alta { border-left-color: #d9534f; } .cal-item.media { border-left-color: #e3b341; } .cal-item.info { border-left-color: #58a6ff; }
+        .cal-item .cal-ic { font-size: 18px; line-height: 1; }
+        .cal-item .cal-tit { font-weight: 800; color: #f0f2f5; }
+        .cal-mini { background: transparent; border: 1px solid #30363d; color: #8b949e; border-radius: 6px; padding: 4px 9px; font-size: 11px; cursor: pointer; }
+        .cal-mini:hover { color: #fff; border-color: #58a6ff; }
+        #cal-tbody-precos td { padding: 6px; border-bottom: 1px solid #21262d; font-size: 11px; }
+    </style>
+    <div id="cal-barra">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <button id="cal-btn" onclick="calAlternar()">🔔 Central de Alertas <span id="cal-badge">0</span></button>
+            <span id="cal-resumo" style="font-size: 11px; color: #8b949e;">A verificar a tua carteira local...</span>
+        </div>
+        <span class="dica-edu" style="font-size: 11px; color: #8b949e;">🔒 Privacidade
+            <span class="dica-texto" style="width: 320px; left: auto; right: 0; transform: none;">
+                <strong style="color: #58a6ff; display: block; margin-bottom: 4px;">Como funciona</strong>
+                Os alertas são calculados <b>neste browser</b>, a partir do teu Cofre e dos alertas de preço que definires. Nada é guardado no servidor. Para saber cotações e datas de resultados, o Portal pede ao servidor apenas os <b>tickers</b> (sem quantidades nem preços de compra), tal como o Cofre já faz. A verificação corre ao abrir o Terminal e de 10 em 10 minutos enquanto o tiveres aberto.
+            </span>
+        </span>
+    </div>
+    <div id="cal-painel">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <h3 class="painel-titulo" style="margin: 0;">🔔 Os teus alertas</h3>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button class="cal-mini" onclick="calVerificar(true)">🔄 Verificar agora</button>
+                <button class="cal-mini" id="cal-btn-notif" onclick="calPedirNotificacoes()">🖥️ Ativar notificações do browser</button>
+                <button class="cal-mini" onclick="calLimparVistos()" title="Volta a mostrar como novos os alertas que já tinhas visto.">↺ Repor vistos</button>
+            </div>
+        </div>
+        <div id="cal-lista"></div>
+
+        <details style="margin-top: 16px;">
+            <summary style="cursor: pointer; color: #e3b341; font-size: 12px; font-weight: bold;">
+                🎯 Alertas de preço (stop, alvo ou nível a vigiar)
+            </summary>
+            <div style="font-size: 11px; color: #8b949e; margin: 8px 0; line-height: 1.5;">
+                <span class="dica-edu">Porque definir níveis?<span class="dica-texto" style="width: 300px; left: 0; transform: none;">Decidir <b>antes</b> onde sais (stop) e onde realizas lucro (alvo) é uma das regras mais importantes da gestão de risco: protege-te de decisões emocionais com o mercado aberto. O Portal avisa-te quando o último fecho conhecido cruza o nível. Não substitui uma ordem stop real na corretora.</span></span>
+                — Os níveis comparam com o último preço de fecho disponível (dados do Yahoo, podem ter atraso).
+            </div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                <input id="cal-p-ticker" list="cal-lista-tickers" class="input-moderno" placeholder="Ticker" style="max-width: 110px; text-transform: uppercase;">
+                <datalist id="cal-lista-tickers"></datalist>
+                <select id="cal-p-cond" class="input-moderno" style="max-width: 190px;">
+                    <option value="abaixo">⬇️ Fecho igual ou abaixo de</option>
+                    <option value="acima">⬆️ Fecho igual ou acima de</option>
+                </select>
+                <input id="cal-p-preco" type="number" step="0.0001" class="input-moderno" placeholder="Preço" style="max-width: 100px;">
+                <input id="cal-p-nota" class="input-moderno" placeholder="Nota (ex.: stop técnico)" style="max-width: 220px;">
+                <button class="btn-moderno btn-azul" style="padding: 10px 16px;" onclick="calAdicionarPreco()">+ Adicionar</button>
+            </div>
+            <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                <tbody id="cal-tbody-precos"></tbody>
+            </table>
+        </details>
+
+        <details style="margin-top: 10px;">
+            <summary style="cursor: pointer; color: #8b949e; font-size: 12px; font-weight: bold;">⚙️ Que alertas recebo?</summary>
+            <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 10px; font-size: 12px; color: #c9d1d9;">
+                <label><input type="checkbox" class="cal-tipo" value="preco" checked> 🎯 Alertas de preço que definiste</label>
+                <label><input type="checkbox" class="cal-tipo" value="earnings" checked> 💣 Resultados trimestrais nos próximos 7 dias (posições em carteira)</label>
+                <label><input type="checkbox" class="cal-tipo" value="fiscal" checked> ⏳ Lotes com lucro a 30 dias de um marco fiscal (relógio de detenção)</label>
+                <label><input type="checkbox" class="cal-tipo" value="abate" checked> ✂️ Janela de abate fiscal (novembro e dezembro)</label>
+                <label><input type="checkbox" class="cal-tipo" value="backup" checked> 💾 Lembrete de backup do Cofre (dados só existem neste browser)</label>
+            </div>
+        </details>
+        <div id="cal-rodape" style="font-size: 10px; color: #6e7681; margin-top: 12px;"></div>
+    </div>
+
 <!-- MENU DE NAVEGAÇÃO -->
     <div class="tab-menu">
             <button class="tab-btn active" onclick="abrirSeparador(event, 'tab-radar')">📡 Radar Global</button>
@@ -1217,6 +1294,147 @@
             <div style="margin-top: 10px; font-size: 10px; color: #8b949e; line-height: 1.5;">
                 ⚠️ <strong>FIFO:</strong> vender parte de uma posição consome primeiro o lote mais antigo da mesma carteira e titular — não podes escolher vender só o lote mais recente. Estimativas com base no modelo fiscal do Cofre; confirma sempre a tua situação concreta com um contabilista.
             </div>
+        </div>
+
+        <!-- ==========================================================
+             💶 NOVO: DIVIDENDOS & RETENÇÕES NA FONTE (100% LOCAL)
+             ========================================================== -->
+        <div id="dvd-painel" style="background-color: #1c1e24; border: 1px solid #30363d; border-left: 4px solid #3fbf8f; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;">
+                <h4 style="margin: 0; color: #f0f2f5; font-size: 14px; text-transform: uppercase;">
+                    <span class="dica-edu">💶 Dividendos & Retenções na Fonte
+                        <span class="dica-texto" style="width: 340px; text-transform: none; left: 0; transform: none;">
+                            <strong style="color: #3fbf8f; display: block; margin-bottom: 4px;">Porque registar dividendos?</strong>
+                            Quando recebes um dividendo de uma empresa estrangeira, o país de origem costuma reter imposto (ex.: EUA, Alemanha, Suíça) e Portugal volta a tributar esse rendimento. A <b>dupla tributação</b> é aliviada pelo <b>crédito de imposto</b>: o que pagaste lá fora abate ao imposto português, até ao limite previsto na convenção entre os dois países.<br><br>
+                            Este módulo junta, por ano e por país, o que recebeste e o que já te foi retido, estima o crédito, o imposto que ainda falta pagar em Portugal e o imposto retido <b>em excesso</b> que podes tentar recuperar junto do país de origem.<br><br>
+                            <span style="color:#8b949e">🔒 Tal como o resto do Cofre, os dados ficam apenas neste browser.</span>
+                        </span>
+                    </span>
+                </h4>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <span style="font-size: 11px; color: #8b949e;">Ano fiscal:</span>
+                    <select id="dvd-ano" class="input-moderno" style="padding: 4px 8px; font-size: 12px; min-width: 90px;" onchange="dvdRender()"></select>
+                </div>
+            </div>
+
+            <!-- FORMULÁRIO -->
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 12px;">
+                <input type="date" id="dvd-data" class="input-moderno" style="max-width: 130px;" title="Data de pagamento do dividendo (é esta que conta para o ano fiscal)." onchange="dvdCambioAuto()">
+                <select id="dvd-sujeito" class="input-moderno" style="max-width: 90px; font-weight: bold; color: #58a6ff;" title="Sujeito Passivo (Titular)">
+                    <option value="A">Suj. A</option>
+                    <option value="B">Suj. B</option>
+                </select>
+                <input list="lista-carteiras" id="dvd-carteira" class="input-moderno" placeholder="Carteira" style="max-width: 110px;">
+                <input type="text" id="dvd-ticker" class="input-moderno" placeholder="Ticker" style="max-width: 90px; text-transform: uppercase;" onchange="dvdSugerirPais()">
+                <select id="dvd-pais" class="input-moderno" style="max-width: 150px;" title="País de residência da empresa que pagou o dividendo (a fonte do rendimento). Não é o país da corretora."></select>
+                <select id="dvd-moeda" class="input-moderno" style="max-width: 90px; font-weight: bold; color: #e3b341;" onchange="dvdCambioAuto()">
+                    <option value="USD" selected>USD</option><option value="EUR">EUR</option><option value="GBP">GBP</option>
+                    <option value="CHF">CHF</option><option value="CAD">CAD</option><option value="DKK">DKK</option>
+                    <option value="SEK">SEK</option><option value="NOK">NOK</option><option value="BRL">BRL</option>
+                </select>
+                <input type="number" id="dvd-bruto" class="input-moderno" placeholder="Bruto" step="0.01" style="max-width: 90px;" title="Valor BRUTO do dividendo (antes de qualquer imposto), na moeda em que foi pago. Está no extrato da corretora.">
+                <input type="number" id="dvd-retest" class="input-moderno" placeholder="Retido fonte" step="0.01" style="max-width: 105px; border-color: #f28b24;" title="Imposto retido pelo país de origem (ex.: 15% nos EUA com o formulário W-8BEN), na mesma moeda.">
+                <input type="number" id="dvd-retpt" class="input-moderno" placeholder="Retido PT" step="0.01" style="max-width: 95px; border-color: #d9534f;" title="Imposto retido em Portugal (normalmente só quando a corretora é portuguesa), na mesma moeda.">
+                <div id="dvd-bloco-cambio" style="display: flex; align-items: center; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 0 8px;" title="Câmbio da moeda por 1 € na data de pagamento (igual ao resto do Cofre). Para USD é preenchido automaticamente.">
+                    <span style="font-size: 11px; color: #8b949e;">1€ =</span>
+                    <input type="number" id="dvd-cambio" class="input-moderno" value="1.08" step="0.0001" style="border: none; background: transparent; width: 70px; padding: 8px 4px;">
+                </div>
+                <button class="btn-moderno" style="background: #3fbf8f; color: #0d1117; padding: 10px 16px;" onclick="dvdAdicionar()">+ Registar</button>
+            </div>
+            <div id="dvd-dica-pais" style="font-size: 11px; color: #8b949e; margin-top: 6px; min-height: 14px;"></div>
+
+            <!-- KPIs -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 12px;">
+                <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 12px;">
+                    <span class="dica-edu" style="font-size: 10px; color: #8b949e; text-transform: uppercase;">Bruto recebido<span class="dica-texto" style="width: 240px; text-transform: none;">Soma dos dividendos brutos do ano, convertidos para euros ao câmbio da data de pagamento. É a base de tributação em Portugal.</span></span>
+                    <div id="dvd-kpi-bruto" style="font-size: 18px; font-weight: 900; color: #3fbf8f; margin-top: 4px;">€0.00</div>
+                </div>
+                <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 12px;">
+                    <span class="dica-edu" style="font-size: 10px; color: #8b949e; text-transform: uppercase;">Retido na fonte<span class="dica-texto" style="width: 240px; text-transform: none;">Imposto já cobrado pelos países de origem. Só a parte até ao limite da convenção conta como crédito em Portugal.</span></span>
+                    <div id="dvd-kpi-retest" style="font-size: 18px; font-weight: 900; color: #f28b24; margin-top: 4px;">€0.00</div>
+                </div>
+                <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 12px;">
+                    <span class="dica-edu" style="font-size: 10px; color: #8b949e; text-transform: uppercase;">Líquido no bolso<span class="dica-texto" style="width: 240px; text-transform: none;">O que realmente entrou na conta: bruto menos todas as retenções (estrangeiro + Portugal). Ainda pode faltar pagar imposto em Portugal no IRS.</span></span>
+                    <div id="dvd-kpi-liquido" style="font-size: 18px; font-weight: 900; color: #c9d1d9; margin-top: 4px;">€0.00</div>
+                </div>
+                <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 12px;">
+                    <span class="dica-edu" style="font-size: 10px; color: #8b949e; text-transform: uppercase;">Crédito estimado<span class="dica-texto" style="width: 260px; text-transform: none;">Parte do imposto estrangeiro que abate ao imposto português: o menor de (a) imposto retido lá fora, (b) taxa da convenção × bruto e (c) 28% × bruto. Valor indicativo.</span></span>
+                    <div id="dvd-kpi-credito" style="font-size: 18px; font-weight: 900; color: #58a6ff; margin-top: 4px;">€0.00</div>
+                </div>
+                <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 12px;">
+                    <span class="dica-edu" style="font-size: 10px; color: #8b949e; text-transform: uppercase;">Falta pagar (IRS)<span class="dica-texto" style="width: 270px; text-transform: none; left: auto; right: 0; transform: none;">Estimativa do imposto adicional em Portugal sobre dividendos estrangeiros na <b>tributação autónoma (28%)</b>: 28% × bruto − crédito − retido em Portugal. Se optares pelo englobamento o valor muda (usa o simulador do Assistente IRS). Valor negativo = a recuperar.</span></span>
+                    <div id="dvd-kpi-falta" style="font-size: 18px; font-weight: 900; color: #d9534f; margin-top: 4px;">€0.00</div>
+                </div>
+                <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 12px;">
+                    <span class="dica-edu" style="font-size: 10px; color: #8b949e; text-transform: uppercase;">Retido em excesso<span class="dica-texto" style="width: 270px; text-transform: none; left: auto; right: 0; transform: none;">Imposto cobrado lá fora <b>acima</b> da taxa da convenção. Esta parte não é creditada em Portugal; pode ser pedida de volta ao país de origem (ex.: Suíça, Alemanha, França têm formulários próprios). Vale a pena quando o valor compensa o custo e o trabalho do pedido.</span></span>
+                    <div id="dvd-kpi-excesso" style="font-size: 18px; font-weight: 900; color: #e3b341; margin-top: 4px;">€0.00</div>
+                </div>
+            </div>
+
+            <!-- POR PAÍS + YIELD ON COST -->
+            <div style="display: grid; grid-template-columns: 1fr; gap: 15px; margin-top: 15px;">
+                <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 12px; overflow-x: auto;">
+                    <div style="font-size: 12px; font-weight: bold; color: #3fbf8f; text-transform: uppercase; margin-bottom: 8px;">
+                        <span class="dica-edu">🌍 Por país de origem<span class="dica-texto" style="width: 300px; text-transform: none; left: 0; transform: none;">A AT pede os dividendos estrangeiros agrupados por país (Anexo J). A <b>taxa da convenção</b> é editável: 15% é a taxa mais comum nas convenções de Portugal para dividendos de carteira (é a dos EUA com W-8BEN), mas confirma a do teu país no Portal das Finanças. A tua escolha fica guardada neste browser.</span></span>
+                    </div>
+                    <table style="width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 0;">
+                        <thead><tr style="color: #8b949e;">
+                            <th style="padding: 6px; text-align: left; position: static;">País</th><th style="padding: 6px; text-align: center; position: static;"><span class="dica-edu">Código AT<span class="dica-texto" style="width: 260px; text-transform: none;">Código numérico do país usado nos anexos do IRS (o pré-preenchido segue a norma ISO 3166). Confirma na tabela de países do Portal das Finanças; se for diferente, corrige aqui e fica guardado.</span></span></th><th style="padding: 6px; text-align: right; position: static;">Bruto</th>
+                            <th style="padding: 6px; text-align: right; position: static;">Retido</th><th style="padding: 6px; text-align: right; position: static;">Taxa efetiva</th>
+                            <th style="padding: 6px; text-align: right; position: static;">Convenção</th><th style="padding: 6px; text-align: right; position: static;">Crédito</th>
+                            <th style="padding: 6px; text-align: right; position: static;">Excesso</th>
+                        </tr></thead>
+                        <tbody id="dvd-tbody-paises"></tbody>
+                    </table>
+                </div>
+                <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 12px; overflow-x: auto;">
+                    <div style="font-size: 12px; font-weight: bold; color: #58a6ff; text-transform: uppercase; margin-bottom: 8px;">
+                        <span class="dica-edu">📈 Yield on Cost (12 meses)<span class="dica-texto" style="width: 300px; text-transform: none; left: auto; right: 0; transform: none;"><b>Yield on Cost</b> = dividendos brutos recebidos nos últimos 12 meses ÷ quanto pagaste pelos lotes que ainda tens dessa ação. Mostra o rendimento real do teu capital investido (e não do preço de hoje). A coluna "líquido" desconta as retenções já sofridas.</span></span>
+                    </div>
+                    <table style="width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 0;">
+                        <thead><tr style="color: #8b949e;">
+                            <th style="padding: 6px; text-align: left; position: static;">Ticker</th><th style="padding: 6px; text-align: right; position: static;">Custo em carteira</th>
+                            <th style="padding: 6px; text-align: right; position: static;">Div. 12m (bruto)</th><th style="padding: 6px; text-align: right; position: static;">YoC bruto</th><th style="padding: 6px; text-align: right; position: static;">YoC líquido</th>
+                        </tr></thead>
+                        <tbody id="dvd-tbody-yoc"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- CÁBULA ANEXO J + REGISTOS -->
+            <details style="margin-top: 15px;">
+                <summary style="cursor: pointer; color: #e3b341; font-size: 12px; font-weight: bold;">🧾 Cábula Anexo J — Quadro 8A (dividendos estrangeiros)</summary>
+                <div style="font-size: 11px; color: #8b949e; margin: 8px 0; line-height: 1.5;">
+                    Linhas agregadas por país para o ano selecionado. O código de rendimento, os códigos dos países (na tabela acima), as taxas das convenções e o imposto a inscrever são <b>editáveis</b>: valores a <span style="color:#e3b341">amarelo</span> são os pré-preenchidos por confirmar; depois de confirmados com o Portal das Finanças ou com o teu contabilista, corrige-os e ficam guardados neste browser (e no backup). Dividendos de empresas portuguesas pagos por corretora portuguesa já sofrem retenção liberatória de 28% e, em regra, só são declarados (Anexo E) se optares pelo englobamento.
+                </div>
+                <div style="display: flex; gap: 14px; flex-wrap: wrap; align-items: center; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 10px; margin-bottom: 8px; font-size: 11px; color: #c9d1d9;">
+                    <span class="dica-edu">Código de rendimento:<span class="dica-texto" style="width: 260px; left: 0; transform: none;">Código que identifica o tipo de rendimento no Quadro 8A do Anexo J. O pré-preenchido (E11) é o habitual para dividendos; confirma no Portal das Finanças ou com o teu contabilista e corrige se necessário.</span></span>
+                    <input id="dvd-cfg-codigo" maxlength="6" style="width: 60px; background: #161b22; border: 1px solid #30363d; border-radius: 4px; padding: 3px 6px; text-align: center;" onchange="dvdGuardarConfig('codigo')">
+                    <span class="dica-edu">Imposto estrangeiro a inscrever:<span class="dica-texto" style="width: 300px; left: 0; transform: none;"><b>Retido</b>: o imposto efetivamente cobrado no país de origem (o que aparece no extrato).<br><b>Limitado à convenção</b>: só até à taxa máxima da convenção; o excesso fica para pedir ao país de origem.<br>A forma correta pode depender do teu caso — confirma com o teu contabilista e escolhe aqui.</span></span>
+                    <select id="dvd-cfg-modo" style="background: #161b22; border: 1px solid #30363d; border-radius: 4px; padding: 3px 6px;" onchange="dvdGuardarConfig('modo')">
+                        <option value="retido">Retido (extrato)</option>
+                        <option value="limite">Limitado à convenção</option>
+                    </select>
+                    <span id="dvd-cfg-estado" style="font-size: 10px;"></span>
+                </div>
+                <textarea id="dvd-cabula" readonly style="width: 100%; min-height: 110px; background: #0d1117; color: #c9d1d9; border: 1px solid #30363d; border-radius: 6px; padding: 10px; font-family: Consolas, monospace; font-size: 11px; box-sizing: border-box;"></textarea>
+                <button class="btn-moderno" style="background: #232d3f; color: #e3b341; padding: 8px 14px; margin-top: 6px;" onclick="dvdCopiarCabula()">📋 Copiar</button>
+            </details>
+            <details style="margin-top: 10px;">
+                <summary style="cursor: pointer; color: #8b949e; font-size: 12px; font-weight: bold;">📜 Registos de dividendos (<span id="dvd-contador">0</span>)</summary>
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 8px;">
+                        <thead><tr style="color: #8b949e;">
+                            <th style="padding: 6px; text-align: left; position: static;">Data</th><th style="padding: 6px; position: static;">Suj.</th><th style="padding: 6px; text-align: left; position: static;">Carteira</th>
+                            <th style="padding: 6px; text-align: left; position: static;">Ticker</th><th style="padding: 6px; text-align: left; position: static;">País</th>
+                            <th style="padding: 6px; text-align: right; position: static;">Bruto</th><th style="padding: 6px; text-align: right; position: static;">Retido fonte</th>
+                            <th style="padding: 6px; text-align: right; position: static;">Retido PT</th><th style="padding: 6px; text-align: right; position: static;">Bruto €</th><th style="padding: 6px; position: static;"></th>
+                        </tr></thead>
+                        <tbody id="dvd-tbody-registos"></tbody>
+                    </table>
+                </div>
+            </details>
+            <div style="font-size: 10px; color: #6e7681; margin-top: 10px; line-height: 1.4;">⚖️ Estimativas educativas baseadas nas regras gerais (tributação autónoma a 28% e crédito por dupla tributação internacional). Não substituem a simulação oficial da AT nem aconselhamento fiscal. Os registos entram no Backup JSON do Cofre.</div>
         </div>
 
         <!-- 📅 NOVO: HISTÓRICO FISCAL (ÚLTIMOS 5 ANOS) -->
@@ -5450,8 +5668,14 @@
         const dadosCofre = {
             versao: "2.0_Ledger",
             dataExportacao: new Date().toISOString(),
-            bruto: cofreBruto 
+            bruto: cofreBruto,
+            // NOVO: módulos locais adicionais (dividendos, taxas de convenção e alertas de preço)
+            dividendos: JSON.parse(localStorage.getItem('cofreDividendos') || '[]'),
+            dividendosConvencao: JSON.parse(localStorage.getItem('cofreDividendosConvencao') || '{}'),
+            dividendosConfig: JSON.parse(localStorage.getItem('cofreDividendosConfig') || '{}'),
+            alertasPessoais: JSON.parse(localStorage.getItem('alertasPessoais') || '[]')
         };
+        localStorage.setItem('ultimoBackupCofre', new Date().toISOString());
 
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dadosCofre, null, 2));
         const downloadAnchor = document.createElement('a');
@@ -5518,7 +5742,14 @@
                 else if (conteudo.bruto) {
                     cofreBruto = conteudo.bruto;
                     localStorage.setItem('cofreBruto', JSON.stringify(cofreBruto));
+                    // NOVO: restaura os módulos adicionais apenas se existirem no ficheiro (backups antigos continuam válidos)
+                    if (Array.isArray(conteudo.dividendos)) localStorage.setItem('cofreDividendos', JSON.stringify(conteudo.dividendos));
+                    if (conteudo.dividendosConvencao) localStorage.setItem('cofreDividendosConvencao', JSON.stringify(conteudo.dividendosConvencao));
+                    if (conteudo.dividendosConfig) localStorage.setItem('cofreDividendosConfig', JSON.stringify(conteudo.dividendosConfig));
+                    if (Array.isArray(conteudo.alertasPessoais)) localStorage.setItem('alertasPessoais', JSON.stringify(conteudo.alertasPessoais));
                     recalcularTudo();
+                    if (typeof dvdRender === 'function') dvdRender();
+                    if (typeof calVerificar === 'function') calVerificar(true);
                     alert("✅ Ledger Fiscal restaurado com sucesso!");
                 } else {
                     throw new Error("Formato de ficheiro JSON desconhecido ou corrompido.");
@@ -8175,6 +8406,548 @@ function renderizarCalendarioDiario() {
             setTimeout(abrirPeloHash, 0);
         }
     })();
+</script>
+
+<script>
+// ==========================================================================
+// 💶 MÓDULO DE DIVIDENDOS & RETENÇÕES NA FONTE (100% LOCAL — localStorage)
+// ==========================================================================
+const DVD_PAISES = [
+    // código, nome, código numérico (ISO 3166, usado nos anexos da AT)
+    ['US', '🇺🇸 EUA', '840'], ['PT', '🇵🇹 Portugal', '620'], ['DE', '🇩🇪 Alemanha', '276'], ['FR', '🇫🇷 França', '250'],
+    ['NL', '🇳🇱 Países Baixos', '528'], ['ES', '🇪🇸 Espanha', '724'], ['IT', '🇮🇹 Itália', '380'], ['BE', '🇧🇪 Bélgica', '056'],
+    ['IE', '🇮🇪 Irlanda', '372'], ['GB', '🇬🇧 Reino Unido', '826'], ['CH', '🇨🇭 Suíça', '756'], ['CA', '🇨🇦 Canadá', '124'],
+    ['DK', '🇩🇰 Dinamarca', '208'], ['SE', '🇸🇪 Suécia', '752'], ['NO', '🇳🇴 Noruega', '578'], ['FI', '🇫🇮 Finlândia', '246'],
+    ['LU', '🇱🇺 Luxemburgo', '442'], ['BR', '🇧🇷 Brasil', '076'], ['OUTRO', '🌐 Outro', '']
+];
+const DVD_SUFIXOS = { LS: 'PT', DE: 'DE', F: 'DE', PA: 'FR', AS: 'NL', MC: 'ES', MI: 'IT', BR: 'BE', IR: 'IE', L: 'GB', SW: 'CH', TO: 'CA', CO: 'DK', ST: 'SE', OL: 'NO', HE: 'FI', SA: 'BR' };
+const DVD_DICAS = {
+    US: 'EUA: com o formulário W-8BEN entregue à corretora, a retenção costuma ser 15% (igual ao limite da convenção). Sem W-8BEN pode chegar a 30%.',
+    CH: 'Suíça: a retenção na fonte é elevada (35%). A parte acima do limite da convenção pode ser pedida de volta à administração fiscal suíça.',
+    DE: 'Alemanha: a retenção costuma ficar acima do limite da convenção (~26,4%). O excesso pode ser reclamado ao fisco alemão.',
+    FR: 'França: a retenção depende da documentação entregue à corretora; o excesso face à convenção pode ser reclamado.',
+    PT: 'Portugal: com corretora portuguesa é normalmente retido 28% (taxa liberatória). Sem retenção (corretora estrangeira), confirma como declarar.',
+    GB: 'Reino Unido: em regra não há retenção na fonte sobre dividendos de ações.',
+    IE: 'Irlanda: existe retenção na fonte; o excesso face à convenção pode, em certos casos, ser recuperado.'
+};
+const dvdNomePais = c => (DVD_PAISES.find(p => p[0] === c) || ['', c])[1];
+const dvdLer = () => { try { return JSON.parse(localStorage.getItem('cofreDividendos')) || []; } catch (e) { return []; } };
+const dvdGravar = l => localStorage.setItem('cofreDividendos', JSON.stringify(l));
+const dvdConvLer = () => { try { return JSON.parse(localStorage.getItem('cofreDividendosConvencao')) || {}; } catch (e) { return {}; } };
+const dvdEur = v => `€${(v || 0).toFixed(2)}`;
+const dvdEsc = t => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+const dvdCfgLer = () => { try { return JSON.parse(localStorage.getItem('cofreDividendosConfig')) || {}; } catch (e) { return {}; } };
+const dvdCfgGravar = c => localStorage.setItem('cofreDividendosConfig', JSON.stringify(c));
+function dvdCodigoPais(pais) {
+    const cfg = dvdCfgLer();
+    if (cfg.paisCod && cfg.paisCod[pais] !== undefined) return cfg.paisCod[pais];
+    return (DVD_PAISES.find(x => x[0] === pais) || [])[2] || '';
+}
+function dvdMudarCodigoPais(pais, valor) {
+    const cfg = dvdCfgLer();
+    cfg.paisCod = cfg.paisCod || {};
+    cfg.paisCod[pais] = String(valor || '').trim().slice(0, 6);
+    dvdCfgGravar(cfg);
+    if (typeof sinalizarAlertaBackup === 'function') sinalizarAlertaBackup();
+    dvdRender();
+}
+function dvdGuardarConfig(campo) {
+    const cfg = dvdCfgLer();
+    if (campo === 'codigo') cfg.codigoRend = document.getElementById('dvd-cfg-codigo').value.trim().toUpperCase() || 'E11';
+    if (campo === 'modo') cfg.modoImposto = document.getElementById('dvd-cfg-modo').value;
+    dvdCfgGravar(cfg);
+    if (typeof sinalizarAlertaBackup === 'function') sinalizarAlertaBackup();
+    dvdRender();
+}
+
+function dvdTaxaConvencao(pais) {
+    const conv = dvdConvLer();
+    return conv[pais] !== undefined ? conv[pais] : 15;
+}
+
+function dvdCalc(r) {
+    const c = (r.moeda === 'EUR') ? 1 : (r.cambio || 1);
+    const brutoE = r.bruto / c, retEstE = (r.retEst || 0) / c, retPTE = (r.retPT || 0) / c;
+    const out = { brutoE, retEstE, retPTE, liquidoE: brutoE - retEstE - retPTE, credito: 0, excesso: 0, falta: 0, conv: null };
+    if (r.pais === 'PT') {
+        out.falta = retPTE > 0 ? 0 : 0; // retenção liberatória; sem retenção: sinalizado à parte
+        return out;
+    }
+    const conv = dvdTaxaConvencao(r.pais);
+    const limite = brutoE * conv / 100;
+    out.conv = conv;
+    out.credito = Math.min(retEstE, limite, brutoE * 0.28);
+    out.excesso = Math.max(0, retEstE - limite);
+    out.falta = brutoE * 0.28 - out.credito - retPTE;
+    return out;
+}
+
+function dvdFiltroSujeito() {
+    const el = document.getElementById('filtro-sujeito-global');
+    return el ? el.value : 'TODOS';
+}
+
+// O clique (mousedown) acontece ANTES do "change" do campo anterior: guardamos para onde o utilizador ia
+let dvdUltimoToque = { chave: null, t: 0 };
+document.addEventListener('mousedown', ev => {
+    const alvo = ev.target.closest ? ev.target.closest('[data-dvd-foco]') : null;
+    dvdUltimoToque = { chave: alvo ? alvo.dataset.dvdFoco : null, t: Date.now() };
+}, true);
+
+function dvdRender() {
+    const sel = document.getElementById('dvd-ano');
+    if (!sel) return;
+    // Mantém o foco num campo editável da tabela se ela for redesenhada enquanto o utilizador está a editar
+    let focoAntes = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.dvdFoco : null;
+    if (!focoAntes && dvdUltimoToque.chave && Date.now() - dvdUltimoToque.t < 800) focoAntes = dvdUltimoToque.chave;
+    setTimeout(() => {
+        if (!focoAntes) return;
+        const alvo = document.querySelector(`[data-dvd-foco="${focoAntes}"]`);
+        if (alvo && document.activeElement !== alvo) { alvo.focus(); if (alvo.select) alvo.select(); }
+    }, 0);
+    const suj = dvdFiltroSujeito();
+    const todos = dvdLer().filter(r => suj === 'TODOS' || (r.sujeito || 'A') === suj);
+    const anoAtual = new Date().getFullYear();
+    const anos = [...new Set(todos.map(r => new Date(r.data).getFullYear()).concat([anoAtual]))].sort((a, b) => b - a);
+    const anoSel = parseInt(sel.value) || anoAtual;
+    sel.innerHTML = anos.map(a => `<option value="${a}" ${a === anoSel ? 'selected' : ''}>${a}</option>`).join('');
+    const ano = parseInt(sel.value) || anoAtual;
+    const doAno = todos.filter(r => new Date(r.data).getFullYear() === ano);
+
+    let k = { bruto: 0, retEst: 0, liquido: 0, credito: 0, falta: 0, excesso: 0 };
+    const porPais = {};
+    let ptSemRetencao = 0;
+    doAno.forEach(r => {
+        const c = dvdCalc(r);
+        k.bruto += c.brutoE; k.retEst += c.retEstE; k.liquido += c.liquidoE;
+        k.credito += c.credito; k.excesso += c.excesso; k.falta += c.falta;
+        if (r.pais === 'PT' && !(r.retPT > 0)) ptSemRetencao += c.brutoE;
+        const p = porPais[r.pais] = porPais[r.pais] || { bruto: 0, ret: 0, credito: 0, excesso: 0 };
+        p.bruto += c.brutoE; p.ret += c.retEstE + (r.pais === 'PT' ? c.retPTE : 0); p.credito += c.credito; p.excesso += c.excesso;
+    });
+    document.getElementById('dvd-kpi-bruto').innerText = dvdEur(k.bruto);
+    document.getElementById('dvd-kpi-retest').innerText = dvdEur(k.retEst);
+    document.getElementById('dvd-kpi-liquido').innerText = dvdEur(k.liquido);
+    document.getElementById('dvd-kpi-credito').innerText = dvdEur(k.credito);
+    const fEl = document.getElementById('dvd-kpi-falta');
+    fEl.innerText = k.falta < 0 ? `-€${Math.abs(k.falta).toFixed(2)} (a recuperar)` : dvdEur(k.falta);
+    fEl.style.color = k.falta < 0 ? '#5cb85c' : '#d9534f';
+    document.getElementById('dvd-kpi-excesso').innerText = dvdEur(k.excesso);
+
+    // Por país
+    const conv = dvdConvLer();
+    const linhasPais = Object.entries(porPais).sort((a, b) => b[1].bruto - a[1].bruto).map(([pais, p]) => {
+        const efetiva = p.bruto > 0 ? (p.ret / p.bruto * 100) : 0;
+        const campoConv = pais === 'PT' ? '<span style="color:#6e7681">—</span>' :
+            `<input data-dvd-foco="conv-${pais}" type="number" min="0" max="35" step="0.5" value="${dvdTaxaConvencao(pais)}" onchange="dvdMudarConvencao('${pais}', this.value)" title="${conv[pais] === undefined ? 'Valor por defeito (15%). Confirma a taxa da convenção deste país.' : 'Taxa definida por ti.'}" style="width:52px;background:#161b22;color:${conv[pais] === undefined ? '#e3b341' : '#c9d1d9'};border:1px solid #30363d;border-radius:4px;padding:2px 4px;text-align:right">%`;
+        const cfgP = dvdCfgLer().paisCod || {};
+        const campoCod = pais === 'PT' ? '<span style="color:#6e7681">—</span>' :
+            `<input data-dvd-foco="cod-${pais}" value="${dvdEsc(dvdCodigoPais(pais))}" maxlength="6" onchange="dvdMudarCodigoPais('${pais}', this.value)" title="${cfgP[pais] === undefined ? 'Pré-preenchido (ISO 3166). Confirma o código usado pela AT.' : 'Código definido por ti.'}" style="width:48px;background:#161b22;color:${cfgP[pais] === undefined ? '#e3b341' : '#c9d1d9'};border:1px solid #30363d;border-radius:4px;padding:2px 4px;text-align:center">`;
+        return `<tr><td style="padding:6px">${dvdEsc(dvdNomePais(pais))}</td><td style="padding:6px;text-align:center">${campoCod}</td><td style="padding:6px;text-align:right">${dvdEur(p.bruto)}</td>
+            <td style="padding:6px;text-align:right;color:#f28b24">${dvdEur(p.ret)}</td><td style="padding:6px;text-align:right">${efetiva.toFixed(1)}%</td>
+            <td style="padding:6px;text-align:right">${campoConv}</td><td style="padding:6px;text-align:right;color:#58a6ff">${pais === 'PT' ? '—' : dvdEur(p.credito)}</td>
+            <td style="padding:6px;text-align:right;color:${p.excesso > 0.005 ? '#e3b341' : '#6e7681'}">${pais === 'PT' ? '—' : dvdEur(p.excesso)}</td></tr>`;
+    });
+    document.getElementById('dvd-tbody-paises').innerHTML = linhasPais.join('') ||
+        `<tr><td colspan="8" style="padding:10px;color:#6e7681;text-align:center">Sem dividendos registados em ${ano}.</td></tr>`;
+
+    // Yield on Cost (12 meses, lotes em carteira)
+    const limite12m = new Date(); limite12m.setFullYear(limite12m.getFullYear() - 1);
+    const custo = {};
+    (typeof cofreAbertas !== 'undefined' ? cofreAbertas : []).filter(l => l.qtdRestante > 0 && (suj === 'TODOS' || (l.sujeito || 'A') === suj))
+        .forEach(l => { custo[l.ticker] = (custo[l.ticker] || 0) + l.precoCompraEUR * l.qtdRestante; });
+    const div12 = {};
+    todos.filter(r => new Date(r.data) >= limite12m).forEach(r => {
+        const c = dvdCalc(r);
+        const d = div12[r.ticker] = div12[r.ticker] || { bruto: 0, liq: 0 };
+        d.bruto += c.brutoE; d.liq += c.brutoE - c.retEstE - c.retPTE - Math.max(0, c.falta);
+    });
+    const linhasYoc = Object.keys(custo).filter(t => div12[t]).sort((a, b) => (div12[b].bruto / custo[b]) - (div12[a].bruto / custo[a])).map(t =>
+        `<tr><td style="padding:6px;font-weight:bold">${dvdEsc(t)}</td><td style="padding:6px;text-align:right">${dvdEur(custo[t])}</td>
+         <td style="padding:6px;text-align:right">${dvdEur(div12[t].bruto)}</td>
+         <td style="padding:6px;text-align:right;color:#3fbf8f;font-weight:bold">${(div12[t].bruto / custo[t] * 100).toFixed(2)}%</td>
+         <td style="padding:6px;text-align:right;color:#c9d1d9" title="Depois das retenções e do imposto estimado em falta no IRS.">${(div12[t].liq / custo[t] * 100).toFixed(2)}%</td></tr>`);
+    document.getElementById('dvd-tbody-yoc').innerHTML = linhasYoc.join('') ||
+        `<tr><td colspan="5" style="padding:10px;color:#6e7681;text-align:center">Regista dividendos de ações que tenhas em carteira para ver o rendimento sobre o teu custo.</td></tr>`;
+
+    // Registos do ano
+    document.getElementById('dvd-contador').innerText = doAno.length;
+    document.getElementById('dvd-tbody-registos').innerHTML = [...doAno].sort((a, b) => new Date(b.data) - new Date(a.data)).map(r => {
+        const c = dvdCalc(r);
+        return `<tr style="border-bottom:1px solid #21262d"><td style="padding:6px">${new Date(r.data).toLocaleDateString('pt-PT')}</td><td style="padding:6px;text-align:center">${dvdEsc(r.sujeito || 'A')}</td>
+            <td style="padding:6px">${dvdEsc(r.carteira)}</td><td style="padding:6px;font-weight:bold">${dvdEsc(r.ticker)}</td><td style="padding:6px">${dvdEsc(dvdNomePais(r.pais))}</td>
+            <td style="padding:6px;text-align:right">${(r.bruto).toFixed(2)} ${dvdEsc(r.moeda)}</td><td style="padding:6px;text-align:right;color:#f28b24">${(r.retEst || 0).toFixed(2)}</td>
+            <td style="padding:6px;text-align:right;color:#d9534f">${(r.retPT || 0).toFixed(2)}</td><td style="padding:6px;text-align:right">${dvdEur(c.brutoE)}</td>
+            <td style="padding:6px;text-align:right"><button onclick="dvdApagar(${r.id})" style="background:transparent;border:1px solid #d9534f;color:#d9534f;border-radius:4px;cursor:pointer;font-size:10px;padding:2px 6px">✕</button></td></tr>`;
+    }).join('') || `<tr><td colspan="10" style="padding:10px;color:#6e7681;text-align:center">Sem registos neste ano.</td></tr>`;
+
+    // Cábula Anexo J (estrangeiros)
+    const cfg = dvdCfgLer();
+    const codigoRend = cfg.codigoRend || 'E11';
+    const modo = cfg.modoImposto || 'retido';
+    const elCod = document.getElementById('dvd-cfg-codigo'), elModo = document.getElementById('dvd-cfg-modo'), elEst = document.getElementById('dvd-cfg-estado');
+    if (elCod && document.activeElement !== elCod) { elCod.value = codigoRend; elCod.style.color = cfg.codigoRend ? '#c9d1d9' : '#e3b341'; }
+    if (elModo) { elModo.value = modo; elModo.style.color = cfg.modoImposto ? '#c9d1d9' : '#e3b341'; }
+    if (elEst) elEst.innerHTML = (cfg.codigoRend && cfg.modoImposto) ? '<span style="color:#5cb85c">✔ definido por ti</span>'
+        : (cfg.codigoRend || cfg.modoImposto) ? '<span style="color:#e3b341">● falta confirmar ' + (cfg.codigoRend ? 'o imposto a inscrever' : 'o código de rendimento') + '</span>'
+        : '<span style="color:#e3b341">● pré-preenchido, por confirmar</span>';
+    const cab = Object.entries(porPais).filter(([p]) => p !== 'PT').map(([pais, p]) => {
+        const cod = dvdCodigoPais(pais) || '???';
+        const limite = p.bruto * dvdTaxaConvencao(pais) / 100;
+        const imposto = modo === 'limite' ? Math.min(p.ret, limite) : p.ret;
+        const notaExcesso = (modo === 'limite' && p.ret > limite + 0.005) ? ` (excesso de ${(p.ret - limite).toFixed(2)} € a pedir ao país de origem)` : '';
+        return `Código ${codigoRend} | País ${cod} (${dvdNomePais(pais).replace(/^\S+\s/, '')}) | Rendimento bruto: ${p.bruto.toFixed(2)} € | Imposto pago no estrangeiro: ${imposto.toFixed(2)} €${notaExcesso}`;
+    });
+    let txt = cab.length ? `ANEXO J — QUADRO 8A — DIVIDENDOS ${ano} (${suj === 'TODOS' ? 'Suj. A + B' : 'Sujeito ' + suj}) — imposto: ${modo === 'limite' ? 'limitado à convenção' : 'retido (extrato)'}\n` + cab.join('\n') : `Sem dividendos estrangeiros em ${ano}.`;
+    if (ptSemRetencao > 0) txt += `\n\n⚠️ Dividendos portugueses SEM retenção registada: ${ptSemRetencao.toFixed(2)} € — confirma como declarar.`;
+    document.getElementById('dvd-cabula').value = txt;
+}
+
+function dvdMudarConvencao(pais, valor) {
+    const conv = dvdConvLer();
+    const v = parseFloat(valor);
+    if (isNaN(v) || v < 0 || v > 35) { alert('Taxa inválida (0 a 35%).'); dvdRender(); return; }
+    conv[pais] = v;
+    localStorage.setItem('cofreDividendosConvencao', JSON.stringify(conv));
+    if (typeof sinalizarAlertaBackup === 'function') sinalizarAlertaBackup();
+    dvdRender();
+}
+
+function dvdSugerirPais() {
+    const t = document.getElementById('dvd-ticker').value.trim().toUpperCase();
+    const suf = t.includes('.') ? t.split('.').pop() : null;
+    const pais = suf ? (DVD_SUFIXOS[suf] || 'OUTRO') : 'US';
+    document.getElementById('dvd-pais').value = pais;
+    dvdMostrarDica();
+}
+
+function dvdMostrarDica() {
+    const p = document.getElementById('dvd-pais').value;
+    document.getElementById('dvd-dica-pais').innerHTML = DVD_DICAS[p] ? 'ℹ️ ' + DVD_DICAS[p] : (p === 'OUTRO' ? 'ℹ️ País fora da lista: a cábula indicará "???" no código do país.' : '');
+}
+
+async function dvdCambioAuto() {
+    const moeda = document.getElementById('dvd-moeda').value;
+    const data = document.getElementById('dvd-data').value;
+    const bloco = document.getElementById('dvd-bloco-cambio');
+    const inp = document.getElementById('dvd-cambio');
+    if (moeda === 'EUR') { bloco.style.display = 'none'; inp.value = 1; return; }
+    bloco.style.display = 'flex';
+    if (moeda !== 'USD') {
+        document.getElementById('dvd-dica-pais').innerHTML = `ℹ️ Introduz o câmbio ${moeda} por 1 € da data de pagamento (consulta o extrato ou o BCE).`;
+        return;
+    }
+    if (!data) return;
+    try {
+        inp.value = '...';
+        const r = await fetch(`/api/cambio/${data}`);
+        const j = await r.json();
+        inp.value = j.cambio || 1.08;
+    } catch (e) { inp.value = 1.08; }
+}
+
+function dvdAdicionar() {
+    const v = id => document.getElementById(id).value;
+    const r = {
+        id: Date.now(), data: v('dvd-data'), sujeito: v('dvd-sujeito'), carteira: v('dvd-carteira').trim(),
+        ticker: v('dvd-ticker').trim().toUpperCase(), pais: v('dvd-pais'), moeda: v('dvd-moeda'),
+        bruto: parseFloat(v('dvd-bruto')), retEst: parseFloat(v('dvd-retest')) || 0, retPT: parseFloat(v('dvd-retpt')) || 0,
+        cambio: v('dvd-moeda') === 'EUR' ? 1 : parseFloat(v('dvd-cambio'))
+    };
+    if (!r.data || !r.ticker || isNaN(r.bruto) || r.bruto <= 0) { alert('⚠️ Preenche a data, o ticker e o valor bruto do dividendo.'); return; }
+    if (!(r.cambio > 0)) { alert('⚠️ Câmbio inválido.'); return; }
+    if (r.retEst + r.retPT > r.bruto) { alert('⚠️ As retenções não podem ser superiores ao valor bruto.'); return; }
+    if (r.pais === 'PT' && r.retEst > 0) { alert('⚠️ Para dividendos portugueses, coloca a retenção no campo "Retido PT".'); return; }
+    const lista = dvdLer(); lista.push(r); dvdGravar(lista);
+    ['dvd-bruto', 'dvd-retest', 'dvd-retpt'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('dvd-ano').value = new Date(r.data).getFullYear();
+    if (typeof sinalizarAlertaBackup === 'function') sinalizarAlertaBackup();
+    dvdRender();
+}
+
+function dvdApagar(id) {
+    if (!confirm('Eliminar este registo de dividendo?')) return;
+    dvdGravar(dvdLer().filter(r => r.id !== id));
+    if (typeof sinalizarAlertaBackup === 'function') sinalizarAlertaBackup();
+    dvdRender();
+}
+
+function dvdCopiarCabula() {
+    const t = document.getElementById('dvd-cabula');
+    t.select();
+    navigator.clipboard ? navigator.clipboard.writeText(t.value) : document.execCommand('copy');
+}
+
+(function dvdArranque() {
+    const sel = document.getElementById('dvd-pais');
+    if (!sel) return;
+    sel.innerHTML = DVD_PAISES.map(p => `<option value="${p[0]}">${p[1]}</option>`).join('');
+    sel.addEventListener('change', dvdMostrarDica);
+    document.getElementById('dvd-data').value = new Date().toISOString().slice(0, 10);
+    const filtro = document.getElementById('filtro-sujeito-global');
+    if (filtro) filtro.addEventListener('change', dvdRender);
+    // Atualiza sempre que o Cofre é aberto (os lotes podem ser carregados depois deste script)
+    document.addEventListener('click', ev => {
+        const b = ev.target.closest('.tab-btn');
+        if (b && (b.getAttribute('onclick') || '').includes("'tab-cofre'")) setTimeout(dvdRender, 150);
+    });
+    dvdRender();
+    setTimeout(dvdRender, 1500);
+    dvdCambioAuto();
+})();
+
+// ==========================================================================
+// 🔔 CENTRAL DE ALERTAS PESSOAIS (100% LOCAL — calculada no browser)
+// ==========================================================================
+const CAL_INTERVALO_MS = 10 * 60 * 1000;
+const calLerJSON = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch (e) { return d; } };
+const calLerPrecos = () => calLerJSON('alertasPessoais', []);
+const calGravarPrecos = l => localStorage.setItem('alertasPessoais', JSON.stringify(l));
+let calAlertas = [], calUltima = null;
+
+function calTiposAtivos() {
+    const guardado = calLerJSON('alertasTipos', null);
+    return guardado || ['preco', 'earnings', 'fiscal', 'abate', 'backup'];
+}
+
+function calLotesAbertos() {
+    return (typeof cofreAbertas !== 'undefined' ? cofreAbertas : []).filter(l => l.qtdRestante > 0);
+}
+
+async function calPost(url, corpo) {
+    const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+}
+
+async function calVerificar(manual) {
+    const tipos = calTiposAtivos();
+    const lotes = calLotesAbertos();
+    const precosDef = calLerPrecos().filter(a => a.ativo !== false);
+    const tickLotes = [...new Set(lotes.map(l => l.ticker))];
+    const tickPrecos = [...new Set(precosDef.map(a => a.ticker))];
+    const novos = [];
+    let precos = {};
+
+    // 1. Cotações (só tickers, num único pedido)
+    const pedir = [...new Set([...(tipos.includes('preco') ? tickPrecos : []), ...((tipos.includes('fiscal') || tipos.includes('abate')) ? tickLotes : [])])];
+    if (pedir.length) {
+        try { precos = (await calPost('/api/cotacoes_lote', { tickers: pedir })).precos || {}; } catch (e) { }
+    }
+
+    // 2. Alertas de preço
+    if (tipos.includes('preco')) {
+        precosDef.forEach(a => {
+            const p = precos[a.ticker];
+            if (p === undefined) return;
+            const disparou = a.cond === 'abaixo' ? p <= a.preco : p >= a.preco;
+            if (disparou) novos.push({
+                id: `preco-${a.id}`, nivel: 'alta', icone: a.cond === 'abaixo' ? '⬇️' : '⬆️', tipo: 'preco', ref: a.id,
+                titulo: `${a.ticker} ${a.cond === 'abaixo' ? 'caiu para' : 'subiu para'} ${p} (nível ${a.preco})`,
+                texto: (a.nota ? `“${dvdEsc(a.nota)}”. ` : '') + 'O último fecho conhecido cruzou o nível que definiste. Revê o plano da posição.',
+                dica: 'Alerta de preço definido por ti. Fica ativo enquanto a condição se mantiver; desativa-o quando já tiveres agido.'
+            });
+        });
+    }
+
+    // 3. Resultados trimestrais (Earnings) nos próximos 7 dias
+    if (tipos.includes('earnings')) {
+        const accoes = tickLotes.filter(t => !t.includes('-'));
+        let eventos = null;
+        const cache = calLerJSON('calCacheEarnings', null);
+        if (cache && cache.chave === accoes.join(',') && Date.now() - cache.t < 6 * 3600 * 1000) eventos = cache.eventos;
+        else if (accoes.length) {
+            try {
+                eventos = (await calPost('/api/radar_eventos_carteira', { tickers: accoes })).eventos || [];
+                localStorage.setItem('calCacheEarnings', JSON.stringify({ chave: accoes.join(','), t: Date.now(), eventos }));
+            } catch (e) { eventos = []; }
+        }
+        (eventos || []).filter(e => e.dias_earnings !== null && e.dias_earnings <= 7).forEach(e => {
+            const ls = lotes.filter(l => l.ticker === e.ticker);
+            const p = precos[e.ticker];
+            const lucro = p !== undefined ? ls.reduce((s, l) => s + (p - l.precoCompraOriginal) * l.qtdRestante, 0) : null;
+            novos.push({
+                id: `earn-${e.ticker}-${e.earnings_data}`, nivel: lucro !== null && lucro > 0 ? 'alta' : 'media', icone: '💣', tipo: 'earnings',
+                titulo: `${e.ticker} apresenta resultados ${e.dias_earnings === 0 ? 'hoje' : `em ${e.dias_earnings} dia${e.dias_earnings > 1 ? 's' : ''}`} (${e.earnings_data})`,
+                texto: lucro !== null && lucro > 0 ? 'Tens lucro latente nesta posição. Um gap na abertura pode saltar por cima de qualquer stop.' : 'Prepara-te para volatilidade: o preço pode abrir muito acima ou abaixo do fecho anterior.',
+                dica: 'Os resultados trimestrais são eventos binários: o preço pode “saltar” na abertura (gap), e um stop-loss normal não protege desse salto. Muitos traders reduzem ou protegem a posição antes da data.'
+            });
+        });
+    }
+
+    // 4. Marcos fiscais do tempo de detenção (lotes com lucro)
+    if (tipos.includes('fiscal')) {
+        const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+        lotes.forEach(l => {
+            const p = precos[l.ticker];
+            if (p === undefined || p <= l.precoCompraOriginal) return;
+            const d0 = new Date(l.data); if (isNaN(d0)) return; d0.setHours(0, 0, 0, 0);
+            const dias = Math.floor((hoje - d0) / 86400000);
+            const marco = [365, 730, 1825, 2920].find(m => m > dias);
+            if (!marco || marco - dias > 30) return;
+            const proximo = typeof escalaoFiscalPorDias === 'function' ? escalaoFiscalPorDias(marco).nome.replace('&lt;', '<') : `${marco} dias`;
+            novos.push({
+                id: `fiscal-${l.idOrigem}-${marco}`, nivel: 'media', icone: '⏳', tipo: 'fiscal',
+                titulo: `${l.ticker}: faltam ${marco - dias} dias para o lote passar a “${proximo}”`,
+                texto: `Lote de ${new Date(l.data).toLocaleDateString('pt-PT')} (${l.carteira}, Suj. ${l.sujeito || 'A'}) com lucro latente. Vender antes do marco pode sair mais caro em impostos.`,
+                dica: 'Desde 2023, o tempo de detenção conta no IRS: ganhos de ativos detidos menos de 1 ano podem ser obrigatoriamente englobados, e há percentagens de tributação que diminuem a partir de 2, 5 e 8 anos. Consulta o Relógio Fiscal do Cofre para o detalhe de cada lote.'
+            });
+        });
+    }
+
+    // 5. Janela de abate fiscal (novembro e dezembro)
+    if (tipos.includes('abate') && new Date().getMonth() >= 10) {
+        const ano = new Date().getFullYear();
+        const realizado = (typeof cofreFechadas !== 'undefined' ? cofreFechadas : []).filter(t => new Date(t.data).getFullYear() === ano && typeof t.pnlEUR === 'number').reduce((s, t) => s + t.pnlEUR, 0);
+        const cambio = (typeof cacheCambioLive !== 'undefined' && cacheCambioLive) ? cacheCambioLive : 1.08;
+        let perdas = 0, nPerdas = 0;
+        lotes.forEach(l => {
+            const p = precos[l.ticker]; if (p === undefined) return;
+            const pnlOrig = (p - l.precoCompraOriginal) * l.qtdRestante;
+            const pnlEur = l.moeda === 'USD' ? pnlOrig / cambio : pnlOrig;
+            if (pnlEur < 0) { perdas += pnlEur; nPerdas++; }
+        });
+        if (realizado > 0 && nPerdas > 0) novos.push({
+            id: `abate-${ano}-${new Date().getMonth()}`, nivel: 'info', icone: '✂️', tipo: 'abate', acao: 'cofre',
+            titulo: `Janela de abate fiscal: mais-valias de €${realizado.toFixed(2)} e ${nPerdas} lote${nPerdas > 1 ? 's' : ''} com perda latente (≈ €${Math.abs(perdas).toFixed(2)})`,
+            texto: 'Até 31 de dezembro ainda podes realizar perdas para compensar ganhos deste ano. Abre o Caçador de Abate Fiscal no Cofre para ver o detalhe por lote.',
+            dica: 'As perdas realizadas no mesmo ano abatem às mais-valias realizadas. Em Portugal não existe a regra americana dos 30 dias: podes vender e voltar a comprar logo a seguir, mantendo a posição. Pondera os custos de transação.'
+        });
+    }
+
+    // 6. Lembrete de backup (os dados só existem neste browser)
+    if (tipos.includes('backup') && typeof cofreBruto !== 'undefined' && cofreBruto.length) {
+        const ult = localStorage.getItem('ultimoBackupCofre');
+        const dias = ult ? Math.floor((Date.now() - new Date(ult)) / 86400000) : null;
+        if (dias === null || dias > 30) {
+            const semana = Math.floor(Date.now() / (7 * 86400000));
+            novos.push({
+                id: `backup-${semana}`, nivel: 'media', icone: '💾', tipo: 'backup', acao: 'cofre',
+                titulo: dias === null ? 'Ainda não exportaste nenhum backup do Cofre neste browser' : `Último backup do Cofre há ${dias} dias`,
+                texto: 'O teu Cofre vive apenas neste browser. Limpar os dados de navegação ou mudar de computador apaga-o. Exporta o Backup JSON e guarda-o num local seguro.',
+                dica: 'É o preço da privacidade: como nada é guardado no servidor, és tu quem guarda a cópia de segurança. Um backup mensal chega para a maioria das pessoas.'
+            });
+        }
+    }
+
+    const ordem = { alta: 0, media: 1, info: 2 };
+    calAlertas = novos.sort((a, b) => ordem[a.nivel] - ordem[b.nivel]);
+    calUltima = new Date();
+    calRenderizar();
+    calNotificarBrowser();
+}
+
+function calRenderizar() {
+    const vistos = calLerJSON('alertasVistos', {});
+    const porVer = calAlertas.filter(a => !vistos[a.id]).length;
+    const badge = document.getElementById('cal-badge');
+    badge.style.display = porVer ? 'inline-block' : 'none';
+    badge.innerText = porVer;
+    const hora = calUltima ? calUltima.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }) : '--:--';
+    document.getElementById('cal-resumo').innerHTML = calAlertas.length
+        ? `${calAlertas.length} alerta${calAlertas.length > 1 ? 's' : ''} ativo${calAlertas.length > 1 ? 's' : ''}${porVer ? ` · <b style="color:#ff7b72">${porVer} novo${porVer > 1 ? 's' : ''}</b>` : ''} · verificado às ${hora}`
+        : `✅ Sem alertas · verificado às ${hora}`;
+
+    document.getElementById('cal-lista').innerHTML = calAlertas.length ? calAlertas.map(a => `
+        <div class="cal-item ${a.nivel}">
+            <div class="cal-ic">${a.icone}</div>
+            <div style="flex:1">
+                <div class="cal-tit">${dvdEsc(a.titulo)} ${!vistos[a.id] ? '<span style="background:#d9534f;color:#fff;border-radius:4px;padding:0 5px;font-size:10px;margin-left:4px">NOVO</span>' : ''}</div>
+                <div>${a.texto}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end">
+                <span class="dica-edu" style="font-size:11px;color:#8b949e">ℹ️ Porquê?<span class="dica-texto" style="width:280px;left:auto;right:0;transform:none">${a.dica}</span></span>
+                ${a.tipo === 'preco' ? `<button class="cal-mini" onclick="calDesativarPreco(${a.ref})">Desativar</button>` : ''}
+                ${a.acao === 'cofre' ? `<button class="cal-mini" onclick="calAbrirCofre()">Abrir Cofre</button>` : ''}
+            </div>
+        </div>`).join('') : `<p style="color:#6e7681;font-size:12px;margin:10px 0 0">Nada a assinalar neste momento. Define alertas de preço abaixo ou adiciona posições ao Cofre.</p>`;
+
+    // Tabela dos alertas de preço
+    const lista = calLerPrecos();
+    document.getElementById('cal-tbody-precos').innerHTML = lista.map(a => `
+        <tr><td style="font-weight:bold">${dvdEsc(a.ticker)}</td><td>${a.cond === 'abaixo' ? '⬇️ ≤' : '⬆️ ≥'} ${a.preco}</td>
+        <td style="color:#8b949e">${dvdEsc(a.nota || '')}</td><td>${a.ativo === false ? '<span style="color:#6e7681">desativado</span>' : '<span style="color:#56d364">ativo</span>'}</td>
+        <td style="text-align:right">${a.ativo === false ? `<button class="cal-mini" onclick="calReativarPreco(${a.id})">Reativar</button>` : ''}
+        <button class="cal-mini" style="border-color:#d9534f;color:#ff7b72" onclick="calApagarPreco(${a.id})">✕</button></td></tr>`).join('')
+        || `<tr><td style="color:#6e7681">Sem alertas de preço definidos.</td></tr>`;
+    document.getElementById('cal-lista-tickers').innerHTML = [...new Set(calLotesAbertos().map(l => l.ticker))].map(t => `<option value="${dvdEsc(t)}">`).join('');
+    document.querySelectorAll('.cal-tipo').forEach(cb => cb.checked = calTiposAtivos().includes(cb.value));
+    const btnN = document.getElementById('cal-btn-notif');
+    if (!('Notification' in window)) btnN.style.display = 'none';
+    else if (Notification.permission === 'granted') { btnN.innerText = '🖥️ Notificações ativas'; btnN.disabled = true; }
+    document.getElementById('cal-rodape').innerText = 'Estimativas com base no último fecho disponível. Ferramenta educativa — não constitui aconselhamento financeiro.';
+}
+
+function calAlternar() {
+    const p = document.getElementById('cal-painel');
+    const abrir = p.style.display !== 'block';
+    p.style.display = abrir ? 'block' : 'none';
+    if (abrir) {
+        // Abrir o painel marca os alertas atuais como vistos (o “NOVO” mantém-se visível até fechares)
+        const vistos = calLerJSON('alertasVistos', {});
+        calAlertas.forEach(a => vistos[a.id] = Date.now());
+        localStorage.setItem('alertasVistos', JSON.stringify(vistos));
+        setTimeout(() => {
+            document.getElementById('cal-badge').style.display = 'none';
+        }, 300);
+    } else {
+        calRenderizar();
+    }
+}
+
+function calLimparVistos() {
+    localStorage.removeItem('alertasVistos');
+    localStorage.removeItem('alertasNotificados');
+    calRenderizar();
+}
+
+async function calPedirNotificacoes() {
+    if (!('Notification' in window)) return;
+    const r = await Notification.requestPermission();
+    if (r === 'granted') { calRenderizar(); calNotificarBrowser(); }
+}
+
+function calNotificarBrowser() {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    const ja = calLerJSON('alertasNotificados', {});
+    calAlertas.filter(a => !ja[a.id] && a.nivel !== 'info').slice(0, 5).forEach(a => {
+        try { new Notification(`${a.icone} ${a.titulo}`, { body: a.texto.replace(/<[^>]+>/g, ''), tag: a.id }); } catch (e) { }
+        ja[a.id] = Date.now();
+    });
+    localStorage.setItem('alertasNotificados', JSON.stringify(ja));
+}
+
+function calAdicionarPreco() {
+    const ticker = document.getElementById('cal-p-ticker').value.trim().toUpperCase();
+    const preco = parseFloat(document.getElementById('cal-p-preco').value);
+    if (!ticker || !(preco > 0)) { alert('⚠️ Indica o ticker e um preço válido.'); return; }
+    const lista = calLerPrecos();
+    if (lista.length >= 50) { alert('⚠️ Máximo de 50 alertas de preço.'); return; }
+    lista.push({ id: Date.now(), ticker, cond: document.getElementById('cal-p-cond').value, preco, nota: document.getElementById('cal-p-nota').value.trim(), ativo: true });
+    calGravarPrecos(lista);
+    ['cal-p-ticker', 'cal-p-preco', 'cal-p-nota'].forEach(id => document.getElementById(id).value = '');
+    if (typeof sinalizarAlertaBackup === 'function') sinalizarAlertaBackup();
+    calVerificar(true);
+}
+function calApagarPreco(id) { calGravarPrecos(calLerPrecos().filter(a => a.id !== id)); calVerificar(true); }
+function calDesativarPreco(id) { calGravarPrecos(calLerPrecos().map(a => a.id === id ? { ...a, ativo: false } : a)); calVerificar(true); }
+function calReativarPreco(id) { calGravarPrecos(calLerPrecos().map(a => a.id === id ? { ...a, ativo: true } : a)); calVerificar(true); }
+
+function calAbrirCofre() {
+    const b = [...document.querySelectorAll('.tab-btn')].find(x => (x.getAttribute('onclick') || '').includes("'tab-cofre'"));
+    if (b) { b.click(); document.getElementById('tab-cofre').scrollIntoView({ behavior: 'smooth' }); }
+}
+
+(function calArranque() {
+    if (!document.getElementById('cal-barra')) return;
+    document.querySelectorAll('.cal-tipo').forEach(cb => cb.addEventListener('change', () => {
+        localStorage.setItem('alertasTipos', JSON.stringify([...document.querySelectorAll('.cal-tipo:checked')].map(x => x.value)));
+        calVerificar(true);
+    }));
+    setTimeout(() => calVerificar(false), 2500);
+    setInterval(() => calVerificar(false), CAL_INTERVALO_MS);
+})();
 </script>
 
 </body>
