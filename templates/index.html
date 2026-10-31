@@ -317,9 +317,9 @@
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
             <h3 class="painel-titulo" style="margin: 0;">🔔 Os teus alertas</h3>
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                <button class="cal-mini" onclick="calVerificar(true)">🔄 Verificar agora</button>
+                <button class="cal-mini" id="cal-btn-verificar" onclick="calVerificarManual()">🔄 Verificar agora</button>
                 <button class="cal-mini" id="cal-btn-notif" onclick="calPedirNotificacoes()">🖥️ Ativar notificações do browser</button>
-                <button class="cal-mini" onclick="calLimparVistos()" title="Volta a mostrar como novos os alertas que já tinhas visto.">↺ Repor vistos</button>
+                <button class="cal-mini" id="cal-btn-repor" onclick="calLimparVistos()" title="Volta a mostrar como novos os alertas que já tinhas visto (e permite que voltem a gerar notificação).">↺ Repor vistos</button>
             </div>
         </div>
         <div id="cal-lista"></div>
@@ -1373,7 +1373,7 @@
 
             <!-- POR PAÍS + YIELD ON COST -->
             <div style="display: grid; grid-template-columns: 1fr; gap: 15px; margin-top: 15px;">
-                <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 12px; overflow-x: auto;">
+                <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 12px;">
                     <div style="font-size: 12px; font-weight: bold; color: #3fbf8f; text-transform: uppercase; margin-bottom: 8px;">
                         <span class="dica-edu">🌍 Por país de origem<span class="dica-texto" style="width: 300px; text-transform: none; left: 0; transform: none;">A AT pede os dividendos estrangeiros agrupados por país (Anexo J). A <b>taxa da convenção</b> é editável: 15% é a taxa mais comum nas convenções de Portugal para dividendos de carteira (é a dos EUA com W-8BEN), mas confirma a do teu país no Portal das Finanças. A tua escolha fica guardada neste browser.</span></span>
                     </div>
@@ -1387,7 +1387,7 @@
                         <tbody id="dvd-tbody-paises"></tbody>
                     </table>
                 </div>
-                <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 12px; overflow-x: auto;">
+                <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 12px;">
                     <div style="font-size: 12px; font-weight: bold; color: #58a6ff; text-transform: uppercase; margin-bottom: 8px;">
                         <span class="dica-edu">📈 Yield on Cost (12 meses)<span class="dica-texto" style="width: 300px; text-transform: none; left: auto; right: 0; transform: none;"><b>Yield on Cost</b> = dividendos brutos recebidos nos últimos 12 meses ÷ quanto pagaste pelos lotes que ainda tens dessa ação. Mostra o rendimento real do teu capital investido (e não do preço de hoje). A coluna "líquido" desconta as retenções já sofridas.</span></span>
                     </div>
@@ -8875,7 +8875,11 @@ function calRenderizar() {
     document.querySelectorAll('.cal-tipo').forEach(cb => cb.checked = calTiposAtivos().includes(cb.value));
     const btnN = document.getElementById('cal-btn-notif');
     if (!('Notification' in window)) btnN.style.display = 'none';
-    else if (Notification.permission === 'granted') { btnN.innerText = '🖥️ Notificações ativas'; btnN.disabled = true; }
+    else if (!btnN._t) {
+        if (Notification.permission === 'granted') { btnN.innerHTML = '🖥️ Notificações ativas · testar'; btnN.title = 'Envia uma notificação de teste para confirmares que aparece no teu computador.'; }
+        else if (Notification.permission === 'denied') { btnN.innerHTML = '🚫 Notificações bloqueadas'; btnN.title = 'O browser bloqueou as notificações deste site. Clica para ver como desbloquear.'; }
+        else { btnN.innerHTML = '🖥️ Ativar notificações do browser'; btnN.title = 'Mostra um aviso no computador quando surge um alerta novo (só enquanto o Portal estiver aberto).'; }
+    }
     document.getElementById('cal-rodape').innerText = 'Estimativas com base no último fecho disponível. Ferramenta educativa — não constitui aconselhamento financeiro.';
 }
 
@@ -8896,16 +8900,47 @@ function calAlternar() {
     }
 }
 
+function calFeedback(id, texto, ms) {
+    const b = document.getElementById(id);
+    if (!b) return;
+    if (!b.dataset.original) b.dataset.original = b.innerHTML;
+    b.innerHTML = texto;
+    b.style.color = '#56d364'; b.style.borderColor = '#2ea043';
+    clearTimeout(b._t);
+    b._t = setTimeout(() => { b.innerHTML = b.dataset.original; b.style.color = ''; b.style.borderColor = ''; calRenderizar(); }, ms || 2500);
+}
+
+async function calVerificarManual() {
+    const b = document.getElementById('cal-btn-verificar');
+    b.disabled = true; b.innerHTML = '⏳ A verificar...';
+    await calVerificar(true);
+    b.disabled = false;
+    const hora = new Date().toLocaleTimeString('pt-PT');
+    calFeedback('cal-btn-verificar', `✅ Verificado às ${hora} · ${calAlertas.length} alerta${calAlertas.length === 1 ? '' : 's'}`, 3000);
+}
+
 function calLimparVistos() {
+    const n = calAlertas.length;
     localStorage.removeItem('alertasVistos');
     localStorage.removeItem('alertasNotificados');
     calRenderizar();
+    calFeedback('cal-btn-repor', n ? `↺ ${n} alerta${n === 1 ? '' : 's'} marcado${n === 1 ? '' : 's'} como novo${n === 1 ? '' : 's'}` : '↺ Feito (não havia alertas para repor)', 2500);
 }
 
 async function calPedirNotificacoes() {
-    if (!('Notification' in window)) return;
+    if (!('Notification' in window)) { alert('Este browser não suporta notificações.'); return; }
+    if (Notification.permission === 'granted') {
+        try { new Notification('🔔 Central de Alertas — teste', { body: 'As notificações estão a funcionar. Vais ver avisos assim quando surgir um alerta novo (com o Portal aberto).' }); } catch (e) { }
+        calFeedback('cal-btn-notif', '✅ Notificação de teste enviada', 3000);
+        return;
+    }
+    if (Notification.permission === 'denied') {
+        alert('As notificações estão bloqueadas para este site.\n\nPara desbloquear: clica no cadeado 🔒 à esquerda do endereço do site → Notificações → Permitir. Depois recarrega a página.');
+        return;
+    }
     const r = await Notification.requestPermission();
-    if (r === 'granted') { calRenderizar(); calNotificarBrowser(); }
+    if (r === 'granted') { calFeedback('cal-btn-notif', '✅ Notificações ativadas', 2500); calNotificarBrowser(); }
+    else calRenderizar();
 }
 
 function calNotificarBrowser() {
