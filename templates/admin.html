@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gestão · Portal Bolsa</title>
+<meta name="robots" content="noindex, nofollow">
+<style>
+  :root {
+    --fundo: #0b0d12; --cartao: #12151c; --cartao2: #171b24; --borda: #232834;
+    --texto: #e6e8ec; --suave: #8b93a3; --laranja: #f59e0b; --laranja-esc: #3a2a0c;
+    --verde: #22c55e; --verde-esc: #0f2a1a; --vermelho: #ef4444; --vermelho-esc: #2e1214;
+    --azul: #5865F2; --amarelo: #eab308; --amarelo-esc: #2d2608;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--fundo); color: var(--texto); font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; font-size: 14px; }
+  a { color: inherit; }
+
+  /* Barra de topo */
+  .topo { position: sticky; top: 0; z-index: 10; background: rgba(11,13,18,.92); backdrop-filter: blur(8px); border-bottom: 1px solid var(--borda); }
+  .topo-in { max-width: 1180px; margin: auto; padding: 12px 20px; display: flex; align-items: center; gap: 14px; }
+  .logo { width: 34px; height: 34px; border-radius: 9px; background: linear-gradient(135deg,#f59e0b,#ea580c); display: grid; place-items: center; font-weight: 800; font-size: 13px; color: #fff; }
+  .marca b { display: block; font-size: 15px; }
+  .marca span { font-size: 11px; color: var(--suave); }
+  .espaco { flex: 1; }
+  .relogio { font-size: 12px; color: var(--suave); text-align: right; line-height: 1.4; }
+  .btn-voltar { border: 1px solid var(--borda); padding: 7px 13px; border-radius: 8px; text-decoration: none; font-size: 13px; }
+  .btn-voltar:hover { border-color: var(--suave); }
+
+  main { max-width: 1180px; margin: auto; padding: 22px 20px 60px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: var(--suave); margin: 0 0 20px; }
+
+  /* Mosaicos de estado */
+  .mosaicos { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 22px; }
+  .mosaico { background: var(--cartao); border: 1px solid var(--borda); border-radius: 12px; padding: 14px 16px; cursor: pointer; transition: border-color .15s; }
+  .mosaico:hover { border-color: #3a4152; }
+  .mosaico .rot { font-size: 12px; color: var(--suave); display: flex; align-items: center; gap: 6px; }
+  .mosaico .val { font-size: 16px; font-weight: 700; margin-top: 6px; }
+  .mosaico .det { font-size: 12px; color: var(--suave); margin-top: 3px; overflow-wrap: anywhere; }
+
+  .ponto { width: 8px; height: 8px; border-radius: 50%; display: inline-block; background: var(--suave); flex-shrink: 0; }
+  .ok .ponto, .ponto.ok { background: var(--verde); box-shadow: 0 0 8px var(--verde); }
+  .aviso .ponto, .ponto.aviso { background: var(--amarelo); }
+  .erro .ponto, .ponto.erro { background: var(--vermelho); box-shadow: 0 0 8px var(--vermelho); }
+  .corre .ponto, .ponto.corre { background: var(--laranja); animation: pulsar 1.2s infinite; }
+  @keyframes pulsar { 50% { opacity: .3; } }
+
+  /* Fluxo diário */
+  .fluxo { background: var(--cartao); border: 1px solid var(--borda); border-radius: 12px; padding: 16px 18px; margin-bottom: 22px; }
+  .fluxo h3 { margin: 0 0 12px; font-size: 14px; }
+  .passos { display: flex; gap: 8px; flex-wrap: wrap; align-items: stretch; }
+  .passo { flex: 1 1 180px; background: var(--cartao2); border-radius: 10px; padding: 10px 12px; font-size: 12.5px; color: var(--suave); }
+  .passo b { color: var(--texto); display: block; font-size: 13px; margin-bottom: 2px; }
+  .passo .hora { color: var(--laranja); font-weight: 700; font-size: 12px; }
+  .seta { align-self: center; color: #3a4152; font-size: 18px; }
+
+  /* Cartões das áreas */
+  .grelha { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; }
+  .cartao { background: var(--cartao); border: 1px solid var(--borda); border-radius: 14px; padding: 18px; display: flex; flex-direction: column; scroll-margin-top: 80px; }
+  .cartao.largo { grid-column: 1 / -1; }
+  .cab { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .cab h2 { font-size: 16px; margin: 0; }
+  .pilula { margin-left: auto; font-size: 11.5px; font-weight: 700; padding: 4px 10px; border-radius: 999px; display: inline-flex; align-items: center; gap: 6px; background: var(--cartao2); color: var(--suave); white-space: nowrap; }
+  .pilula.ok { background: var(--verde-esc); color: var(--verde); }
+  .pilula.aviso { background: var(--amarelo-esc); color: var(--amarelo); }
+  .pilula.erro { background: var(--vermelho-esc); color: var(--vermelho); }
+  .pilula.corre { background: var(--laranja-esc); color: var(--laranja); }
+  .explica { color: var(--suave); line-height: 1.55; margin: 0 0 14px; font-size: 13px; }
+  .explica b { color: var(--texto); font-weight: 600; }
+
+  .dados { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 14px; }
+  .dados td { padding: 7px 0; border-top: 1px solid var(--borda); vertical-align: top; }
+  .dados td:first-child { color: var(--suave); width: 44%; padding-right: 10px; }
+  .dados.tabela th { text-align: left; font-size: 11.5px; color: var(--suave); font-weight: 600; padding: 0 8px 6px 0; }
+  .dados.tabela td { padding: 8px 8px 8px 0; width: auto; color: var(--texto); }
+  .dados.tabela td:first-child { font-weight: 600; }
+
+  .acoes { display: flex; gap: 8px; flex-wrap: wrap; margin-top: auto; }
+  .btn { border: 0; border-radius: 8px; padding: 9px 14px; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; font-family: inherit; }
+  .btn.prim { background: var(--laranja); color: #1a1205; }
+  .btn.prim:hover { background: #fbbf24; }
+  .btn.disc { background: var(--azul); color: #fff; }
+  .btn.disc:hover { background: #6d78f5; }
+  .btn.sec { background: var(--cartao2); color: var(--texto); border: 1px solid var(--borda); }
+  .btn.sec:hover { border-color: var(--suave); }
+  .btn[disabled] { opacity: .45; cursor: not-allowed; }
+
+  .msg { margin-top: 12px; font-size: 13px; padding: 10px 12px; border-radius: 8px; display: none; line-height: 1.45; }
+  .msg.ok { display: block; background: var(--verde-esc); color: #86efac; }
+  .msg.erro { display: block; background: var(--vermelho-esc); color: #fca5a5; }
+  .msg.info { display: block; background: var(--cartao2); color: var(--texto); }
+
+  .dica { font-size: 12.5px; background: var(--amarelo-esc); color: #fde68a; border-radius: 8px; padding: 9px 12px; margin-bottom: 12px; display: none; }
+  details { margin-bottom: 12px; font-size: 12.5px; }
+  summary { cursor: pointer; color: var(--suave); }
+  details ul { margin: 8px 0 0; padding-left: 18px; color: #fca5a5; }
+  .nomes { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .nome { background: var(--cartao2); border: 1px solid var(--borda); border-radius: 999px; padding: 4px 10px; font-size: 12.5px; display: inline-flex; align-items: center; gap: 6px; }
+  .nome.off { color: var(--suave); }
+  .nome small { color: var(--suave); }
+  .atalhos { list-style: none; margin: 0; padding: 0; }
+  .atalhos li { display: flex; gap: 12px; align-items: baseline; padding: 8px 0; border-top: 1px solid var(--borda); font-size: 13px; flex-wrap: wrap; }
+  .atalhos code { color: var(--laranja); font-size: 12.5px; }
+  .atalhos span { color: var(--suave); }
+  .vazio { color: var(--suave); font-size: 13px; margin-bottom: 12px; }
+  @media (max-width: 600px) { .grelha { grid-template-columns: 1fr; } .seta { display: none; } .marca span, #atualizado { display: none; } .topo-in { padding: 10px 14px; } main { padding: 18px 14px 50px; } .dados.tabela { display: block; overflow-x: auto; white-space: nowrap; } }
+</style>
+</head>
+<body>
+
+<header class="topo">
+  <div class="topo-in">
+    <div class="logo">PB</div>
+    <div class="marca"><b>Área de Gestão</b><span>visível apenas para o Admin</span></div>
+    <div class="espaco"></div>
+    <div class="relogio"><div id="hora-lisboa">Lisboa —</div><div id="atualizado">a carregar…</div></div>
+    <a class="btn-voltar" href="/">← Voltar ao portal</a>
+  </div>
+</header>
+
+<main>
+  <h1>Olá, {{ username }} 👋</h1>
+  <p class="sub">Tudo o que controla os bastidores do portal, num só sítio. Esta página atualiza-se sozinha a cada 15 segundos (a cada 5 enquanto a fotografia diária estiver a correr).</p>
+
+  <!-- MOSAICOS -->
+  <section class="mosaicos">
+    <div class="mosaico" data-ir="c-yahoo"><div class="rot" id="m-yahoo-r"><span class="ponto"></span>Yahoo</div><div class="val" id="m-yahoo">—</div><div class="det" id="m-yahoo-d">&nbsp;</div></div>
+    <div class="mosaico" data-ir="c-snapshot"><div class="rot" id="m-snap-r"><span class="ponto"></span>Fotografia diária</div><div class="val" id="m-snap">—</div><div class="det" id="m-snap-d">&nbsp;</div></div>
+    <div class="mosaico" data-ir="c-matinal"><div class="rot" id="m-mat-r"><span class="ponto"></span>Briefing EUA</div><div class="val" id="m-mat">—</div><div class="det" id="m-mat-d">&nbsp;</div></div>
+    <div class="mosaico" data-ir="c-psi"><div class="rot" id="m-psi-r"><span class="ponto"></span>Briefing PSI</div><div class="val" id="m-psi">—</div><div class="det" id="m-psi-d">&nbsp;</div></div>
+    <div class="mosaico" data-ir="c-online"><div class="rot ok" id="m-on-r"><span class="ponto"></span>Membros</div><div class="val" id="m-on">—</div><div class="det" id="m-on-d">&nbsp;</div></div>
+  </section>
+
+  <!-- FLUXO -->
+  <section class="fluxo">
+    <h3>🔁 Como as peças se encaixam (dias úteis, hora de Lisboa)</h3>
+    <div class="passos">
+      <div class="passo"><span class="hora">22:30</span><b>📸 Fotografia diária</b>Descarrega EUA, cripto e PSI de uma vez e guarda em disco.</div>
+      <div class="seta">→</div>
+      <div class="passo"><span class="hora">todo o dia</span><b>🔎 Screener</b>Os membros leem a fotografia — zero pedidos ao Yahoo.</div>
+      <div class="seta">→</div>
+      <div class="passo"><span class="hora">08:00</span><b>☀️ Briefing EUA</b>Sala dos States no Discord.</div>
+      <div class="seta">→</div>
+      <div class="passo"><span class="hora">08:10</span><b>🇵🇹 Briefing PSI</b>Sala do PSI no Discord.</div>
+    </div>
+  </section>
+
+  <section class="grelha">
+
+    <!-- FOTOGRAFIA DIÁRIA -->
+    <article class="cartao largo" id="c-snapshot">
+      <div class="cab"><span style="font-size:20px">📸</span><h2>Fotografia diária do mercado</h2><span class="pilula" id="p-snap">—</span></div>
+      <p class="explica">Uma vez por dia, depois do fecho americano, o portal descarrega <b>todos os universos</b> (S&amp;P 500, Nasdaq 100, cripto e PSI) devagar e em lotes, e guarda o resultado. É daqui que o <b>Screener</b> e os <b>dois briefings</b> leem — por isso o portal faz o mesmo número de pedidos ao Yahoo com 10 ou com 500 membros. Corre sozinha às 22:30; só precisas de a lançar à mão se falhou ou se acabaste de reiniciar o servidor. <b>Demora 10 a 15 minutos.</b></p>
+      <table class="dados tabela" id="t-ficheiros">
+        <thead><tr><th>Universo</th><th>Estado</th><th>Sessão</th><th>Gerado em</th><th>Ativos</th><th>Sinais (pullback · squeeze · capitulação)</th></tr></thead>
+        <tbody><tr><td colspan="6" class="vazio">a carregar…</td></tr></tbody>
+      </table>
+      <table class="dados" id="t-snap"></table>
+      <details id="d-snap-erros" style="display:none"><summary>Ver avisos da última execução</summary><ul></ul></details>
+      <div class="acoes">
+        <button class="btn prim" id="b-snap">▶ Executar fotografia agora</button>
+        <a class="btn sec" href="/api/admin/snapshot" target="_blank">📋 Ver dados técnicos (JSON)</a>
+      </div>
+      <div class="msg" id="msg-snap"></div>
+    </article>
+
+    <!-- BRIEFING EUA -->
+    <article class="cartao" id="c-matinal">
+      <div class="cab"><span style="font-size:20px">☀️</span><h2>Briefing Matinal (EUA)</h2><span class="pilula" id="p-mat">—</span></div>
+      <p class="explica">Resumo do fecho americano: índices, saúde do mercado, VIX, rotação setorial, setups do Screener e força relativa. Envia-se sozinho às <b>08:00</b> para a sala definida em <b>WEBHOOK_RELATORIO</b>. Lê a fotografia diária — sem ela, não há briefing.</p>
+      <div class="dica" id="dica-mat">⚠️ A fotografia do S&amp;P 500 / Nasdaq não está fresca. Executa a fotografia primeiro.</div>
+      <table class="dados" id="t-mat"></table>
+      <div class="acoes">
+        <a class="btn sec" href="/api/admin/relatorio/preview" target="_blank">👁 Pré-visualizar</a>
+        <button class="btn disc" data-enviar="/api/admin/relatorio/enviar?forcar=1" data-msg="msg-mat" data-nome="o Briefing EUA">📡 Enviar agora</button>
+      </div>
+      <div class="msg" id="msg-mat"></div>
+    </article>
+
+    <!-- BRIEFING PSI -->
+    <article class="cartao" id="c-psi">
+      <div class="cab"><span style="font-size:20px">🇵🇹</span><h2>Briefing PSI (Lisboa)</h2><span class="pilula" id="p-psi">—</span></div>
+      <p class="explica">As 16 cotadas do PSI com as mesmas regras do Screener: quadro da sessão, saúde do índice, setups com histórico e força relativa contra o PSI. Envia-se sozinho às <b>08:10</b> para a sala definida em <b>WEBHOOK_RELATORIO_PSI</b>. Se a fotografia do PSI faltar, calcula-a na hora com um único pedido.</p>
+      <table class="dados" id="t-psi"></table>
+      <div class="acoes">
+        <a class="btn sec" href="/api/admin/relatorio_psi/preview" target="_blank">👁 Pré-visualizar</a>
+        <button class="btn disc" data-enviar="/api/admin/relatorio_psi/enviar?forcar=1" data-msg="msg-psi" data-nome="o Briefing PSI">📡 Enviar agora</button>
+      </div>
+      <div class="msg" id="msg-psi"></div>
+    </article>
+
+    <!-- YAHOO -->
+    <article class="cartao" id="c-yahoo">
+      <div class="cab"><span style="font-size:20px">🛡️</span><h2>Escudo do Yahoo</h2><span class="pilula" id="p-yahoo">—</span></div>
+      <p class="explica">Todas as cotações vêm do Yahoo Finance, que bloqueia quem faz pedidos a mais. O escudo guarda respostas em cache e, se detetar sinais de bloqueio, <b>entra em pausa de proteção</b>: durante esse tempo o portal deixa de pedir dados (o Screener continua a funcionar a partir da fotografia). A pausa levanta-se sozinha — não há nada a fazer além de esperar.</p>
+      <table class="dados" id="t-yahoo"></table>
+      <div class="acoes">
+        <a class="btn sec" href="/api/admin/yahoo" target="_blank">📋 Ver dados técnicos (JSON)</a>
+      </div>
+    </article>
+
+    <!-- ONLINE -->
+    <article class="cartao" id="c-online">
+      <div class="cab"><span style="font-size:20px">👥</span><h2>Membros</h2><span class="pilula ok" id="p-on">—</span></div>
+      <p class="explica">Quem usou o portal nos <b>últimos 5 minutos</b> conta como online. Em baixo, as últimas visitas de quem já saiu.</p>
+      <div class="nomes" id="l-online"></div>
+      <details id="d-offline"><summary>Últimas visitas</summary><div class="nomes" id="l-offline" style="margin-top:8px"></div></details>
+      <div class="acoes">
+        <a class="btn sec" href="/api/admin/online" target="_blank">📋 Ver dados técnicos (JSON)</a>
+      </div>
+    </article>
+
+    <!-- ATALHOS -->
+    <article class="cartao largo">
+      <div class="cab"><span style="font-size:20px">🔗</span><h2>Endereços diretos</h2></div>
+      <p class="explica">Os mesmos links de sempre, caso precises deles fora desta página. Todos exigem sessão iniciada como Admin.</p>
+      <ul class="atalhos">
+        <li><code>/api/admin/yahoo</code><span>Estado do escudo anti-bloqueio do Yahoo.</span></li>
+        <li><code>/api/admin/snapshot</code><span>Estado da fotografia diária e dos briefings (para acompanhar a execução).</span></li>
+        <li><code>/api/admin/snapshot/executar</code><span>Lança a fotografia diária em background (10–15 min).</span></li>
+        <li><code>/api/admin/relatorio/preview</code><span>Pré-visualização do Briefing EUA (precisa da fotografia).</span></li>
+        <li><code>/api/admin/relatorio_psi/preview</code><span>Pré-visualização do Briefing PSI.</span></li>
+        <li><code>/api/admin/online</code><span>Membros online e últimas visitas.</span></li>
+      </ul>
+    </article>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const NOMES_UNIV = { macro: "Macro (índices, breadth, RRG)", sp500: "S&P 500", ndx: "Nasdaq 100", cripto: "Cripto", psi: "PSI (Lisboa)" };
+let ultimaAtualizacao = null, aCorrer = false, temporizador = null;
+
+function esc(s) { return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+
+function dataPt(iso, comHora = true) {
+  if (!iso) return "—";
+  const d = new Date(iso.length <= 10 ? iso + "T12:00:00" : iso);
+  if (isNaN(d)) return esc(iso);
+  const hoje = new Date(), ontem = new Date(Date.now() - 864e5);
+  const dia = d.toDateString() === hoje.toDateString() ? "hoje" : d.toDateString() === ontem.toDateString() ? "ontem"
+            : d.toLocaleDateString("pt-PT", { day: "2-digit", month: "2-digit" });
+  return comHora && iso.length > 10 ? `${dia} às ${d.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })}` : dia;
+}
+
+function minutosDesde(iso) { const d = new Date(iso); return isNaN(d) ? null : Math.round((Date.now() - d) / 60000); }
+
+function pilula(id, classe, texto) { const p = $(id); p.className = "pilula " + classe; p.innerHTML = `<span class="ponto"></span>${esc(texto)}`; }
+function mosaico(chave, classe, valor, detalhe) {
+  $(`m-${chave}-r`).className = "rot " + classe;
+  $(`m-${chave}`).textContent = valor;
+  $(`m-${chave}-d`).textContent = detalhe || " ";
+}
+function linhas(tabela, pares) {
+  $(tabela).innerHTML = pares.filter(p => p).map(([k, v]) => `<tr><td>${esc(k)}</td><td>${v}</td></tr>`).join("");
+}
+function msg(id, classe, texto) { const m = $(id); m.className = "msg " + classe; m.textContent = texto; }
+
+async function pedir(url) {
+  const r = await fetch(url, { credentials: "same-origin" });
+  let j = null; try { j = await r.json(); } catch (e) {}
+  return { ok: r.ok, estado: r.status, j };
+}
+
+// ---------------- Fotografia + briefings
+function pintarSnapshot(d) {
+  const s = d.snapshot || {}, f = d.ficheiros || {};
+  aCorrer = !!s.a_correr;
+  if (d.hora_lisboa) $("hora-lisboa").textContent = "Lisboa " + d.hora_lisboa.slice(11, 16);
+
+  // tabela de universos
+  const corpo = Object.keys(NOMES_UNIV).map(n => {
+    const u = f[n];
+    if (!u) return `<tr><td>${NOMES_UNIV[n]}</td><td><span class="pilula erro"><span class="ponto"></span>Não existe</span></td><td>—</td><td>—</td><td>—</td><td>—</td></tr>`;
+    const est = u.fresco ? `<span class="pilula ok"><span class="ponto"></span>Fresca</span>` : `<span class="pilula aviso"><span class="ponto"></span>Desatualizada</span>`;
+    const sin = u.sinais ? `${u.sinais.pullback ?? 0} · ${u.sinais.squeeze ?? 0} · ${u.sinais.oversold ?? 0}` : "—";
+    return `<tr><td>${NOMES_UNIV[n]}</td><td>${est}</td><td>${dataPt(u.data_mercado, false)}</td><td>${dataPt(u.gerado_em)}</td><td>${u.ativos ?? "—"}</td><td>${sin}</td></tr>`;
+  }).join("");
+  $("t-ficheiros").querySelector("tbody").innerHTML = corpo;
+
+  const frescos = Object.keys(NOMES_UNIV).filter(n => f[n] && f[n].fresco).length;
+  const total = Object.keys(NOMES_UNIV).length;
+  if (aCorrer) {
+    const m = minutosDesde(s.ultima_tentativa);
+    pilula("p-snap", "corre", `A correr${m !== null ? " há " + m + " min" : ""}`);
+    mosaico("snap", "corre", "A correr…", m !== null ? `iniciada há ${m} min (normal: 10–15)` : "");
+  } else if (frescos === total) {
+    pilula("p-snap", "ok", "Tudo em dia");
+    mosaico("snap", "ok", "Em dia", `sessão de ${dataPt(s.data_mercado, false)}`);
+  } else if (frescos > 0) {
+    pilula("p-snap", "aviso", `${frescos}/${total} frescos`);
+    mosaico("snap", "aviso", `${frescos}/${total} frescos`, "convém executar de novo");
+  } else {
+    pilula("p-snap", "erro", "Sem fotografia");
+    mosaico("snap", "erro", "Sem fotografia", "executa-a para ativar o Screener");
+  }
+  $("b-snap").disabled = aCorrer;
+  $("b-snap").textContent = aCorrer ? "⏳ A correr…" : "▶ Executar fotografia agora";
+
+  linhas("t-snap", [
+    ["Último sucesso", dataPt(s.ultimo_sucesso)],
+    ["Última tentativa", dataPt(s.ultima_tentativa)],
+    s.duracao_seg ? ["Duração da última", `${Math.round(s.duracao_seg / 60)} min · ${s.ativos_processados ?? "?"} ativos`] : null,
+    ["Tentativas hoje", s.dia_tentativas && s.dia_tentativas === (d.hora_lisboa || "").slice(0, 10) ? s.tentativas_hoje : 0],
+  ]);
+  const erros = s.erros || [];
+  const det = $("d-snap-erros");
+  det.style.display = erros.length ? "block" : "none";
+  det.querySelector("summary").textContent = `Ver avisos da última execução (${erros.length})`;
+  det.querySelector("ul").innerHTML = erros.map(e => `<li>${esc(e)}</li>`).join("");
+
+  // Briefings
+  const hoje = (d.hora_lisboa || "").slice(0, 10);
+  pintarBriefing("mat", d.briefing || {}, hoje, "WEBHOOK_RELATORIO", "08:00");
+  pintarBriefing("psi", d.briefing_psi || {}, hoje, "WEBHOOK_RELATORIO_PSI", (d.briefing_psi || {}).hora_envio || "08:10");
+  $("dica-mat").style.display = (f.sp500 && f.sp500.fresco) || (f.ndx && f.ndx.fresco) ? "none" : "block";
+}
+
+function pintarBriefing(chave, b, hoje, variavel, hora) {
+  const enviadoHoje = b.dia_envio === hoje && b.ultimo_envio && b.ultimo_envio.startsWith(hoje);
+  let webhook;
+  if (!b.webhook_configurado) webhook = `<span style="color:var(--vermelho)">✖ Falta ${variavel}</span>`;
+  else if (chave === "mat" && b.webhook_dedicado === false) webhook = `<span style="color:var(--amarelo)">⚠ A usar WEBHOOK_SNIPER (define ${variavel})</span>`;
+  else webhook = `<span style="color:var(--verde)">✔ ${variavel}</span>`;
+
+  linhas(`t-${chave}`, [
+    ["Sala do Discord", webhook],
+    ["Envio automático", `dias úteis às ${esc(hora)}`],
+    ["Último envio", dataPt(b.ultimo_envio)],
+    ["Sessão enviada", dataPt(b.data_mercado_enviada, false)],
+    b.ultimo_erro ? ["Último erro", `<span style="color:#fca5a5">${esc(b.ultimo_erro)}</span>`] : null,
+  ]);
+
+  if (!b.webhook_configurado) { pilula(`p-${chave}`, "erro", "Sem webhook"); mosaico(chave, "erro", "Sem webhook", `define ${variavel}`); }
+  else if (enviadoHoje) { pilula(`p-${chave}`, "ok", "Enviado hoje"); mosaico(chave, "ok", "Enviado hoje", dataPt(b.ultimo_envio)); }
+  else if (b.dia_envio === hoje) { pilula(`p-${chave}`, "aviso", "Sem sessão nova"); mosaico(chave, "aviso", "Ignorado hoje", "feriado / sem sessão nova"); }
+  else { pilula(`p-${chave}`, "", "Pendente"); mosaico(chave, "", "Pendente", `sai às ${hora}`); }
+}
+
+// ---------------- Yahoo
+function pintarYahoo(j, ok) {
+  if (!ok || !j) { pilula("p-yahoo", "aviso", "Sem leitura"); mosaico("yahoo", "aviso", "Sem leitura", ""); return; }
+  const bloq = j.esta_bloqueado === true;
+  pilula("p-yahoo", bloq ? "erro" : "ok", bloq ? "Em pausa de proteção" : "Ativo");
+  mosaico("yahoo", bloq ? "erro" : "ok", bloq ? "Em pausa" : "Ativo", bloq ? "o portal não está a pedir dados" : "a responder normalmente");
+  const pares = Object.entries(j).filter(([k]) => k !== "esta_bloqueado").map(([k, v]) => {
+    const rot = k.replace(/_/g, " ").replace(/^./, c => c.toUpperCase());
+    let val = v;
+    if (typeof v === "boolean") val = v ? "sim" : "não";
+    else if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}T/.test(v)) val = dataPt(v);
+    else if (v && typeof v === "object") val = `<code style="font-size:11.5px">${esc(JSON.stringify(v)).slice(0, 200)}</code>`;
+    else val = esc(v);
+    return [rot, val];
+  });
+  linhas("t-yahoo", [["Estado", bloq ? "<b style='color:var(--vermelho)'>Em pausa</b>" : "<b style='color:var(--verde)'>Ativo</b>"], ...pares.slice(0, 10)]);
+}
+
+// ---------------- Online
+function pintarOnline(j) {
+  if (!j) return;
+  const on = j.online || [], off = j.offline || [];
+  $("p-on").innerHTML = `<span class="ponto"></span>${on.length} online`;
+  mosaico("on", "ok", `${on.length} online`, `${on.length + off.length} membros já entraram`);
+  $("l-online").innerHTML = on.length ? on.map(n => `<span class="nome"><span class="ponto ok"></span>${esc(n)}</span>`).join("") : `<span class="vazio">Ninguém além de ti.</span>`;
+  $("l-offline").innerHTML = off.slice(0, 40).map(o => `<span class="nome off">${esc(o.nome)} <small>${esc(o.tempo)}</small></span>`).join("") || `<span class="vazio">Sem registos.</span>`;
+}
+
+// ---------------- Ciclo
+async function atualizar() {
+  try {
+    const [snap, yahoo, online] = await Promise.all([pedir("/api/admin/snapshot"), pedir("/api/admin/yahoo"), pedir("/api/admin/online")]);
+    if (snap.estado === 403) { location.href = "/"; return; }
+    if (snap.ok && snap.j) pintarSnapshot(snap.j);
+    pintarYahoo(yahoo.j, yahoo.ok);
+    if (online.ok) pintarOnline(online.j);
+    ultimaAtualizacao = Date.now();
+  } catch (e) {
+    $("atualizado").textContent = "sem ligação ao servidor";
+  }
+  clearTimeout(temporizador);
+  temporizador = setTimeout(atualizar, aCorrer ? 5000 : 15000);
+}
+setInterval(() => {
+  if (ultimaAtualizacao) $("atualizado").textContent = `atualizado há ${Math.round((Date.now() - ultimaAtualizacao) / 1000)} s`;
+}, 1000);
+
+// ---------------- Ações
+$("b-snap").addEventListener("click", async () => {
+  if (!confirm("Lançar a fotografia diária agora?\n\nDemora 10 a 15 minutos e faz centenas de pedidos ao Yahoo (em lotes espaçados). Podes fechar esta página — continua a correr no servidor.")) return;
+  $("b-snap").disabled = true;
+  const r = await pedir("/api/admin/snapshot/executar");
+  msg("msg-snap", r.j && r.j.sucesso ? "ok" : "erro", (r.j && (r.j.mensagem || r.j.erro)) || `Erro ${r.estado}`);
+  setTimeout(atualizar, 1500);
+});
+
+document.querySelectorAll("[data-enviar]").forEach(b => b.addEventListener("click", async () => {
+  if (!confirm(`Enviar ${b.dataset.nome} para o Discord agora?\n\nVai aparecer na sala mesmo que já tenha sido enviado hoje. Se tiveres dúvidas, usa primeiro "Pré-visualizar".`)) return;
+  b.disabled = true; const txt = b.textContent; b.textContent = "⏳ A enviar…";
+  msg(b.dataset.msg, "info", "A preparar e enviar…");
+  const r = await pedir(b.dataset.enviar);
+  msg(b.dataset.msg, r.j && r.j.sucesso ? "ok" : "erro", (r.j && (r.j.mensagem || r.j.erro)) || `Erro ${r.estado}`);
+  b.disabled = false; b.textContent = txt;
+  atualizar();
+}));
+
+document.querySelectorAll("[data-ir]").forEach(m => m.addEventListener("click", () => $(m.dataset.ir).scrollIntoView({ behavior: "smooth" })));
+
+atualizar();
+</script>
+</body>
+</html>
