@@ -17,9 +17,10 @@ import copy
 import json
 import os
 import threading
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import yahoo_guard as yg
+import liga_janelas as lj
 
 ARQUIVO_HISTORICO = "liga_historico.json"
 _lock = threading.Lock()
@@ -85,19 +86,36 @@ def _fechar_mes(mes_ref, carteiras_mes):
     carteiras = copy.deepcopy(carteiras_mes)
     tickers = sorted({s['ticker'] for c in carteiras.values() for s in c.get('slots', [])})
     dados = None
+    ini_janela, fim_janela, _o = lj.janela(mes_ref)
+    fim_mes = lj.ultimo_dia(mes_ref)
     if tickers:
-        dados = yg.download(tickers, start=f"{mes_ref}-01", end=f"{_mes_seguinte(mes_ref)}-01",
+        # Desde a abertura das inscrições: o p0 é o preço da submissão e os alvos contam a partir do dia seguinte
+        dados = yg.download(tickers, start=(ini_janela - timedelta(days=5)).isoformat(), end=f"{_mes_seguinte(mes_ref)}-01",
                             interval="1d", group_by="ticker", usar_cache=False)
+    fatia = lambda t: yg.fatia(dados, t) if dados is not None else None
+
+    def _slot_final(s, entrada):
+        try:
+            r = lj.pontuar_slot(s, fatia(s['ticker']), entrada, fim_mes=fim_mes)
+            r['p_final'] = r.pop('p_atual')
+            return r
+        except Exception:
+            return _pontuar_slot(s, None)  # sem dados: mantém o último valor conhecido
 
     ranking = []
     for uid, c in carteiras.items():
-        slots = [_pontuar_slot(s, yg.fatia(dados, s['ticker']) if dados is not None else None) for s in c.get('slots', [])]
+        entrada = lj.data_entrada(c)
+        if entrada is None:
+            limite = min(fim_janela, datetime.strptime(c.get('entrada_limite', fim_janela.isoformat()), "%Y-%m-%d").date())
+            entrada = lj.inferir_data_entrada(c, fatia, ini_janela, limite)
+        slots = [_slot_final(s, entrada) for s in c.get('slots', [])]
         retorno = round(sum(s['ret'] for s in slots) / 3.0, 2)  # igual à Liga ao vivo: média dos 3 slots
         bonus = round(sum(s['bonus'] for s in slots), 2)
         ranking.append({
             "user_id": str(c.get('user_id', uid)),
             "username": c.get('username', 'Trader'),
             "tese": c.get('tese', ''),
+            "submetido_em": entrada.isoformat(),
             "slots": slots,
             "retorno_base": retorno,
             "bonus_total": bonus,

@@ -239,6 +239,8 @@ from MeanReversion import calcular_radar_reversao
 from Radar import calcular_radar_momentum_v2, comparar_ativos
 import snapshot_diario as snap
 import liga_gamificacao as gam
+import liga_janelas as lj
+lj.migrar_primeira_edicao_se_preciso()  # corre uma única vez (1.ª ronda: 20 out – 5 nov → edição de novembro)
 
 # ==========================================
 # PROTEÇÃO GLOBAL CONTRA BLOQUEIOS DO YAHOO
@@ -592,7 +594,7 @@ def resumo_radares():
 def resumo_liga(user_id):
     """Top 3 da Liga do mês corrente, lido do disco (sem ir ao Yahoo) e sem revelar ativos."""
     agora = datetime.now()
-    mes_ref = agora.strftime("%Y-%m")
+    mes_ref = lj.edicao_em_curso(agora)
     try:
         carteiras = carregar_dados_liga().get(mes_ref, {}) or {}
     except Exception:
@@ -607,7 +609,9 @@ def resumo_liga(user_id):
         "mes_nome": MESES_PT_LONGO[agora.month - 1],
         "top": top,
         "total": len(ordenadas),
-        "janela_aberta": agora.day >= 20 or agora.day <= 5,
+        "janela_aberta": lj.edicao_inscricao(agora) is not None,
+        "inscricao": lj.info_janela(lj.edicao_inscricao(agora)) if lj.edicao_inscricao(agora) else None,
+        "proxima": (lambda p: lj.info_janela(p[0]) if p else None)(lj.proxima_janela(agora)),
     }
 
 
@@ -2747,51 +2751,40 @@ def atualizar_pontuacoes_liga(mes_ref, dados_liga):
     if mes_ref not in dados_liga or not dados_liga[mes_ref]:
         return []
 
-    inicio_mes = f"{mes_ref}-01"
     carteiras_mes = dados_liga[mes_ref]
+    ini_janela, fim_janela, _ = lj.janela(mes_ref)
 
-    # ANTES: 1 pedido por slot de cada carteira (20 membros = 60 pedidos).
-    # AGORA: 1 único download em lote com os tickers únicos de todas as carteiras.
+    # 1 único download em lote, desde a abertura das inscrições (as carteiras entram ao longo da janela)
     tickers_unicos = sorted({s['ticker'] for c in carteiras_mes.values() for s in c['slots']})
-    dados_mes = yg.download(tickers_unicos, start=inicio_mes, interval="1d", group_by="ticker")
+    dados_mes = yg.download(tickers_unicos, start=(ini_janela - timedelta(days=5)).isoformat(), interval="1d", group_by="ticker")
+    fatia = lambda t: yg.fatia(dados_mes, t)
 
     for uid, c in carteiras_mes.items():
+        entrada = lj.data_entrada(c)
+        if entrada is None:
+            # Carteiras antigas sem data de submissão: estima a partir do p0 (ver liga_janelas.inferir_data_entrada)
+            limite = min(datetime.now().date(), datetime.strptime(c.get('entrada_limite', fim_janela.isoformat()), "%Y-%m-%d").date())
+            entrada = lj.inferir_data_entrada(c, fatia, ini_janela, limite)
+            c['submetido_em'] = entrada.isoformat()
+            c['submetido_em_estimado'] = True
+
         ret_soma = 0.0
         bonus_soma = 0.0
-
+        novos_slots = []
         for s in c['slots']:
             try:
-                df = yg.fatia(dados_mes, s['ticker']).dropna(subset=['Close'])
-                if df.empty:
-                    raise ValueError("sem dados")
-                p_atual = float(df['Close'].iloc[-1])
-                max_m = float(df['High'].max())
-                min_m = float(df['Low'].min())
-                p0 = float(s['p0'])
-                alvo = float(s['alvo'])
-
-                is_long = alvo > p0
-                ret = ((p_atual - p0) / p0) * 100.0
-                if not is_long:
-                    ret = -ret  # Posição Short ganha na queda
-
-                tocou = (max_m >= alvo and p_atual > p0) if is_long else (min_m <= alvo and p_atual < p0)
-                erro_fecho = abs(alvo - p_atual) / p_atual * 100.0
-                sniper = tocou and (erro_fecho <= 1.0)
-
-                bonus_slot = (0.5 if tocou else 0.0) + (1.0 if sniper else 0.0)
-                s['p_atual'] = round(p_atual, 2)
-                s['ret'] = round(ret, 2)
-                s['bonus'] = bonus_slot
-                s['badge'] = "🎯🔥" if sniper else ("✅" if tocou else ("📈" if is_long else "📉"))
-
-                ret_soma += ret
-                bonus_soma += bonus_slot
+                novo = lj.pontuar_slot(s, fatia(s['ticker']), entrada)
+                for k in ('tocou', 'sniper'):
+                    novo.pop(k, None)
+                novos_slots.append(novo)
+                ret_soma += novo['ret']
+                bonus_soma += novo['bonus']
             except Exception:
                 # Sem dados novos para este slot: mantém o último valor conhecido em vez de o zerar
+                novos_slots.append(s)
                 ret_soma += float(s.get('ret', 0.0) or 0.0)
                 bonus_soma += float(s.get('bonus', 0.0) or 0.0)
-
+        c['slots'] = novos_slots
         c['retorno_base'] = round(ret_soma / 3.0, 2)
         c['bonus_total'] = round(bonus_soma, 2)
         c['score_total'] = round(c['retorno_base'] + c['bonus_total'], 2)
@@ -2860,11 +2853,14 @@ def api_liga():
         return jsonify({"erro": "Sessão expirada. Faz login novamente."}), 401
 
     agora = datetime.now()
-    mes_ref = agora.strftime("%Y-%m")
-    
+    cfg_liga = lj.carregar_config()
+    mes_ref = lj.edicao_em_curso(agora)                 # edição a competir agora (classificação)
+    ed_inscricao = lj.edicao_inscricao(agora, cfg_liga)  # edição com inscrições abertas (ou None)
+
     is_admin = (user_id == str(ADMIN_USER_ID).strip())
-    # O Admin tem sempre a janela aberta para poder testar. Para a comunidade: abre a 20 e fecha a 5.
-    janela_aberta = (agora.day >= 20 or agora.day <= 5) or is_admin
+    janela_aberta = ed_inscricao is not None
+    # O Admin pode sempre submeter (testes): vai para a edição com inscrições abertas ou, se não houver, para a em curso
+    ed_destino = ed_inscricao or (mes_ref if is_admin else None)
 
     dados_liga = carregar_dados_liga()
     if mes_ref not in dados_liga:
@@ -2875,11 +2871,12 @@ def api_liga():
             # Abrir o separador usa a cache (15 min); o botão "Recalcular" força (no máx. 1x/min)
             forcar = request.args.get('atualizar') == '1'
             lista = obter_ranking_liga(mes_ref, dados_liga, forcar=forcar)
+            nevoeiro = lj.em_nevoeiro(mes_ref, agora, cfg_liga)
 
             lista_segura = []
             for c in lista:
                 dono_id = c.get('user_id', '')
-                if janela_aberta and dono_id != user_id and not is_admin:
+                if nevoeiro and dono_id != user_id and not is_admin:
                     c_oculto = c.copy()
                     c_oculto['slots'] = [
                         {"ticker": "🔒 SECRETO", "direcao": "-", "p0": 0.0, "alvo": 0.0, "ret": 0.0, "bonus": 0.0, "badge": "🔒"},
@@ -2891,11 +2888,25 @@ def api_liga():
                 else:
                     lista_segura.append(c)
 
-            minha_carteira = dados_liga.get(mes_ref, {}).get(user_id, None)
+            ed_minha = ed_inscricao or mes_ref
+            minha_carteira = dados_liga.get(ed_minha, {}).get(user_id, None)
+            # Inscritos na PRÓXIMA edição (só nomes: a carteira continua no nevoeiro)
+            inscritos_proxima = []
+            if ed_inscricao and ed_inscricao != mes_ref:
+                inscritos_proxima = sorted(c.get('username', 'Membro') for c in (dados_liga.get(ed_inscricao) or {}).values())
+            prox = lj.proxima_janela(agora, cfg_liga)
 
             return jsonify({
-                "mes_ref": mes_ref, 
-                "janela_aberta": janela_aberta, 
+                "mes_ref": mes_ref,
+                "nome_edicao": lj.nome_edicao(mes_ref),
+                "janela_aberta": janela_aberta,
+                "nevoeiro": nevoeiro,
+                "janela_edicao": lj.info_janela(mes_ref, agora, cfg_liga),
+                "inscricao": lj.info_janela(ed_inscricao, agora, cfg_liga) if ed_inscricao else None,
+                "proxima": lj.info_janela(prox[0], agora, cfg_liga) if prox else None,
+                "edicao_minha_carteira": ed_minha,
+                "inscritos_proxima": inscritos_proxima,
+                "is_admin": is_admin,
                 "carteiras": lista_segura,
                 "minha_carteira": minha_carteira
             })
@@ -2903,8 +2914,12 @@ def api_liga():
             print(f"Erro no GET Liga: {e}")
             return jsonify({"erro": "Falha interna ao processar a classificação."}), 500
 
-    if not janela_aberta:
-        return jsonify({"erro": "A janela de inscrição mensal está fechada."}), 403
+    if not ed_destino:
+        prox = lj.proxima_janela(agora, cfg_liga)
+        msg = "As inscrições estão fechadas."
+        if prox:
+            msg += f" A próxima janela (edição de {lj.nome_edicao(prox[0])}) abre a {prox[1].strftime('%d/%m')} e fecha a {prox[2].strftime('%d/%m')}."
+        return jsonify({"erro": msg}), 403
 
     body = request.json
     entradas = [
@@ -2971,10 +2986,11 @@ def api_liga():
             "badge": "📈" if direcao == "LONG" else "📉"
         })
 
-    dados_liga[mes_ref][user_id] = {
+    dados_liga.setdefault(ed_destino, {})[user_id] = {
         "user_id": user_id,
         "username": username,
-        "mes_ref": mes_ref,
+        "mes_ref": ed_destino,
+        "submetido_em": agora.isoformat(timespec='seconds'),  # o p0 é o preço deste momento; alvos contam a partir do dia seguinte
         "tese": tese,
         "slots": slots_validados,
         "retorno_base": 0.0,
@@ -2986,7 +3002,7 @@ def api_liga():
     webhook_url = os.environ.get("WEBHOOK_LIGA") or os.environ.get("WEBHOOK_SNIPER")
     if webhook_url:
         try:
-            if janela_aberta:
+            if lj.em_nevoeiro(ed_destino, agora, cfg_liga):
                 texto_discord = f"O membro **{username}** acabou de bloquear a sua carteira no Terminal!\n\n🔒 **[ 3 ATIVOS SECRETOS ]**\n\n💬 *\"{tese}\"*"
             else:
                 resumo_picks = " | ".join([f"**{s['ticker']}** ({s['direcao']} ➔ ${s['alvo']})" for s in slots_validados])
@@ -2994,7 +3010,7 @@ def api_liga():
 
             requests.post(webhook_url, json={
                 "embeds": [{
-                    "title": f"🚨 Nova Carteira na Liga Mensal ({mes_ref})",
+                    "title": f"🚨 Nova Carteira na Liga Mensal — Edição de {lj.nome_edicao(ed_destino)}",
                     "color": 14922561,
                     "description": texto_discord,
                     "footer": {"text": "Portal Bolsa — Submete a tua carteira no Separador 'Liga Mensal'"}
@@ -3003,7 +3019,7 @@ def api_liga():
         except Exception:
             pass
 
-    return jsonify({"sucesso": True, "mensagem": f"Carteira validada! Setores: {', '.join(mapa_setores.keys())}."})
+    return jsonify({"sucesso": True, "mensagem": f"Carteira validada para a edição de {lj.nome_edicao(ed_destino)}! Setores: {', '.join(mapa_setores.keys())}."})
 
 
 @app.route('/api/liga/hall_of_fame')
@@ -3028,8 +3044,9 @@ def webhook_liga():
         return jsonify({"erro": "Webhook não configurado no .env"}), 500
 
     agora = datetime.now()
-    mes_ref = agora.strftime("%Y-%m")
-    janela_aberta = (agora.day >= 20 or agora.day <= 5)
+    mes_ref = lj.edicao_em_curso(agora)
+    janela_aberta = lj.em_nevoeiro(mes_ref, agora)  # ativos ocultos até ao fecho das inscrições desta edição
+    _ini_j, fim_j, _o = lj.janela(mes_ref)
 
     dados_liga = carregar_dados_liga()
     ranking = obter_ranking_liga(mes_ref, dados_liga, forcar=True)
@@ -3050,11 +3067,11 @@ def webhook_liga():
             f"{med} **{c['username']}** — Score: **{c['score_total']:+.2f}%** *(Base: {c['retorno_base']:+.2f}% | Bónus: +{c['bonus_total']:.1f}%)*\n└ {t_str}"
         )
 
-    rodape = "Portal Bolsa - O Nevoeiro levanta no dia 6!" if janela_aberta else "Portal Bolsa - Consulta a tabela completa no Terminal"
+    rodape = f"Portal Bolsa - O Nevoeiro levanta a {(fim_j + timedelta(days=1)).strftime('%d/%m')}!" if janela_aberta else "Portal Bolsa - Consulta a tabela completa no Terminal"
 
     embed = {
         "embeds": [{
-            "title": f"🏆 CLASSIFICAÇÃO LIGA BOLSISTA — {mes_ref}",
+            "title": f"🏆 CLASSIFICAÇÃO LIGA BOLSISTA — {lj.nome_edicao(mes_ref)}",
             "color": 14922561,
             "description": "Atualização oficial das carteiras triplas:\n\n" + "\n\n".join(linhas_podio),
             "footer": {"text": rodape}
@@ -3067,6 +3084,89 @@ def webhook_liga():
         return jsonify({"sucesso": True})
     except Exception as e:
         return jsonify({"erro": str(e)}), 500
+
+
+# ==========================================
+# ⚙️ ADMIN: JANELAS DE INSCRIÇÃO DA LIGA
+# ==========================================
+@app.route('/api/admin/liga/janelas', methods=['GET', 'POST', 'DELETE'])
+def admin_liga_janelas():
+    """Consulta e define as janelas de inscrição das edições da Liga (apenas Admin)."""
+    if not _e_admin():
+        return jsonify({"erro": "Acesso negado. Apenas Admin."}), 403
+    agora = datetime.now()
+    with lj._lock_cfg:
+        cfg = lj.carregar_config()
+
+        if request.method == 'POST':
+            corpo = request.json or {}
+            if corpo.get('padrao'):
+                try:
+                    di, df = int(corpo['padrao']['dia_inicio']), int(corpo['padrao']['dia_fim'])
+                except Exception:
+                    return jsonify({"erro": "Dias inválidos."}), 400
+                if not (1 <= di <= 31 and 1 <= df <= 28):
+                    return jsonify({"erro": "Dia de abertura entre 1 e 31; dia de fecho entre 1 e 28."}), 400
+                # Congela as datas das edições cuja janela já abriu: o novo padrão só vale para as futuras
+                ed_c = lj.edicao_em_curso(agora)
+                eds = set(carregar_dados_liga().keys()) | {lj.mes_anterior(ed_c), ed_c, lj.mes_seguinte(ed_c)}
+                for e_ in sorted(eds):
+                    ini_e, fim_e, orig_e = lj.janela(e_, cfg)
+                    if orig_e == 'padrao' and ini_e <= agora.date():
+                        cfg['edicoes'][e_] = {"inicio": ini_e.isoformat(), "fim": fim_e.isoformat()}
+                cfg['padrao'] = {"dia_inicio": di, "dia_fim": df}
+                lj.gravar_config(cfg)
+            else:
+                ed = str(corpo.get('edicao', '')).strip()
+                try:
+                    ini = datetime.strptime(corpo.get('inicio', ''), "%Y-%m-%d").date()
+                    fim = datetime.strptime(corpo.get('fim', ''), "%Y-%m-%d").date()
+                except Exception:
+                    return jsonify({"erro": "Datas inválidas (formato AAAA-MM-DD)."}), 400
+                ini_atual, fim_atual, _ = lj.janela(ed, cfg) if ed else (None, None, None)
+                if fim_atual and fim_atual < agora.date():
+                    return jsonify({"erro": "Esta janela já terminou: não pode ser alterada (as carteiras e o nevoeiro já dependem dela)."}), 400
+                if ini_atual and ini_atual <= agora.date() and ini != ini_atual:
+                    return jsonify({"erro": "As inscrições desta edição já abriram: só podes alterar a data de fecho."}), 400
+                if fim < agora.date():
+                    return jsonify({"erro": "A data de fecho não pode ficar no passado."}), 400
+                cfg_teste = json.loads(json.dumps(cfg))
+                cfg_teste['edicoes'][ed] = {"inicio": ini.isoformat(), "fim": fim.isoformat()}
+                erro = lj.validar_janela(ed, ini, fim, cfg_teste)
+                if erro:
+                    return jsonify({"erro": erro}), 400
+                cfg['edicoes'][ed] = {"inicio": ini.isoformat(), "fim": fim.isoformat()}
+                lj.gravar_config(cfg)
+
+        if request.method == 'DELETE':
+            ed = request.args.get('edicao', '')
+            ini_atual, fim_atual, origem = lj.janela(ed, cfg)
+            if origem != 'config':
+                return jsonify({"erro": "Esta edição já usa o padrão."}), 400
+            if ini_atual <= agora.date():
+                return jsonify({"erro": "As inscrições desta edição já abriram: não é possível repor o padrão."}), 400
+            cfg['edicoes'].pop(ed, None)
+            lj.gravar_config(cfg)
+
+        # Estado: edição em curso + as 3 seguintes
+        dados_liga = carregar_dados_liga()
+        edicoes = []
+        ed = lj.mes_anterior(lj.edicao_em_curso(agora))
+        for _ in range(5):
+            info = lj.info_janela(ed, agora, cfg)
+            carteiras = dados_liga.get(ed, {}) or {}
+            info['participantes'] = len(carteiras)
+            info['entradas'] = sorted([{
+                "username": c.get('username', 'Membro'),
+                "submetido_em": c.get('submetido_em'),
+                "estimada": bool(c.get('submetido_em_estimado')),
+            } for c in carteiras.values()], key=lambda x: x['submetido_em'] or '')
+            info['editavel'] = info['estado'] != 'fechada'
+            info['so_fim'] = info['estado'] == 'aberta'
+            edicoes.append(info)
+            ed = lj.mes_seguinte(ed)
+        return jsonify({"padrao": cfg['padrao'], "edicoes": edicoes, "hoje": agora.date().isoformat(),
+                        "inscricao_aberta": lj.edicao_inscricao(agora, cfg)})
 
 
 if __name__ == "__main__":
