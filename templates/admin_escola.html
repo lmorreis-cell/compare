@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Editor da Escola · Portal Bolsa</title>
+<meta name="robots" content="noindex, nofollow">
+<style>
+  :root {
+    --fundo: #0b0d12; --cartao: #12151c; --cartao2: #171b24; --borda: #232834; --borda2: #2e3443;
+    --texto: #e6e8ec; --suave: #8b93a3; --laranja: #f59e0b; --laranja-esc: #3a2a0c;
+    --verde: #22c55e; --verde-esc: #0f2a1a; --vermelho: #ef4444; --vermelho-esc: #2e1214; --azul: #5865F2;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--fundo); color: var(--texto); font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; font-size: 14px; display: flex; flex-direction: column; }
+  a { color: inherit; }
+  button, input, select, textarea { font-family: inherit; font-size: inherit; color: inherit; }
+
+  .topo { background: rgba(11,13,18,.95); border-bottom: 1px solid var(--borda); flex-shrink: 0; }
+  .topo-in { padding: 10px 18px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .logo { width: 32px; height: 32px; border-radius: 9px; background: linear-gradient(135deg,#f59e0b,#ea580c); display: grid; place-items: center; font-weight: 800; font-size: 12px; color: #fff; }
+  .marca b { display: block; font-size: 15px; }
+  .marca span { font-size: 11px; color: var(--suave); }
+  .espaco { flex: 1; }
+  .btn { border: 1px solid transparent; border-radius: 8px; padding: 8px 13px; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; background: var(--cartao2); border-color: var(--borda); white-space: nowrap; }
+  .btn:hover { border-color: var(--suave); }
+  .btn.prim { background: var(--laranja); color: #1a1205; border-color: var(--laranja); }
+  .btn.prim:hover { background: #fbbf24; }
+  .btn.perigo { color: #fca5a5; }
+  .btn.perigo:hover { border-color: var(--vermelho); }
+  .btn.peq { padding: 5px 9px; font-size: 12px; }
+  .btn[disabled] { opacity: .45; cursor: not-allowed; }
+
+  .corpo { flex: 1; display: grid; grid-template-columns: 320px 1fr; min-height: 0; }
+  /* Barra lateral */
+  .lado { border-right: 1px solid var(--borda); overflow-y: auto; padding: 14px; }
+  .config { background: var(--cartao); border: 1px solid var(--borda); border-radius: 12px; padding: 12px; margin-bottom: 14px; font-size: 13px; }
+  .config label { color: var(--suave); font-size: 12px; display: block; margin-bottom: 4px; }
+  .config .linha { display: flex; gap: 6px; }
+  .config .info { color: var(--suave); font-size: 12px; margin-top: 8px; line-height: 1.45; }
+  .contagem { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; font-size: 12px; color: var(--suave); }
+  .contagem b { color: var(--texto); }
+  .procura { width: 100%; background: var(--cartao2); border: 1px solid var(--borda); border-radius: 8px; padding: 8px 10px; margin-bottom: 10px; }
+  .trim-t { font-size: 11px; color: var(--laranja); text-transform: uppercase; letter-spacing: .07em; font-weight: 700; margin: 14px 0 6px; }
+  .semana { border-radius: 10px; padding: 8px 9px; margin-bottom: 3px; }
+  .semana.atual { background: #1a1608; }
+  .semana .st { display: flex; gap: 8px; align-items: baseline; font-size: 12.5px; }
+  .semana .st .n { color: var(--suave); font-size: 11px; width: 26px; flex-shrink: 0; }
+  .semana .st .tm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .slots { display: flex; gap: 4px; margin: 6px 0 0 34px; }
+  .slot { flex: 1; height: 24px; border-radius: 6px; border: 1px dashed var(--borda2); background: transparent; cursor: pointer; font-size: 10.5px; color: var(--suave); display: grid; place-items: center; padding: 0; }
+  .slot:hover { border-color: var(--suave); }
+  .slot.rasc { border: 1px solid var(--laranja); color: var(--laranja); background: var(--laranja-esc); }
+  .slot.pub { border: 1px solid var(--verde); color: var(--verde); background: var(--verde-esc); }
+  .slot.sel { box-shadow: 0 0 0 2px var(--texto); }
+
+  /* Editor */
+  .editor { overflow-y: auto; padding: 18px 22px 80px; }
+  .vazio-ed { color: var(--suave); text-align: center; padding: 80px 20px; line-height: 1.6; }
+  .vazio-ed b { color: var(--texto); font-size: 17px; display: block; margin-bottom: 6px; }
+  .ed-cab { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; position: sticky; top: -18px; background: var(--fundo); padding: 12px 0; z-index: 5; border-bottom: 1px solid var(--borda); }
+  .ed-cab .onde { font-size: 13px; color: var(--laranja); font-weight: 700; }
+  .ed-cab .onde span { color: var(--suave); font-weight: 500; }
+  .estado { font-size: 12px; color: var(--suave); }
+  .estado.sujo { color: var(--laranja); }
+  .interruptor { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; font-weight: 600; user-select: none; }
+  .interruptor input { display: none; }
+  .interruptor i { width: 36px; height: 20px; background: var(--borda2); border-radius: 999px; position: relative; transition: background .15s; }
+  .interruptor i::after { content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: left .15s; }
+  .interruptor input:checked + i { background: var(--verde); }
+  .interruptor input:checked + i::after { left: 19px; }
+
+  .seccao { background: var(--cartao); border: 1px solid var(--borda); border-radius: 14px; padding: 16px; margin-bottom: 16px; }
+  .seccao h3 { margin: 0 0 4px; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+  .seccao .ajuda { color: var(--suave); font-size: 12.5px; margin: 0 0 12px; line-height: 1.5; }
+  .campo { margin-bottom: 12px; }
+  .campo label { display: block; font-size: 12px; color: var(--suave); margin-bottom: 5px; font-weight: 600; }
+  input[type=text], input[type=date], input[type=url], select, textarea { width: 100%; background: var(--cartao2); border: 1px solid var(--borda); border-radius: 8px; padding: 9px 11px; outline: none; }
+  input:focus, select:focus, textarea:focus { border-color: var(--laranja); }
+  textarea { resize: vertical; line-height: 1.5; }
+  .grelha2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .grelha3 { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 10px; }
+
+  .q { border: 1px solid var(--borda); border-radius: 12px; padding: 12px; margin-bottom: 10px; background: var(--cartao2); }
+  .q-cab { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 12px; font-weight: 700; color: var(--suave); }
+  .q-cab .espaco { flex: 1; }
+  .op { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .op input[type=radio] { accent-color: var(--verde); width: 17px; height: 17px; flex-shrink: 0; cursor: pointer; }
+  .op .letra { font-size: 12px; font-weight: 700; color: var(--suave); width: 14px; }
+  .op.certa input[type=text] { border-color: var(--verde); }
+  .mini { background: none; border: 0; color: var(--suave); cursor: pointer; font-size: 15px; padding: 2px 6px; border-radius: 6px; }
+  .mini:hover { color: var(--vermelho); background: var(--vermelho-esc); }
+
+  .md-barra { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 6px; }
+  .md-barra button { background: var(--cartao2); border: 1px solid var(--borda); border-radius: 6px; padding: 5px 9px; cursor: pointer; font-size: 12px; }
+  .md-barra button:hover { border-color: var(--suave); }
+  .md-duplo { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .md-duplo textarea { min-height: 460px; font-family: ui-monospace, 'Cascadia Code', Consolas, monospace; font-size: 13px; }
+  .previa { background: var(--fundo); border: 1px solid var(--borda); border-radius: 8px; padding: 14px 16px; max-height: 620px; overflow-y: auto; }
+  .previa-t { font-size: 11px; color: var(--suave); text-transform: uppercase; letter-spacing: .06em; font-weight: 700; margin-bottom: 6px; }
+
+  /* Teoria renderizada (igual à página dos membros) */
+  .teoria { font-size: 15px; line-height: 1.7; color: #d9dce2; }
+  .teoria h2 { font-size: 19px; color: var(--texto); margin: 20px 0 6px; }
+  .teoria h3 { font-size: 16px; color: var(--texto); margin: 16px 0 6px; }
+  .teoria p { margin: 0 0 12px; }
+  .teoria strong { color: var(--texto); }
+  .teoria ul, .teoria ol { margin: 0 0 12px; padding-left: 20px; }
+  .teoria code { background: var(--cartao2); padding: 1px 6px; border-radius: 5px; color: var(--laranja); }
+  .teoria a { color: var(--laranja); }
+  .teoria .caixa { background: var(--cartao); border: 1px solid var(--borda); border-left: 4px solid var(--laranja); border-radius: 0 10px 10px 0; padding: 10px 14px; margin: 0 0 14px; }
+  .teoria .caixa p:last-child { margin-bottom: 0; }
+  .teoria hr { border: 0; border-top: 1px solid var(--borda); margin: 20px 0; }
+  .teoria table { width: 100%; border-collapse: collapse; margin: 0 0 14px; font-size: 13.5px; }
+  .teoria th, .teoria td { border: 1px solid var(--borda); padding: 7px 9px; text-align: left; }
+  .teoria th { background: var(--cartao2); }
+  .figura { margin: 4px 0 16px; }
+  .figura img { width: 100%; border-radius: 10px; border: 1px solid var(--borda); }
+  .figura figcaption { font-size: 12.5px; color: var(--suave); margin-top: 6px; }
+  .marcador-grafico { border: 1px dashed var(--laranja); color: var(--laranja); border-radius: 10px; padding: 18px; text-align: center; margin: 0 0 14px; font-size: 13px; }
+
+  .ind { display: flex; gap: 6px; flex-wrap: wrap; }
+  .ind label { display: inline-flex; align-items: center; gap: 6px; background: var(--cartao2); border: 1px solid var(--borda); border-radius: 999px; padding: 5px 11px; font-size: 12.5px; cursor: pointer; color: var(--texto); font-weight: 500; margin: 0; }
+  .ind input { accent-color: var(--laranja); }
+  .graf-prev { margin-top: 12px; }
+  .graf-prev img { width: 100%; border-radius: 10px; border: 1px solid var(--borda); display: block; }
+  .graf-vazio { border: 1px dashed var(--borda2); border-radius: 10px; padding: 22px; text-align: center; color: var(--suave); font-size: 13px; }
+
+  .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--cartao2); border: 1px solid var(--borda2); padding: 11px 18px; border-radius: 10px; font-size: 13.5px; opacity: 0; transition: all .2s; pointer-events: none; z-index: 50; max-width: 90vw; }
+  .toast.on { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.ok { border-color: var(--verde); color: #86efac; }
+  .toast.erro { border-color: var(--vermelho); color: #fca5a5; }
+
+  /* Plano do ano (painel) */
+  .painel-fundo { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: none; z-index: 40; align-items: flex-start; justify-content: center; padding: 40px 16px; overflow-y: auto; }
+  .painel-fundo.on { display: flex; }
+  .painel { background: var(--cartao); border: 1px solid var(--borda2); border-radius: 16px; padding: 20px; width: 100%; max-width: 760px; }
+  .painel h2 { margin: 0 0 4px; font-size: 18px; }
+  .aluno { border: 1px solid var(--borda); border-radius: 12px; margin-bottom: 8px; background: var(--cartao2); }
+  .aluno > summary { list-style: none; cursor: pointer; padding: 11px 14px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .aluno > summary::-webkit-details-marker { display: none; }
+  .aluno > summary::before { content: "▸"; color: var(--suave); }
+  .aluno[open] > summary::before { content: "▾"; }
+  .aluno .nm { font-weight: 700; flex: 1; min-width: 140px; }
+  .aluno .nm small { color: var(--laranja); font-weight: 600; margin-left: 6px; }
+  .aluno .kp { font-size: 12.5px; color: var(--suave); }
+  .aluno .kp b { color: var(--texto); }
+  .aluno .det { padding: 0 14px 12px; }
+  .reg { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-top: 1px solid var(--borda); font-size: 13px; }
+  .reg .t { flex: 1; }
+  .reg .t span { color: var(--suave); font-size: 12px; margin-left: 6px; }
+  .reg .sc { font-weight: 700; width: 40px; text-align: right; }
+  .plano-linha { display: grid; grid-template-columns: 46px 1fr 90px; gap: 8px; align-items: center; margin-bottom: 6px; }
+  .plano-linha span { color: var(--suave); font-size: 12px; }
+
+  @media (max-width: 960px) {
+    .corpo { grid-template-columns: 1fr; }
+    .lado { border-right: 0; border-bottom: 1px solid var(--borda); max-height: 46vh; }
+    .md-duplo, .grelha2, .grelha3 { grid-template-columns: 1fr; }
+    .md-duplo textarea { min-height: 300px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topo">
+  <div class="topo-in">
+    <div class="logo">PB</div>
+    <div class="marca"><b>Editor da Escola</b><span>visível apenas para o Admin</span></div>
+    <div class="espaco"></div>
+    <button class="btn" id="b-graficos" title="Gera os gráficos definidos nas lições que ainda não foram desenhados">📈 Gerar gráficos em falta</button>
+    <button class="btn" id="b-alunos">👥 Alunos</button>
+    <button class="btn" id="b-plano">🗺️ Plano do ano</button>
+    <a class="btn" href="/api/admin/escola/exportar">⬇ Exportar</a>
+    <label class="btn" style="margin:0">⬆ Importar<input type="file" id="f-importar" accept=".json,application/json" hidden></label>
+    <a class="btn" href="/escola" target="_blank">🎓 Ver a Escola</a>
+    <a class="btn" href="/admin">← Gestão</a>
+  </div>
+</header>
+
+<div class="corpo">
+  <aside class="lado">
+    <div class="config">
+      <label for="c-inicio">Início do programa (segunda-feira da Semana 1)</label>
+      <div class="linha"><input type="date" id="c-inicio"><button class="btn" id="b-inicio">Gravar</button></div>
+      <div class="info" id="c-info">—</div>
+    </div>
+    <div class="contagem" id="contagem"></div>
+    <input class="procura" id="procura" type="text" placeholder="Procurar por título ou tema…">
+    <div id="semanas"></div>
+  </aside>
+
+  <section class="editor" id="editor">
+    <div class="vazio-ed"><b>Escolhe uma lição na lista à esquerda</b>Cada semana tem 5 casas (segunda a sexta).<br>
+      <span style="color:var(--verde)">■</span> publicada &nbsp; <span style="color:var(--laranja)">■</span> rascunho &nbsp; ⬚ por escrever<br><br>
+      O sábado de cada semana tem uma revisão automática com perguntas dos quizzes dessa semana — não precisas de a escrever.</div>
+  </section>
+</div>
+
+<div class="painel-fundo" id="painel-plano">
+  <div class="painel">
+    <h2>🗺️ Plano do ano</h2>
+    <p style="color:var(--suave);font-size:13px;margin:0 0 14px">O tema de cada semana aparece aos membros no calendário e no programa. O trimestre agrupa as semanas.</p>
+    <div id="plano-linhas"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+      <button class="btn" onclick="$('painel-plano').classList.remove('on')">Cancelar</button>
+      <button class="btn prim" id="b-gravar-plano">Gravar plano</button>
+    </div>
+  </div>
+</div>
+
+<div class="painel-fundo" id="painel-alunos">
+  <div class="painel" style="max-width:860px">
+    <div style="display:flex;align-items:center;gap:10px"><h2 style="flex:1">👥 Alunos</h2><button class="btn" onclick="$('painel-alunos').classList.remove('on')">Fechar</button></div>
+    <p style="color:var(--suave);font-size:13px;margin:4px 0 14px">Pontos e respostas de cada membro. Repor uma lição apaga a resposta guardada: a pessoa pode voltar a responder e a 1.ª tentativa volta a contar. Útil para corrigir os teus testes ou ajudar alguém que se enganou.</p>
+    <div id="lista-alunos"><p style="color:var(--suave)">a carregar…</p></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const DIAS = ["", "Segunda", "Terça", "Quarta", "Quinta", "Sexta"];
+const MESES = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+const TRIM = {1: "T1 · Fundamentos e risco", 2: "T2 · Análise técnica", 3: "T3 · Análise fundamental", 4: "T4 · Mercado e carteira"};
+const INDICADORES = [["ema20","EMA 20"],["ema50","EMA 50"],["sma200","SMA 200"],["bollinger","Bollinger"],["volume","Volume"],["rsi","RSI"]];
+let D = null, sel = null, form = null, sujo = false;
+
+function esc(s) { return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+function dataCurta(s) { const [a, m, d] = s.split("-").map(Number); return `${d} ${MESES[m - 1]} ${a}`; }
+function toast(txt, tipo = "ok") { const t = $("toast"); t.textContent = txt; t.className = `toast on ${tipo}`; clearTimeout(t._t); t._t = setTimeout(() => t.className = "toast", 3200); }
+
+async function api(url, corpo, bruto) {
+  const op = corpo === undefined ? { credentials: "same-origin" } :
+    bruto ? { method: "POST", body: corpo, credentials: "same-origin" } :
+    { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(corpo), credentials: "same-origin" };
+  const r = await fetch(url, op);
+  let j = {}; try { j = await r.json(); } catch (e) {}
+  if (r.status === 403 && !j.erro) location.href = "/";
+  if (!r.ok) throw new Error(j.erro || j.mensagem || `Erro ${r.status}`);
+  return j;
+}
+
+/* ---------- Markdown (mesmo motor da página dos membros) ---------- */
+function inline(t) {
+  return t
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/(^|[^*])\*([^*\s][^*]*)\*/g, "$1<em>$2</em>")
+    .replace(/\[([^\]]+)\]\(((?:\/|https:\/\/)[^\s)]+)\)/g, (m, txt, url) => `<a href="${url}" target="_blank">${txt}</a>`);
+}
+function markdown(src, grafico) {
+  const linhas = esc(src || "").replace(/\r/g, "").split("\n");
+  let html = "", para = [], lista = null, usouGrafico = false, i = 0;
+  const fechaPara = () => { if (para.length) { html += `<p>${inline(para.join(" "))}</p>`; para = []; } };
+  const fechaLista = () => { if (lista) { html += `</${lista}>`; lista = null; } };
+  const fig = () => grafico && grafico.url ? `<figure class="figura"><img src="${grafico.url}">${grafico.legenda ? `<figcaption>${inline(esc(grafico.legenda))}</figcaption>` : ""}</figure>`
+                   : (grafico ? `<div class="marcador-grafico">📈 Aqui entra o gráfico (ainda não gerado)</div>` : "");
+  while (i < linhas.length) {
+    const l = linhas[i], t = l.trim();
+    if (!t) { fechaPara(); fechaLista(); i++; continue; }
+    if (t === "[[grafico]]") { fechaPara(); fechaLista(); html += fig() || `<div class="marcador-grafico">📈 [[grafico]] — define o gráfico na secção em baixo</div>`; usouGrafico = true; i++; continue; }
+    let m;
+    if ((m = t.match(/^(#{2,3})\s+(.*)$/))) { fechaPara(); fechaLista(); const n = m[1].length; html += `<h${n}>${inline(m[2])}</h${n}>`; i++; continue; }
+    if (/^-{3,}$/.test(t)) { fechaPara(); fechaLista(); html += "<hr>"; i++; continue; }
+    if ((m = t.match(/^!\[([^\]]*)\]\(((?:\/|https:\/\/)[^\s)]+)\)$/))) { fechaPara(); fechaLista(); html += `<figure class="figura"><img src="${m[2]}" alt="${m[1]}">${m[1] ? `<figcaption>${inline(m[1])}</figcaption>` : ""}</figure>`; i++; continue; }
+    if (t.startsWith("&gt;")) {
+      fechaPara(); fechaLista(); const bloco = [];
+      while (i < linhas.length && linhas[i].trim().startsWith("&gt;")) { bloco.push(linhas[i].trim().replace(/^&gt;\s?/, "")); i++; }
+      html += `<div class="caixa">${bloco.map(b => b ? `<p>${inline(b)}</p>` : "").join("")}</div>`; continue;
+    }
+    if (t.startsWith("|")) {
+      fechaPara(); fechaLista(); const rows = [];
+      while (i < linhas.length && linhas[i].trim().startsWith("|")) { rows.push(linhas[i].trim()); i++; }
+      const cel = r => r.replace(/^\||\|$/g, "").split("|").map(c => inline(c.trim()));
+      const temCab = rows.length > 1 && /^\|?\s*:?-{2,}/.test(rows[1]);
+      html += "<table>" + (temCab ? `<thead><tr>${cel(rows[0]).map(c => `<th>${c}</th>`).join("")}</tr></thead>` : "") + "<tbody>" +
+        rows.slice(temCab ? 2 : 0).map(r => `<tr>${cel(r).map(c => `<td>${c}</td>`).join("")}</tr>`).join("") + "</tbody></table>";
+      continue;
+    }
+    if ((m = t.match(/^[-*]\s+(.*)$/)) || (m = t.match(/^\d+[.)]\s+(.*)$/))) {
+      fechaPara(); const tipo = /^\d/.test(t) ? "ol" : "ul";
+      if (lista !== tipo) { fechaLista(); html += `<${tipo}>`; lista = tipo; }
+      html += `<li>${inline(m[1])}</li>`; i++; continue;
+    }
+    fechaLista(); para.push(t); i++;
+  }
+  fechaPara(); fechaLista();
+  if (!usouGrafico) html += fig();
+  return html;
+}
+
+/* ---------- Carregar ---------- */
+async function carregar() {
+  D = await api("/api/admin/escola");
+  $("c-inicio").value = D.inicio;
+  const pub = D.licoes.filter(l => l.publicada).length, rasc = D.licoes.length - pub;
+  $("contagem").innerHTML = `<span><b>${pub}</b> publicadas</span>·<span><b>${rasc}</b> rascunhos</span>·<span><b>${260 - D.licoes.length}</b> por escrever</span>·<span><b>${D.alunos}</b> aluno${D.alunos === 1 ? "" : "s"}</span>`;
+  const semAtual = Math.floor((new Date(D.hoje) - new Date(D.inicio)) / (7 * 864e5)) + 1;
+  $("c-info").innerHTML = semAtual < 1 ? `A Escola abre a ${dataCurta(D.inicio)}. Até lá, só tu vês as lições.`
+    : semAtual > 52 ? "O programa de 52 semanas terminou." : `Hoje estamos na <b>Semana ${semAtual}</b>. As lições publicadas abrem no próprio dia.`;
+  pintarSemanas();
+}
+
+function pintarSemanas() {
+  const filtro = $("procura").value.trim().toLowerCase();
+  const porId = {}; D.licoes.forEach(l => porId[l.id] = l);
+  const semAtual = Math.floor((new Date(D.hoje) - new Date(D.inicio)) / (7 * 864e5)) + 1;
+  let html = "", trimAnt = null;
+  for (let n = 1; n <= 52; n++) {
+    const s = D.semanas.find(x => x.n === n) || { n, tema: "", trimestre: Math.ceil(n / 13) };
+    const ids = [1,2,3,4,5].map(d => `s${String(n).padStart(2, "0")}d${d}`);
+    if (filtro) {
+      const texto = (s.tema + " " + ids.map(id => porId[id] ? porId[id].titulo : "").join(" ")).toLowerCase();
+      if (!texto.includes(filtro)) continue;
+    }
+    if (s.trimestre !== trimAnt) { html += `<div class="trim-t">${TRIM[s.trimestre] || "T" + s.trimestre}</div>`; trimAnt = s.trimestre; }
+    html += `<div class="semana ${n === semAtual ? "atual" : ""}"><div class="st"><span class="n">S${n}</span><span class="tm" title="${esc(s.tema)}">${esc(s.tema) || "<i style='color:var(--suave)'>sem tema</i>"}</span></div><div class="slots">` +
+      ids.map((id, k) => {
+        const l = porId[id], cls = l ? (l.publicada ? "pub" : "rasc") : "";
+        const est = l && D.estatisticas[id] && D.estatisticas[id].taxa !== null ? ` · ${D.estatisticas[id].taxa}% acerto (${D.estatisticas[id].alunos})` : "";
+        return `<button class="slot ${cls} ${sel === id ? "sel" : ""}" data-id="${id}" title="${l ? esc(l.titulo) + est : DIAS[k + 1] + " — por escrever"}">${DIAS[k + 1].slice(0, 3)}</button>`;
+      }).join("") + `</div></div>`;
+  }
+  $("semanas").innerHTML = html || `<p style="color:var(--suave)">Nada encontrado.</p>`;
+  document.querySelectorAll(".slot").forEach(b => b.onclick = () => abrir(b.dataset.id));
+}
+
+/* ---------- Editor ---------- */
+function novaLicao(id) {
+  const semana = +id.slice(1, 3), dia = +id.slice(4);
+  return { id, semana, dia, titulo: "", publicada: false, resumo: "", teoria: "",
+    quiz: [0,1,2].map(() => ({ pergunta: "", opcoes: ["", "", "", ""], certa: 0, explicacao: "" })),
+    grafico: null, experimenta: null, grafico_url: null };
+}
+
+function abrir(id) {
+  if (sujo && !confirm("Tens alterações por gravar nesta lição. Sair na mesma?")) return;
+  const l = D.licoes.find(x => x.id === id);
+  form = JSON.parse(JSON.stringify(l || novaLicao(id)));
+  form.novo = !l;
+  sel = id; sujo = false;
+  pintarSemanas();
+  pintarEditor();
+}
+
+function dataDe(semana, dia) {
+  const d = new Date(D.inicio + "T12:00:00"); d.setDate(d.getDate() + (semana - 1) * 7 + (dia - 1));
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function pintarEditor() {
+  const f = form, g = f.grafico || {}, ex = f.experimenta || {};
+  const tema = (D.semanas.find(s => s.n === f.semana) || {}).tema || "";
+  const est = D.estatisticas[f.id];
+  $("editor").innerHTML = `
+  <div class="ed-cab">
+    <div><div class="onde">Semana ${f.semana} · ${DIAS[f.dia]} <span>· ${dataCurta(dataDe(f.semana, f.dia))}${tema ? " · " + esc(tema) : ""}</span></div>
+      <div class="estado" id="estado">${f.novo ? "Lição nova — ainda não gravada" : "Sem alterações"}${est && est.alunos ? ` · ${est.alunos} aluno${est.alunos === 1 ? "" : "s"} · ${est.taxa}% de acerto` : ""}</div></div>
+    <div class="espaco"></div>
+    <label class="interruptor" title="Só as lições publicadas aparecem aos membros (e só a partir do seu dia)"><input type="checkbox" id="e-pub" ${f.publicada ? "checked" : ""}><i></i>Publicada</label>
+    ${f.novo ? "" : `<a class="btn" href="/escola#licao/${f.id}" target="_blank">👁 Ver como membro</a><button class="btn perigo" id="b-apagar">🗑 Apagar</button>`}
+    <button class="btn prim" id="b-gravar">💾 Gravar</button>
+  </div>
+
+  <div class="seccao">
+    <h3>📝 Identificação</h3>
+    <div class="campo"><label>Título da lição</label><input type="text" id="e-titulo" maxlength="140" value="${esc(f.titulo)}" placeholder="Ex.: O que é uma ação e porque sobe ou desce"></div>
+    <div class="campo"><label>“A reter” — a ideia principal numa frase (aparece no fim da lição)</label><input type="text" id="e-resumo" maxlength="300" value="${esc(f.resumo)}"></div>
+  </div>
+
+  <div class="seccao">
+    <h3>❓ Quiz (antes da teoria)</h3>
+    <p class="ajuda">O membro responde primeiro, sem ter lido nada. Marca a opção certa com o círculo à esquerda. A explicação aparece depois de responder — explica <b>porquê</b>, não só qual. Estas perguntas também alimentam a revisão de sábado.</p>
+    <div id="quiz"></div>
+    <button class="btn" id="b-maisq">＋ Adicionar pergunta</button>
+  </div>
+
+  <div class="seccao">
+    <h3>📖 Teoria</h3>
+    <p class="ajuda">Escreve em texto simples com marcas: <code>## Título</code>, <code>**negrito**</code>, <code>*itálico*</code>, listas com <code>-</code>, caixas de destaque com <code>&gt;</code>, tabelas com <code>|</code>. Usa <code>[[grafico]]</code> para escolher onde entra o gráfico (sem isso, vai para o fim).</p>
+    <div class="md-barra">
+      <button data-md="## ">Título</button><button data-md="### ">Subtítulo</button>
+      <button data-md="**|**">Negrito</button><button data-md="*|*">Itálico</button>
+      <button data-md="- ">Lista</button><button data-md="> 💡 ">Dica</button><button data-md="> ⚠️ ">Atenção</button>
+      <button data-md="| Coluna A | Coluna B |\\n|---|---|\\n| … | … |\\n">Tabela</button>
+      <button data-md="\\n[[grafico]]\\n">📈 Gráfico aqui</button>
+      <button id="b-img">🖼 Imagem…</button><input type="file" id="f-img" accept="image/*" hidden>
+    </div>
+    <div class="md-duplo">
+      <textarea id="e-teoria" spellcheck="true">${esc(f.teoria)}</textarea>
+      <div><div class="previa-t">Pré-visualização</div><div class="previa teoria" id="previa"></div></div>
+    </div>
+  </div>
+
+  <div class="seccao">
+    <h3>📈 Gráfico da lição</h3>
+    <p class="ajuda">Escolhe um ativo e um período com dados reais. O gráfico é gerado <b>uma vez</b> (com o botão) e guardado — os membros nunca fazem pedidos ao Yahoo. Grava a lição antes de gerar.</p>
+    <div class="grelha3">
+      <div class="campo"><label>Ticker (Yahoo)</label><input type="text" id="g-ticker" value="${esc(g.ticker || "")}" placeholder="Ex.: GALP.LS, ^GSPC, AAPL"></div>
+      <div class="campo"><label>De</label><input type="date" id="g-inicio" value="${esc(g.inicio || "")}"></div>
+      <div class="campo"><label>Até</label><input type="date" id="g-fim" value="${esc(g.fim || "")}"></div>
+    </div>
+    <div class="campo"><label>Indicadores</label><div class="ind">${INDICADORES.map(([k, n]) => `<label><input type="checkbox" class="g-ind" value="${k}" ${(g.indicadores || []).includes(k) ? "checked" : ""}>${n}</label>`).join("")}</div></div>
+    <div class="grelha2">
+      <div class="campo"><label>Título no gráfico</label><input type="text" id="g-titulo" value="${esc(g.titulo || "")}" placeholder="Ex.: Galp — o crash de março de 2020"></div>
+      <div class="campo"><label>Legenda por baixo (explica o que olhar)</label><input type="text" id="g-legenda" value="${esc(g.legenda || "")}"></div>
+    </div>
+    <div class="campo"><label>Marcas no gráfico — uma por linha: <code>AAAA-MM-DD | texto</code></label>
+      <textarea id="g-marcas" rows="3" placeholder="2020-03-16 | Pânico do COVID">${esc((g.marcas || []).map(m => `${m.data} | ${m.texto}`).join("\n"))}</textarea></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="b-gerar">⚙️ Gerar / atualizar gráfico</button>${g.ticker ? `<button class="btn perigo" id="b-semg">Remover gráfico</button>` : ""}</div>
+    <div class="graf-prev" id="graf-prev">${f.grafico_url ? `<img src="${f.grafico_url}">` : `<div class="graf-vazio">Ainda não há gráfico gerado para esta lição.</div>`}</div>
+  </div>
+
+  <div class="seccao">
+    <h3>🧪 Experimenta no portal</h3>
+    <p class="ajuda">Uma tarefa prática curta que liga a lição a uma ferramenta do portal. Opcional.</p>
+    <div class="campo"><label>O que o membro deve fazer</label><input type="text" id="x-texto" value="${esc(ex.texto || "")}" placeholder="Ex.: Abre o Sniper na GALP.LS e procura onde está o preço face à SMA 200."></div>
+    <div class="campo"><label>Link (começa por /)</label>
+      <input type="text" id="x-url" list="links-portal" value="${esc(ex.url || "")}" placeholder="/interativo">
+      <datalist id="links-portal"><option value="/interativo">Terminal interativo</option><option value="/">Portal (página inicial)</option></datalist></div>
+  </div>`;
+
+  pintarQuiz();
+  atualizarPrevia();
+  ligarEventos();
+}
+
+function pintarQuiz() {
+  $("quiz").innerHTML = form.quiz.map((q, i) => `
+    <div class="q">
+      <div class="q-cab">Pergunta ${i + 1}<span class="espaco"></span>${form.quiz.length > 1 ? `<button class="mini" data-rmq="${i}" title="Remover pergunta">✕</button>` : ""}</div>
+      <div class="campo"><input type="text" data-q="${i}" data-c="pergunta" value="${esc(q.pergunta)}" placeholder="A pergunta"></div>
+      ${q.opcoes.map((o, k) => `<div class="op ${q.certa === k ? "certa" : ""}"><input type="radio" name="certa${i}" data-q="${i}" data-certa="${k}" ${q.certa === k ? "checked" : ""} title="Esta é a certa">
+        <span class="letra">${"ABCDE"[k]}</span><input type="text" data-q="${i}" data-o="${k}" value="${esc(o)}" placeholder="Opção ${"ABCDE"[k]}">
+        ${q.opcoes.length > 2 ? `<button class="mini" data-rmo="${i}:${k}" title="Remover opção">✕</button>` : ""}</div>`).join("")}
+      ${q.opcoes.length < 5 ? `<button class="btn peq" data-maiso="${i}" style="margin:2px 0 8px 47px">＋ opção</button>` : ""}
+      <div class="campo" style="margin-bottom:0"><textarea rows="2" data-q="${i}" data-c="explicacao" placeholder="Explicação (aparece depois de responder)">${esc(q.explicacao)}</textarea></div>
+    </div>`).join("");
+  document.querySelectorAll("#quiz [data-c]").forEach(el => el.oninput = () => { form.quiz[+el.dataset.q][el.dataset.c] = el.value; marcarSujo(); });
+  document.querySelectorAll("#quiz [data-o]").forEach(el => el.oninput = () => { form.quiz[+el.dataset.q].opcoes[+el.dataset.o] = el.value; marcarSujo(); });
+  document.querySelectorAll("#quiz [data-certa]").forEach(el => el.onchange = () => { form.quiz[+el.dataset.q].certa = +el.dataset.certa; marcarSujo(); pintarQuiz(); });
+  document.querySelectorAll("#quiz [data-rmq]").forEach(el => el.onclick = () => { form.quiz.splice(+el.dataset.rmq, 1); marcarSujo(); pintarQuiz(); });
+  document.querySelectorAll("#quiz [data-maiso]").forEach(el => el.onclick = () => { form.quiz[+el.dataset.maiso].opcoes.push(""); marcarSujo(); pintarQuiz(); });
+  document.querySelectorAll("#quiz [data-rmo]").forEach(el => el.onclick = () => {
+    const [qi, k] = el.dataset.rmo.split(":").map(Number), q = form.quiz[qi];
+    q.opcoes.splice(k, 1); if (q.certa >= q.opcoes.length) q.certa = 0; else if (q.certa > k) q.certa--;
+    marcarSujo(); pintarQuiz();
+  });
+}
+
+function graficoDoForm() {
+  const ticker = $("g-ticker").value.trim();
+  if (!ticker) return null;
+  return {
+    ticker, inicio: $("g-inicio").value, fim: $("g-fim").value,
+    indicadores: [...document.querySelectorAll(".g-ind:checked")].map(x => x.value),
+    titulo: $("g-titulo").value.trim(), legenda: $("g-legenda").value.trim(),
+    marcas: $("g-marcas").value.split("\n").map(l => l.trim()).filter(Boolean).map(l => { const [d, ...t] = l.split("|"); return { data: d.trim(), texto: t.join("|").trim() }; }),
+  };
+}
+
+function lerForm() {
+  form.titulo = $("e-titulo").value.trim();
+  form.resumo = $("e-resumo").value.trim();
+  form.teoria = $("e-teoria").value;
+  form.publicada = $("e-pub").checked;
+  form.grafico = graficoDoForm();
+  const xt = $("x-texto").value.trim();
+  form.experimenta = xt ? { texto: xt, url: $("x-url").value.trim() } : null;
+  return form;
+}
+
+function atualizarPrevia() {
+  const g = graficoDoForm();
+  $("previa").innerHTML = markdown($("e-teoria").value, g ? { url: form.grafico_url, legenda: g.legenda } : null) || `<p style="color:var(--suave)">A pré-visualização aparece aqui.</p>`;
+}
+
+function marcarSujo() { sujo = true; const e = $("estado"); if (e) { e.textContent = "● Alterações por gravar"; e.className = "estado sujo"; } }
+
+function inserir(txt) {
+  const ta = $("e-teoria"), ini = ta.selectionStart, fim = ta.selectionEnd, selec = ta.value.slice(ini, fim);
+  txt = txt.replace(/\\n/g, "\n");
+  let novo;
+  if (txt.includes("|") && !txt.startsWith("|")) { const [a, b] = txt.split("|"); novo = a + (selec || "texto") + b; }
+  else if (/^(#|-|>)/.test(txt)) {
+    const inicioLinha = ta.value.lastIndexOf("\n", ini - 1) + 1;
+    ta.setRangeText(txt, inicioLinha, inicioLinha, "end"); ta.focus(); marcarSujo(); atualizarPrevia(); return;
+  } else novo = txt;
+  ta.setRangeText(novo, ini, fim, "end"); ta.focus(); marcarSujo(); atualizarPrevia();
+}
+
+function ligarEventos() {
+  ["e-titulo", "e-resumo", "x-texto", "x-url", "g-ticker", "g-inicio", "g-fim", "g-titulo", "g-legenda", "g-marcas"].forEach(id => $(id).addEventListener("input", marcarSujo));
+  ["g-legenda", "g-ticker"].forEach(id => $(id).addEventListener("input", atualizarPrevia));
+  document.querySelectorAll(".g-ind").forEach(x => x.onchange = marcarSujo);
+  $("e-pub").onchange = marcarSujo;
+  $("e-teoria").addEventListener("input", () => { marcarSujo(); atualizarPrevia(); });
+  $("e-teoria").addEventListener("keydown", e => { if ((e.ctrlKey || e.metaKey) && e.key === "b") { e.preventDefault(); inserir("**|**"); } });
+  document.querySelectorAll("[data-md]").forEach(b => b.onclick = () => inserir(b.dataset.md));
+  $("b-maisq").onclick = () => { lerForm(); form.quiz.push({ pergunta: "", opcoes: ["", "", "", ""], certa: 0, explicacao: "" }); marcarSujo(); pintarQuiz(); };
+  $("b-gravar").onclick = gravar;
+  if ($("b-apagar")) $("b-apagar").onclick = apagar;
+  $("b-gerar").onclick = gerarGrafico;
+  if ($("b-semg")) $("b-semg").onclick = () => { ["g-ticker","g-inicio","g-fim","g-titulo","g-legenda","g-marcas"].forEach(id => $(id).value = ""); document.querySelectorAll(".g-ind").forEach(x => x.checked = false); marcarSujo(); atualizarPrevia(); toast("Gráfico removido do formulário. Grava para confirmar.", "ok"); };
+  $("b-img").onclick = () => $("f-img").click();
+  $("f-img").onchange = async () => {
+    const f = $("f-img").files[0]; if (!f) return;
+    const fd = new FormData(); fd.append("imagem", f);
+    try { const r = await api("/api/admin/escola/imagem", fd, true); inserir(`\n![Legenda da imagem](${r.url})\n`); toast("Imagem carregada. Edita a legenda entre [ ].", "ok"); }
+    catch (e) { toast(e.message, "erro"); }
+    $("f-img").value = "";
+  };
+}
+
+async function gravar() {
+  lerForm();
+  const b = $("b-gravar"); b.disabled = true; b.textContent = "A gravar…";
+  try {
+    const r = await api("/api/admin/escola/licao", form);
+    sujo = false;
+    await carregar();
+    form = Object.assign(JSON.parse(JSON.stringify(r.licao)), { novo: false });
+    pintarEditor();
+    toast(form.publicada ? "Lição gravada e publicada ✔" : "Rascunho gravado ✔", "ok");
+  } catch (e) { toast(e.message, "erro"); b.disabled = false; b.textContent = "💾 Gravar"; }
+}
+
+async function apagar() {
+  if (!confirm(`Apagar a lição “${form.titulo || form.id}”?\n\nFica uma cópia de segurança, mas os membros deixam de a ver.`)) return;
+  try { await api(`/api/admin/escola/licao/${form.id}/apagar`, {}); sujo = false; sel = null; await carregar();
+    $("editor").innerHTML = `<div class="vazio-ed"><b>Lição apagada</b>Escolhe outra na lista.</div>`; toast("Lição apagada.", "ok"); }
+  catch (e) { toast(e.message, "erro"); }
+}
+
+async function gerarGrafico() {
+  if (sujo || form.novo) { toast("Grava a lição primeiro — o gráfico usa os dados gravados.", "erro"); return; }
+  if (!form.grafico) { toast("Define pelo menos o ticker e grava.", "erro"); return; }
+  const b = $("b-gerar"); b.disabled = true; b.textContent = "⏳ A descarregar dados e desenhar…";
+  try {
+    const r = await api(`/api/admin/escola/grafico/${form.id}`, {});
+    form.grafico_url = r.url;
+    const l = D.licoes.find(x => x.id === form.id); if (l) l.grafico_url = r.url;
+    $("graf-prev").innerHTML = `<img src="${r.url}">`;
+    atualizarPrevia();
+    toast(r.mensagem, "ok");
+  } catch (e) { toast(e.message, "erro"); }
+  b.disabled = false; b.textContent = "⚙️ Gerar / atualizar gráfico";
+}
+
+/* ---------- Configuração, plano, importar ---------- */
+$("b-inicio").onclick = async () => {
+  const v = $("c-inicio").value;
+  if (!v) return;
+  if (new Date(v + "T12:00:00").getDay() !== 1) { toast("Escolhe uma segunda-feira.", "erro"); return; }
+  if (!confirm(`Mudar o início para ${dataCurta(v)}?\n\nTodas as datas das lições mudam em conjunto (a lição da Semana 1 · Segunda passa a ser nesse dia).`)) return;
+  try { await api("/api/admin/escola/config", { inicio: v }); await carregar(); if (form) pintarEditor(); toast("Data de início gravada.", "ok"); }
+  catch (e) { toast(e.message, "erro"); }
+};
+
+$("b-plano").onclick = () => {
+  let h = "";
+  for (let n = 1; n <= 52; n++) {
+    const s = D.semanas.find(x => x.n === n) || { n, tema: "", trimestre: Math.ceil(n / 13) };
+    h += `<div class="plano-linha"><span>S${n}</span><input type="text" data-pn="${n}" value="${esc(s.tema)}" placeholder="Tema da semana ${n}">
+      <select data-pt="${n}">${[1,2,3,4].map(t => `<option value="${t}" ${s.trimestre === t ? "selected" : ""}>T${t}</option>`).join("")}</select></div>`;
+  }
+  $("plano-linhas").innerHTML = h;
+  $("painel-plano").classList.add("on");
+};
+$("b-gravar-plano").onclick = async () => {
+  const semanas = [...document.querySelectorAll("[data-pn]")].map(i => ({ n: +i.dataset.pn, tema: i.value.trim(), trimestre: +document.querySelector(`[data-pt="${i.dataset.pn}"]`).value }));
+  try { await api("/api/admin/escola/config", { semanas }); $("painel-plano").classList.remove("on"); await carregar(); if (form) pintarEditor(); toast("Plano do ano gravado.", "ok"); }
+  catch (e) { toast(e.message, "erro"); }
+};
+$("painel-plano").onclick = e => { if (e.target.id === "painel-plano") $("painel-plano").classList.remove("on"); };
+
+$("f-importar").onchange = async () => {
+  const f = $("f-importar").files[0]; if (!f) return;
+  let j; try { j = JSON.parse(await f.text()); } catch (e) { toast("O ficheiro não é JSON válido.", "erro"); return; }
+  if (!confirm(`Substituir TODAS as lições pelas do ficheiro “${f.name}” (${(j.licoes || []).length} lições)?\n\nA versão atual fica guardada como cópia de segurança.`)) { $("f-importar").value = ""; return; }
+  try { const r = await api("/api/admin/escola/importar", j); sel = null; form = null; await carregar();
+    $("editor").innerHTML = `<div class="vazio-ed"><b>Importação concluída</b>${esc(r.mensagem)}</div>`; toast(r.mensagem, "ok"); }
+  catch (e) { toast(e.message, "erro"); }
+  $("f-importar").value = "";
+};
+
+$("b-graficos").onclick = async () => {
+  const b = $("b-graficos"); b.disabled = true; b.textContent = "⏳ A gerar (pode demorar)…";
+  try {
+    const r = await api("/api/admin/escola/graficos_em_falta", {});
+    toast(r.mensagem + (r.erros.length ? " " + r.erros.join(" | ") : ""), r.erros.length ? "erro" : "ok");
+    await carregar(); if (form) { const l = D.licoes.find(x => x.id === form.id); if (l && !sujo) { form.grafico_url = l.grafico_url; pintarEditor(); } }
+  } catch (e) { toast(e.message, "erro"); }
+  b.disabled = false; b.textContent = "📈 Gerar gráficos em falta";
+};
+
+/* ---------- Alunos ---------- */
+async function abrirAlunos() {
+  $("painel-alunos").classList.add("on");
+  try {
+    const r = await api("/api/admin/escola/alunos");
+    if (!r.alunos.length) { $("lista-alunos").innerHTML = `<p style="color:var(--suave)">Ainda ninguém respondeu a nenhuma lição.</p>`; return; }
+    const abertos = new Set([...document.querySelectorAll(".aluno[open]")].map(d => d.dataset.uid));
+    $("lista-alunos").innerHTML = r.alunos.map(a => {
+      const e = a.estatisticas;
+      const quando = q => q ? new Date(q).toLocaleString("pt-PT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "";
+      return `<details class="aluno" data-uid="${esc(a.uid)}" ${abertos.has(a.uid) || (a.eu && !abertos.size) ? "open" : ""}>
+        <summary><span class="nm">${esc(a.nome)}${a.eu ? "<small>(tu)</small>" : ""}</span>
+          <span class="kp"><b>${e.pontos}</b> pts · <b>${e.feitas}</b> ${e.feitas === 1 ? "lição" : "lições"} · ${e.taxa === null ? "—" : `<b>${e.taxa}%</b> acerto`} · 🔥 ${e.sequencia}</span></summary>
+        <div class="det">
+          ${a.registos.map(g => `<div class="reg"><span class="t">${esc(g.titulo)}<span>${esc(g.chave)} · ${quando(g.quando)}</span></span>
+            <span class="sc" style="color:${g.acertos === g.total ? "var(--verde)" : g.acertos ? "var(--laranja)" : "var(--vermelho)"}">${g.acertos}/${g.total}</span>
+            <button class="btn peq" data-repor="${esc(a.uid)}" data-chave="${esc(g.chave)}" data-nome="${esc(a.nome)}" data-titulo="${esc(g.titulo)}">↺ Repor</button></div>`).join("")}
+          <div style="display:flex;justify-content:flex-end;margin-top:10px"><button class="btn perigo peq" data-repor="${esc(a.uid)}" data-nome="${esc(a.nome)}">🗑 Apagar todo o progresso</button></div>
+        </div></details>`;
+    }).join("");
+    document.querySelectorAll("[data-repor]").forEach(b => b.onclick = async () => {
+      const tudo = !b.dataset.chave;
+      const pergunta = tudo ? `Apagar TODO o progresso de ${b.dataset.nome}?\n\nPontos, lições feitas e sequência voltam a zero. Não há cópia de segurança do progresso.`
+                            : `Repor “${b.dataset.titulo}” para ${b.dataset.nome}?\n\nA resposta guardada é apagada e a próxima tentativa volta a contar para os pontos.`;
+      if (!confirm(pergunta)) return;
+      try { const res = await api(`/api/admin/escola/alunos/${encodeURIComponent(b.dataset.repor)}/repor`, tudo ? {} : { chave: b.dataset.chave });
+        toast(res.mensagem, "ok"); abrirAlunos(); carregar(); }
+      catch (e) { toast(e.message, "erro"); }
+    });
+  } catch (e) { $("lista-alunos").innerHTML = `<p style="color:#fca5a5">${esc(e.message)}</p>`; }
+}
+$("b-alunos").onclick = abrirAlunos;
+$("painel-alunos").onclick = e => { if (e.target.id === "painel-alunos") $("painel-alunos").classList.remove("on"); };
+
+$("procura").oninput = pintarSemanas;
+window.addEventListener("beforeunload", e => { if (sujo) { e.preventDefault(); e.returnValue = ""; } });
+document.addEventListener("keydown", e => { if ((e.ctrlKey || e.metaKey) && e.key === "s" && form) { e.preventDefault(); gravar(); } });
+
+carregar().then(() => {
+  const h = location.hash.replace("#", "");
+  if (/^s\d{2}d[1-5]$/.test(h)) abrir(h);
+}).catch(e => toast(e.message, "erro"));
+</script>
+</body>
+</html>
