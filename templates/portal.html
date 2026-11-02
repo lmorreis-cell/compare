@@ -192,6 +192,8 @@
             <div>Portal Bolsa<small>partilha de ideias</small></div>
         </a>
 
+        
+            
         <div class="topo-acoes{% if is_admin %} tem-admin{% endif %}">
             {% if is_admin %}
             <div class="admin-wrap">
@@ -199,6 +201,9 @@
                     <span class="pulso"></span>
                     <span class="admin-txt">Admin ·</span> <span id="admin-online">{{ online_agora }}</span><span class="admin-online-txt">&nbsp;online</span>
                 </button>
+                        {% if is_admin %}
+                                <a href="/admin" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid #f59e0b;border-radius:8px;color:#f59e0b;font-size:13px;font-weight:600;text-decoration:none;">⚙️ Gestão</a>
+                        {% endif %}
                 <div class="admin-caixa" id="caixa-online">
                     <div class="admin-stats">
                         <div class="admin-stat"><b>{{ online_agora }}</b><span>Online</span></div>
