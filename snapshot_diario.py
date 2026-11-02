@@ -43,8 +43,27 @@ UNIVERSOS = {
     "ndx": "ndx.txt",
     "sp500": "sp500.txt",
     "cripto": None,
+    "psi": None,   # Euronext Lisboa — processado à parte, com o PSI como referência (Mansfield)
 }
 CRIPTO = ['BTC-USD', 'ETH-USD', 'SOL-USD', 'BNB-USD', 'XRP-USD', 'ADA-USD', 'AVAX-USD', 'DOGE-USD', 'DOT-USD', 'LINK-USD']
+
+# Composição do PSI (revisão Euronext de setembro de 2026: 16 cotadas, sem alterações).
+# Confirmar a cada revisão trimestral (próxima: dezembro) ou substituir pela variável PSI_TICKERS.
+INDICE_PSI = "PSI20.LS"
+COMPOSICAO_PSI = {
+    "ALTR.LS": "Altri", "BCP.LS": "BCP", "COR.LS": "Corticeira Amorim", "CTT.LS": "CTT",
+    "EDP.LS": "EDP", "EDPR.LS": "EDP Renováveis", "EGL.LS": "Mota-Engil", "GALP.LS": "Galp",
+    "IBS.LS": "Ibersol", "JMT.LS": "Jerónimo Martins", "NOS.LS": "NOS", "NVG.LS": "Navigator",
+    "RENE.LS": "REN", "SEM.LS": "Semapa", "SON.LS": "Sonae", "TDSA.LS": "Teixeira Duarte",
+}
+
+
+def composicao_psi():
+    extra = os.environ.get("PSI_TICKERS")
+    if extra:
+        lista = [t.strip().upper() for t in extra.split(",") if t.strip()]
+        return {t: COMPOSICAO_PSI.get(t, t.replace(".LS", "")) for t in lista}
+    return dict(COMPOSICAO_PSI)
 
 INDICES = {
     "^GSPC": "S&P 500", "^IXIC": "Nasdaq", "^GDAXI": "DAX 40", "^STOXX50E": "Euro Stoxx 50",
@@ -355,6 +374,8 @@ def _processar_macro():
 def _ler_universo(nome):
     if nome == "cripto":
         return list(CRIPTO)
+    if nome == "psi":
+        return list(composicao_psi())
     caminho = UNIVERSOS[nome]
     try:
         with open(caminho, 'r') as f:
@@ -450,6 +471,67 @@ def _montar_universo(nome, tickers, processados, data_mercado):
 
 
 # ---------------------------------------------------------------
+# PSI (EURONEXT LISBOA)
+# ---------------------------------------------------------------
+def processar_psi(gravar=True):
+    """Fotografia do PSI com as MESMAS regras do Screener (indicadores, sinais, fundamentos,
+    track record). Diferenças: um único download (16 cotadas + índice) e a força relativa
+    (Mansfield) é medida contra o PSI e não contra o S&P 500."""
+    nomes = composicao_psi()
+    tickers = list(nomes)
+    dados = yg.download(tickers + [INDICE_PSI], period="2y", interval="1d", group_by="ticker", usar_cache=False)
+    if dados is None or dados.empty:
+        raise RuntimeError("Sem dados do PSI.")
+
+    f_idx = yg.fatia(dados, INDICE_PSI)
+    psi_close = f_idx['Close'].dropna() if (not f_idx.empty and 'Close' in f_idx.columns) else None
+
+    erros, processados = [], {}
+    for t in tickers:
+        try:
+            df = yg.fatia(dados, t).dropna()
+            if df.empty or len(df) < 200:
+                erros.append(f"{t}: histórico insuficiente")
+                continue
+            df = _indicadores(df)
+            resumo = _resumo_ativo(t, df, psi_close)
+            ultimo = df.iloc[-1]
+            resumo.update({
+                "nome": nomes[t],
+                "perf_5d": _r((ultimo['Close'] / df['Close'].iloc[-6] - 1) * 100),
+                "acima_ema50": bool(ultimo['Close'] > ultimo['EMA50']),
+                "acima_sma200": bool(ultimo['Close'] > ultimo['SMA200']) if pd.notna(ultimo['SMA200']) else None,
+                "data": df.index[-1].strftime('%Y-%m-%d'),
+            })
+            processados[t] = {"resumo": resumo, "sinais": _sinais_hoje(df), "eventos": _eventos_historicos(t, df)}
+        except Exception as e:
+            erros.append(f"{t}: {e}")
+
+    if not processados:
+        raise RuntimeError("Nenhuma cotada do PSI com dados suficientes.")
+
+    datas = [p["resumo"]["data"] for p in processados.values()]
+    data_mercado = psi_close.index[-1].strftime('%Y-%m-%d') if psi_close is not None and len(psi_close) else max(datas)
+    psi = _montar_universo("psi", tickers, processados, data_mercado)
+
+    indice = None
+    if psi_close is not None and len(psi_close) > 63:
+        c = psi_close
+        ano = c[c.index < pd.Timestamp(year=c.index[-1].year, month=1, day=1, tz=c.index.tz)]
+        indice = {
+            "ticker": INDICE_PSI, "preco": _r(c.iloc[-1]),
+            "var_1d": _r((c.iloc[-1] / c.iloc[-2] - 1) * 100),
+            "perf_5d": _r((c.iloc[-1] / c.iloc[-6] - 1) * 100),
+            "perf_3m": _r((c.iloc[-1] / c.iloc[-64] - 1) * 100),
+            "perf_ytd": _r((c.iloc[-1] / ano.iloc[-1] - 1) * 100) if len(ano) else None,
+        }
+    psi.update({"indice": indice, "erros": erros[:30]})
+    if gravar:
+        _gravar("psi", psi)
+    return psi
+
+
+# ---------------------------------------------------------------
 # EXECUÇÃO
 # ---------------------------------------------------------------
 def executar_snapshot():
@@ -473,7 +555,7 @@ def executar_snapshot():
         _gravar("macro", macro)
 
         # Descarrega a UNIÃO dos universos uma única vez (o Nasdaq 100 está quase todo no S&P 500)
-        universos = {nome: _ler_universo(nome) for nome in UNIVERSOS}
+        universos = {nome: _ler_universo(nome) for nome in UNIVERSOS if nome != "psi"}
         todos = sorted(set(t for lista in universos.values() for t in lista))
         print(f"[snapshot] {len(todos)} ativos únicos a processar em lotes de {TAMANHO_LOTE}.")
         processados = _processar_tickers(todos, spx_close, est["erros"])
@@ -481,6 +563,16 @@ def executar_snapshot():
         for nome, tickers in universos.items():
             if tickers:
                 _gravar(nome, _montar_universo(nome, tickers, processados, macro.get("data_mercado")))
+
+        # PSI à parte (referência própria). Uma falha aqui não estraga o resto da fotografia.
+        try:
+            time.sleep(PAUSA_ENTRE_LOTES_SEG)
+            psi = processar_psi()
+            print(f"[snapshot] PSI: {psi['total_processado']}/{psi['total_universo']} cotadas.")
+        except yg.YahooIndisponivel:
+            raise
+        except Exception as e:
+            est["erros"].append(f"PSI: {e}")
 
         est.update({
             "ultimo_sucesso": datetime.now().isoformat(timespec='seconds'),

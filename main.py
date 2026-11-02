@@ -1770,6 +1770,9 @@ def api_screener_paginado(universo, estrategia, lote):
     elif universo == 'cripto':
         tickers = ['BTC-USD', 'ETH-USD', 'SOL-USD', 'BNB-USD', 'XRP-USD', 'ADA-USD', 'AVAX-USD', 'DOGE-USD', 'DOT-USD', 'LINK-USD']
         caminho = None
+    elif universo == 'psi':
+        tickers = list(snap.composicao_psi())
+        caminho = None
     else:
         return jsonify({"erro": "Universo inválido."}), 400
 
@@ -2328,6 +2331,7 @@ def api_risco_portfolio():
 # SNAPSHOT DIÁRIO + BRIEFING MATINAL (ADMIN)
 # ==========================================
 import relatorio_matinal as rel
+import relatorio_psi as rel_psi
 import agendador
 
 
@@ -2353,6 +2357,7 @@ def admin_snapshot_estado():
         "snapshot": snap.estado(),
         "ficheiros": resumo,
         "briefing": rel.estado(),
+        "briefing_psi": rel_psi.estado(),
         "hora_lisboa": agendador.agora_lisboa().strftime('%Y-%m-%d %H:%M'),
     })
 
@@ -2388,7 +2393,9 @@ HTML_PREVIEW_BRIEFING = """
   .aviso { max-width:620px; margin:0 auto 20px auto; background:#3b2a1a; border-left:4px solid #f0ad4e; padding:12px 16px; border-radius:4px; font-size:13px; }
 </style></head><body>
   <div class="barra">
-    <a class="btn" href="/api/admin/relatorio/enviar?forcar=1" onclick="return confirm('Enviar este briefing para o Discord agora?')">📡 Enviar agora para o Discord</a>
+    <a class="btn" href="{{ url_enviar or '/api/admin/relatorio/enviar?forcar=1' }}" onclick="return confirm('Enviar este briefing para o Discord agora?')">📡 Enviar agora para o Discord</a>
+    <a class="btn cinza" href="/api/admin/relatorio/preview">☀️ Briefing Matinal</a>
+    <a class="btn cinza" href="/api/admin/relatorio_psi/preview">🇵🇹 Briefing PSI</a>
     <a class="btn cinza" href="/api/admin/snapshot">📋 Estado do Snapshot</a>
     <span style="font-size:12px; color:#949ba4;">Isto é só uma pré-visualização — nada foi enviado.</span>
   </div>
@@ -2431,8 +2438,32 @@ def admin_relatorio_enviar():
     return jsonify({"sucesso": ok, "mensagem": msg}), (200 if ok else 400)
 
 
+@app.route('/api/admin/relatorio_psi/preview')
+def admin_relatorio_psi_preview():
+    """Mostra como fica o Briefing PSI no Discord, sem o enviar (apenas Admin)."""
+    if not _e_admin():
+        return jsonify({"erro": "Acesso negado. Apenas Admin."}), 403
+    url_env = '/api/admin/relatorio_psi/enviar?forcar=1'
+    payload, erro = rel_psi.construir_relatorio()
+    if erro:
+        return render_template_string(HTML_PREVIEW_BRIEFING, erro=erro, e=None, cor="#f0ad4e", url_enviar=url_env)
+    e = payload["embeds"][0]
+    return render_template_string(HTML_PREVIEW_BRIEFING, erro=None, e=e, cor=f"#{e['color']:06x}", url_enviar=url_env)
+
+
+@app.route('/api/admin/relatorio_psi/enviar')
+def admin_relatorio_psi_enviar():
+    """Envia o Briefing PSI agora (apenas Admin). ?forcar=1 envia mesmo que já tenha sido enviado hoje."""
+    if not _e_admin():
+        return jsonify({"erro": "Acesso negado. Apenas Admin."}), 403
+    ok, msg = rel_psi.enviar_relatorio(forcar=request.args.get('forcar') == '1')
+    return jsonify({"sucesso": ok, "mensagem": msg}), (200 if ok else 400)
+
+
 # Arranca o relógio interno (snapshot às 22:30 e briefing às 08:00, dias úteis)
 agendador.iniciar()
+# Relógio do Briefing PSI (dias úteis às 08:10 de Lisboa, ou PSI_HORA_ENVIO)
+rel_psi.iniciar()
 
 
 # ==========================================
