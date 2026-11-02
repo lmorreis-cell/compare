@@ -2034,11 +2034,34 @@
         </div>
     </div>
 
+    <!-- CALENDÁRIO DA EDIÇÃO: janela de inscrição e regras de tempo -->
+    <div id="liga-calendario" style="background:#0d1117; border:1px solid #30363d; border-radius:8px; padding:14px 18px; margin-bottom:20px; display:flex; flex-wrap:wrap; gap:18px; align-items:flex-start; font-size:12px; color:#c9d1d9;">
+        <div style="flex:1 1 230px">
+            <div style="font-size:10px; color:#8b949e; text-transform:uppercase; font-weight:bold; margin-bottom:4px">📝 Inscrições <span class="dica-edu" style="font-size:11px;color:#8b949e;cursor:help">ℹ️<span class="dica-texto" style="width:300px">Período em que podes registar ou alterar a carteira. Podes atualizá-la quantas vezes quiseres até ao fecho: conta sempre a última versão, e o preço de entrada (p0) passa a ser o do momento dessa última gravação.</span></span></div>
+            <div id="liga-cal-inscricao">—</div>
+        </div>
+        <div style="flex:1 1 230px">
+            <div style="font-size:10px; color:#8b949e; text-transform:uppercase; font-weight:bold; margin-bottom:4px">🌫️ Nevoeiro <span class="dica-edu" style="font-size:11px;color:#8b949e;cursor:help">ℹ️<span class="dica-texto" style="width:300px">Enquanto as inscrições estão abertas, os ativos, alvos e a tese dos outros membros ficam ocultos — ninguém pode copiar a carteira de ninguém. Vês sempre a tua. Tudo fica visível no dia a seguir ao fecho.</span></span></div>
+            <div id="liga-cal-nevoeiro">—</div>
+        </div>
+        <div style="flex:1 1 230px">
+            <div style="font-size:10px; color:#8b949e; text-transform:uppercase; font-weight:bold; margin-bottom:4px">🏁 Competição <span class="dica-edu" style="font-size:11px;color:#8b949e;cursor:help">ℹ️<span class="dica-texto" style="width:300px">O resultado é medido do preço de entrada (p0 = cotação no momento em que gravaste a carteira) até ao fecho do último dia do mês da edição. Os bónus de alvo só contam com máximos/mínimos a partir do dia SEGUINTE à gravação — o que o ativo fez antes de entrares não conta. Os prémios e medalhas só são atribuídos depois de o mês terminar.</span></span></div>
+            <div id="liga-cal-competicao">—</div>
+        </div>
+        <div id="liga-cal-inscritos" style="flex:1 1 100%; display:none; font-size:11px; color:#8b949e; border-top:1px dashed #30363d; padding-top:8px"></div>
+    </div>
+
+    <!-- ADMIN: atalho para as janelas de inscrição (só aparece ao Admin) -->
+    <div id="liga-admin-janelas" style="display:none; background:#161b22; border:1px solid #30363d; border-left:4px solid #b388ff; border-radius:8px; padding:10px 16px; margin-bottom:20px; font-size:12px; color:#c9d1d9;">
+        ⚙️ <strong style="color:#b388ff">Admin:</strong> as datas de abertura e fecho das inscrições definem-se na <a href="/admin#c-liga" style="color:#b388ff; font-weight:bold">Área de Gestão → Liga Mensal</a>.
+    </div>
+
     <!-- FORMULÁRIO DE SUBMISSÃO DA CARTEIRA -->
     <div class="painel-controlo borda-azul" id="painel-submissao-liga" style="padding: 20px;">
         <h4 style="margin: 0 0 15px 0; color: #f0f2f5; font-size: 14px; text-transform: uppercase;">
-            🎯 Registar / Atualizar a Minha Carteira do Mês
+            🎯 Registar / Atualizar a Minha Carteira <span id="liga-form-edicao" style="color:#58a6ff"></span>
         </h4>
+        <div style="font-size:11px; color:#8b949e; margin:-8px 0 12px 0">O preço de entrada (p0) é a cotação no momento em que gravas. <span class="dica-edu" style="font-size:11px;color:#8b949e;cursor:help">ℹ️<span class="dica-texto" style="width:300px">Não há preço de referência fixo no início do mês: cada carteira entra ao preço do momento da gravação. Assim é justo para quem se inscreve no primeiro ou no último dia da janela, e ninguém ganha com um movimento que já aconteceu.</span></span></div>
 
         <div style="display: flex; flex-direction: column; gap: 12px; background: #0d1117; padding: 15px; border-radius: 8px; border: 1px solid #30363d;">
             
@@ -7570,11 +7593,39 @@ function renderizarCalendarioDiario() {
                 return;
             }
 
-            badgeMes.innerText = `Edição: ${dados.mes_ref} ${dados.janela_aberta ? '🟢 Inscrições Abertas' : '🔒 Em Curso'}`;
+            const fd = (iso) => iso ? iso.split('-').reverse().slice(0, 2).join('/') : '—';
+            const fdLong = (iso) => iso ? iso.split('-').reverse().join('/') : '—';
+            const diaSeg = (iso) => { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10); };
+            const je = dados.janela_edicao || {};
+            const ins = dados.inscricao;
+            badgeMes.innerText = `Edição: ${dados.nome_edicao || dados.mes_ref} ${dados.nevoeiro ? '🌫️ Nevoeiro até ' + fd(je.fim) : '🔓 Carteiras visíveis'}`;
 
-            // NOVO: Lógica de Edição e Bloqueio de Formulário
+            // Calendário da edição
+            document.getElementById('liga-cal-inscricao').innerHTML = ins
+                ? `<span style="color:#5cb85c;font-weight:bold">🟢 Abertas</span> para a edição de <strong>${ins.nome}</strong>: ${fd(ins.inicio)} a <strong>${fdLong(ins.fim)}</strong> (inclusive)`
+                : (dados.proxima
+                    ? `<span style="color:#d9534f;font-weight:bold">🔒 Fechadas.</span> Próxima janela (edição de <strong>${dados.proxima.nome}</strong>): ${fd(dados.proxima.inicio)} a ${fdLong(dados.proxima.fim)}`
+                    : '<span style="color:#d9534f;font-weight:bold">🔒 Fechadas.</span>');
+            document.getElementById('liga-cal-nevoeiro').innerHTML = dados.nevoeiro
+                ? `Carteiras de <strong>${dados.nome_edicao}</strong> ocultas até ${fdLong(je.fim)}. Levanta a <strong>${fdLong(diaSeg(je.fim))}</strong>.`
+                : `Levantado: as carteiras de <strong>${dados.nome_edicao}</strong> estão todas visíveis.`
+                  + (ins && ins.edicao !== dados.mes_ref ? `<br>As inscrições para ${ins.nome} já estão no nevoeiro até ${fdLong(ins.fim)}.` : '');
+            document.getElementById('liga-cal-competicao').innerHTML =
+                `Edição de <strong>${dados.nome_edicao}</strong> conta até ao fecho de <strong>${fdLong(je.fim_competicao)}</strong>. Prémios atribuídos depois desse dia.`;
+            const boxIns = document.getElementById('liga-cal-inscritos');
+            if (dados.inscritos_proxima && dados.inscritos_proxima.length) {
+                boxIns.style.display = 'block';
+                boxIns.innerHTML = `🕵️ Já inscritos em <strong>${ins.nome}</strong> (${dados.inscritos_proxima.length}): ${dados.inscritos_proxima.join(', ')}`;
+            } else { boxIns.style.display = 'none'; }
+
+            // Formulário: aponta sempre para a edição com inscrições abertas
             const btnSubmeter = document.getElementById('btn-submeter-liga');
-            if (dados.janela_aberta && dados.minha_carteira) {
+            const painelSub = document.getElementById('painel-submissao-liga');
+            const podeSubmeter = dados.janela_aberta || dados.is_admin;
+            document.getElementById('liga-form-edicao').innerText = ins ? `· Edição de ${ins.nome}` : (dados.is_admin ? `· Edição de ${dados.nome_edicao} (Admin)` : '');
+            painelSub.style.opacity = podeSubmeter ? '1' : '0.4';
+            painelSub.style.pointerEvents = podeSubmeter ? 'auto' : 'none';
+            if (podeSubmeter && dados.minha_carteira) {
                 const mc = dados.minha_carteira;
                 // Preenche os campos apenas se estiverem vazios (para não apagar o que estás a escrever)
                 if (!document.getElementById('liga-t1').value) {
@@ -7590,18 +7641,19 @@ function renderizarCalendarioDiario() {
                     verificarAtivoLiga(mc.slots[0].ticker, 'info-t1', 'Large');
                     verificarAtivoLiga(mc.slots[1].ticker, 'info-t2', 'Mid');
                     verificarAtivoLiga(mc.slots[2].ticker, 'info-t3', 'Wildcard');
-
-                    btnSubmeter.innerHTML = '🔄 Atualizar Carteira';
                 }
-            } else if (!dados.janela_aberta) {
-                // Se a janela fechou (Dia 6 ao dia 24), bloqueia o formulário visualmente
-                document.getElementById('painel-submissao-liga').style.opacity = '0.4';
-                document.getElementById('painel-submissao-liga').style.pointerEvents = 'none';
+                btnSubmeter.innerHTML = '🔄 Atualizar Carteira';
+            } else if (podeSubmeter) {
+                btnSubmeter.innerHTML = '🔒 Validar & Gravar Carteira';
+            } else {
                 btnSubmeter.innerHTML = '🔒 Inscrições Encerradas';
             }
 
+            // Zona de administração das janelas
+            document.getElementById('liga-admin-janelas').style.display = dados.is_admin ? 'block' : 'none';
+
             if (!dados.carteiras || dados.carteiras.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#8b949e; padding:20px;">Ainda ninguém submeteu carteira para este mês. Sê o primeiro!</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#8b949e; padding:20px;">Ainda ninguém tem carteira nesta edição. Sê o primeiro!</td></tr>';
                 return;
             }
 
@@ -7620,7 +7672,7 @@ function renderizarCalendarioDiario() {
                 return `
                     <tr style="border-bottom: 1px solid #21262d;">
                         <td style="padding: 12px; font-weight: bold; font-size: 14px;">${medalha}</td>
-                        <td style="padding: 12px; font-weight: bold; color: #58a6ff;">${c.username} <span class="liga-medalhas" data-uid="${c.user_id || ''}" style="font-size: 12px;">${(window.iconesLiga || {})[c.user_id] || ''}</span></td>
+                        <td style="padding: 12px; font-weight: bold; color: #58a6ff;">${c.username}${c.submetido_em ? `<div style="font-size:10px;color:#8b949e;font-weight:normal" title="${c.submetido_em_estimado ? 'Data estimada a partir do preço de entrada (carteira gravada antes de o portal registar a hora de submissão).' : 'Data e hora da última gravação da carteira: o p0 é o preço deste momento e os alvos contam a partir do dia seguinte.'}">entrada ${c.submetido_em.slice(8,10)}/${c.submetido_em.slice(5,7)}${c.submetido_em_estimado ? ' (est.)' : (c.submetido_em.length > 10 ? ' ' + c.submetido_em.slice(11,16) : '')}</div>` : ''} <span class="liga-medalhas" data-uid="${c.user_id || ''}" style="font-size: 12px;">${(window.iconesLiga || {})[c.user_id] || ''}</span></td>
                         <td style="padding: 12px;">${fmtSlot(c.slots[0])}</td>
                         <td style="padding: 12px;">${fmtSlot(c.slots[1])}</td>
                         <td style="padding: 12px;">${fmtSlot(c.slots[2])}</td>

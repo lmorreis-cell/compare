@@ -104,6 +104,12 @@
   .atalhos code { color: var(--laranja); font-size: 12.5px; }
   .atalhos span { color: var(--suave); }
   .vazio { color: var(--suave); font-size: 13px; margin-bottom: 12px; }
+  .campo { background: var(--cartao2); color: var(--texto); border: 1px solid var(--borda); border-radius: 7px; padding: 6px 8px; font-size: 13px; font-family: inherit; color-scheme: dark; }
+  .campo[disabled] { opacity: .5; }
+  .campo.num { width: 64px; }
+  .padrao-liga { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 13px; color: var(--suave); background: var(--cartao2); border: 1px solid var(--borda); border-radius: 10px; padding: 10px 12px; margin-bottom: 14px; }
+  .regras { margin: 0 0 14px; padding-left: 18px; color: var(--suave); font-size: 12.5px; line-height: 1.6; }
+  .regras b { color: var(--texto); font-weight: 600; }
   @media (max-width: 600px) { .grelha { grid-template-columns: 1fr; } .seta { display: none; } .marca span, #atualizado { display: none; } .topo-in { padding: 10px 14px; } main { padding: 18px 14px 50px; } .dados.tabela { display: block; overflow-x: auto; white-space: nowrap; } }
 </style>
 </head>
@@ -129,6 +135,7 @@
     <div class="mosaico" data-ir="c-snapshot"><div class="rot" id="m-snap-r"><span class="ponto"></span>Fotografia diária</div><div class="val" id="m-snap">—</div><div class="det" id="m-snap-d">&nbsp;</div></div>
     <div class="mosaico" data-ir="c-matinal"><div class="rot" id="m-mat-r"><span class="ponto"></span>Briefing EUA</div><div class="val" id="m-mat">—</div><div class="det" id="m-mat-d">&nbsp;</div></div>
     <div class="mosaico" data-ir="c-psi"><div class="rot" id="m-psi-r"><span class="ponto"></span>Briefing PSI</div><div class="val" id="m-psi">—</div><div class="det" id="m-psi-d">&nbsp;</div></div>
+    <div class="mosaico" data-ir="c-liga"><div class="rot" id="m-liga-r"><span class="ponto"></span>Liga Mensal</div><div class="val" id="m-liga">—</div><div class="det" id="m-liga-d">&nbsp;</div></div>
     <div class="mosaico" data-ir="c-online"><div class="rot ok" id="m-on-r"><span class="ponto"></span>Membros</div><div class="val" id="m-on">—</div><div class="det" id="m-on-d">&nbsp;</div></div>
   </section>
 
@@ -190,6 +197,33 @@
       <div class="msg" id="msg-psi"></div>
     </article>
 
+    <!-- LIGA MENSAL: JANELAS DE INSCRIÇÃO -->
+    <article class="cartao largo" id="c-liga">
+      <div class="cab"><span style="font-size:20px">🏆</span><h2>Liga Mensal · Janelas de inscrição</h2><span class="pilula" id="p-liga">—</span></div>
+      <p class="explica">Cada edição corresponde a um mês: a competição conta do <b>preço de entrada</b> (a cotação no momento em que o membro grava a carteira) até ao fecho do <b>último dia do mês</b>. Antes disso há uma <b>janela de inscrição</b>, durante a qual os membros podem gravar e alterar a carteira, e em que as carteiras dos outros ficam ocultas (<b>nevoeiro</b>). O nevoeiro levanta no dia a seguir ao fecho das inscrições. Os bónus de alvo só contam a partir do dia seguinte à gravação, e os prémios só são atribuídos quando o mês termina.</p>
+      <ul class="regras">
+        <li><b>Padrão:</b> vale para todas as edições que não tenham datas próprias. Mudá-lo não altera as edições cuja janela já abriu: essas ficam com as datas que tinham.</li>
+        <li><b>Datas próprias:</b> antes de abrir, podes mudar as duas datas. Depois de abrir, só a data de fecho (para encurtar ou prolongar). Depois de fechar, fica bloqueada, porque as carteiras e o nevoeiro já dependem dela.</li>
+        <li><b>Limites:</b> as inscrições fecham até ao último dia do mês da edição, abrem no máximo no mês anterior, duram até 45 dias e não se podem sobrepor às edições vizinhas.</li>
+      </ul>
+      <div class="padrao-liga">
+        <b style="color:var(--texto)">Padrão:</b> abre dia <input type="number" id="liga-di" class="campo num" min="1" max="31"> do mês anterior e fecha dia <input type="number" id="liga-df" class="campo num" min="1" max="28"> do mês da edição
+        <span style="flex-basis:100%;height:0"></span>
+        <span style="font-size:12px">Exemplo com 20 e 5: a edição de dezembro recebe carteiras de 20/11 a 05/12. Para ir reduzindo o intervalo, aproxima os dois números (ex.: 25 e 2).</span>
+        <button class="btn sec" id="b-liga-padrao" style="margin-left:auto">Gravar padrão</button>
+      </div>
+      <table class="dados tabela" id="t-liga">
+        <thead><tr><th>Edição</th><th>Inscrições abrem</th><th>Inscrições fecham</th><th>Estado</th><th>Carteiras</th><th></th></tr></thead>
+        <tbody><tr><td colspan="6" class="vazio">a carregar…</td></tr></tbody>
+      </table>
+      <details id="d-liga-entradas"><summary>Datas de entrada das carteiras</summary><div id="l-liga-entradas" style="margin-top:8px"></div></details>
+      <div class="acoes">
+        <a class="btn sec" href="/interativo#tab-liga" target="_blank">🏆 Ver a Liga</a>
+        <a class="btn sec" href="/api/admin/liga/janelas" target="_blank">📋 Ver dados técnicos (JSON)</a>
+      </div>
+      <div class="msg" id="msg-liga"></div>
+    </article>
+
     <!-- YAHOO -->
     <article class="cartao" id="c-yahoo">
       <div class="cab"><span style="font-size:20px">🛡️</span><h2>Escudo do Yahoo</h2><span class="pilula" id="p-yahoo">—</span></div>
@@ -233,6 +267,7 @@
         <li><code>/api/admin/relatorio/preview</code><span>Pré-visualização do Briefing EUA (precisa da fotografia).</span></li>
         <li><code>/api/admin/relatorio_psi/preview</code><span>Pré-visualização do Briefing PSI.</span></li>
         <li><code>/api/admin/online</code><span>Membros online e últimas visitas.</span></li>
+        <li><code>/api/admin/liga/janelas</code><span>Janelas de inscrição da Liga Mensal e datas de entrada das carteiras.</span></li>
         <li><code>/admin/escola</code><span>Editor das lições da Escola.</span></li>
         <li><code>/escola</code><span>A Escola, como os membros a veem.</span></li>
       </ul>
@@ -401,10 +436,72 @@ function pintarEscola(d) {
   ]);
 }
 
+// ---------------- Liga Mensal
+let ligaEditado = false;  // não redesenha a tabela enquanto estiveres a mexer nas datas
+const ESTADO_LIGA = { "aberta": ["ok", "Inscrições abertas"], "por abrir": ["", "Por abrir"], "fechada": ["", "Fechada"] };
+function ddmm(iso) { return iso ? iso.slice(8, 10) + "/" + iso.slice(5, 7) : "—"; }
+function pintarLiga(d, forcar = false) {
+  if (!d || !d.edicoes) return;
+  const aberta = d.edicoes.find(e => e.estado === "aberta");
+  const proxima = d.edicoes.find(e => e.estado === "por abrir");
+  if (aberta) {
+    pilula("p-liga", "ok", `Inscrições abertas até ${ddmm(aberta.fim)}`);
+    mosaico("liga", "ok", "Inscrições abertas", `${aberta.nome}: até ${ddmm(aberta.fim)} · ${aberta.participantes} carteiras`);
+  } else {
+    pilula("p-liga", "", proxima ? `Próxima abre a ${ddmm(proxima.inicio)}` : "Fechada");
+    mosaico("liga", "", "Em jogo", proxima ? `${proxima.nome}: abre a ${ddmm(proxima.inicio)}` : "");
+  }
+  const card = $("c-liga");
+  if (!forcar && (ligaEditado || card.contains(document.activeElement))) return;
+  ligaEditado = false;
+  $("liga-di").value = d.padrao.dia_inicio;
+  $("liga-df").value = d.padrao.dia_fim;
+  $("t-liga").querySelector("tbody").innerHTML = d.edicoes.map(e => {
+    const [cls, txt] = ESTADO_LIGA[e.estado] || ["", e.estado];
+    const travaIni = !e.editavel || e.so_fim, travaFim = !e.editavel;
+    const dicaIni = travaIni ? (e.editavel ? "As inscrições já abriram: a data de abertura já não pode mudar." : "Janela terminada: bloqueada.") : "";
+    return `<tr>
+      <td>${esc(e.nome)}${e.origem === "padrao" ? ` <small style="color:var(--suave);font-weight:400">(padrão)</small>` : ""}</td>
+      <td><input type="date" class="campo" id="lj-i-${e.edicao}" value="${e.inicio}" ${travaIni ? "disabled" : ""} title="${dicaIni}"></td>
+      <td><input type="date" class="campo" id="lj-f-${e.edicao}" value="${e.fim}" ${travaFim ? "disabled title='Janela terminada: bloqueada.'" : ""}></td>
+      <td><span class="pilula ${cls}"><span class="ponto"></span>${txt}</span></td>
+      <td>${e.participantes}</td>
+      <td style="white-space:nowrap">${e.editavel ? `<button class="btn prim" data-liga-gravar="${e.edicao}" style="padding:6px 12px">Gravar</button>` : ""}
+        ${e.origem === "config" && e.estado === "por abrir" ? `<button class="btn sec" data-liga-repor="${e.edicao}" style="padding:6px 12px" title="Apaga as datas próprias e volta a usar o padrão.">Repor padrão</button>` : ""}</td>
+    </tr>`;
+  }).join("");
+  $("l-liga-entradas").innerHTML = d.edicoes.filter(e => e.entradas.length).map(e =>
+    `<div style="margin-bottom:8px"><b>${esc(e.nome)}</b><div class="nomes" style="margin:6px 0 0">` +
+    e.entradas.map(x => `<span class="nome${x.estimada ? " off" : ""}" title="${x.estimada ? "Carteira gravada antes de o portal registar a hora: data estimada a partir do preço de entrada." : "Data e hora da última gravação."}">${esc(x.username)} <small>${x.submetido_em ? esc(x.submetido_em.replace("T", " ").slice(0, 16)) : "?"}${x.estimada ? " (est.)" : ""}</small></span>`).join("") +
+    `</div></div>`).join("") || `<span class="vazio">Ainda sem carteiras.</span>`;
+}
+async function ligaPedido(metodo, corpo, query = "") {
+  const r = await fetch("/api/admin/liga/janelas" + query, { method: metodo, credentials: "same-origin",
+    headers: { "Content-Type": "application/json" }, body: corpo ? JSON.stringify(corpo) : undefined });
+  let j = null; try { j = await r.json(); } catch (e) {}
+  return { ok: r.ok, estado: r.status, j };
+}
+async function ligaAcao(metodo, corpo, query, sucesso) {
+  msg("msg-liga", "info", "A gravar…");
+  const r = await ligaPedido(metodo, corpo, query);
+  if (r.ok && r.j && !r.j.erro) { pintarLiga(r.j, true); msg("msg-liga", "ok", sucesso); }
+  else msg("msg-liga", "erro", (r.j && r.j.erro) || `Erro ${r.estado}`);
+}
+$("c-liga").addEventListener("input", () => { ligaEditado = true; });
+$("c-liga").addEventListener("click", ev => {
+  const g = ev.target.closest("[data-liga-gravar]"), rp = ev.target.closest("[data-liga-repor]");
+  if (g) { const ed = g.dataset.ligaGravar;
+    ligaAcao("POST", { edicao: ed, inicio: $("lj-i-" + ed).value, fim: $("lj-f-" + ed).value }, "", "✅ Janela gravada. Os membros já veem as novas datas no separador da Liga."); }
+  if (rp) ligaAcao("DELETE", null, "?edicao=" + encodeURIComponent(rp.dataset.ligaRepor), "✅ Esta edição volta a usar o padrão.");
+});
+$("b-liga-padrao").addEventListener("click", () =>
+  ligaAcao("POST", { padrao: { dia_inicio: $("liga-di").value, dia_fim: $("liga-df").value } }, "", "✅ Padrão gravado. Aplica-se às edições cuja janela ainda não abriu."));
+
 // ---------------- Ciclo
 async function atualizar() {
   try {
-    const [snap, yahoo, online, esc_] = await Promise.all([pedir("/api/admin/snapshot"), pedir("/api/admin/yahoo"), pedir("/api/admin/online"), pedir("/api/admin/escola")]);
+    const [snap, yahoo, online, esc_, liga] = await Promise.all([pedir("/api/admin/snapshot"), pedir("/api/admin/yahoo"), pedir("/api/admin/online"), pedir("/api/admin/escola"), pedir("/api/admin/liga/janelas")]);
+    if (liga.ok && liga.j) pintarLiga(liga.j);
     if (snap.estado === 403) { location.href = "/"; return; }
     if (esc_.ok && esc_.j) pintarEscola(esc_.j);
     if (snap.ok && snap.j) pintarSnapshot(snap.j);

@@ -325,7 +325,7 @@
         <div class="cartao liga">
             <div class="rotulo">
                 <span>🏆 Liga Mensal · {{ liga.mes_nome }}</span>
-                {% if liga.janela_aberta %}<span class="janela janela-on">Inscrições abertas</span>{% else %}<span class="janela janela-off">Em jogo</span>{% endif %}
+                {% if liga.janela_aberta and liga.inscricao %}<span class="janela janela-on" title="Inscrições abertas para a edição de {{ liga.inscricao.nome }} até {{ liga.inscricao.fim[8:10] }}/{{ liga.inscricao.fim[5:7] }}. O preço de entrada é o do momento em que gravas a carteira.">Inscrições até {{ liga.inscricao.fim[8:10] }}/{{ liga.inscricao.fim[5:7] }}</span>{% else %}<span class="janela janela-off">Em jogo</span>{% endif %}
             </div>
             {% if liga.top %}
             <ol>
@@ -338,7 +338,9 @@
                 {% endfor %}
             </ol>
             {% else %}
-            <p class="vazio">Ainda ninguém submeteu carteira este mês. As inscrições abrem a dia 20 e fecham a dia 5.</p>
+            <p class="vazio">Ainda ninguém tem carteira nesta edição.
+                {% if liga.janela_aberta and liga.inscricao %}As inscrições para {{ liga.inscricao.nome }} estão abertas até {{ liga.inscricao.fim[8:10] }}/{{ liga.inscricao.fim[5:7] }}.
+                {% elif liga.proxima %}As próximas inscrições ({{ liga.proxima.nome }}) abrem a {{ liga.proxima.inicio[8:10] }}/{{ liga.proxima.inicio[5:7] }} e fecham a {{ liga.proxima.fim[8:10] }}/{{ liga.proxima.fim[5:7] }}.{% endif %}</p>
             {% endif %}
             <div class="rodape">
                 <span>{{ liga.total }} carteira{{ '' if liga.total == 1 else 's' }} em prova</span>
