@@ -211,6 +211,17 @@
       </div>
     </article>
 
+    <!-- ESCOLA -->
+    <article class="cartao" id="c-escola">
+      <div class="cab"><span style="font-size:20px">🎓</span><h2>Escola</h2><span class="pilula" id="p-escola">—</span></div>
+      <p class="explica">Uma lição por dia útil (quiz → teoria → prática) e uma revisão automática ao sábado. Todas as lições vivem num único ficheiro, editado aqui. Só as lições <b>publicadas</b> aparecem aos membros, e só a partir do seu dia.</p>
+      <table class="dados" id="t-escola"></table>
+      <div class="acoes">
+        <a class="btn prim" href="/admin/escola">✏️ Abrir editor de lições</a>
+        <a class="btn sec" href="/escola" target="_blank">🎓 Ver como membro</a>
+      </div>
+    </article>
+
     <!-- ATALHOS -->
     <article class="cartao largo">
       <div class="cab"><span style="font-size:20px">🔗</span><h2>Endereços diretos</h2></div>
@@ -222,6 +233,8 @@
         <li><code>/api/admin/relatorio/preview</code><span>Pré-visualização do Briefing EUA (precisa da fotografia).</span></li>
         <li><code>/api/admin/relatorio_psi/preview</code><span>Pré-visualização do Briefing PSI.</span></li>
         <li><code>/api/admin/online</code><span>Membros online e últimas visitas.</span></li>
+        <li><code>/admin/escola</code><span>Editor das lições da Escola.</span></li>
+        <li><code>/escola</code><span>A Escola, como os membros a veem.</span></li>
       </ul>
     </article>
   </section>
@@ -366,11 +379,34 @@ function pintarOnline(j) {
   $("l-offline").innerHTML = off.slice(0, 40).map(o => `<span class="nome off">${esc(o.nome)} <small>${esc(o.tempo)}</small></span>`).join("") || `<span class="vazio">Sem registos.</span>`;
 }
 
+// ---------------- Escola
+function pintarEscola(d) {
+  const pub = d.licoes.filter(l => l.publicada);
+  const semAtual = Math.floor((new Date(d.hoje) - new Date(d.inicio)) / (7 * 864e5)) + 1;
+  // dias úteis já cobertos por lições publicadas a partir de hoje
+  const futuras = pub.filter(l => l.data >= d.hoje).length;
+  let classe = "ok", txt = `${futuras} lições em reserva`;
+  if (futuras < 5) { classe = "erro"; txt = futuras ? `Só ${futuras} em reserva` : "Sem lições à frente"; }
+  else if (futuras < 15) { classe = "aviso"; }
+  pilula("p-escola", classe, txt);
+  const taxas = Object.values(d.estatisticas).filter(e => e.taxa !== null);
+  const pior = Object.entries(d.estatisticas).filter(([, e]) => e.taxa !== null && e.alunos >= 3).sort((a, b) => a[1].taxa - b[1].taxa)[0];
+  const tituloPior = pior ? (d.licoes.find(l => l.id === pior[0]) || {}).titulo : null;
+  linhas("t-escola", [
+    ["Início do programa", dataPt(d.inicio, false) + (semAtual >= 1 && semAtual <= 52 ? ` · estamos na Semana ${semAtual}` : semAtual < 1 ? " · ainda não começou" : "")],
+    ["Lições", `${pub.length} publicadas · ${d.licoes.length - pub.length} rascunhos · ${260 - d.licoes.length} por escrever`],
+    ["Alunos", d.alunos],
+    taxas.length ? ["Acerto médio no quiz", Math.round(taxas.reduce((a, e) => a + e.taxa, 0) / taxas.length) + "%"] : null,
+    pior ? ["Lição mais difícil", `<a href="/admin/escola#${pior[0]}">${esc(tituloPior)}</a> (${pior[1].taxa}%)`] : null,
+  ]);
+}
+
 // ---------------- Ciclo
 async function atualizar() {
   try {
-    const [snap, yahoo, online] = await Promise.all([pedir("/api/admin/snapshot"), pedir("/api/admin/yahoo"), pedir("/api/admin/online")]);
+    const [snap, yahoo, online, esc_] = await Promise.all([pedir("/api/admin/snapshot"), pedir("/api/admin/yahoo"), pedir("/api/admin/online"), pedir("/api/admin/escola")]);
     if (snap.estado === 403) { location.href = "/"; return; }
+    if (esc_.ok && esc_.j) pintarEscola(esc_.j);
     if (snap.ok && snap.j) pintarSnapshot(snap.j);
     pintarYahoo(yahoo.j, yahoo.ok);
     if (online.ok) pintarOnline(online.j);
