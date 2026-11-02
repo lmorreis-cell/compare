@@ -2477,6 +2477,10 @@ agendador.iniciar()
 # Relógio do Briefing PSI (dias úteis às 08:10 de Lisboa, ou PSI_HORA_ENVIO)
 rel_psi.iniciar()
 
+# Escola: /escola (membros) e /admin/escola (editor de lições)
+import escola
+escola.registar(app, requer_cargo=requer_cargo, e_admin=_e_admin)
+
 
 # ==========================================
 # COFRE: COTAÇÕES EM LOTE + RADAR DE MINAS (rotas usadas pelo frontend)
