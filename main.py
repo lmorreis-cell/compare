@@ -255,7 +255,10 @@ def admin_estado_yahoo():
     user_sess = str(session.get('user_id', '')).strip()
     if not user_sess or user_sess != str(ADMIN_USER_ID).strip():
         return jsonify({"erro": "Acesso negado. Apenas Admin."}), 403
-    return jsonify(yg.estado())
+    est = yg.estado()
+    if isinstance(est, dict):
+        est = dict(est, esta_bloqueado=yg.esta_bloqueado())
+    return jsonify(est)
 
 
 URL_YAHOO_SCREENER = "https://query1.finance.yahoo.com/v1/finance/screener/predefined/saved?formatted=false&lang=en-US&region=US&scrIds={scr_id}&count=5"
@@ -2337,7 +2340,16 @@ import agendador
 
 def _e_admin():
     user_sess = str(session.get('user_id', '')).strip()
-    return bool(user_sess) and user_sess == str(ADMIN_USER_ID).strip()
+    return bool(user_sess) and user_sess != "None" and user_sess == str(ADMIN_USER_ID).strip()
+
+
+@app.route('/admin')
+def area_gestao():
+    """Área de Gestão: estado do sistema, botões e explicações (apenas Admin).
+    Quem não for Admin é reencaminhado para a página inicial, sem saber que a página existe."""
+    if not _e_admin():
+        return redirect('/')
+    return render_template('admin.html', username=session.get('username', 'Admin'))
 
 
 @app.route('/api/admin/snapshot')
