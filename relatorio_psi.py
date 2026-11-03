@@ -12,11 +12,11 @@ Uso:
     import relatorio_psi as rel_psi
     rel_psi.construir_relatorio()     # devolve (payload, erro) para pré-visualizar
     rel_psi.enviar_relatorio()        # envia (no máximo 1 vez por dia, salvo forcar=True)
-    rel_psi.iniciar()                 # relógio interno: dias úteis às 08:10 (Lisboa)
+    rel_psi.iniciar()                 # relógio interno: dias úteis às 07:50 (Lisboa)
 
 Variáveis de ambiente:
     WEBHOOK_RELATORIO_PSI   (obrigatória) webhook da sala do Discord para o PSI
-    PSI_HORA_ENVIO          (opcional)    "HH:MM", hora de Lisboa. Por omissão "08:10"
+    PSI_HORA_ENVIO          (opcional)    "HH:MM", hora de Lisboa. Por omissão "07:50"
     PSI_TICKERS             (opcional)    lista separada por vírgulas para substituir a composição
 """
 
@@ -67,7 +67,7 @@ def _gravar_estado(est):
 def estado():
     est = _ler_estado()
     est["webhook_configurado"] = bool(_webhook())
-    est["hora_envio"] = os.environ.get("PSI_HORA_ENVIO", "08:10")
+    est["hora_envio"] = os.environ.get("PSI_HORA_ENVIO", "07:50")
     est["cotadas"] = len(snap.composicao_psi())
     return est
 
@@ -257,11 +257,11 @@ _arrancado = False
 
 
 def _ciclo():
-    hora_txt = os.environ.get("PSI_HORA_ENVIO", "08:10")
+    hora_txt = os.environ.get("PSI_HORA_ENVIO", "07:50")
     try:
         h, m = (int(x) for x in hora_txt.split(":"))
     except Exception:
-        h, m = 8, 10
+        h, m = 7, 50
     tentativas = {}
     while True:
         try:
