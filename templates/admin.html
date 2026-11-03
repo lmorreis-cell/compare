@@ -136,6 +136,7 @@
     <div class="mosaico" data-ir="c-matinal"><div class="rot" id="m-mat-r"><span class="ponto"></span>Briefing EUA</div><div class="val" id="m-mat">—</div><div class="det" id="m-mat-d">&nbsp;</div></div>
     <div class="mosaico" data-ir="c-psi"><div class="rot" id="m-psi-r"><span class="ponto"></span>Briefing PSI</div><div class="val" id="m-psi">—</div><div class="det" id="m-psi-d">&nbsp;</div></div>
     <div class="mosaico" data-ir="c-liga"><div class="rot" id="m-liga-r"><span class="ponto"></span>Liga Mensal</div><div class="val" id="m-liga">—</div><div class="det" id="m-liga-d">&nbsp;</div></div>
+    <div class="mosaico" data-ir="c-backups"><div class="rot" id="m-bk-r"><span class="ponto"></span>Cópias de segurança</div><div class="val" id="m-bk">—</div><div class="det" id="m-bk-d">&nbsp;</div></div>
     <div class="mosaico" data-ir="c-online"><div class="rot ok" id="m-on-r"><span class="ponto"></span>Membros</div><div class="val" id="m-on">—</div><div class="det" id="m-on-d">&nbsp;</div></div>
   </section>
 
@@ -150,6 +151,10 @@
       <div class="passo"><span class="hora" id="fluxo-hora-psi">07:50</span><b>🇵🇹 Briefing PSI</b>Sala do PSI no Discord.</div>
       <div class="seta">→</div>
       <div class="passo"><span class="hora">08:00</span><b>☀️ Briefing EUA</b>Sala dos States no Discord.</div>
+      <div class="seta">·</div>
+      <div class="passo"><span class="hora">sáb 10:00</span><b>🗓️ Briefing Semanal</b>A semana inteira numa mensagem.</div>
+      <div class="seta">·</div>
+      <div class="passo"><span class="hora">03:00</span><b>💾 Cópia de segurança</b>Dados do portal, enviada para a tua sala privada.</div>
     </div>
   </section>
 
@@ -226,6 +231,41 @@
       <div class="msg" id="msg-liga"></div>
     </article>
 
+    <!-- CÓPIAS DE SEGURANÇA + AVISOS PRIVADOS -->
+    <article class="cartao largo" id="c-backups">
+      <div class="cab"><span style="font-size:20px">💾</span><h2>Cópias de segurança e avisos privados</h2><span class="pilula" id="p-bk">—</span></div>
+      <p class="explica">O código está no GitHub, mas os <b>dados vivem só no servidor</b>: carteiras e histórico da Liga, janelas, lições e progresso da Escola, watchlist, acessos e estados dos briefings. Todos os dias às <b>03:00</b> o portal cria uma cópia (.zip) e guarda as últimas <b>30</b>. Se definires <b>WEBHOOK_ADMIN</b> (uma sala do Discord só tua), a cópia é também enviada para lá, ficando <b>fora do servidor</b>, e recebes um aviso sempre que a fotografia diária, um briefing ou um aviso da Liga falhar.</p>
+      <ul class="regras">
+        <li><b>Repor</b> substitui os ficheiros atuais pelos da cópia. Antes disso, o estado atual é guardado automaticamente numa cópia <b>antes_de_repor</b>, para poderes voltar atrás.</li>
+        <li>Podes repor <b>tudo</b> ou só <b>um ficheiro</b> (ex.: só <code>liga_carteiras.json</code>), escolhendo-o em «Ver conteúdo».</li>
+        <li>Não entram: código, a fotografia diária do mercado (refaz-se sozinha), caches e gráficos da Escola (regeneráveis).</li>
+      </ul>
+      <table class="dados" id="t-bk-alertas"></table>
+      <table class="dados tabela" id="t-bk">
+        <thead><tr><th>Cópia</th><th>Tipo</th><th>Ficheiros</th><th>Tamanho</th><th></th></tr></thead>
+        <tbody><tr><td colspan="5" class="vazio">a carregar…</td></tr></tbody>
+      </table>
+      <details id="d-bk-conteudo" style="display:none"><summary id="s-bk-conteudo">Conteúdo</summary><div id="l-bk-conteudo" class="nomes" style="margin-top:8px"></div></details>
+      <details><summary>Registo dos avisos privados</summary><div id="l-bk-registo" style="margin-top:8px"></div></details>
+      <div class="acoes">
+        <button class="btn prim" id="b-bk-criar">💾 Criar cópia agora</button>
+        <button class="btn disc" id="b-bk-teste">🔔 Testar avisos privados</button>
+      </div>
+      <div class="msg" id="msg-bk"></div>
+    </article>
+
+    <!-- BRIEFING SEMANAL -->
+    <article class="cartao" id="c-semanal">
+      <div class="cab"><span style="font-size:20px">🗓️</span><h2>Briefing Semanal (sábado)</h2><span class="pilula" id="p-sem">—</span></div>
+      <p class="explica">A semana numa só mensagem: índices e setores de sexta a sexta, rotação setorial, os sinais do Screener que surgiram e como se portaram, o ponto da Liga e as lições da Escola. Envia-se sozinho aos <b>sábados às <span id="sem-hora">10:00</span></b> (muda com <b>HORA_SEMANAL</b>) para <b>WEBHOOK_SEMANAL</b> ou, se não existir, para a sala do Briefing EUA. Faz <b>um único pedido</b> ao Yahoo por semana.</p>
+      <table class="dados" id="t-sem"></table>
+      <div class="acoes">
+        <a class="btn sec" href="/api/admin/semanal/preview" target="_blank">👁 Pré-visualizar</a>
+        <button class="btn disc" data-enviar="/api/admin/semanal/enviar?forcar=1" data-msg="msg-sem" data-nome="o Briefing Semanal">📡 Enviar agora</button>
+      </div>
+      <div class="msg" id="msg-sem"></div>
+    </article>
+
     <!-- YAHOO -->
     <article class="cartao" id="c-yahoo">
       <div class="cab"><span style="font-size:20px">🛡️</span><h2>Escudo do Yahoo</h2><span class="pilula" id="p-yahoo">—</span></div>
@@ -269,6 +309,8 @@
         <li><code>/api/admin/relatorio/preview</code><span>Pré-visualização do Briefing EUA (precisa da fotografia).</span></li>
         <li><code>/api/admin/relatorio_psi/preview</code><span>Pré-visualização do Briefing PSI.</span></li>
         <li><code>/api/admin/online</code><span>Membros online e últimas visitas.</span></li>
+        <li><code>/api/admin/semanal/preview</code><span>Pré-visualização do Briefing Semanal.</span></li>
+        <li><code>/api/admin/backups</code><span>Cópias de segurança e registo dos avisos privados.</span></li>
         <li><code>/api/admin/liga/janelas</code><span>Janelas de inscrição da Liga Mensal e datas de entrada das carteiras.</span></li>
         <li><code>/admin/escola</code><span>Editor das lições da Escola.</span></li>
         <li><code>/escola</code><span>A Escola, como os membros a veem.</span></li>
@@ -526,10 +568,102 @@ $("c-liga").addEventListener("click", ev => {
 $("b-liga-padrao").addEventListener("click", () =>
   ligaAcao("POST", { padrao: { dia_inicio: $("liga-di").value, dia_fim: $("liga-df").value } }, "", "✅ Padrão gravado. Aplica-se às edições cuja janela ainda não abriu."));
 
+// ---------------- Briefing Semanal
+function pintarSemanal(b) {
+  if (!b) return;
+  $("sem-hora").textContent = b.hora_envio || "10:00";
+  let webhook;
+  if (!b.webhook_configurado) webhook = `<span style="color:var(--vermelho)">✖ Falta WEBHOOK_SEMANAL</span>`;
+  else if (!b.webhook_dedicado) webhook = `<span style="color:var(--amarelo)">⚠ Sala do Briefing EUA (define WEBHOOK_SEMANAL para outra sala)</span>`;
+  else webhook = `<span style="color:var(--verde)">✔ WEBHOOK_SEMANAL</span>`;
+  linhas("t-sem", [
+    ["Sala do Discord", webhook],
+    ["Envio automático", `sábados às ${esc(b.hora_envio || "10:00")}`],
+    ["Último envio", dataPt(b.ultimo_envio) + (b.envio_manual ? " (manual)" : "")],
+    b.ultimo_erro ? ["Último erro", `<span style="color:#fca5a5">${esc(b.ultimo_erro)}</span>`] : null,
+  ]);
+  const d = new Date(), sab = d.getDay() === 6;
+  if (!b.webhook_configurado) pilula("p-sem", "erro", "Sem webhook");
+  else if (b.ultimo_envio && (Date.now() - new Date(b.ultimo_envio)) < 7 * 864e5) pilula("p-sem", "ok", "Enviado esta semana");
+  else pilula("p-sem", "", sab ? "Sai hoje" : "Sai no sábado");
+}
+
+// ---------------- Cópias de segurança + avisos privados
+function kb(b) { return b >= 1048576 ? (b / 1048576).toFixed(1).replace(".", ",") + " MB" : Math.max(1, Math.round(b / 1024)) + " KB"; }
+const TIPO_BK = { diario: "Diária (03:00)", manual: "Manual", antes_de_repor: "Antes de repor" };
+function pintarBackups(d) {
+  if (!d || !d.copias) return;
+  const c = d.copias, ult = c.find(x => x.motivo === "diario"), al = d.alertas || {};
+  const hojeIso = new Date().toISOString().slice(0, 10);
+  if (ult && ult.nome.slice(7, 17) >= new Date(Date.now() - 2 * 864e5).toISOString().slice(0, 10)) {
+    pilula("p-bk", "ok", `Última: ${dataPt(ult.criado_em)}`);
+    mosaico("bk", "ok", `${c.length} cópias`, `última diária ${dataPt(ult.criado_em)}`);
+  } else {
+    pilula("p-bk", c.length ? "aviso" : "erro", c.length ? "Sem cópia diária recente" : "Ainda sem cópias");
+    mosaico("bk", c.length ? "aviso" : "erro", c.length ? `${c.length} cópias` : "Sem cópias", "a diária corre às 03:00");
+  }
+  linhas("t-bk-alertas", [
+    ["Sala privada (WEBHOOK_ADMIN)", al.webhook ? `<span style="color:var(--verde)">✔ Configurada</span> · cópias diárias e avisos de falhas chegam lá`
+      : `<span style="color:var(--amarelo)">⚠ Não definida</span> · as cópias ficam só no servidor e os avisos só neste registo`],
+    ["Incluídos numa cópia", `${(d.incluidos || []).length} ficheiros`],
+  ]);
+  $("t-bk").querySelector("tbody").innerHTML = c.length ? c.map(x => `<tr>
+      <td>${dataPt(x.criado_em)}</td><td>${esc(TIPO_BK[x.motivo] || x.motivo)}</td><td>${x.ficheiros ?? "?"}</td><td>${kb(x.tamanho)}</td>
+      <td style="white-space:nowrap">
+        <a class="btn sec" style="padding:5px 10px" href="/api/admin/backups/descarregar/${encodeURIComponent(x.nome)}">📥 Descarregar</a>
+        <button class="btn sec" style="padding:5px 10px" data-bk-ver="${esc(x.nome)}">Ver conteúdo</button>
+        <button class="btn sec" style="padding:5px 10px;color:var(--vermelho)" data-bk-repor="${esc(x.nome)}">↩ Repor tudo</button>
+      </td></tr>`).join("") : `<tr><td colspan="5" class="vazio">Ainda não há cópias. Cria a primeira agora ou espera pelas 03:00.</td></tr>`;
+  const icone = { erro: "🔴", aviso: "🟡", info: "🔵", ok: "🟢" };
+  $("l-bk-registo").innerHTML = (al.registo || []).map(r =>
+    `<div style="font-size:12.5px;padding:5px 0;border-top:1px solid var(--borda)">${icone[r.nivel] || "•"} <b>${esc(r.titulo)}</b> <span style="color:var(--suave)">· ${dataPt(r.em)} · ${esc(r.estado || "")}</span></div>`).join("")
+    || `<span class="vazio">Sem avisos registados.</span>`;
+}
+async function bkPost(url, corpo) {
+  const r = await fetch(url, { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify(corpo || {}) });
+  let j = null; try { j = await r.json(); } catch (e) {}
+  return { ok: r.ok, j, estado: r.status };
+}
+async function bkRecarregar() { const r = await pedir("/api/admin/backups"); if (r.ok) pintarBackups(r.j); }
+async function bkRepor(nome, so) {
+  const alvo = so ? `o ficheiro ${so}` : "TODOS os ficheiros";
+  const txt = prompt(`Repor ${alvo} a partir de:\n${nome}\n\nO estado atual fica guardado numa cópia «antes de repor».\nEscreve REPOR para confirmar.`);
+  if (txt !== "REPOR") { msg("msg-bk", "info", "Reposição cancelada."); return; }
+  msg("msg-bk", "info", "A repor…");
+  const r = await bkPost("/api/admin/backups/repor", { nome, confirmar: "REPOR", so: so ? [so] : null });
+  msg("msg-bk", r.j && r.j.sucesso ? "ok" : "erro", (r.j && (r.j.mensagem || r.j.erro)) || `Erro ${r.estado}`);
+  bkRecarregar();
+}
+$("c-backups").addEventListener("click", async ev => {
+  const ver = ev.target.closest("[data-bk-ver]"), rep = ev.target.closest("[data-bk-repor]"), um = ev.target.closest("[data-bk-um]");
+  if (ver) {
+    const nome = ver.dataset.bkVer, r = await pedir("/api/admin/backups/conteudo/" + encodeURIComponent(nome));
+    $("d-bk-conteudo").style.display = "block"; $("d-bk-conteudo").open = true;
+    $("s-bk-conteudo").textContent = `Conteúdo de ${nome} (clica num ficheiro para repor só esse)`;
+    $("l-bk-conteudo").innerHTML = ((r.j && r.j.ficheiros) || []).map(f => `<button class="nome" style="cursor:pointer" data-bk-um="${esc(f)}" data-bk-de="${esc(nome)}">↩ ${esc(f)}</button>`).join("");
+  }
+  if (rep) bkRepor(rep.dataset.bkRepor);
+  if (um) bkRepor(um.dataset.bkDe, um.dataset.bkUm);
+});
+$("b-bk-criar").addEventListener("click", async () => {
+  $("b-bk-criar").disabled = true; msg("msg-bk", "info", "A criar a cópia…");
+  const r = await bkPost("/api/admin/backups/criar");
+  msg("msg-bk", r.j && r.j.sucesso ? "ok" : "erro", (r.j && (r.j.mensagem || r.j.erro)) || `Erro ${r.estado}`);
+  $("b-bk-criar").disabled = false; bkRecarregar();
+});
+$("b-bk-teste").addEventListener("click", async () => {
+  msg("msg-bk", "info", "A enviar…");
+  const r = await bkPost("/api/admin/alertas/teste");
+  msg("msg-bk", r.j && r.j.sucesso ? "ok" : "erro", (r.j && (r.j.mensagem || r.j.erro)) || `Erro ${r.estado}`);
+  bkRecarregar();
+});
+
 // ---------------- Ciclo
 async function atualizar() {
   try {
-    const [snap, yahoo, online, esc_, liga] = await Promise.all([pedir("/api/admin/snapshot"), pedir("/api/admin/yahoo"), pedir("/api/admin/online"), pedir("/api/admin/escola"), pedir("/api/admin/liga/janelas")]);
+    const [snap, yahoo, online, esc_, liga, bk, sem] = await Promise.all([pedir("/api/admin/snapshot"), pedir("/api/admin/yahoo"), pedir("/api/admin/online"), pedir("/api/admin/escola"), pedir("/api/admin/liga/janelas"), pedir("/api/admin/backups"), pedir("/api/admin/semanal/estado")]);
+    if (sem.ok && sem.j) pintarSemanal(sem.j);
+    if (bk.ok && bk.j) pintarBackups(bk.j);
     if (liga.ok && liga.j) pintarLiga(liga.j);
     if (snap.estado === 403) { location.href = "/"; return; }
     if (esc_.ok && esc_.j) pintarEscola(esc_.j);

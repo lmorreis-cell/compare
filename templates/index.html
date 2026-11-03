@@ -1085,7 +1085,9 @@
             <!-- CAIXA 2: BACKUP JSON (Destrutiva / Substituição) -->
             <div style="background-color: #1c1e24; border: 1px solid #30363d; border-radius: 8px; padding: 15px 20px; border-left: 4px solid #e3b341;">
                 <h4 style="margin: 0 0 8px 0; color: #e3b341; font-size: 13px;">💾 Backup de Segurança (JSON)</h4>
-                <p style="font-size: 11px; color: #8b949e; margin-bottom: 15px; line-height: 1.4;">Exporta uma cópia exata do teu portal. <strong style="color: #d9534f;">Atenção:</strong> Restaurar um ficheiro JSON apaga e substitui a base de dados atual.</p>
+                <p style="font-size: 11px; color: #8b949e; margin-bottom: 15px; line-height: 1.4;">Exporta uma cópia exata de tudo o que guardaste <strong>neste browser</strong>
+                    <span class="dica-edu" style="cursor:help">ℹ️<span class="dica-texto" style="width:320px">Os teus dados pessoais nunca vão para o servidor: vivem só neste browser. Por isso, limpar o histórico, usar outro computador ou outro browser começa do zero. O ficheiro de backup inclui: movimentos do Cofre, dividendos e retenções (com as taxas e códigos que editaste), alertas pessoais e as tuas preferências de alertas, e as últimas análises do Radar. Guarda-o num sítio seguro: tem informação financeira tua.</span></span>.
+                    <strong style="color: #d9534f;">Atenção:</strong> Restaurar um ficheiro JSON apaga e substitui os dados atuais deste browser.</p>
                 <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                     <button id="btn-exportar-backup" onclick="exportarCofreJSON()" class="btn-moderno" style="background: #238636; color: white; border: none; padding: 8px 14px; font-size: 12px; transition: all 0.3s ease;">
                         📥 Exportar Backup
@@ -2162,6 +2164,24 @@
     <!-- ==========================================
          GAMIFICAÇÃO DA LIGA: MEDALHAS, HALL OF FAME, CLASSIFICAÇÃO GERAL E HISTÓRICO
          ========================================== -->
+    <!-- 🗺️ MAPA DA COMUNIDADE -->
+    <div style="background-color: #161b22; border: 1px solid #30363d; border-left: 4px solid #b388ff; border-radius: 8px; padding: 20px; margin-top: 25px;">
+        <h4 style="margin: 0 0 12px 0; color: #b388ff; font-size: 14px; text-transform: uppercase;">
+            <span class="dica-edu" style="border-bottom: 1px dotted #b388ff;">🗺️ Mapa da Comunidade · <span id="liga-mapa-edicao"></span>
+                <span class="dica-texto" style="width: 320px; text-transform: none;"><strong style="color:#b388ff; font-size:13px; display:block; margin-bottom:5px; border-bottom:1px solid #333; padding-bottom:4px">Onde a comunidade apostou</strong>A soma de todas as carteiras da edição: os ativos e setores mais escolhidos, LONG contra SHORT e quantos estão a ganhar. Serve para pensar sobre o <strong>pensamento de grupo</strong>: quando quase todos escolhem o mesmo, o consenso costuma já estar no preço. Compara o retorno dos ativos repetidos (consenso) com o retorno médio de todos. Só aparece depois de o nevoeiro levantar.</span>
+            </span>
+        </h4>
+        <div id="liga-mapa" style="font-size: 12px; color: #8b949e;">A carregar...</div>
+    </div>
+
+    <!-- 👤 PERFIL DE MEMBRO (janela) -->
+    <div id="liga-perfil-fundo" onclick="if (event.target === this) ligaFecharPerfil()" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:9999; overflow-y:auto; padding:30px 12px">
+        <div style="max-width:820px; margin:0 auto; background:#161b22; border:1px solid #30363d; border-radius:10px; padding:20px; position:relative">
+            <button onclick="ligaFecharPerfil()" class="btn-moderno" style="position:absolute; top:12px; right:12px; background:#21262d; color:#c9d1d9; padding:4px 10px; font-size:12px">✕ Fechar</button>
+            <div id="liga-perfil" style="font-size:12px; color:#c9d1d9">A carregar...</div>
+        </div>
+    </div>
+
     <div id="liga-gamificacao-aviso" style="display: none; margin-top: 25px; background: rgba(227, 179, 65, 0.06); border-left: 4px solid #e3b341; border-radius: 4px; padding: 10px 15px; font-size: 12px; color: #c9d1d9;"></div>
 
     <!-- 🎖️ AS TUAS MEDALHAS -->
@@ -5717,7 +5737,10 @@
             dividendos: JSON.parse(localStorage.getItem('cofreDividendos') || '[]'),
             dividendosConvencao: JSON.parse(localStorage.getItem('cofreDividendosConvencao') || '{}'),
             dividendosConfig: JSON.parse(localStorage.getItem('cofreDividendosConfig') || '{}'),
-            alertasPessoais: JSON.parse(localStorage.getItem('alertasPessoais') || '[]')
+            alertasPessoais: JSON.parse(localStorage.getItem('alertasPessoais') || '[]'),
+            // Preferências e atalhos deste browser (tudo o que vive só aqui entra no backup)
+            alertasTipos: JSON.parse(localStorage.getItem('alertasTipos') || 'null'),
+            radarHistorico: JSON.parse(localStorage.getItem('radarHistorico') || '[]')
         };
         localStorage.setItem('ultimoBackupCofre', new Date().toISOString());
 
@@ -5791,10 +5814,17 @@
                     if (conteudo.dividendosConvencao) localStorage.setItem('cofreDividendosConvencao', JSON.stringify(conteudo.dividendosConvencao));
                     if (conteudo.dividendosConfig) localStorage.setItem('cofreDividendosConfig', JSON.stringify(conteudo.dividendosConfig));
                     if (Array.isArray(conteudo.alertasPessoais)) localStorage.setItem('alertasPessoais', JSON.stringify(conteudo.alertasPessoais));
+                    if (Array.isArray(conteudo.alertasTipos)) localStorage.setItem('alertasTipos', JSON.stringify(conteudo.alertasTipos));
+                    if (Array.isArray(conteudo.radarHistorico)) {
+                        localStorage.setItem('radarHistorico', JSON.stringify(conteudo.radarHistorico));
+                        try { historico = conteudo.radarHistorico; renderizarHistorico(); } catch (e) {}
+                    }
                     recalcularTudo();
                     if (typeof dvdRender === 'function') dvdRender();
                     if (typeof calVerificar === 'function') calVerificar(true);
-                    alert("✅ Ledger Fiscal restaurado com sucesso!");
+                    const n = (x) => Array.isArray(x) ? x.length : 0;
+                    alert(`✅ Backup restaurado com sucesso!\n\n• Movimentos do Cofre: ${n(conteudo.bruto)}\n• Dividendos: ${n(conteudo.dividendos)}\n• Alertas pessoais: ${n(conteudo.alertasPessoais)}\n• Últimas análises do Radar: ${n(conteudo.radarHistorico)}`
+                        + (conteudo.dataExportacao ? `\n\nCópia feita a ${new Date(conteudo.dataExportacao).toLocaleString('pt-PT')}.` : ''));
                 } else {
                     throw new Error("Formato de ficheiro JSON desconhecido ou corrompido.");
                 }
@@ -7753,6 +7783,7 @@ function renderizarCalendarioDiario() {
 
             if (!dados.carteiras || dados.carteiras.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color:#8b949e; padding:20px;">Ainda ninguém tem carteira nesta edição. Sê o primeiro!</td></tr>';
+                ligaDesenharMapa(dados);
                 return;
             }
 
@@ -7771,7 +7802,7 @@ function renderizarCalendarioDiario() {
                 return `
                     <tr style="border-bottom: 1px solid #21262d;">
                         <td style="padding: 12px; font-weight: bold; font-size: 14px;">${medalha}</td>
-                        <td style="padding: 12px; font-weight: bold; color: #58a6ff;">${c.username}${(c.versoes || []).length ? ` <button onclick="ligaMostrarVersoes(${idx})" class="btn-moderno" title="Esta carteira foi alterada durante a janela de inscrição. Vê as versões anteriores (os ativos só ficam visíveis quando o nevoeiro levanta)." style="background:#232d3f; color:#8b949e; padding:1px 6px; font-size:10px">🔁 ${c.versoes.length}</button>` : ''}${c.submetido_em ? `<div style="font-size:10px;color:#8b949e;font-weight:normal" title="${c.submetido_em_estimado ? 'Data estimada a partir do preço de entrada (carteira gravada antes de o portal registar a hora de submissão).' : 'Data e hora da última gravação da carteira: o p0 é o preço deste momento e os alvos contam a partir do dia seguinte.'}">entrada ${c.submetido_em.slice(8,10)}/${c.submetido_em.slice(5,7)}${c.submetido_em_estimado ? ' (est.)' : (c.submetido_em.length > 10 ? ' ' + c.submetido_em.slice(11,16) : '')}</div>` : ''} <span class="liga-medalhas" data-uid="${c.user_id || ''}" style="font-size: 12px;">${(window.iconesLiga || {})[c.user_id] || ''}</span></td>
+                        <td style="padding: 12px; font-weight: bold; color: #58a6ff;"><span onclick="ligaAbrirPerfil('${c.user_id || ''}')" style="cursor:pointer; border-bottom:1px dotted #58a6ff" title="Ver o perfil (edições terminadas)">${c.username}</span>${(c.versoes || []).length ? ` <button onclick="ligaMostrarVersoes(${idx})" class="btn-moderno" title="Esta carteira foi alterada durante a janela de inscrição. Vê as versões anteriores (os ativos só ficam visíveis quando o nevoeiro levanta)." style="background:#232d3f; color:#8b949e; padding:1px 6px; font-size:10px">🔁 ${c.versoes.length}</button>` : ''}${c.submetido_em ? `<div style="font-size:10px;color:#8b949e;font-weight:normal" title="${c.submetido_em_estimado ? 'Data estimada a partir do preço de entrada (carteira gravada antes de o portal registar a hora de submissão).' : 'Data e hora da última gravação da carteira: o p0 é o preço deste momento e os alvos contam a partir do dia seguinte.'}">entrada ${c.submetido_em.slice(8,10)}/${c.submetido_em.slice(5,7)}${c.submetido_em_estimado ? ' (est.)' : (c.submetido_em.length > 10 ? ' ' + c.submetido_em.slice(11,16) : '')}</div>` : ''} <span class="liga-medalhas" data-uid="${c.user_id || ''}" style="font-size: 12px;">${(window.iconesLiga || {})[c.user_id] || ''}</span></td>
                         <td style="padding: 12px;">${fmtSlot(c.slots[0])}</td>
                         <td style="padding: 12px;">${fmtSlot(c.slots[1])}</td>
                         <td style="padding: 12px;">${fmtSlot(c.slots[2])}</td>
@@ -7785,6 +7816,7 @@ function renderizarCalendarioDiario() {
                 `;
             }).join('');
             window._ligaCarteiras = dados.carteiras;
+            ligaDesenharMapa(dados);
         } catch (e) {
             loading.style.display = 'none';
             tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color:#d9534f;">Erro ao carregar classificação.</td></tr>';
@@ -7813,6 +7845,99 @@ function renderizarCalendarioDiario() {
         });
     }
 
+    function ligaDesenharMapa(dados) {
+        const div = document.getElementById('liga-mapa');
+        if (!div) return;
+        document.getElementById('liga-mapa-edicao').innerText = dados.nome_edicao || '';
+        const m = dados.mapa;
+        if (!m) { div.innerHTML = 'Ainda sem carteiras nesta edição.'; return; }
+        if (m.oculto) {
+            const fim = (dados.janela_edicao || {}).fim;
+            div.innerHTML = `🌫️ ${m.participantes} carteira${m.participantes !== 1 ? 's' : ''} no nevoeiro. O mapa aparece quando as inscrições fecharem${fim ? ' (depois de ' + fim.split('-').reverse().slice(0, 2).join('/') + ')' : ''}.`;
+            return;
+        }
+        const pct = v => `${v >= 0 ? '+' : ''}${Number(v).toFixed(2).replace('.', ',')}%`;
+        const cor = v => v >= 0 ? '#5cb85c' : '#d9534f';
+        const maxSet = Math.max(...m.setores.map(x => x.n), 1);
+        const caixa = (titulo, valor, sub, dica) => `<div style="background:#0d1117; border:1px solid #30363d; border-radius:6px; padding:10px 12px; flex:1 1 140px">
+            <div style="font-size:10px; color:#8b949e; text-transform:uppercase">${titulo}${dica ? ` <span class="dica-edu" style="cursor:help">ℹ️<span class="dica-texto" style="width:260px; text-transform:none">${dica}</span></span>` : ''}</div>
+            <div style="font-size:18px; font-weight:900; color:#f0f2f5; margin-top:2px">${valor}</div><div style="font-size:11px; color:#8b949e">${sub}</div></div>`;
+        div.innerHTML = `
+            <div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:14px">
+                ${caixa('LONG / SHORT', `${m.pct_long}% / ${m.pct_short}%`, `${m.slots} posições de ${m.participantes} membros`, 'Percentagem das posições a apostar na subida (LONG) ou na descida (SHORT). Uma comunidade quase toda LONG está exposta ao mesmo risco: uma queda geral do mercado.')}
+                ${caixa('A ganhar', `${m.pct_positivos}%`, 'das posições em terreno positivo', '')}
+                ${caixa('Alvos atingidos', `${m.pct_alvos}%`, 'das posições já tocaram o alvo', '')}
+                ${caixa('Retorno médio', `<span style="color:${cor(m.ret_medio)}">${pct(m.ret_medio)}</span>`, 'de todas as posições', '')}
+                ${m.ret_consenso !== null ? caixa('Consenso', `<span style="color:${cor(m.ret_consenso)}">${pct(m.ret_consenso)}</span>`, `ativos escolhidos por 2+ membros · ${m.unicos} escolhas únicas`, 'Retorno médio das posições em ativos que mais do que um membro escolheu. Se for pior do que o retorno médio, as escolhas originais (contra a corrente) estão a sair-se melhor do que as populares.') : ''}
+            </div>
+            <div style="display:flex; flex-wrap:wrap; gap:18px">
+                <div style="flex:1 1 300px">
+                    <div style="font-size:11px; color:#c9d1d9; font-weight:bold; margin-bottom:6px">🎯 Ativos mais escolhidos</div>
+                    ${m.top_tickers.map(t => `<div style="display:flex; justify-content:space-between; gap:8px; padding:4px 0; border-top:1px solid #21262d" title="${escHTML(t.membros.join(', '))}">
+                        <span><strong style="color:#fff">${escHTML(t.ticker)}</strong> <span style="color:#8b949e">× ${t.n}</span>${t.short ? ` <span style="font-size:10px; color:#d9534f">${t.short} SHORT</span>` : ''}</span>
+                        <span style="color:${cor(t.ret)}; font-weight:bold">${pct(t.ret)}</span></div>`).join('')}
+                </div>
+                <div style="flex:1 1 300px">
+                    <div style="font-size:11px; color:#c9d1d9; font-weight:bold; margin-bottom:6px">🏭 Setores</div>
+                    ${m.setores.map(x => `<div style="display:flex; align-items:center; gap:8px; padding:3px 0">
+                        <span style="flex:0 0 130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">${escHTML(x.setor)}</span>
+                        <span style="flex:1; background:#0d1117; border-radius:3px; height:10px"><span style="display:block; height:10px; border-radius:3px; background:#b388ff; width:${Math.round(x.n / maxSet * 100)}%"></span></span>
+                        <span style="flex:0 0 24px; text-align:right">${x.n}</span></div>`).join('')}
+                </div>
+            </div>`;
+    }
+
+    function ligaFecharPerfil() { document.getElementById('liga-perfil-fundo').style.display = 'none'; }
+
+    async function ligaAbrirPerfil(uid) {
+        if (!uid) return;
+        const fundo = document.getElementById('liga-perfil-fundo'), div = document.getElementById('liga-perfil');
+        fundo.style.display = 'block';
+        div.innerHTML = 'A carregar...';
+        try {
+            const r = await fetch('/api/liga/perfil/' + encodeURIComponent(uid));
+            const p = await r.json();
+            if (p.erro) { div.innerHTML = `<div style="padding:20px 0; color:#8b949e">${escHTML(p.erro)}</div>`; return; }
+            const e = p.estilo, rs = p.resumo;
+            const pct = v => v === null || v === undefined ? '—' : `${v >= 0 ? '+' : ''}${Number(v).toFixed(2).replace('.', ',')}`;
+            const cor = v => (v || 0) >= 0 ? '#5cb85c' : '#d9534f';
+            const nomeMes = m => ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][parseInt(m.slice(5, 7)) - 1] + ' ' + m.slice(0, 4);
+            const chip = (t, v, d) => `<div style="background:#0d1117; border:1px solid #30363d; border-radius:6px; padding:8px 10px; flex:1 1 110px" ${d ? `title="${d}"` : ''}>
+                <div style="font-size:10px; color:#8b949e; text-transform:uppercase">${t}</div><div style="font-size:15px; font-weight:900; color:#f0f2f5">${v}</div></div>`;
+            const estiloTxt = e.pct_short >= 34 ? 'Joga dos dois lados (LONG e SHORT)' : (e.pct_short > 0 ? 'Sobretudo LONG, com algumas apostas na descida' : 'Só LONG');
+            div.innerHTML = `
+                <h3 style="margin:0 0 4px 0; color:#58a6ff; font-size:18px">${escHTML(p.username)}</h3>
+                <div style="color:#8b949e; margin-bottom:14px">${rs.participacoes} ${rs.participacoes !== 1 ? 'edições terminadas' : 'edição terminada'} · ${estiloTxt}</div>
+                <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px">
+                    ${chip('👑 Títulos', rs.titulos)}${chip('🏅 Pódios', rs.podios)}${chip('Média', `<span style="color:${cor(p.media_score)}">${pct(p.media_score)}%</span>`, 'Score médio por edição')}
+                    ${chip('Melhor', `<span style="color:${cor(rs.melhor_score)}">${pct(rs.melhor_score)}%</span>`)}
+                    ${chip('📊 vs S&P', e.alfa_medio === null ? '—' : `<span style="color:${cor(e.alfa_medio)}">${pct(e.alfa_medio)} pp</span>`, 'Diferença média para o S&P 500 no mesmo período')}
+                    ${chip('🛡️ Eficiência', e.eficiencia_media === null ? '—' : String(e.eficiencia_media).replace('.', ','), 'Score ÷ queda máxima, em média')}
+                    ${chip('🎯 Alvos', `${e.pct_alvos}%`, 'Posições que tocaram o alvo')}${chip('💚 Positivas', `${e.pct_positivos}%`, 'Posições que acabaram a ganhar')}
+                </div>
+                <div style="display:flex; flex-wrap:wrap; gap:18px; margin-bottom:14px">
+                    <div style="flex:1 1 220px"><div style="font-weight:bold; margin-bottom:4px">🏭 Setores preferidos</div>${e.setores.map(x => `<div style="color:#8b949e">${escHTML(x.nome)} <span style="color:#c9d1d9">× ${x.n}</span></div>`).join('') || '—'}</div>
+                    <div style="flex:1 1 220px"><div style="font-weight:bold; margin-bottom:4px">🎯 Ativos mais usados</div>${e.ativos.map(x => `<div style="color:#8b949e">${escHTML(x.nome)} <span style="color:#c9d1d9">× ${x.n}</span></div>`).join('') || '—'}</div>
+                    <div style="flex:1 1 220px"><div style="font-weight:bold; margin-bottom:4px">🏁 Temporadas</div>${p.temporadas.map(t => `<div style="color:#8b949e">${t.ano}: <span style="color:#c9d1d9">${t.posicao}.º de ${t.de}</span> · ${t.pontos} pts</div>`).join('') || '—'}</div>
+                </div>
+                <div style="font-weight:bold; margin-bottom:6px">🏅 Medalhas</div>
+                <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px">${p.medalhas.filter(m => m.desbloqueada).map(m => `<span title="${escHTML(m.desc)}" style="background:#232d3f; border-radius:12px; padding:3px 10px">${m.icone} ${escHTML(m.nome)}</span>`).join('') || '<span style="color:#8b949e">Ainda sem medalhas.</span>'}</div>
+                <div style="font-weight:bold; margin-bottom:6px">📜 Edições</div>
+                <div style="overflow-x:auto"><table style="width:100%; border-collapse:collapse; font-size:12px; margin-top:0">
+                    <thead style="color:#8b949e; font-size:10px; text-transform:uppercase"><tr><th style="padding:6px">Edição</th><th style="padding:6px">Lugar</th><th style="padding:6px">Carteira</th><th style="padding:6px; text-align:right">Score</th><th style="padding:6px; text-align:right">vs S&amp;P</th></tr></thead>
+                    <tbody>${p.edicoes.map(x => `<tr style="border-top:1px solid #21262d">
+                        <td style="padding:6px">${nomeMes(x.mes)}</td><td style="padding:6px">${x.posicao}.º de ${x.total}${x.premio_prudente ? ' 🛡️' : ''}</td>
+                        <td style="padding:6px; color:#8b949e">${x.ativos.map(escHTML).join(' · ')}</td>
+                        <td style="padding:6px; text-align:right; font-weight:bold; color:${cor(x.score)}">${pct(x.score)}%</td>
+                        <td style="padding:6px; text-align:right; color:${cor(x.alfa)}">${x.alfa === null ? '—' : pct(x.alfa) + ' pp'}</td></tr>`).join('')}</tbody>
+                </table></div>
+                <div style="color:#6e7681; font-size:10px; margin-top:10px">Só entram edições terminadas: a carteira da edição em curso continua protegida pelas regras do nevoeiro.</div>`;
+        } catch (err) {
+            div.innerHTML = '<div style="color:#d9534f">Erro ao carregar o perfil.</div>';
+        }
+    }
+    document.addEventListener('keydown', ev => { if (ev.key === 'Escape') ligaFecharPerfil(); });
+
     function ligaDesenharTemporada(ano) {
         const div = document.getElementById('liga-temporada');
         document.getElementById('liga-temp-ano').innerText = ano || '';
@@ -7838,7 +7963,7 @@ function renderizarCalendarioDiario() {
                     const pos = t.posicao === 1 ? (emCurso ? '🥇' : '🏆') : t.posicao === 2 ? '🥈' : t.posicao === 3 ? '🥉' : `${t.posicao}º`;
                     return `<tr style="border-top:1px solid #21262d">
                         <td style="padding:8px; font-weight:bold">${pos}</td>
-                        <td style="padding:8px; color:#58a6ff; font-weight:bold">${escHTML(t.username)}</td>
+                        <td style="padding:8px; color:#58a6ff; font-weight:bold"><span onclick="ligaAbrirPerfil('${t.user_id}')" style="cursor:pointer; border-bottom:1px dotted #58a6ff" title="Ver o perfil">${escHTML(t.username)}</span></td>
                         <td style="padding:8px; text-align:right; font-weight:900; color:#f0f2f5">${t.pontos}</td>
                         <td style="padding:8px; text-align:right; color:#8b949e">${t.pontos === lider ? '—' : '−' + (lider - t.pontos)}</td>
                         ${meses.map(m => porMes[m]
@@ -7944,7 +8069,7 @@ function renderizarCalendarioDiario() {
             tbodyGeral.innerHTML = (d.geral || []).length ? d.geral.map((g, i) => `
                 <tr style="border-bottom: 1px solid #21262d; ${g.user_id === meuId ? 'background: rgba(88, 166, 255, 0.06);' : ''}">
                     <td style="padding: 10px; font-weight: bold;">${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}º`}</td>
-                    <td style="padding: 10px; font-weight: bold; color: #58a6ff;">${escHTML(g.username)}${g.user_id === meuId ? ' <span style="font-size: 10px; color: #8b949e;">(tu)</span>' : ''}</td>
+                    <td style="padding: 10px; font-weight: bold; color: #58a6ff;"><span onclick="ligaAbrirPerfil('${g.user_id}')" style="cursor:pointer; border-bottom:1px dotted #58a6ff" title="Ver o perfil">${escHTML(g.username)}</span>${g.user_id === meuId ? ' <span style="font-size: 10px; color: #8b949e;">(tu)</span>' : ''}</td>
                     <td style="padding: 10px; text-align: center;">${g.participacoes}</td>
                     <td style="padding: 10px; text-align: center; font-weight: bold; color: #e3b341;">${g.titulos}</td>
                     <td style="padding: 10px; text-align: center;">${g.podios}</td>
