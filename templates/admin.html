@@ -681,9 +681,18 @@ function foPintarTeste(j) {
       ${v.diagnostico ? `<details style="margin:4px 0 0"><summary>Diagnóstico (envia-me isto se precisares de ajuda)</summary><code style="font-size:11px;white-space:pre-wrap;word-break:break-all;display:block;color:var(--suave)">${esc(v.diagnostico)}</code></details>` : ""}</td></tr>`).join("")
     + (j.a_correr ? `<tr><td colspan="2" style="color:var(--laranja)">⏳ A testar as restantes fontes…</td></tr>` : "");
 }
+let foFalhasSeguidas = 0;
 async function foAcompanharTeste() {
   const r = await pedir("/api/admin/fontes/testar");
-  if (!r.ok || !r.j) { msg("msg-fo", "erro", `Erro ${r.estado}`); return; }
+  if (!r.ok || !r.j) {
+    // 502/503: o servidor pode estar a reiniciar; tenta de novo durante ~1 minuto antes de desistir
+    if (++foFalhasSeguidas <= 12) { msg("msg-fo", "info", `O servidor não respondeu (${r.estado}); a tentar de novo…`); setTimeout(foAcompanharTeste, 5000); return; }
+    $("b-fo-testar").disabled = false; $("b-fo-testar").textContent = "🧪 Testar fontes agora";
+    msg("msg-fo", "erro", `O servidor deixou de responder (erro ${r.estado}). Pode ter reiniciado a meio do teste: vê os registos (logs) da Discloud e a memória usada.`);
+    return;
+  }
+  foFalhasSeguidas = 0;
+  if (r.j.interrompido) msg("msg-fo", "erro", "O teste foi interrompido (o servidor reiniciou a meio). Vê os registos da Discloud.");
   foPintarTeste(r.j);
   if (r.j.a_correr) { setTimeout(foAcompanharTeste, 3000); return; }
   $("b-fo-testar").disabled = false; $("b-fo-testar").textContent = "🧪 Testar fontes agora";
