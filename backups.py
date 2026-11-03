@@ -32,8 +32,9 @@ INCLUIR = [
     "escola/*.json",               # lições, progresso, alunos
     "escola/imagens/*",            # imagens das lições (únicas: não se refazem)
     "snapshot/estado*.json",       # estado da fotografia e dos briefings (pequenos)
+    "posicoes_curtas_manual/*",    # listas de posições curtas carregadas à mão na Gestão
 ]
-EXCLUIR = ["*.tmp", "setores_cache.json", "macro_calendar.json", "escola/backups/*", "escola/graficos/*", f"{PASTA}/*"]
+EXCLUIR = ["*.tmp", "setores_cache.json", "macro_calendar.json", "bce_cambios.json", "posicoes_curtas.json", "juros_bce.json", "escola/backups/*", "escola/graficos/*", f"{PASTA}/*"]
 
 _lock = threading.Lock()
 

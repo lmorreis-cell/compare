@@ -1,5 +1,6 @@
 import os
 import json
+import re
 import requests
 import glob
 import time
@@ -240,6 +241,7 @@ from Radar import calcular_radar_momentum_v2, comparar_ativos
 import snapshot_diario as snap
 import liga_gamificacao as gam
 import liga_janelas as lj
+import fontes_bce
 lj.migrar_primeira_edicao_se_preciso()  # corre uma única vez (1.ª ronda: 20 out – 5 nov → edição de novembro)
 
 # ==========================================
@@ -891,33 +893,38 @@ def cotacao_live(ticker):
         return jsonify({"erro": str(e)}), 400
 
 @app.route('/api/cambio/<data>')
-@cache.cached(timeout=86400)  # o câmbio de uma data passada nunca muda
 def api_cambio(data):
-    
+    """Câmbio de referência do BCE (unidades da moeda por 1 €) para a data indicada (?moeda=USD por omissão).
+    Se o BCE não fixou câmbio nesse dia (fim de semana/feriado), usa o último dia útil anterior.
+    Só recorre ao Yahoo se a cópia local do BCE ainda não existir; nunca inventa um valor."""
+    moeda = (request.args.get('moeda') or 'USD').upper()
     try:
-        # 1. Lê a data enviada pelo HTML (ex: 2025-06-17)
-        data_alvo = pd.to_datetime(data)
-        
-        # 2. Abre uma janela de 7 dias para trás para garantir que apanha fins de semana/feriados
-        data_inicio = data_alvo - pd.Timedelta(days=7)
-        data_fim = data_alvo + pd.Timedelta(days=1)
-        
-        # 3. MUDANÇA CRÍTICA: Usa .history() em vez de .download(). É 100% fiável para extrações únicas.
-        df = yg.historico("EURUSD=X", start=data_inicio.strftime('%Y-%m-%d'), end=data_fim.strftime('%Y-%m-%d'))
-        
-        if df is None or df.empty:
-            print(f"Aviso: Yahoo não devolveu dados de câmbio para {data}")
-            return jsonify({"cambio": 1.08})
-            
-        # 4. Extrai o último fecho válido antes ou no próprio dia
-        taxa = float(df['Close'].dropna().iloc[-1])
-        
-        # 5. O BCE usa tipicamente 4 casas decimais para o par EUR/USD
-        return jsonify({"cambio": round(taxa, 4)})
-        
-    except Exception as e:
-        print(f"Erro grave no motor de câmbio: {str(e)}")
-        return jsonify({"cambio": 1.08}), 500
+        dia = pd.to_datetime(data).strftime('%Y-%m-%d')
+    except Exception:
+        return jsonify({"erro": "Data inválida."}), 400
+    taxa, usado = fontes_bce.cambio(moeda, dia)
+    if taxa is None:
+        try:
+            fontes_bce.atualizar_cambios()  # 1.ª utilização: descarrega o histórico
+            taxa, usado = fontes_bce.cambio(moeda, dia)
+        except Exception as e:
+            print(f"[câmbio] BCE indisponível: {e}")
+    if taxa is not None:
+        nota = "" if usado == dia else f"sem fixação a {dia[8:10]}/{dia[5:7]} (fim de semana ou feriado): usado o câmbio de {usado[8:10]}/{usado[5:7]}"
+        return jsonify({"cambio": round(taxa, 4), "moeda": moeda, "data": usado, "fonte": "BCE", "nota": nota})
+    # Recurso: Yahoo (só USD), assinalado como tal
+    if moeda == 'USD':
+        try:
+            alvo = pd.to_datetime(dia)
+            df = yg.historico("EURUSD=X", start=(alvo - pd.Timedelta(days=7)).strftime('%Y-%m-%d'),
+                              end=(alvo + pd.Timedelta(days=1)).strftime('%Y-%m-%d'))
+            if df is not None and not df.empty:
+                return jsonify({"cambio": round(float(df['Close'].dropna().iloc[-1]), 4), "moeda": "USD", "data": dia,
+                                "fonte": "Yahoo", "nota": "BCE indisponível: valor de mercado do Yahoo (confirma no extrato)."})
+        except Exception as e:
+            print(f"[câmbio] Yahoo também falhou: {e}")
+    return jsonify({"erro": f"Não foi possível obter o câmbio {moeda} de {dia}. Introduz o valor do extrato da corretora."}), 503
+
 
 @app.route('/api/universo')
 @cache.cached(timeout=3600)
@@ -3365,6 +3372,169 @@ def admin_semanal_enviar():
         return jsonify({"erro": "Acesso negado. Apenas Admin."}), 403
     ok, msg = rel_sem.enviar_relatorio(forcar=request.args.get('forcar') == '1')
     return jsonify({"sucesso": ok, "mensagem": msg} if ok else {"sucesso": False, "erro": msg})
+
+
+# ==========================================
+# 🏛️ DADOS OFICIAIS: JUROS (BCE), POSIÇÕES CURTAS (reguladores UE + FINRA), SEC
+# ==========================================
+import posicoes_curtas
+import sec_dados
+
+_nomes_cache = {}
+
+
+def _nomes_da_empresa(q):
+    """Nomes alternativos para encontrar o emitente nas listas dos reguladores (que usam o nome, não o ticker)."""
+    q = q.strip()
+    nomes = []
+    try:
+        psi = snap.composicao_psi()
+        if q.upper() in psi:
+            nomes.append(psi[q.upper()])
+    except Exception:
+        pass
+    if re.fullmatch(r"[A-Za-z0-9.\-]{1,12}", q) and not re.fullmatch(r"[A-Z]{2}[A-Z0-9]{9}\d", q.upper()):
+        if q.upper() in _nomes_cache:
+            nomes.extend(_nomes_cache[q.upper()])
+        else:
+            try:
+                info = yg.info(q.upper())
+                extra = [n for n in (info.get("longName"), info.get("shortName")) if n]
+                _nomes_cache[q.upper()] = extra
+                nomes.extend(extra)
+            except Exception:
+                pass
+    return nomes
+
+
+@app.route('/api/oficial/juros')
+@requer_cargo(nivel_minimo=2)
+def api_oficial_juros():
+    return jsonify(fontes_bce.painel())
+
+
+@app.route('/api/oficial/curtas')
+@requer_cargo(nivel_minimo=2)
+def api_oficial_curtas():
+    q = (request.args.get('q') or '').strip()[:60]
+    est = posicoes_curtas.estado()
+    resposta = {"atualizado_em": est["atualizado_em"],
+                "fontes": {k: {"nome": v["nome"], "ok": v.get("ok"), "em": v.get("em"), "n": v.get("n")} for k, v in est["fontes"].items()}}
+    if not q:
+        resposta["ranking_pt"] = posicoes_curtas.ranking("PT", 20)
+        resposta["ranking"] = posicoes_curtas.ranking(None, 15)
+        return jsonify(resposta)
+    nomes = _nomes_da_empresa(q)
+    resposta["consulta"] = q
+    resposta["nomes_usados"] = nomes
+    resposta["europa"] = posicoes_curtas.pesquisar(q, nomes)
+    # EUA: ticker sem sufixo de bolsa estrangeira (ex.: AAPL, BRK.B)
+    if re.fullmatch(r"[A-Za-z]{1,5}([.\-][A-Za-z])?", q):
+        try:
+            resposta["eua"] = posicoes_curtas.short_interest_eua(q.replace("-", "."))
+        except Exception as e:
+            resposta["eua"] = {"erro": f"FINRA indisponível: {str(e)[:150]}"}
+    return jsonify(resposta)
+
+
+@app.route('/api/oficial/sec/<ticker>')
+@requer_cargo(nivel_minimo=2)
+def api_oficial_sec(ticker):
+    ticker = ticker.strip().upper()[:10]
+    if not re.fullmatch(r"[A-Z]{1,5}([.\-][A-Z])?", ticker):
+        return jsonify({"erro": "Indica um ticker americano (ex.: AAPL, MSFT, BRK.B)."}), 400
+    tipo = request.args.get('tipo', 'insiders')
+    try:
+        dados = sec_dados.fundamentos(ticker) if tipo == 'fundamentos' else sec_dados.insiders(ticker)
+    except sec_dados.SemUserAgent as e:
+        return jsonify({"erro": "Dados da SEC ainda não ativados pelo Admin (" + str(e) + ")"}), 503
+    except Exception as e:
+        return jsonify({"erro": f"SEC indisponível: {str(e)[:200]}"}), 503
+    return jsonify(dados), (404 if dados.get("erro") else 200)
+
+
+@app.route('/api/admin/fontes')
+def admin_fontes_estado():
+    if not _e_admin():
+        return jsonify({"erro": "Acesso negado. Apenas Admin."}), 403
+    return jsonify({"bce": fontes_bce.estado(), "curtas": posicoes_curtas.estado(),
+                    "sec_user_agent": bool((os.environ.get("SEC_USER_AGENT") or "").strip())})
+
+
+@app.route('/api/admin/fontes/testar', methods=['POST'])
+def admin_fontes_testar():
+    """Testa, a partir do servidor, cada fonte oficial. Pode demorar até 1–2 minutos."""
+    if not _e_admin() or not _origem_propria():
+        return jsonify({"erro": "Acesso negado."}), 403
+    r = {}
+    try:
+        ok, msg = fontes_bce.atualizar_cambios(forcar=True)
+        r["BCE · câmbios"] = {"ok": ok, "msg": msg}
+    except Exception as e:
+        r["BCE · câmbios"] = {"ok": False, "msg": str(e)[:300]}
+    try:
+        ok, msg = fontes_bce.atualizar_juros(forcar=True)
+        r["BCE · juros e inflação"] = {"ok": ok, "msg": msg}
+    except Exception as e:
+        r["BCE · juros e inflação"] = {"ok": False, "msg": str(e)[:300]}
+    try:
+        for pais, v in posicoes_curtas.atualizar().items():
+            r[f"Posições curtas · {posicoes_curtas.fontes()[pais]['nome']}"] = v
+    except Exception as e:
+        r["Posições curtas"] = {"ok": False, "msg": str(e)[:300]}
+    try:
+        d = posicoes_curtas.short_interest_eua("AAPL")
+        r["FINRA · short interest EUA"] = {"ok": bool(d["datas"]), "msg": f"{len(d['datas'])} datas para AAPL." if d["datas"] else "Sem dados devolvidos."}
+    except Exception as e:
+        r["FINRA · short interest EUA"] = {"ok": False, "msg": str(e)[:300]}
+    r["SEC · insiders e fundamentos"] = sec_dados.testar()
+    return jsonify({"resultados": r})
+
+
+@app.route('/api/admin/curtas/fonte', methods=['POST'])
+def admin_curtas_fonte():
+    if not _e_admin() or not _origem_propria():
+        return jsonify({"erro": "Acesso negado."}), 403
+    c = request.get_json(silent=True) or {}
+    try:
+        posicoes_curtas.gravar_fonte(c.get("pais", ""), url=c.get("url"), ativa=c.get("ativa"))
+    except ValueError as e:
+        return jsonify({"erro": str(e)}), 400
+    return jsonify({"sucesso": True, "mensagem": "Fonte gravada. Usa «Testar fontes» para confirmar."})
+
+
+@app.route('/api/admin/curtas/upload', methods=['POST'])
+def admin_curtas_upload():
+    if not _e_admin() or not _origem_propria():
+        return jsonify({"erro": "Acesso negado."}), 403
+    f = request.files.get("ficheiro")
+    pais = request.form.get("pais", "")
+    if not f:
+        return jsonify({"erro": "Nenhum ficheiro recebido."}), 400
+    conteudo = f.read(15 * 1024 * 1024 + 1)
+    if len(conteudo) > 15 * 1024 * 1024:
+        return jsonify({"erro": "Ficheiro demasiado grande (máx. 15 MB)."}), 400
+    try:
+        n = posicoes_curtas.carregar_manual(pais, f.filename or "lista.csv", conteudo)
+    except ValueError as e:
+        return jsonify({"erro": str(e)}), 400
+    return jsonify({"sucesso": True, "mensagem": f"{n} posições atuais carregadas."})
+
+
+@app.route('/api/admin/juros/ca', methods=['POST'])
+def admin_juros_ca():
+    if not _e_admin() or not _origem_propria():
+        return jsonify({"erro": "Acesso negado."}), 403
+    c = request.get_json(silent=True) or {}
+    mes = str(c.get("mes", ""))
+    try:
+        taxa = float(str(c.get("taxa", "")).replace(",", "."))
+    except ValueError:
+        return jsonify({"erro": "Taxa inválida."}), 400
+    if not re.fullmatch(r"\d{4}-\d{2}", mes) or not (0 <= taxa <= 10):
+        return jsonify({"erro": "Indica o mês (AAAA-MM) e a taxa base em % (ex.: 2,474)."}), 400
+    fontes_bce.gravar_ca(mes, taxa)
+    return jsonify({"sucesso": True, "mensagem": f"Certificados de Aforro de {mes}: {taxa:.3f}% gravado."})
 
 
 if __name__ == "__main__":
