@@ -2132,6 +2132,12 @@
             📡 A auditar máximos/mínimos mensais e a calcular bónus Sniper no Yahoo Finance...
         </div>
 
+        <div style="display:flex; flex-wrap:wrap; gap:16px; font-size:11px; color:#8b949e; margin-bottom:10px">
+            <span>📊 <strong>vs S&amp;P 500</strong> <span class="dica-edu" style="font-size:11px;color:#8b949e;cursor:help">ℹ️<span class="dica-texto" style="width:300px">Diferença entre o retorno base da carteira (sem bónus de alvos) e o do S&amp;P 500 no mesmo período (do fecho do dia da tua entrada até hoje). +2,0 pp = rendeste 2 pontos percentuais mais do que o índice. Se o mercado subiu 5% e tu 4%, ganhaste dinheiro mas ficaste atrás de um simples ETF.</span></span></span>
+            <span>📉 <strong>Queda máx.</strong> <span class="dica-edu" style="font-size:11px;color:#8b949e;cursor:help">ℹ️<span class="dica-texto" style="width:300px">A maior descida da carteira desde um ponto alto até um ponto baixo durante a edição (drawdown). Mede o sobressalto: duas carteiras podem acabar com +5%, mas uma pode ter estado a −8% pelo caminho.</span></span></span>
+            <span>🛡️ <strong>Eficiência</strong> <span class="dica-edu" style="font-size:11px;color:#8b949e;cursor:help">ℹ️<span class="dica-texto" style="width:300px">Score ÷ queda máxima (com mínimo de 1%). Ex.: +6% com uma queda máxima de 2% dá 3,0; +6% com 6% de queda dá 1,0. No fim de cada edição, a melhor eficiência entre quem terminou positivo ganha o prémio Gestor Prudente 🛡️.</span></span></span>
+            <span>📈 <strong>Evolução</strong> <span class="dica-edu" style="font-size:11px;color:#8b949e;cursor:help">ℹ️<span class="dica-texto" style="width:300px">Carrega em 📈 numa linha para ver o gráfico diário da carteira contra o S&amp;P 500 desde a entrada.</span></span></span>
+        </div>
         <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 6px; overflow-x: auto;">
             <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 0;">
                 <thead style="background: #161b22; color: #8b949e; text-transform: uppercase; font-size: 11px;">
@@ -2144,6 +2150,7 @@
                         <th style="padding: 12px; text-align: right;">Retorno Base</th>
                         <th style="padding: 12px; text-align: center;">Bónus Alvos</th>
                         <th style="padding: 12px; text-align: right;">Score Total</th>
+                        <th style="padding: 12px;">Mercado &amp; Risco</th>
                         <th style="padding: 12px;">Tese</th>
                     </tr>
                 </thead>
@@ -2191,6 +2198,20 @@
         <div id="liga-hall" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
             <div style="color: #8b949e; font-size: 12px;">A carregar...</div>
         </div>
+    </div>
+
+    <!-- 🏁 TEMPORADA ANUAL -->
+    <div style="background-color: #161b22; border: 1px solid #30363d; border-left: 4px solid #58a6ff; border-radius: 8px; padding: 20px; margin-top: 25px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:15px">
+            <h4 style="margin: 0; color: #58a6ff; font-size: 14px; text-transform: uppercase;">
+                <span class="dica-edu" style="border-bottom: 1px dotted #58a6ff;">
+                    🏁 Temporada <span id="liga-temp-ano"></span>
+                    <span class="dica-texto" style="width: 340px; text-transform: none;"><strong style="color: #58a6ff; font-size: 13px; display: block; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 4px;">Pontos por posição, ao estilo da Fórmula 1</strong>Em cada edição terminada: 1.º 25 pts · 2.º 18 · 3.º 15 · 4.º 12 · 5.º 10 · 6.º 8 · 7.º 6 · 8.º 4 · 9.º 2 · 10.º 1, e <strong>+1 ponto por participar</strong>. Um mês mau não te tira da corrida: o que conta é a regularidade ao longo do ano. Desempate: mais vitórias, mais pódios, melhor posição. Quem terminar o ano em 1.º ganha a medalha 🏆 Campeão da Temporada.</span>
+                </span>
+            </h4>
+            <select id="liga-temp-sel" class="input-moderno" onchange="ligaDesenharTemporada(this.value)" style="max-width:110px; padding:5px 8px; font-size:12px; display:none"></select>
+        </div>
+        <div id="liga-temporada" style="color:#8b949e; font-size:12px">A carregar...</div>
     </div>
 
     <!-- 🏆 CLASSIFICAÇÃO GERAL -->
@@ -7575,6 +7596,84 @@ function renderizarCalendarioDiario() {
     // ==========================================
     // MOTOR CLIENT-SIDE DA LIGA MENSAL
     // ==========================================
+    // ===== Liga: mercado, risco e evolução diária =====
+    function ligaCelulaRisco(c, idx) {
+        const m = c.metricas || {};
+        if (m.bench_ret === undefined && m.queda_max === undefined) return '<span style="color:#8b949e; font-size:11px">a calcular…</span>';
+        const pp = v => `${v >= 0 ? '+' : ''}${v.toFixed(1).replace('.', ',')}`;
+        const alfa = m.alfa !== null && m.alfa !== undefined
+            ? `<div style="font-size:11px; font-weight:bold; color:${m.alfa >= 0 ? '#5cb85c' : '#d9534f'}">📊 ${pp(m.alfa)} pp vs S&amp;P</div>
+               <div style="font-size:10px; color:#8b949e">S&amp;P no período: ${pp(m.bench_ret)}%</div>` : '';
+        return `${alfa}
+            <div style="font-size:10px; color:#8b949e">📉 Queda máx. −${(m.queda_max || 0).toFixed(1).replace('.', ',')}% · 🛡️ ${m.eficiencia !== null && m.eficiencia !== undefined ? m.eficiencia.toFixed(2).replace('.', ',') : '—'}</div>
+            ${(m.serie || []).length > 1 ? `<button onclick="ligaMostrarEvolucao(${idx})" class="btn-moderno" style="margin-top:4px; background:#232d3f; color:#58a6ff; padding:3px 8px; font-size:10px">📈 Evolução</button>` : ''}`;
+    }
+
+    function ligaGraficoSVG(serie, larg = 640, alt = 170) {
+        // Duas linhas: carteira (dourado) e S&P 500 (cinzento), em % desde a entrada
+        const pts = serie.filter(p => p[1] !== null);
+        const vals = pts.flatMap(p => [p[1], p[2]]).filter(v => v !== null && v !== undefined);
+        let lo = Math.min(0, ...vals), hi = Math.max(0, ...vals);
+        if (hi - lo < 1) { hi += 0.5; lo -= 0.5; }
+        const mx = 44, my = 14, w = larg - mx - 10, h = alt - my * 2 - 12;
+        const x = i => mx + (pts.length === 1 ? w / 2 : i * w / (pts.length - 1));
+        const y = v => my + (hi - v) / (hi - lo) * h;
+        const linha = (k) => pts.map((p, i) => p[k] === null || p[k] === undefined ? null : `${x(i).toFixed(1)},${y(p[k]).toFixed(1)}`).filter(Boolean).join(' ');
+        const fmt = v => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`;
+        const ddmm = iso => iso.slice(8, 10) + '/' + iso.slice(5, 7);
+        const ult = pts[pts.length - 1];
+        return `<svg viewBox="0 0 ${larg} ${alt}" style="width:100%; max-width:${larg}px; height:auto; display:block">
+            <line x1="${mx}" x2="${mx + w}" y1="${y(0)}" y2="${y(0)}" stroke="#30363d" stroke-dasharray="3 3"/>
+            <text x="${mx - 6}" y="${y(hi) + 4}" fill="#8b949e" font-size="10" text-anchor="end">${fmt(hi)}</text>
+            <text x="${mx - 6}" y="${y(0) + 4}" fill="#8b949e" font-size="10" text-anchor="end">0%</text>
+            <text x="${mx - 6}" y="${y(lo) + 4}" fill="#8b949e" font-size="10" text-anchor="end">${fmt(lo)}</text>
+            <polyline points="${linha(2)}" fill="none" stroke="#8b949e" stroke-width="1.5" opacity="0.8"/>
+            <polyline points="${linha(1)}" fill="none" stroke="#e3b341" stroke-width="2.2"/>
+            <text x="${mx}" y="${alt - 2}" fill="#8b949e" font-size="10">${ddmm(pts[0][0])}</text>
+            <text x="${mx + w}" y="${alt - 2}" fill="#8b949e" font-size="10" text-anchor="end">${ddmm(ult[0])}</text>
+            <circle cx="${x(pts.length - 1)}" cy="${y(ult[1])}" r="3" fill="#e3b341"/>
+        </svg>`;
+    }
+
+    function ligaMostrarVersoes(idx) {
+        const linha = document.getElementById('liga-evol-' + idx);
+        const c = (window._ligaCarteiras || [])[idx];
+        if (!linha || !c) return;
+        if (linha.style.display !== 'none' && linha.dataset.modo === 'versoes') { linha.style.display = 'none'; return; }
+        const dh = iso => iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) + (iso.length > 10 ? ' ' + iso.slice(11, 16) : '') : 'antes do registo de horas';
+        const vs = (c.versoes || []).slice().reverse();
+        linha.firstElementChild.innerHTML = `
+            <div style="font-size:11px; color:#c9d1d9; margin-bottom:6px"><strong>${c.username}</strong> · versões anteriores da carteira
+                <span class="dica-edu" style="color:#8b949e; cursor:help">ℹ️<span class="dica-texto" style="width:300px">Durante a janela de inscrição podes alterar a carteira; conta sempre a última versão, que entra ao preço do momento em que foi gravada. As versões antigas ficam registadas por transparência: as horas são sempre visíveis, os ativos só depois de o nevoeiro levantar.</span></span></div>
+            ${vs.map(v => `<div style="font-size:11px; color:#8b949e; padding:4px 0; border-top:1px dashed #21262d">
+                🕒 Gravada ${dh(v.submetido_em)}${v.estimada ? ' (est.)' : ''} · substituída ${dh(v.substituida_em)}
+                ${v.oculta ? ' · 🔒 ativos ocultos até ao fecho das inscrições'
+                  : ' · ' + (v.slots || []).map(x => `<strong style="color:#c9d1d9">${x.ticker}</strong> $${Number(x.p0).toFixed(2)} → $${Number(x.alvo).toFixed(2)}`).join(' · ')
+                    + (v.tese ? ` · <em>"${escHTML(v.tese)}"</em>` : '')}
+            </div>`).join('')}`;
+        linha.dataset.modo = 'versoes';
+        linha.style.display = 'table-row';
+    }
+
+    function ligaMostrarEvolucao(idx) {
+        const linha = document.getElementById('liga-evol-' + idx);
+        if (!linha) return;
+        if (linha.style.display !== 'none' && linha.dataset.modo === 'evolucao') { linha.style.display = 'none'; return; }
+        linha.dataset.modo = 'evolucao';
+        const c = (window._ligaCarteiras || [])[idx];
+        const m = (c && c.metricas) || {};
+        const serie = m.serie || [];
+        const ult = serie[serie.length - 1] || [];
+        linha.firstElementChild.innerHTML = `
+            <div style="display:flex; gap:14px; align-items:center; font-size:11px; color:#c9d1d9; margin-bottom:6px; flex-wrap:wrap">
+                <strong>${c.username}</strong>
+                <span><span style="display:inline-block; width:14px; height:3px; background:#e3b341; vertical-align:middle"></span> Carteira (retorno base) ${ult[1] !== undefined ? (ult[1] >= 0 ? '+' : '') + ult[1].toFixed(2) + '%' : ''}</span>
+                <span><span style="display:inline-block; width:14px; height:3px; background:#8b949e; vertical-align:middle"></span> S&amp;P 500 no mesmo período ${ult[2] !== null && ult[2] !== undefined ? (ult[2] >= 0 ? '+' : '') + ult[2].toFixed(2) + '%' : ''}</span>
+                <span style="color:#8b949e">Valores de fecho diário. O gráfico não inclui os bónus de alvo.</span>
+            </div>${ligaGraficoSVG(serie)}`;
+        linha.style.display = 'table-row';
+    }
+
     async function carregarLiga(forcarRecalculo = false) {
         carregarHallOfFame(); // medalhas, Hall of Fame e histórico (em paralelo com a classificação)
         const tbody = document.getElementById('tbody-liga');
@@ -7589,7 +7688,7 @@ function renderizarCalendarioDiario() {
             loading.style.display = 'none';
 
             if (dados.erro) {
-                tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:#d9534f; padding:20px;">${dados.erro}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color:#d9534f; padding:20px;">${dados.erro}</td></tr>`;
                 return;
             }
 
@@ -7653,7 +7752,7 @@ function renderizarCalendarioDiario() {
             document.getElementById('liga-admin-janelas').style.display = dados.is_admin ? 'block' : 'none';
 
             if (!dados.carteiras || dados.carteiras.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#8b949e; padding:20px;">Ainda ninguém tem carteira nesta edição. Sê o primeiro!</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color:#8b949e; padding:20px;">Ainda ninguém tem carteira nesta edição. Sê o primeiro!</td></tr>';
                 return;
             }
 
@@ -7672,20 +7771,23 @@ function renderizarCalendarioDiario() {
                 return `
                     <tr style="border-bottom: 1px solid #21262d;">
                         <td style="padding: 12px; font-weight: bold; font-size: 14px;">${medalha}</td>
-                        <td style="padding: 12px; font-weight: bold; color: #58a6ff;">${c.username}${c.submetido_em ? `<div style="font-size:10px;color:#8b949e;font-weight:normal" title="${c.submetido_em_estimado ? 'Data estimada a partir do preço de entrada (carteira gravada antes de o portal registar a hora de submissão).' : 'Data e hora da última gravação da carteira: o p0 é o preço deste momento e os alvos contam a partir do dia seguinte.'}">entrada ${c.submetido_em.slice(8,10)}/${c.submetido_em.slice(5,7)}${c.submetido_em_estimado ? ' (est.)' : (c.submetido_em.length > 10 ? ' ' + c.submetido_em.slice(11,16) : '')}</div>` : ''} <span class="liga-medalhas" data-uid="${c.user_id || ''}" style="font-size: 12px;">${(window.iconesLiga || {})[c.user_id] || ''}</span></td>
+                        <td style="padding: 12px; font-weight: bold; color: #58a6ff;">${c.username}${(c.versoes || []).length ? ` <button onclick="ligaMostrarVersoes(${idx})" class="btn-moderno" title="Esta carteira foi alterada durante a janela de inscrição. Vê as versões anteriores (os ativos só ficam visíveis quando o nevoeiro levanta)." style="background:#232d3f; color:#8b949e; padding:1px 6px; font-size:10px">🔁 ${c.versoes.length}</button>` : ''}${c.submetido_em ? `<div style="font-size:10px;color:#8b949e;font-weight:normal" title="${c.submetido_em_estimado ? 'Data estimada a partir do preço de entrada (carteira gravada antes de o portal registar a hora de submissão).' : 'Data e hora da última gravação da carteira: o p0 é o preço deste momento e os alvos contam a partir do dia seguinte.'}">entrada ${c.submetido_em.slice(8,10)}/${c.submetido_em.slice(5,7)}${c.submetido_em_estimado ? ' (est.)' : (c.submetido_em.length > 10 ? ' ' + c.submetido_em.slice(11,16) : '')}</div>` : ''} <span class="liga-medalhas" data-uid="${c.user_id || ''}" style="font-size: 12px;">${(window.iconesLiga || {})[c.user_id] || ''}</span></td>
                         <td style="padding: 12px;">${fmtSlot(c.slots[0])}</td>
                         <td style="padding: 12px;">${fmtSlot(c.slots[1])}</td>
                         <td style="padding: 12px;">${fmtSlot(c.slots[2])}</td>
                         <td style="padding: 12px; text-align: right; font-weight: bold; color: ${corRet};">${c.retorno_base >= 0 ? '+' : ''}${c.retorno_base.toFixed(2)}%</td>
                         <td style="padding: 12px; text-align: center;"><span style="background:#232d3f; color:#e3b341; padding:3px 8px; border-radius:4px; font-weight:bold;">+${c.bonus_total.toFixed(1)}%</span></td>
                         <td style="padding: 12px; text-align: right; font-size: 14px; font-weight: 900; color: ${corScore};">${c.score_total >= 0 ? '+' : ''}${c.score_total.toFixed(2)}%</td>
+                        <td style="padding: 12px; white-space: nowrap;">${ligaCelulaRisco(c, idx)}</td>
                         <td style="padding: 12px; color: #8b949e; font-style: italic; max-width: 220px;">"${c.tese}"</td>
                     </tr>
+                    <tr id="liga-evol-${idx}" style="display:none"><td colspan="10" style="padding: 6px 12px 16px 12px; background:#0b0f15"></td></tr>
                 `;
             }).join('');
+            window._ligaCarteiras = dados.carteiras;
         } catch (e) {
             loading.style.display = 'none';
-            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#d9534f;">Erro ao carregar classificação.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color:#d9534f;">Erro ao carregar classificação.</td></tr>';
         }
     }
 
@@ -7709,6 +7811,42 @@ function renderizarCalendarioDiario() {
         document.querySelectorAll('.liga-medalhas').forEach(el => {
             el.textContent = window.iconesLiga[el.dataset.uid] || '';
         });
+    }
+
+    function ligaDesenharTemporada(ano) {
+        const div = document.getElementById('liga-temporada');
+        document.getElementById('liga-temp-ano').innerText = ano || '';
+        const lista = (window._ligaTemporadas || {})[ano] || [];
+        if (!lista.length) {
+            div.innerHTML = 'A temporada começa a contar quando terminar a primeira edição do ano (a classificação ao vivo do mês ainda não dá pontos).';
+            return;
+        }
+        const emCurso = ano === window._ligaAnoAtual;
+        const meses = [...new Set(lista.flatMap(t => t.detalhe.map(x => x.mes)))].sort();
+        const nomeCurto = m => ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][parseInt(m.slice(5, 7)) - 1];
+        const lider = lista[0].pontos;
+        div.innerHTML = `
+            <div style="font-size:11px; color:#8b949e; margin-bottom:8px">${emCurso ? `Em curso · ${meses.length} ${meses.length !== 1 ? 'edições terminadas' : 'edição terminada'}. Só contam edições já fechadas.` : 'Temporada terminada.'}</div>
+            <div style="background:#0d1117; border:1px solid #30363d; border-radius:6px; overflow-x:auto">
+            <table style="width:100%; border-collapse:collapse; font-size:12px; margin-top:0">
+                <thead style="background:#161b22; color:#8b949e; font-size:10px; text-transform:uppercase">
+                    <tr><th style="padding:8px">#</th><th style="padding:8px">Membro</th><th style="padding:8px; text-align:right">Pontos</th><th style="padding:8px; text-align:right">Atrás do líder</th>
+                    ${meses.map(m => `<th style="padding:8px; text-align:center">${nomeCurto(m)}</th>`).join('')}</tr>
+                </thead>
+                <tbody>${lista.map(t => {
+                    const porMes = Object.fromEntries(t.detalhe.map(x => [x.mes, x]));
+                    const pos = t.posicao === 1 ? (emCurso ? '🥇' : '🏆') : t.posicao === 2 ? '🥈' : t.posicao === 3 ? '🥉' : `${t.posicao}º`;
+                    return `<tr style="border-top:1px solid #21262d">
+                        <td style="padding:8px; font-weight:bold">${pos}</td>
+                        <td style="padding:8px; color:#58a6ff; font-weight:bold">${escHTML(t.username)}</td>
+                        <td style="padding:8px; text-align:right; font-weight:900; color:#f0f2f5">${t.pontos}</td>
+                        <td style="padding:8px; text-align:right; color:#8b949e">${t.pontos === lider ? '—' : '−' + (lider - t.pontos)}</td>
+                        ${meses.map(m => porMes[m]
+                            ? `<td style="padding:8px; text-align:center" title="${porMes[m].posicao}.º lugar = ${porMes[m].pontos} pts"><span style="color:#c9d1d9">${porMes[m].posicao}º</span> <span style="color:#8b949e; font-size:10px">${porMes[m].pontos}</span></td>`
+                            : `<td style="padding:8px; text-align:center; color:#30363d" title="Não participou">·</td>`).join('')}
+                    </tr>`;
+                }).join('')}</tbody>
+            </table></div>`;
     }
 
     async function carregarHallOfFame() {
@@ -7818,6 +7956,18 @@ function renderizarCalendarioDiario() {
                 : '<tr><td colspan="9" style="padding: 15px; text-align: center; color: #8b949e;">Ainda não há edições terminadas. A primeira entra aqui no início do próximo mês.</td></tr>';
         }
 
+        // ---------- Temporada anual ----------
+        window._ligaTemporadas = d.temporadas || {};
+        const anos = Object.keys(window._ligaTemporadas).sort().reverse();
+        const sel = document.getElementById('liga-temp-sel');
+        if (sel) {
+            const anoSel = anos.includes(sel.value) ? sel.value : (anos.includes(d.ano_atual) ? d.ano_atual : (anos[0] || d.ano_atual));
+            sel.innerHTML = anos.map(a => `<option value="${a}" ${a === anoSel ? 'selected' : ''}>${a}</option>`).join('');
+            sel.style.display = anos.length > 1 ? '' : 'none';
+            window._ligaAnoAtual = d.ano_atual;
+            ligaDesenharTemporada(anoSel);
+        }
+
         // ---------- Histórico de edições ----------
         const divEd = document.getElementById('liga-edicoes');
         if (divEd) {
@@ -7833,11 +7983,12 @@ function renderizarCalendarioDiario() {
                     return `
                         <tr style="border-bottom: 1px solid #21262d;">
                             <td style="padding: 8px; font-weight: bold;">${x.posicao === 1 ? '🥇' : x.posicao === 2 ? '🥈' : x.posicao === 3 ? '🥉' : `${x.posicao}º`}</td>
-                            <td style="padding: 8px; color: #58a6ff; font-weight: bold;">${escHTML(x.username)}</td>
+                            <td style="padding: 8px; color: #58a6ff; font-weight: bold;">${escHTML(x.username)}${x.premio_prudente ? ' <span title="Gestor Prudente desta edição: melhor eficiência (score ÷ queda máxima) entre quem terminou positivo.">🛡️</span>' : ''}</td>
                             <td style="padding: 8px;">${slots}</td>
                             <td style="padding: 8px; text-align: right; color: ${corPct(x.retorno_base)};">${fmtPct(x.retorno_base)}</td>
                             <td style="padding: 8px; text-align: center; color: #e3b341;">+${Number(x.bonus_total).toFixed(1)}%</td>
                             <td style="padding: 8px; text-align: right; font-weight: 900; color: ${corPct(x.score_total)};">${fmtPct(x.score_total)}</td>
+                            <td style="padding: 8px; font-size: 11px; white-space: nowrap;">${x.alfa !== null && x.alfa !== undefined ? `<span style="color:${corPct(x.alfa)}; font-weight:bold">📊 ${x.alfa >= 0 ? '+' : ''}${Number(x.alfa).toFixed(1)} pp</span><br><span style="color:#8b949e">📉 −${Number(x.queda_max || 0).toFixed(1)}% · 🛡️ ${x.eficiencia !== null && x.eficiencia !== undefined ? Number(x.eficiencia).toFixed(2) : '—'}</span>` : '<span style="color:#8b949e">—</span>'}</td>
                             <td style="padding: 8px; color: #8b949e; font-style: italic; max-width: 220px;">"${escHTML(x.tese)}"</td>
                         </tr>`;
                 }).join('');
@@ -7850,7 +8001,7 @@ function renderizarCalendarioDiario() {
                         <div style="overflow-x: auto; margin-top: 10px;">
                             <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 0;">
                                 <thead style="color: #8b949e; font-size: 10px; text-transform: uppercase;">
-                                    <tr><th style="padding: 8px;">#</th><th style="padding: 8px;">Membro</th><th style="padding: 8px;">Carteira</th><th style="padding: 8px; text-align: right;">Retorno</th><th style="padding: 8px; text-align: center;">Bónus</th><th style="padding: 8px; text-align: right;">Score</th><th style="padding: 8px;">Tese</th></tr>
+                                    <tr><th style="padding: 8px;">#</th><th style="padding: 8px;">Membro</th><th style="padding: 8px;">Carteira</th><th style="padding: 8px; text-align: right;">Retorno</th><th style="padding: 8px; text-align: center;">Bónus</th><th style="padding: 8px; text-align: right;">Score</th><th style="padding: 8px;" title="pp vs S&P 500 no mesmo período · queda máxima · eficiência (score ÷ queda máxima)">Mercado &amp; Risco</th><th style="padding: 8px;">Tese</th></tr>
                                 </thead>
                                 <tbody>${linhas}</tbody>
                             </table>
@@ -7905,7 +8056,23 @@ function renderizarCalendarioDiario() {
             feedback.style.background = 'rgba(92, 184, 92, 0.15)';
             feedback.style.color = '#5cb85c';
             feedback.style.borderLeft = '4px solid #5cb85c';
-            feedback.innerText = "✅ " + res.mensagem;
+            if (res.entrada) {
+                // Confirmação do preço de entrada: é a partir daqui que a carteira conta
+                const hora = (res.submetido_em || '').slice(11, 16);
+                const data = (res.submetido_em || '').slice(0, 10).split('-').reverse().join('/');
+                const fmt = v => Number(v).toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                feedback.innerHTML = `✅ ${res.mensagem}
+                    <div style="margin-top:8px; font-weight:normal; color:#c9d1d9">📍 <strong>Entraste a ${data} às ${hora}</strong> com estes preços
+                    <span class="dica-edu" style="font-size:11px;color:#8b949e;cursor:help">ℹ️<span class="dica-texto" style="width:300px">O preço de entrada (p0) é a cotação deste momento. O teu resultado mede-se a partir daqui até ao fim do mês da edição, e os bónus de alvo só contam a partir de amanhã. Se voltares a gravar durante a janela, entras de novo ao preço desse momento.</span></span>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:6px">${res.entrada.map(e => `
+                        <span style="background:#0d1117; border:1px solid #30363d; border-radius:6px; padding:5px 10px">
+                            <strong style="color:#fff">${e.ticker}</strong>
+                            <span style="font-size:10px; color:${e.direcao === 'LONG' ? '#5cb85c' : '#d9534f'}">[${e.direcao}]</span>
+                            entrada $${fmt(e.p0)} → alvo $${fmt(e.alvo)}</span>`).join('')}
+                    </div></div>`;
+            } else {
+                feedback.innerText = "✅ " + res.mensagem;
+            }
             carregarLiga(true);
         } catch (e) {
             btn.disabled = false;

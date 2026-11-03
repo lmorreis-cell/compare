@@ -200,10 +200,11 @@
     <!-- LIGA MENSAL: JANELAS DE INSCRIÇÃO -->
     <article class="cartao largo" id="c-liga">
       <div class="cab"><span style="font-size:20px">🏆</span><h2>Liga Mensal · Janelas de inscrição</h2><span class="pilula" id="p-liga">—</span></div>
+      <p class="explica">Os avisos no Discord (inscrições abertas, último dia, nevoeiro levantou e resumo final) seguem estas datas automaticamente: se mudares uma janela, os avisos mudam com ela.</p>
       <p class="explica">Cada edição corresponde a um mês: a competição conta do <b>preço de entrada</b> (a cotação no momento em que o membro grava a carteira) até ao fecho do <b>último dia do mês</b>. Antes disso há uma <b>janela de inscrição</b>, durante a qual os membros podem gravar e alterar a carteira, e em que as carteiras dos outros ficam ocultas (<b>nevoeiro</b>). O nevoeiro levanta no dia a seguir ao fecho das inscrições. Os bónus de alvo só contam a partir do dia seguinte à gravação, e os prémios só são atribuídos quando o mês termina.</p>
       <ul class="regras">
         <li><b>Padrão:</b> vale para todas as edições que não tenham datas próprias. Mudá-lo não altera as edições cuja janela já abriu: essas ficam com as datas que tinham.</li>
-        <li><b>Datas próprias:</b> antes de abrir, podes mudar as duas datas. Depois de abrir, só a data de fecho (para encurtar ou prolongar). Depois de fechar, fica bloqueada, porque as carteiras e o nevoeiro já dependem dela.</li>
+        <li><b>Datas próprias:</b> só servem para exceções (ex.: fechar mais cedo por causa do Natal). Muda a data numa linha e aparece o botão <b>Gravar alteração</b>; se não mexeres, a edição segue o padrão. Antes de abrir, podes mudar as duas datas. Depois de abrir, só a data de fecho (para encurtar ou prolongar). Depois de fechar, fica bloqueada, porque as carteiras e o nevoeiro já dependem dela.</li>
         <li><b>Limites:</b> as inscrições fecham até ao último dia do mês da edição, abrem no máximo no mês anterior, duram até 45 dias e não se podem sobrepor às edições vizinhas.</li>
       </ul>
       <div class="padrao-liga">
@@ -216,6 +217,7 @@
         <thead><tr><th>Edição</th><th>Inscrições abrem</th><th>Inscrições fecham</th><th>Estado</th><th>Carteiras</th><th></th></tr></thead>
         <tbody><tr><td colspan="6" class="vazio">a carregar…</td></tr></tbody>
       </table>
+      <table class="dados" id="t-liga-avisos"></table>
       <details id="d-liga-entradas"><summary>Datas de entrada das carteiras</summary><div id="l-liga-entradas" style="margin-top:8px"></div></details>
       <div class="acoes">
         <a class="btn sec" href="/interativo#tab-liga" target="_blank">🏆 Ver a Liga</a>
@@ -451,11 +453,24 @@ function pintarLiga(d, forcar = false) {
     pilula("p-liga", "", proxima ? `Próxima abre a ${ddmm(proxima.inicio)}` : "Fechada");
     mosaico("liga", "", "Em jogo", proxima ? `${proxima.nome}: abre a ${ddmm(proxima.inicio)}` : "");
   }
+  const av = d.avisos || {};
+  if (!av.erro) {
+    const nomeAv = { "abertura": "Inscrições abertas", "ultimo_dia": "Último dia", "nevoeiro": "Nevoeiro levantou", "resumo": "Resumo da edição" };
+    linhas("t-liga-avisos", [
+      ["Avisos automáticos no Discord", !av.ativo ? `<span style="color:var(--amarelo)">Desligados (LIGA_AVISOS_ATIVO=0)</span>`
+        : av.webhook ? `<span style="color:var(--verde)">✔ Ativos</span> · enviados entre as ${esc(av.janela_horaria)}, cada um uma única vez`
+        : `<span style="color:var(--vermelho)">✖ Falta WEBHOOK_LIGA</span>`],
+      ["Próximos avisos", (av.proximos || []).map(p => `${ddmm(p.data)} · ${esc(p.nome)}`).join("<br>") || "—"],
+      av.ultimo_envio ? ["Último enviado", `${esc(nomeAv[av.ultimo_envio.chave.split(":")[0]] || av.ultimo_envio.chave)} (${esc(av.ultimo_envio.chave.split(":")[1] || "")}) · ${dataPt(av.ultimo_envio.em)}`] : null,
+      av.ultimo_erro ? ["Último erro", `<span style="color:#fca5a5">${esc(av.ultimo_erro.erro)} (${esc(av.ultimo_erro.chave)})</span>`] : null,
+    ]);
+  }
   const card = $("c-liga");
   if (!forcar && (ligaEditado || card.contains(document.activeElement))) return;
   ligaEditado = false;
   $("liga-di").value = d.padrao.dia_inicio;
   $("liga-df").value = d.padrao.dia_fim;
+  $("b-liga-padrao").disabled = true;
   $("t-liga").querySelector("tbody").innerHTML = d.edicoes.map(e => {
     const [cls, txt] = ESTADO_LIGA[e.estado] || ["", e.estado];
     const travaIni = !e.editavel || e.so_fim, travaFim = !e.editavel;
@@ -466,7 +481,7 @@ function pintarLiga(d, forcar = false) {
       <td><input type="date" class="campo" id="lj-f-${e.edicao}" value="${e.fim}" ${travaFim ? "disabled title='Janela terminada: bloqueada.'" : ""}></td>
       <td><span class="pilula ${cls}"><span class="ponto"></span>${txt}</span></td>
       <td>${e.participantes}</td>
-      <td style="white-space:nowrap">${e.editavel ? `<button class="btn prim" data-liga-gravar="${e.edicao}" style="padding:6px 12px">Gravar</button>` : ""}
+      <td style="white-space:nowrap">${e.editavel ? `<button class="btn prim" data-liga-gravar="${e.edicao}" data-orig="${e.inicio}|${e.fim}" style="padding:6px 12px;display:none" title="Grava as datas desta linha como datas próprias desta edição.">Gravar alteração</button>` : ""}
         ${e.origem === "config" && e.estado === "por abrir" ? `<button class="btn sec" data-liga-repor="${e.edicao}" style="padding:6px 12px" title="Apaga as datas próprias e volta a usar o padrão.">Repor padrão</button>` : ""}</td>
     </tr>`;
   }).join("");
@@ -487,7 +502,17 @@ async function ligaAcao(metodo, corpo, query, sucesso) {
   if (r.ok && r.j && !r.j.erro) { pintarLiga(r.j, true); msg("msg-liga", "ok", sucesso); }
   else msg("msg-liga", "erro", (r.j && r.j.erro) || `Erro ${r.estado}`);
 }
-$("c-liga").addEventListener("input", () => { ligaEditado = true; });
+$("c-liga").addEventListener("input", ev => {
+  ligaEditado = true;
+  // O botão "Gravar alteração" só aparece na linha onde mudaste alguma data
+  const linha = ev.target.closest("tr"), btn = linha && linha.querySelector("[data-liga-gravar]");
+  if (btn) {
+    const ed = btn.dataset.ligaGravar;
+    const mudou = `${$("lj-i-" + ed).value}|${$("lj-f-" + ed).value}` !== btn.dataset.orig;
+    btn.style.display = mudou ? "" : "none";
+  }
+  if (ev.target.id === "liga-di" || ev.target.id === "liga-df") $("b-liga-padrao").disabled = false;
+});
 $("c-liga").addEventListener("click", ev => {
   const g = ev.target.closest("[data-liga-gravar]"), rp = ev.target.closest("[data-liga-repor]");
   if (g) { const ed = g.dataset.ligaGravar;
