@@ -3612,7 +3612,9 @@ if __name__ == "__main__":
     try:
         from waitress import serve
         print(f"[*] A iniciar servidor de produção WSGI na porta {porta}...")
-        serve(app, host="0.0.0.0", port=porta)
+        # 12 threads: a página de Gestão faz 8 pedidos leves em paralelo a cada 15 s; com as 4 threads por omissão
+        # o waitress punha-os em fila e enchia o registo de «Task queue depth». THREADS_SERVIDOR permite ajustar.
+        serve(app, host="0.0.0.0", port=porta, threads=int(os.environ.get("THREADS_SERVIDOR", 12)))
     except ImportError:
         print(f"[*] Waitress não detetado. A iniciar servidor de desenvolvimento na porta {porta}...")
         app.run(host="0.0.0.0", port=porta, debug=False)
