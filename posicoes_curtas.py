@@ -37,19 +37,21 @@ FONTES_INICIAIS = {
     "PT": {"nome": "CMVM (Portugal)", "url": "", "tipo": "cmvm",
            "pagina": "https://www.cmvm.pt/PInstitucional/Content?Input=EBFFB649F6E814A9FF14425A585ADD6EA3C5815FA2332671623D5BE5A91518E4", "ativa": True,
            "nota": "Lido diretamente do serviço de dados da página «Interesses a descoberto relevantes» da CMVM (não precisa de endereço)."},
-    "ES": {"nome": "CNMV (Espanha)", "url": "", "pagina": "https://www.cnmv.es/portal/consultas/busqueda-entidades",
-           "ativa": True, "nota": "A CNMV publica as posições por emitente; se não houver ficheiro único, carrega-o na Gestão."},
+    "ES": {"nome": "CNMV (Espanha)", "url": "https://www.cnmv.es/DocPortal/Posiciones-Cortas/NetShortPositions.xls",
+           "pagina": "https://www.cnmv.es/portal/consultas/busqueda.aspx?id=29", "ativa": True, "lembrete_dias": 7,
+           "instrucoes": ["Abre a página oficial da CNMV «Posiciones cortas» (botão abaixo).",
+                          "Clica em «Fichero descargable con las posiciones cortas netas publicadas e históricas» (ficheiro NetShortPositions.xls).",
+                          "Aqui, carrega em «Carregar» e escolhe esse ficheiro."]},
     "FR": {"nome": "AMF (França)", "url": "https://www.data.gouv.fr/fr/datasets/r/c2539d1c-8531-4937-9cba-3bd8e9786cc5",
            "pagina": "https://www.amf-france.org/fr/actualites-publications/dossiers-thematiques/ventes-decouvert", "ativa": True},
     "DE": {"nome": "Bundesanzeiger / BaFin (Alemanha)", "url": "https://www.bundesanzeiger.de/pub/de/nlp?0--top~csv~form~panel-form-csv~resource~link",
            "pagina": "https://www.bundesanzeiger.de/pub/de/nlp", "sessao": "https://www.bundesanzeiger.de/pub/de/nlp", "ativa": True},
-    "IT": {"nome": "Consob (Itália)", "url": "", "pagina": "https://www.consob.it/web/area-pubblica/pnc",
-           "modo": "manual", "lembrete_dias": 7, "ativa": True,
-           "nota": "Manual: o site da Consob tem uma proteção anti-robô (captcha), por isso o ficheiro é carregado por ti. "
-                   "1) Abre a página oficial no teu browser e resolve o captcha, se aparecer. "
-                   "2) Descarrega o ficheiro Excel das «posizioni nette corte» (lista atual). "
-                   "3) Aqui, carrega em «Carregar» e escolhe esse ficheiro. "
-                   "A Consob atualiza todos os dias; recebes um lembrete se o ficheiro tiver mais de 7 dias."},
+    "IT": {"nome": "Consob (Itália)", "url": "https://www.consob.it/documents/11973/395154/PncPubbl.xlsx/fbefe0a2-795b-bad3-9369-beccbeb14f27",
+           "pagina": "https://www.consob.it/web/area-pubblica/pnc", "lembrete_dias": 7, "ativa": True,
+           "nota": "O site da Consob tem uma proteção anti-robô (captcha). O portal tenta o ficheiro direto; se for bloqueado, usa o último ficheiro que carregaste e lembra-te de o atualizar.",
+           "instrucoes": ["Abre a página oficial da Consob (botão abaixo) e, se aparecer, resolve o captcha.",
+                          "Na caixa «Elenco delle PNC», clica em «Scarica il file Excel delle PNC» (ficheiro PncPubbl.xlsx).",
+                          "Aqui, carrega em «Carregar» e escolhe esse ficheiro. A Consob atualiza todos os dias; basta fazê-lo uma vez por semana."]},
     "NL": {"nome": "AFM (Países Baixos)", "url": "https://www.afm.nl/export.aspx?type=8a46a4ef-f196-4467-a7ab-1ae1cb58f0e7&format=csv",
            "pagina": "https://www.afm.nl/en/sector/registers/meldingenregisters/netto-shortposities-actueel", "ativa": True},
 }
@@ -110,10 +112,12 @@ def fontes():
     if f["PT"].get("tipo") != "cmvm" and not f["PT"].get("tipo_definido_admin"):
         f["PT"].update({k: FONTES_INICIAIS["PT"][k] for k in ("url", "tipo", "nota")})
         alterado = True
-    if f["IT"].get("modo") != "manual" and f["IT"].get("procurar_xlsx"):
-        f["IT"].pop("procurar_xlsx", None)
-        f["IT"].update({k: FONTES_INICIAIS["IT"][k] for k in ("url", "modo", "lembrete_dias", "nota")})
-        alterado = True
+    for pais in ("ES", "IT"):
+        if f[pais].get("instrucoes") != FONTES_INICIAIS[pais]["instrucoes"]:
+            f[pais].pop("procurar_xlsx", None)
+            f[pais].pop("modo", None)
+            f[pais].update({k: v for k, v in FONTES_INICIAIS[pais].items() if k not in ("ativa",)})
+            alterado = True
     if alterado:
         _gravar(ARQ_FONTES, f)
     return f
@@ -234,9 +238,21 @@ def _ler_conteudo(conteudo, tipo, pais):
 
 def _ler_conteudo_(conteudo, tipo, pais):
     cab = conteudo[:8]
-    if cab.startswith(b"PK") or "spreadsheet" in tipo or "excel" in tipo:
+    if cab.startswith(b"PK") or cab.startswith(b"\xd0\xcf\x11\xe0") or "spreadsheet" in tipo or "excel" in tipo:
         import pandas as pd
-        folhas = pd.read_excel(io.BytesIO(conteudo), sheet_name=None, header=None)
+        motor = None
+        if cab.startswith(b"\xd0\xcf\x11\xe0"):  # .xls antigo (ex.: CNMV): precisa do pacote xlrd
+            try:
+                import xlrd  # noqa: F401
+            except ImportError:
+                raise RuntimeError("Ficheiro .xls antigo: falta o pacote «xlrd» no servidor (acrescenta xlrd ao requirements.txt).")
+            motor = "xlrd"
+        folhas = pd.read_excel(io.BytesIO(conteudo), sheet_name=None, header=None, engine=motor)
+        # Se houver uma folha das posições atuais (ex.: CNMV «Última - Current»), lê só essa:
+        # as outras podem ser séries agregadas por emitente, sem detentor.
+        atuais = {n: df for n, df in folhas.items() if re.search(r"current|actual|[uú]ltima|attual|aktuell|vigent", str(n), re.I)}
+        if atuais:
+            folhas = atuais
         out = []
         _ultimo_diag[pais]["folhas"] = {}
         for nome, df in folhas.items():
@@ -630,16 +646,22 @@ def _lembretes_manuais(agora):
     """Uma vez por semana, se o ficheiro de uma fonte manual tiver mais dias do que o limite, avisa o Admin."""
     import alertas_admin as aa
     semana = agora.strftime("%G-S%V")
+    estado_fontes = _ler(ARQ_DADOS, {}).get("fontes", {})
     for pais, f in fontes().items():
-        if f.get("modo") != "manual" or not f.get("ativa"):
+        if not f.get("ativa") or not (f.get("modo") == "manual" or f.get("lembrete_dias")):
             continue
+        ultimo = estado_fontes.get(pais) or {}
+        automatico_ok = ultimo.get("ok") is True and "ficheiro carregado" not in (ultimo.get("msg") or "")
+        if f.get("modo") != "manual" and automatico_ok:
+            continue  # o download automático está a funcionar: não é preciso nada
         dias = idade_manual(pais)
         limite = int(f.get("lembrete_dias") or 7)
         if dias is None or dias > limite:
             estado = "Ainda não carregaste nenhum ficheiro." if dias is None else f"O último ficheiro tem {dias} dias."
+            passos = "\n".join(f"{i}. {p}" for i, p in enumerate(f.get("instrucoes") or [], 1))
             aa.avisar(f"lembrete-{pais}:{semana}", f"Posições curtas: atualizar a lista da {f['nome']}",
-                      f"{estado}\n\n{f.get('nota', '')}\n\nPágina oficial: {f.get('pagina', '')}\n"
-                      "Depois: Área de Gestão → Fontes oficiais → «Carregar» na linha da Consob.", "info")
+                      f"{estado} O download automático não está a funcionar para esta fonte.\n\n{passos}\n\n"
+                      f"Página oficial: {f.get('pagina', '')}\nÁrea de Gestão → Fontes oficiais → «Carregar» na linha da {f['nome']}.", "info")
 
 
 # ---------------------------------------------------------------
