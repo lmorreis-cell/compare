@@ -625,9 +625,23 @@ function pintarFontes(d) {
         ${f.modo === "manual" ? `<div style="font-size:11px;color:${f.idade_manual === null || f.idade_manual === undefined || f.idade_manual > (f.lembrete_dias || 7) ? "var(--amarelo)" : "var(--suave)"}">${f.idade_manual === null || f.idade_manual === undefined ? "Manual · sem ficheiro" : `Manual · ficheiro de há ${f.idade_manual} dia(s)`}${f.idade_manual > (f.lembrete_dias || 7) ? " · está na altura de atualizar" : ""}</div>` : ""}</td>
       <td>${f.tipo === "cmvm" || f.modo === "manual" ? `<div style="font-size:12px;color:var(--suave)">${f.tipo === "cmvm" ? "Automático (serviço de dados da CMVM)" : "Manual: carrega o ficheiro ao lado →"}</div><input type="hidden" id="fo-url-${k}" value="${esc(f.url || "")}">` : `<input class="campo" style="width:100%;min-width:220px" id="fo-url-${k}" value="${esc(f.url || "")}" placeholder="${f.procurar_xlsx ? "procura o Excel na página oficial" : "sem download automático"}">`}
         <div style="margin-top:4px;display:flex;gap:6px;align-items:center"><label style="font-size:12px"><input type="checkbox" id="fo-ativa-${k}" ${f.ativa ? "checked" : ""}> ativa</label>
-        <button class="btn sec" style="padding:4px 10px" data-fo-gravar="${k}">Gravar</button></div>${f.nota ? `<div style="font-size:11px;color:var(--suave)">${esc(f.nota)}</div>` : ""}</td>
+        <button class="btn sec" style="padding:4px 10px" data-fo-gravar="${k}">Gravar</button></div>${f.nota ? `<div style="font-size:11px;color:var(--suave)">${esc(f.nota)}</div>` : ""}
+        ${foAjuda(k, f)}</td>
       <td><label class="btn sec" style="padding:5px 10px;cursor:pointer">📤 Carregar<input type="file" accept=".csv,.xlsx,.xls,.html,.htm" data-fo-upload="${k}" style="display:none"></label>
         ${f.manual ? `<div style="font-size:11px;color:var(--suave)">há um ficheiro carregado</div>` : ""}</td></tr>`).join("");
+}
+// Ajuda passo a passo + botão para abrir a página oficial (aparece aberta quando a fonte precisa de ti)
+function foAjuda(k, f) {
+  const precisa = f.ok === false || (f.msg || "").includes("ficheiro carregado") || f.modo === "manual";
+  const passos = f.instrucoes && f.instrucoes.length ? f.instrucoes
+    : ["Abre a página oficial do regulador (botão abaixo).", "Procura a lista ou o ficheiro das posições curtas líquidas atuais e descarrega-o (Excel, CSV ou a própria página guardada com Ctrl+S).", "Aqui, carrega em «Carregar» e escolhe esse ficheiro."];
+  if (!precisa && f.tipo === "cmvm") return "";
+  return `<details ${precisa ? "open" : ""} style="margin-top:6px;font-size:12px;background:var(--cartao2);border:1px solid var(--borda);border-radius:8px;padding:6px 10px">
+    <summary style="color:${precisa ? "var(--amarelo)" : "var(--suave)"}">${precisa ? "⚠️ Precisa de ti: como atualizar à mão" : "❓ Como atualizar à mão (se o automático falhar)"}</summary>
+    <ol style="margin:6px 0 6px 18px;padding:0;color:var(--texto);line-height:1.5">${passos.map(p => `<li>${esc(p)}</li>`).join("")}</ol>
+    ${f.pagina ? `<a class="btn sec" style="padding:5px 10px" href="${esc(f.pagina)}" target="_blank" rel="noopener">🌐 Abrir página oficial</a>` : ""}
+    ${f.lembrete_dias ? `<div style="font-size:11px;color:var(--suave);margin-top:4px">Se o automático falhar e o ficheiro tiver mais de ${f.lembrete_dias} dias, recebes um lembrete semanal na tua sala privada.</div>` : ""}
+  </details>`;
 }
 async function foPost(url, corpo, form) {
   const r = await fetch(url, form ? { method: "POST", credentials: "same-origin", body: form }
