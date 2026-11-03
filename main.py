@@ -3550,6 +3550,7 @@ ARQ_TESTE_FONTES = "teste_fontes.json"
 def _gravar_teste():
     """O progresso fica em disco: assim qualquer processo do servidor (ou um reinício) consegue mostrá-lo."""
     try:
+        _teste_fontes["sinal"] = datetime.now().isoformat(timespec="seconds")  # «batimento»: prova de que o teste está vivo
         tmp = ARQ_TESTE_FONTES + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(_teste_fontes, f, ensure_ascii=False)
@@ -3564,47 +3565,61 @@ class _ResultadosTeste(dict):
         _gravar_teste()
 
 
+def _passo(nome):
+    _teste_fontes["passo"] = nome
+    _gravar_teste()
+
+
 def _correr_teste_fontes():
     r = _teste_fontes["resultados"] = _ResultadosTeste()
     try:
+        _passo("BCE · câmbios")
         try:
             ok, msg = fontes_bce.atualizar_cambios(forcar=True)
             r["BCE · câmbios"] = {"ok": ok, "msg": msg}
         except Exception as e:
             r["BCE · câmbios"] = {"ok": False, "msg": str(e)[:300]}
         try:
+            _passo("BCE · juros e inflação (15 séries, pode demorar)")
             ok, msg = fontes_bce.atualizar_juros(forcar=True)
             r["BCE · juros e inflação"] = {"ok": ok, "msg": msg}
         except Exception as e:
             r["BCE · juros e inflação"] = {"ok": False, "msg": str(e)[:300]}
         try:
+            _passo("posições curtas dos reguladores europeus")
             nomes = posicoes_curtas.fontes()
             for pais, v in posicoes_curtas.atualizar(forcar=True).items():
                 r[f"Posições curtas · {nomes[pais]['nome']}"] = v
         except Exception as e:
             r["Posições curtas"] = {"ok": False, "msg": str(e)[:300]}
         try:
+            _passo("FINRA · short interest")
             d = posicoes_curtas.short_interest_eua("AAPL")
             r["FINRA · short interest EUA"] = {"ok": bool(d["datas"]), "msg": f"{len(d['datas'])} datas para AAPL." if d["datas"] else "Sem dados devolvidos."}
         except Exception as e:
             r["FINRA · short interest EUA"] = {"ok": False, "msg": str(e)[:300]}
+        _passo("SEC · ligação")
         r["SEC · insiders e fundamentos"] = sec_dados.testar()
         if r["SEC · insiders e fundamentos"].get("ok"):
             try:
+                _passo("SEC · carteiras 13F (13 gestores)")
                 ok_13f, erros_13f = sec_dados.atualizar_13f()
                 r["SEC · carteiras 13F"] = {"ok": ok_13f > 0, "msg": f"{ok_13f} de {len(sec_dados.GESTORES_13F)} gestores lidos."
                                             + (" Falhas: " + "; ".join(erros_13f) if erros_13f else "")}
             except Exception as e:
                 r["SEC · carteiras 13F"] = {"ok": False, "msg": str(e)[:300]}
         try:
+            _passo("FINRA · volume diário")
             d = posicoes_curtas.volume_curto_eua("AAPL")
             r["FINRA · volume diário a descoberto"] = {"ok": bool(d["dias"]), "msg": f"{len(d['dias'])} dias para AAPL · média {d['media_20']}%." if d["dias"] else "Sem dados devolvidos."}
         except Exception as e:
             r["FINRA · volume diário a descoberto"] = {"ok": False, "msg": str(e)[:300]}
+        _passo("Tesouro dos EUA, OCDE e CFTC")
         for k, v in fontes_mundo.testar().items():
             r[k] = v
     finally:
         _teste_fontes["a_correr"] = False
+        _teste_fontes["passo"] = None
         _teste_fontes["fim"] = datetime.now().isoformat(timespec="seconds")
         _gravar_teste()
 
@@ -3628,9 +3643,12 @@ def admin_fontes_testar():
             estado = json.load(f)
     except Exception:
         estado = dict(_teste_fontes)
-    # Teste interrompido (ex.: o servidor reiniciou a meio): ao fim de 6 minutos dá-se por terminado
-    if estado.get("a_correr") and estado.get("inicio") and \
-            (datetime.now() - datetime.fromisoformat(estado["inicio"])).total_seconds() > 360:
+    # Teste interrompido (ex.: o servidor reiniciou a meio)? Só se a thread já não existir neste processo E não houver
+    # sinal de vida há mais de 10 minutos (um teste lento, p. ex. com o BCE sobrecarregado, não é dado como terminado).
+    vivo = any(t.name == "teste-fontes" and t.is_alive() for t in threading.enumerate())
+    sinal = estado.get("sinal") or estado.get("inicio")
+    if estado.get("a_correr") and not vivo and sinal and \
+            (datetime.now() - datetime.fromisoformat(sinal)).total_seconds() > 600:
         estado["a_correr"] = False
         estado["interrompido"] = True
     return jsonify(estado)
