@@ -15,6 +15,7 @@ Todos os dias (hora de Lisboa):
     19:00 → posições curtas publicadas pelos reguladores europeus (posicoes_curtas.py)
     22:00 → curva de juros dos EUA e Commitments of Traders da CFTC; 12:00 → indicadores avançados da OCDE (fontes_mundo.py)
     de 30 em 30 min (dias úteis, 11:00–24:00) → comunicados 8-K dos tickers vigiados para o Discord; 04:00 → carteiras 13F (sec_dados.py)
+    de hora a hora (dias úteis, 08:00–22:00) → comunicados da CMVM: dirigentes, participações qualificadas, ações próprias (cmvm_comunicados.py)
     sempre → vigia: avisa o Admin em privado se a fotografia, um briefing ou um aviso falhar (alertas_admin.py)
 
 Todos os dias (10:00–21:59, hora de Lisboa):
@@ -52,6 +53,7 @@ import fontes_bce
 import posicoes_curtas
 import fontes_mundo
 import sec_dados
+import cmvm_comunicados
 
 try:
     from zoneinfo import ZoneInfo
@@ -135,7 +137,8 @@ def _ciclo():
                              (alertas_admin.vigiar, "vigia"), (fontes_bce.diario, "atualização do BCE"),
                              (posicoes_curtas.diario, "atualização das posições curtas"),
                              (fontes_mundo.diario, "atualização dos dados macro (Tesouro/OCDE/CFTC)"),
-                             (sec_dados.diario, "vigilância da SEC (8-K e 13F)")):
+                             (sec_dados.diario, "vigilância da SEC (8-K e 13F)"),
+                             (cmvm_comunicados.diario, "leitura dos comunicados da CMVM")):
             try:
                 tarefa(agora_lisboa())
             except Exception as e:

@@ -3380,6 +3380,7 @@ def admin_semanal_enviar():
 import posicoes_curtas
 import sec_dados
 import fontes_mundo
+import cmvm_comunicados
 
 _nomes_cache = {}
 
@@ -3481,6 +3482,18 @@ def api_oficial_sec(ticker):
     return jsonify(dados), (404 if dados.get("erro") else 200)
 
 
+@app.route('/api/oficial/cmvm')
+@requer_cargo(nivel_minimo=2)
+def api_oficial_cmvm():
+    """Comunicados da CMVM (dirigentes, participações qualificadas, ações próprias). Só lê a cópia local."""
+    q = (request.args.get('q') or '').strip()[:60]
+    tipo = request.args.get('tipo') if request.args.get('tipo') in cmvm_comunicados.TIPOS else None
+    nomes = _nomes_da_empresa(q) if q else []
+    d = cmvm_comunicados.painel(q, nomes, tipo)
+    d["nomes_usados"] = nomes
+    return jsonify(d)
+
+
 @app.route('/api/oficial/13f')
 @requer_cargo(nivel_minimo=2)
 def api_oficial_13f_lista():
@@ -3539,7 +3552,7 @@ def admin_fontes_estado():
     if not _e_admin():
         return jsonify({"erro": "Acesso negado. Apenas Admin."}), 403
     return jsonify({"bce": fontes_bce.estado(), "curtas": posicoes_curtas.estado(),
-                    "mundo": fontes_mundo.estado(),
+                    "mundo": fontes_mundo.estado(), "cmvm": cmvm_comunicados.estado(),
                     "sec_user_agent": bool((os.environ.get("SEC_USER_AGENT") or "").strip())})
 
 
@@ -3614,6 +3627,8 @@ def _correr_teste_fontes():
             r["FINRA · volume diário a descoberto"] = {"ok": bool(d["dias"]), "msg": f"{len(d['dias'])} dias para AAPL · média {d['media_20']}%." if d["dias"] else "Sem dados devolvidos."}
         except Exception as e:
             r["FINRA · volume diário a descoberto"] = {"ok": False, "msg": str(e)[:300]}
+        _passo("CMVM · comunicados de dirigentes e participações")
+        r["CMVM · dirigentes, participações e ações próprias"] = cmvm_comunicados.testar()
         _passo("Tesouro dos EUA, OCDE e CFTC")
         for k, v in fontes_mundo.testar().items():
             r[k] = v

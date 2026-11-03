@@ -211,6 +211,29 @@ def construir_relatorio():
     if partes:
         campos.append({"name": "💪 Força Relativa", "value": "\n".join(partes)[:1024], "inline": False})
 
+    # 5. Comunicados oficiais na CMVM desde a última sessão (dirigentes, participações qualificadas, ações próprias)
+    try:
+        import cmvm_comunicados as cc
+        from datetime import date as _d, timedelta as _td
+        hoje = _d.today()
+        desde = (hoje - _td(days=3 if hoje.weekday() == 0 else 1)).isoformat()
+        itens = [i for i in cc.painel(dias=5)["itens"] if i["data"] >= desde]
+        if itens:
+            ic = {"TRAN": "👔", "PQ": "🏛️", "ACPR": "🔁"}
+            seta = {"compra": "🟢 ", "venda": "🔴 ", "sobe": "⬆️ ", "desce": "⬇️ "}
+            linhas = [f"{ic.get(i['tipo'], '•')} {seta.get(i['sentido'], '')}**{i['emitente']}**: {i['resumo']}"
+                      + (f" ([PDF]({i['url']}))" if i.get("url") else "") for i in itens[:6]]
+            if len(itens) > 6:
+                linhas.append(f"… e mais {len(itens) - 6} no separador 🏦 Juros & Dados Oficiais.")
+            valor = ""
+            for l in linhas:  # corta por linhas inteiras (as ligações não podem ficar a meio)
+                if len(valor) + len(l) + 1 > 1020:
+                    break
+                valor += l + "\n"
+            campos.append({"name": "🏛️ Comunicados na CMVM (dirigentes, participações, ações próprias)", "value": valor.strip(), "inline": False})
+    except Exception as e:
+        print(f"[Briefing PSI] comunicados CMVM indisponíveis: {e}")
+
     rodape = "Portal Bolsa · Briefing PSI automático · ✅ fundamentos limpos ⚠️ alertas fundamentais · Informação educativa, não é recomendação de investimento"
     payload = {
         "embeds": [{
