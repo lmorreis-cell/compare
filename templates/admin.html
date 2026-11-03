@@ -620,7 +620,7 @@ function pintarFontes(d) {
   if (foEditado || $("c-fontes").contains(document.activeElement)) return;
   $("t-fo-curtas").querySelector("tbody").innerHTML = Object.entries(c.fontes).map(([k, f]) => `<tr>
       <td><b>${esc(f.nome)}</b><div style="font-size:11px;color:var(--suave)"><a href="${esc(f.pagina || "#")}" target="_blank" rel="noopener">página oficial ↗</a></div></td>
-      <td>${f.ok === true ? `<span class="pilula ok"><span class="ponto"></span>${f.n || 0} ${(f.n || 0) === 1 ? "posição" : "posições"}</span>` : f.ok === false ? `<span class="pilula erro" title="${esc(f.msg || "")}"><span class="ponto"></span>Falhou</span><div style="font-size:11px;color:#fca5a5;max-width:240px">${esc((f.msg || "").slice(0, 140))}</div>` : `<span class="pilula"><span class="ponto"></span>${f.ativa ? "por testar" : "desativada"}</span>`}
+      <td>${f.ok === true ? `<span class="pilula ok"><span class="ponto"></span>${f.n || 0} ${(f.n || 0) === 1 ? "posição" : "posições"}</span>` : f.ok === false ? `<span class="pilula erro" title="${esc(f.msg || "")}"><span class="ponto"></span>Falhou</span><div style="font-size:11px;color:#fca5a5;max-width:240px">${esc((f.msg || "").slice(0, 140))}</div>${f.diagnostico ? `<details style="font-size:11px;max-width:260px"><summary>Diagnóstico</summary><code style="white-space:pre-wrap;word-break:break-all;color:var(--suave)">${esc(f.diagnostico)}</code></details>` : ""}` : `<span class="pilula"><span class="ponto"></span>${f.ativa ? "por testar" : "desativada"}</span>`}
         ${f.em ? `<div style="font-size:11px;color:var(--suave)">${dataPt(f.em)}</div>` : ""}</td>
       <td><input class="campo" style="width:100%;min-width:220px" id="fo-url-${k}" value="${esc(f.url || "")}" placeholder="${f.procurar_xlsx ? "procura o Excel na página oficial" : "sem download automático"}">
         <div style="margin-top:4px;display:flex;gap:6px;align-items:center"><label style="font-size:12px"><input type="checkbox" id="fo-ativa-${k}" ${f.ativa ? "checked" : ""}> ativa</label>
@@ -659,18 +659,29 @@ $("b-fo-ca").addEventListener("click", async () => {
   if (r.j && r.j.sucesso) $("fo-ca-taxa").value = "";
   foRecarregar();
 });
-$("b-fo-testar").addEventListener("click", async () => {
-  $("b-fo-testar").disabled = true; $("b-fo-testar").textContent = "⏳ A testar (até 2 min)…";
-  msg("msg-fo", "info", "A testar cada fonte a partir do servidor…");
-  const r = await foPost("/api/admin/fontes/testar");
-  $("b-fo-testar").disabled = false; $("b-fo-testar").textContent = "🧪 Testar fontes agora";
-  if (!r.j || !r.j.resultados) { msg("msg-fo", "erro", (r.j && r.j.erro) || `Erro ${r.estado}`); return; }
+function foPintarTeste(j) {
   const t = $("t-fo-teste"); t.style.display = "";
-  t.querySelector("tbody").innerHTML = Object.entries(r.j.resultados).map(([n, v]) =>
-    `<tr><td>${esc(n)}</td><td>${v.ok === true ? "🟢" : v.ok === false ? "🔴" : "⚪"} ${esc(v.msg || "")}</td></tr>`).join("");
-  const falhas = Object.values(r.j.resultados).filter(v => v.ok === false).length;
+  t.querySelector("tbody").innerHTML = Object.entries(j.resultados || {}).map(([n, v]) =>
+    `<tr><td>${esc(n)}</td><td>${v.ok === true ? "🟢" : v.ok === false ? "🔴" : "⚪"} ${esc(v.msg || "")}
+      ${v.diagnostico ? `<details style="margin:4px 0 0"><summary>Diagnóstico (envia-me isto se precisares de ajuda)</summary><code style="font-size:11px;white-space:pre-wrap;word-break:break-all;display:block;color:var(--suave)">${esc(v.diagnostico)}</code></details>` : ""}</td></tr>`).join("")
+    + (j.a_correr ? `<tr><td colspan="2" style="color:var(--laranja)">⏳ A testar as restantes fontes…</td></tr>` : "");
+}
+async function foAcompanharTeste() {
+  const r = await pedir("/api/admin/fontes/testar");
+  if (!r.ok || !r.j) { msg("msg-fo", "erro", `Erro ${r.estado}`); return; }
+  foPintarTeste(r.j);
+  if (r.j.a_correr) { setTimeout(foAcompanharTeste, 3000); return; }
+  $("b-fo-testar").disabled = false; $("b-fo-testar").textContent = "🧪 Testar fontes agora";
+  const falhas = Object.values(r.j.resultados || {}).filter(v => v.ok === false).length;
   msg("msg-fo", falhas ? "erro" : "ok", falhas ? `${falhas} fonte(s) falharam: vê o detalhe na tabela.` : "Todas as fontes responderam.");
   foRecarregar();
+}
+$("b-fo-testar").addEventListener("click", async () => {
+  $("b-fo-testar").disabled = true; $("b-fo-testar").textContent = "⏳ A testar (1 a 3 min)…";
+  msg("msg-fo", "info", "A testar cada fonte a partir do servidor. Podes continuar nesta página: a tabela vai-se preenchendo.");
+  const r = await foPost("/api/admin/fontes/testar");
+  if (!r.ok) { $("b-fo-testar").disabled = false; $("b-fo-testar").textContent = "🧪 Testar fontes agora"; msg("msg-fo", "erro", (r.j && r.j.erro) || `Erro ${r.estado}`); return; }
+  setTimeout(foAcompanharTeste, 2000);
 });
 
 // ---------------- Briefing Semanal
