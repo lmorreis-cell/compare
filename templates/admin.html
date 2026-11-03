@@ -147,9 +147,9 @@
       <div class="seta">→</div>
       <div class="passo"><span class="hora">todo o dia</span><b>🔎 Screener</b>Os membros leem a fotografia — zero pedidos ao Yahoo.</div>
       <div class="seta">→</div>
-      <div class="passo"><span class="hora">08:00</span><b>☀️ Briefing EUA</b>Sala dos States no Discord.</div>
+      <div class="passo"><span class="hora" id="fluxo-hora-psi">07:50</span><b>🇵🇹 Briefing PSI</b>Sala do PSI no Discord.</div>
       <div class="seta">→</div>
-      <div class="passo"><span class="hora">08:10</span><b>🇵🇹 Briefing PSI</b>Sala do PSI no Discord.</div>
+      <div class="passo"><span class="hora">08:00</span><b>☀️ Briefing EUA</b>Sala dos States no Discord.</div>
     </div>
   </section>
 
@@ -188,7 +188,7 @@
     <!-- BRIEFING PSI -->
     <article class="cartao" id="c-psi">
       <div class="cab"><span style="font-size:20px">🇵🇹</span><h2>Briefing PSI (Lisboa)</h2><span class="pilula" id="p-psi">—</span></div>
-      <p class="explica">As 16 cotadas do PSI com as mesmas regras do Screener: quadro da sessão, saúde do índice, setups com histórico e força relativa contra o PSI. Envia-se sozinho às <b>08:10</b> para a sala definida em <b>WEBHOOK_RELATORIO_PSI</b>. Se a fotografia do PSI faltar, calcula-a na hora com um único pedido.</p>
+      <p class="explica">As 16 cotadas do PSI com as mesmas regras do Screener: quadro da sessão, saúde do índice, setups com histórico e força relativa contra o PSI. Envia-se sozinho nos dias úteis às <b id="explica-hora-psi">07:50</b> (antes do Briefing EUA) para a sala definida em <b>WEBHOOK_RELATORIO_PSI</b>; para mudar a hora, define <b>HORA_RELATORIO_PSI</b>. Se falhar, tenta mais 2 vezes com 10 minutos de intervalo. Só salta o envio em feriados de Lisboa (sem sessão nova). Se a fotografia do PSI faltar, calcula-a na hora com um único pedido.</p>
       <table class="dados" id="t-psi"></table>
       <div class="acoes">
         <a class="btn sec" href="/api/admin/relatorio_psi/preview" target="_blank">👁 Pré-visualizar</a>
@@ -363,7 +363,9 @@ function pintarSnapshot(d) {
   // Briefings
   const hoje = (d.hora_lisboa || "").slice(0, 10);
   pintarBriefing("mat", d.briefing || {}, hoje, "WEBHOOK_RELATORIO", "08:00");
-  pintarBriefing("psi", d.briefing_psi || {}, hoje, "WEBHOOK_RELATORIO_PSI", (d.briefing_psi || {}).hora_envio || "08:10");
+  const horaPsi = (d.briefing_psi || {}).hora_envio || "07:50";
+  pintarBriefing("psi", d.briefing_psi || {}, hoje, "WEBHOOK_RELATORIO_PSI", horaPsi);
+  $("fluxo-hora-psi").textContent = horaPsi; $("explica-hora-psi").textContent = horaPsi;
   $("dica-mat").style.display = (f.sp500 && f.sp500.fresco) || (f.ndx && f.ndx.fresco) ? "none" : "block";
 }
 
@@ -380,6 +382,8 @@ function pintarBriefing(chave, b, hoje, variavel, hora) {
     ["Último envio", dataPt(b.ultimo_envio)],
     ["Sessão enviada", dataPt(b.data_mercado_enviada, false)],
     b.ultimo_erro ? ["Último erro", `<span style="color:#fca5a5">${esc(b.ultimo_erro)}</span>`] : null,
+    b.ultimo_ignorado && b.ultimo_ignorado.startsWith(hoje) ? ["Ignorado hoje", `<span style="color:var(--amarelo)">${esc(b.ultimo_ignorado.slice(20))}</span>`] : null,
+    b.envio_manual && b.dia_envio === hoje ? ["Tipo de envio", "manual (botão Enviar agora)"] : null,
   ]);
 
   if (!b.webhook_configurado) { pilula(`p-${chave}`, "erro", "Sem webhook"); mosaico(chave, "erro", "Sem webhook", `define ${variavel}`); }
