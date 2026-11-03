@@ -713,7 +713,7 @@ function foPintarTeste(j) {
   t.querySelector("tbody").innerHTML = Object.entries(j.resultados || {}).map(([n, v]) =>
     `<tr><td>${esc(n)}</td><td>${v.ok === true ? "🟢" : v.ok === false ? "🔴" : "⚪"} ${esc(v.msg || "")}
       ${v.diagnostico ? `<details style="margin:4px 0 0"><summary>Diagnóstico (envia-me isto se precisares de ajuda)</summary><code style="font-size:11px;white-space:pre-wrap;word-break:break-all;display:block;color:var(--suave)">${esc(v.diagnostico)}</code></details>` : ""}</td></tr>`).join("")
-    + (j.a_correr ? `<tr><td colspan="2" style="color:var(--laranja)">⏳ A testar as restantes fontes…</td></tr>` : "");
+    + (j.a_correr ? `<tr><td colspan="2" style="color:var(--laranja)">⏳ A testar: ${esc(j.passo || "as restantes fontes")}…</td></tr>` : "");
 }
 let foFalhasSeguidas = 0;
 async function foAcompanharTeste() {
@@ -726,8 +726,12 @@ async function foAcompanharTeste() {
     return;
   }
   foFalhasSeguidas = 0;
-  if (r.j.interrompido) msg("msg-fo", "erro", "O teste foi interrompido (o servidor reiniciou a meio). Vê os registos da Discloud.");
   foPintarTeste(r.j);
+  if (r.j.interrompido) {
+    $("b-fo-testar").disabled = false; $("b-fo-testar").textContent = "🧪 Testar fontes agora";
+    msg("msg-fo", "erro", "O teste foi interrompido a meio (o servidor reiniciou ou foi atualizado). Corre-o de novo.");
+    return;
+  }
   if (r.j.a_correr) { setTimeout(foAcompanharTeste, 3000); return; }
   $("b-fo-testar").disabled = false; $("b-fo-testar").textContent = "🧪 Testar fontes agora";
   const falhas = Object.values(r.j.resultados || {}).filter(v => v.ok === false).length;
