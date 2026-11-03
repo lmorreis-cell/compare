@@ -178,6 +178,9 @@
             border-style: solid; 
             border-color: #1a1a1a transparent transparent transparent; 
         }
+        /* Tooltips do separador Dados Oficiais: posicionados por JS (position:fixed) para não serem cortados pelas tabelas com scroll */
+        .dica-texto.dica-flutuante { text-transform: none !important; letter-spacing: normal !important; position: fixed !important; transform: none !important; bottom: auto !important; right: auto !important; z-index: 5000 !important; transition: opacity 0.15s ease !important; }
+        .dica-texto.dica-flutuante::after { display: none; }
         .dica-edu:hover .dica-texto { 
             visibility: visible; 
             opacity: 1; 
@@ -7789,6 +7792,33 @@ function renderizarCalendarioDiario() {
     const ofData = iso => !iso ? '—' : (iso.length === 7 ? ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'][parseInt(iso.slice(5, 7)) - 1] + ' ' + iso.slice(0, 4) : iso.slice(0, 10).split('-').reverse().join('/'));
     const ofDica = (t, w = 280) => `<span class="dica-edu" style="color:#8b949e;cursor:help">ℹ️<span class="dica-texto" style="width:${w}px">${t}</span></span>`;
     let ofCarregado = false;
+
+    // Tooltips que nunca ficam cortados: ao passar o rato, a caixa é colocada em coordenadas do ecrã,
+    // acima do ícone (ou abaixo, se não houver espaço) e sempre dentro da janela.
+    (function () {
+        const raiz = document.getElementById('tab-oficial');
+        if (!raiz) return;
+        raiz.addEventListener('mouseover', ev => {
+            const d = ev.target.closest('.dica-edu');
+            if (!d || !raiz.contains(d)) return;
+            const t = d.querySelector(':scope > .dica-texto');
+            if (!t || t.classList.contains('dica-flutuante')) return;
+            t.classList.add('dica-flutuante');
+            const r = d.getBoundingClientRect(), w = t.offsetWidth, h = t.offsetHeight, m = 8;
+            let left = Math.min(Math.max(m, r.left + r.width / 2 - w / 2), window.innerWidth - w - m);
+            let top = r.top - h - 10;
+            if (top < m) top = Math.min(r.bottom + 10, window.innerHeight - h - m);
+            t.style.left = left + 'px';
+            t.style.top = top + 'px';
+        });
+        raiz.addEventListener('mouseout', ev => {
+            const d = ev.target.closest('.dica-edu');
+            if (!d || d.contains(ev.relatedTarget)) return;
+            const t = d.querySelector(':scope > .dica-texto');
+            if (t && t.classList.contains('dica-flutuante')) { t.classList.remove('dica-flutuante'); t.style.left = ''; t.style.top = ''; }
+        });
+        window.addEventListener('scroll', () => raiz.querySelectorAll('.dica-flutuante').forEach(t => { t.classList.remove('dica-flutuante'); t.style.left = ''; t.style.top = ''; }), true);
+    })();
 
     function carregarOficial() {
         if (ofCarregado) return;
