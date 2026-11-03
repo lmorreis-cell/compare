@@ -12,11 +12,15 @@ Uso:
     import relatorio_psi as rel_psi
     rel_psi.construir_relatorio()     # devolve (payload, erro) para pré-visualizar
     rel_psi.enviar_relatorio()        # envia (no máximo 1 vez por dia, salvo forcar=True)
-    rel_psi.iniciar()                 # relógio interno: dias úteis às 07:50 (Lisboa)
+    rel_psi.envio_agendado(agora)     # chamado pelo agendador.py a cada minuto (dias úteis, 07:50 Lisboa)
+
+O envio automático é feito pelo agendador.py (um só relógio para o portal). iniciar() ficou
+sem efeito e só existe para o main.py continuar a funcionar sem alterações.
 
 Variáveis de ambiente:
     WEBHOOK_RELATORIO_PSI   (obrigatória) webhook da sala do Discord para o PSI
-    PSI_HORA_ENVIO          (opcional)    "HH:MM", hora de Lisboa. Por omissão "07:50"
+    HORA_RELATORIO_PSI      (opcional)    "HH:MM", hora de Lisboa. Por omissão "07:50"
+                                          (PSI_HORA_ENVIO, o nome antigo, continua a ser aceite)
     PSI_TICKERS             (opcional)    lista separada por vírgulas para substituir a composição
 """
 
@@ -24,7 +28,7 @@ import json
 import os
 import threading
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import requests
 
@@ -50,6 +54,16 @@ def agora_lisboa():
     return datetime.now(TZ_LISBOA) if TZ_LISBOA else datetime.now()
 
 
+def hora_envio():
+    """(h, m) do envio automático. HORA_RELATORIO_PSI tem prioridade; depois o nome antigo; senão 07:50."""
+    txt = os.environ.get("HORA_RELATORIO_PSI") or os.environ.get("PSI_HORA_ENVIO") or "07:50"
+    try:
+        h, m = (int(x) for x in txt.split(":"))
+        return h, m
+    except Exception:
+        return 7, 50
+
+
 def _ler_estado():
     try:
         with open(ARQUIVO_ESTADO, "r", encoding="utf-8") as f:
@@ -67,7 +81,7 @@ def _gravar_estado(est):
 def estado():
     est = _ler_estado()
     est["webhook_configurado"] = bool(_webhook())
-    est["hora_envio"] = os.environ.get("PSI_HORA_ENVIO", "07:50")
+    est["hora_envio"] = "%02d:%02d" % hora_envio()
     est["cotadas"] = len(snap.composicao_psi())
     return est
 
@@ -228,9 +242,10 @@ def enviar_relatorio(forcar=False):
         return False, erro
 
     data_mercado = (snap.carregar("psi") or {}).get("data_mercado")
-    if not forcar and data_mercado and est.get("data_mercado_enviada") == data_mercado:
+    if not forcar and data_mercado and _sem_sessao_nova(data_mercado, est):
         # Feriado em Lisboa (ex.: 25 de abril, 1 de dezembro): não repete o briefing de ontem
         est["dia_envio"] = hoje
+        est["ultimo_ignorado"] = f"{agora_lisboa().isoformat(timespec='seconds')}: sem sessão nova (fecho de {data_mercado})"
         _gravar_estado(est)
         return False, "Sem sessão nova em Lisboa desde o último briefing (feriado?). Envio ignorado."
 
@@ -247,57 +262,84 @@ def enviar_relatorio(forcar=False):
         "ultimo_envio": agora_lisboa().isoformat(timespec="seconds"),
         "data_mercado_enviada": data_mercado,
         "ultimo_erro": None,
+        "envio_manual": bool(forcar),
     })
+    if not forcar:
+        # Só os envios automáticos servem de referência para detetar feriados: um envio manual feito
+        # depois do fecho (ex.: um teste ao fim do dia) já não bloqueia o briefing da manhã seguinte.
+        est["data_mercado_auto"] = data_mercado
     _gravar_estado(est)
     return True, "Briefing PSI enviado para o Discord."
 
 
-# ------------------------------------------------------------------ relógio interno
+def _sem_sessao_nova(data_mercado, est):
+    """True só quando é mesmo um feriado: o fecho disponível é o mesmo do último envio AUTOMÁTICO
+    e é anterior à última sessão útil esperada (ontem, ou sexta-feira à segunda)."""
+    ref = est.get("data_mercado_auto", est.get("data_mercado_enviada") if not est.get("envio_manual") else None)
+    if not ref or ref != data_mercado:
+        return False
+    hoje = agora_lisboa().date()
+    esperado = hoje - timedelta(days=3 if hoje.weekday() == 0 else 1)
+    try:
+        return datetime.strptime(data_mercado[:10], "%Y-%m-%d").date() < esperado
+    except Exception:
+        return True
+
+
+# ------------------------------------------------------------------ envio automático (agendador.py)
+JANELA_HORAS = 2           # tenta entre a hora marcada e 2 h depois
+MAX_TENTATIVAS = 3
+INTERVALO_TENTATIVAS_MIN = 10
+_tentativas = {}
+
+
+def envio_agendado(agora=None):
+    """Chamado pelo agendador.py a cada minuto. Envia no máximo 1 vez por dia útil, com até 3
+    tentativas espaçadas de 10 minutos se falhar. Devolve a mensagem quando tenta, senão None."""
+    agora = agora or agora_lisboa()
+    if agora.weekday() > 4:
+        return None
+    h, m = hora_envio()
+    inicio = agora.replace(hour=h, minute=m, second=0, microsecond=0)
+    if not (inicio <= agora < inicio + timedelta(hours=JANELA_HORAS)):
+        return None
+    dia = agora.strftime("%Y-%m-%d")
+    if _ler_estado().get("dia_envio") == dia:
+        return None
+    t = _tentativas.get(dia, {"n": 0, "ultima": 0.0})
+    if t["n"] >= MAX_TENTATIVAS or time.time() - t["ultima"] < INTERVALO_TENTATIVAS_MIN * 60:
+        return None
+
+    # Trinco por ficheiro: evita envios duplicados se houver vários workers
+    os.makedirs(snap.PASTA, exist_ok=True)
+    trinco = os.path.join(snap.PASTA, f".psi_{dia}.lock")
+    try:
+        fd = os.open(trinco, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        os.close(fd)
+    except FileExistsError:
+        if time.time() - os.path.getmtime(trinco) < INTERVALO_TENTATIVAS_MIN * 60:
+            return None
+        os.utime(trinco)
+
+    _tentativas[dia] = {"n": t["n"] + 1, "ultima": time.time()}
+    ok, msg = enviar_relatorio()
+    print(f"[Briefing PSI] {agora:%H:%M} tentativa {t['n'] + 1}: {msg}", flush=True)
+    if not ok and "já foi enviado" not in msg and "Envio ignorado" not in msg:
+        est = _ler_estado()
+        est["tentativas_hoje"] = {"dia": dia, "n": t["n"] + 1}
+        _gravar_estado(est)
+    return msg
+
+
+# ------------------------------------------------------------------ relógio antigo (desativado)
 _arrancado = False
 
 
-def _ciclo():
-    hora_txt = os.environ.get("PSI_HORA_ENVIO", "07:50")
-    try:
-        h, m = (int(x) for x in hora_txt.split(":"))
-    except Exception:
-        h, m = 7, 50
-    tentativas = {}
-    while True:
-        try:
-            agora = agora_lisboa()
-            dia = agora.strftime("%Y-%m-%d")
-            janela_aberta = agora.weekday() < 5 and (h, m) <= (agora.hour, agora.minute) < (h + 2, m)
-            if janela_aberta and _ler_estado().get("dia_envio") != dia and tentativas.get(dia, 0) < 3:
-                # Trinco por ficheiro: evita envios duplicados se houver vários workers
-                os.makedirs(snap.PASTA, exist_ok=True)
-                trinco = os.path.join(snap.PASTA, f".psi_{dia}.lock")
-                try:
-                    fd = os.open(trinco, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-                    os.close(fd)
-                except FileExistsError:
-                    if time.time() - os.path.getmtime(trinco) < 600:
-                        time.sleep(60)
-                        continue
-                    os.utime(trinco)
-                tentativas[dia] = tentativas.get(dia, 0) + 1
-                ok, msg = enviar_relatorio()
-                print(f"[Briefing PSI] {agora:%H:%M} {msg}", flush=True)
-                if not ok and "já foi enviado" not in msg and "Envio ignorado" not in msg:
-                    try:
-                        os.remove(trinco)  # permite nova tentativa daqui a 10 minutos
-                    except OSError:
-                        pass
-                    time.sleep(540)
-        except Exception as e:
-            print(f"[Briefing PSI] erro no relógio: {e}", flush=True)
-        time.sleep(60)
-
-
 def iniciar():
-    """Arranca o relógio do briefing PSI (uma vez por processo)."""
+    """Sem efeito: o envio automático passou para o agendador.py (envio_agendado).
+    Mantida para o main.py continuar a chamar rel_psi.iniciar() sem erros."""
     global _arrancado
-    if _arrancado:
-        return
-    _arrancado = True
-    threading.Thread(target=_ciclo, daemon=True, name="briefing_psi").start()
+    if not _arrancado:
+        _arrancado = True
+        h, m = hora_envio()
+        print(f"[Briefing PSI] Envio automático pelo agendador: dias úteis às {h:02d}:{m:02d} (Lisboa).", flush=True)

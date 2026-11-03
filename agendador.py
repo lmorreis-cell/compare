@@ -3,6 +3,7 @@ agendador.py — Relógio interno do portal (dispensa configurar crons externos)
 
 Dias úteis (segunda a sexta, hora de Lisboa):
     22:30 → tira o Snapshot diário (depois do fecho de Wall Street, às 21:00 em Lisboa)
+    07:50 → envia o Briefing PSI para o Discord (sala WEBHOOK_RELATORIO_PSI; ver relatorio_psi.py)
     08:00 → envia o Briefing Matinal para o Discord (com o snapshot da noite anterior)
 
 Todos os dias (10:00–21:59, hora de Lisboa):
@@ -19,6 +20,7 @@ Variáveis de ambiente opcionais (Discloud → Variáveis):
     AGENDADOR_ATIVO=0        desliga o agendador
     HORA_SNAPSHOT=22:30      muda a hora do snapshot
     HORA_RELATORIO=08:00     muda a hora do briefing
+    HORA_RELATORIO_PSI=07:50 muda a hora do Briefing PSI
     RELATORIO_ATIVO=0        mantém o snapshot mas não envia o briefing
 """
 
@@ -30,6 +32,7 @@ from datetime import datetime, timedelta
 import yahoo_guard as yg
 import snapshot_diario as snap
 import relatorio_matinal as rel
+import relatorio_psi as rel_psi
 import liga_avisos
 
 try:
@@ -93,8 +96,8 @@ def _deve_enviar_relatorio(agora):
 
 
 def _ciclo():
-    print("[agendador] Ativo: snapshot às %02d:%02d e briefing às %02d:%02d (dias úteis, Lisboa)."
-          % (_hora("HORA_SNAPSHOT", "22:30") + _hora("HORA_RELATORIO", "08:00")))
+    print("[agendador] Ativo: snapshot às %02d:%02d, briefing PSI às %02d:%02d e briefing EUA às %02d:%02d (dias úteis, Lisboa)."
+          % (_hora("HORA_SNAPSHOT", "22:30") + rel_psi.hora_envio() + _hora("HORA_RELATORIO", "08:00")))
     time.sleep(30)  # deixa o servidor arrancar primeiro
     while True:
         try:
@@ -106,6 +109,10 @@ def _ciclo():
                 print(f"[agendador] Briefing Matinal: {msg}")
         except Exception as e:
             print(f"[agendador] Erro no ciclo: {e}")
+        try:
+            rel_psi.envio_agendado(agora_lisboa())  # Briefing PSI (independente do snapshot e do briefing EUA)
+        except Exception as e:
+            print(f"[agendador] Erro no Briefing PSI: {e}")
         try:
             liga_avisos.verificar(agora_lisboa())  # avisos da Liga (independentes do snapshot e do briefing)
         except Exception as e:
