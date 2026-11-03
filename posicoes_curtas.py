@@ -431,12 +431,13 @@ def _consolidar(posicoes):
     return [p for p in ultimo.values() if p["pct"] >= LIMIAR]
 
 
-def atualizar(paises=None, forcar=False):
+def atualizar(paises=None, forcar=False):  # forcar=True: ignora a pausa depois de um captcha
     """Descarrega as fontes ativas. Uma fonte que falhe mantém os dados anteriores. Devolve o relatório."""
     with _lock:
         f = fontes()
         dados = _ler(ARQ_DADOS, {"posicoes": [], "fontes": {}})
         relatorio = {}
+        captcha_ate = {}
         por_pais = {}
         for p in dados.get("posicoes", []):
             por_pais.setdefault(p["pais"], []).append(p)
@@ -465,6 +466,11 @@ def atualizar(paises=None, forcar=False):
                     por_pais[pais] = posicoes
                     relatorio[pais] = {"ok": True, "n": len(posicoes), "msg": f"{len(posicoes)} posições atuais em {n_emit} emitentes (serviço da CMVM)."}
                     continue
+                # Site que nos mostrou um captcha: não insistimos todos os dias (só no «Testar fontes»)
+                bloq = (dados.get("fontes", {}).get(pais) or {}).get("captcha_ate")
+                if bloq and bloq >= date.today().isoformat() and not forcar:
+                    captcha_ate[pais] = bloq  # mantém a pausa registada
+                    raise RuntimeError(f"Download automático em pausa até {bloq} (o site mostrou um captcha).")
                 manual = _ficheiro_manual(pais)
                 if manual and (not fonte.get("url") and not fonte.get("procurar_xlsx")):
                     with open(manual, "rb") as fh:
@@ -473,6 +479,10 @@ def atualizar(paises=None, forcar=False):
                 else:
                     conteudo, tipo = _descarregar(fonte)
                     origem = "download automático"
+                    if re.search(rb"captcha|perfdrive|radware", conteudo[:20000], re.I) and b"<html" in conteudo[:2000].lower():
+                        captcha_ate[pais] = (date.today() + timedelta(days=7)).isoformat()
+                        raise RuntimeError("O site bloqueou o download automático com um captcha (proteção anti-robô). "
+                                           "Carrega o ficheiro à mão seguindo os passos abaixo; o portal volta a tentar o automático daqui a 7 dias.")
                 posicoes = _consolidar(_ler_conteudo(conteudo, tipo, pais))
                 if not posicoes:
                     raise RuntimeError("O ficheiro foi lido mas não reconheci posições (o formato mudou?).")
@@ -497,7 +507,8 @@ def atualizar(paises=None, forcar=False):
                     diag["url"] = _url_usado.get(fonte.get("nome", ""), fonte.get("url"))
                     relatorio[pais]["diagnostico"] = json.dumps(diag, ensure_ascii=False)[:1800]
         dados["posicoes"] = [p for lista in por_pais.values() for p in lista]
-        dados["fontes"] = {**dados.get("fontes", {}), **{k: {**v, "em": datetime.now().isoformat(timespec="seconds")}
+        dados["fontes"] = {**dados.get("fontes", {}), **{k: {**v, "em": datetime.now().isoformat(timespec="seconds"),
+                                                              **({"captcha_ate": captcha_ate[k]} if k in captcha_ate else {})}
                                                           for k, v in relatorio.items()}}
         dados["atualizado_em"] = datetime.now().isoformat(timespec="seconds")
         _gravar(ARQ_DADOS, dados)

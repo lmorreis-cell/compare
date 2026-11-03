@@ -3497,7 +3497,7 @@ def _correr_teste_fontes():
             r["BCE · juros e inflação"] = {"ok": False, "msg": str(e)[:300]}
         try:
             nomes = posicoes_curtas.fontes()
-            for pais, v in posicoes_curtas.atualizar().items():
+            for pais, v in posicoes_curtas.atualizar(forcar=True).items():
                 r[f"Posições curtas · {nomes[pais]['nome']}"] = v
         except Exception as e:
             r["Posições curtas"] = {"ok": False, "msg": str(e)[:300]}
