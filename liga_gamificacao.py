@@ -337,12 +337,8 @@ def _medalhas_do_membro(s, detentores):
     return resultado
 
 
-def calcular_hall_of_fame(user_id=None):
-    hist = carregar_historico()
-    stats = _estatisticas(hist)
-    user_id = str(user_id) if user_id is not None else None
-
-    # Detentores das medalhas únicas
+def _detentores(stats):
+    """Quem detém as medalhas únicas."""
     detentores = {}
     elegiveis_shorts = [s for s in stats.values() if s["n_shorts"] >= MIN_SHORTS and (s["media_shorts"] or 0) > 0]
     if elegiveis_shorts:
@@ -350,6 +346,80 @@ def calcular_hall_of_fame(user_id=None):
     com_score = [s for s in stats.values() if s["melhor_score"] is not None]
     if com_score:
         detentores["recorde"] = max(com_score, key=lambda s: s["melhor_score"])["user_id"]
+    return detentores
+
+
+def perfil_membro(user_id):
+    """Perfil público de um membro: só edições FECHADAS (as carteiras em jogo continuam protegidas)."""
+    user_id = str(user_id)
+    hist = carregar_historico()
+    stats = _estatisticas(hist)
+    s = stats.get(user_id)
+    if not s:
+        return None
+    detentores = _detentores(stats)
+    medalhas = _medalhas_do_membro(s, detentores)
+
+    edicoes, slots, alfas, efs, quedas = [], [], [], [], []
+    for mes in sorted(hist):
+        r = next((x for x in hist[mes].get("ranking", []) if x["user_id"] == user_id), None)
+        if not r:
+            continue
+        edicoes.append({"mes": mes, "posicao": r["posicao"], "total": len(hist[mes].get("ranking", [])),
+                        "score": r["score_total"], "alfa": r.get("alfa"), "premio_prudente": bool(r.get("premio_prudente")),
+                        "ativos": [x.get("ticker") for x in r.get("slots", [])]})
+        slots.extend(r.get("slots", []))
+        if r.get("alfa") is not None:
+            alfas.append(r["alfa"])
+        if r.get("eficiencia") is not None:
+            efs.append(r["eficiencia"])
+        if r.get("queda_max") is not None:
+            quedas.append(r["queda_max"])
+
+    def contar(chave):
+        c = {}
+        for x in slots:
+            v = x.get(chave)
+            if v:
+                c[v] = c.get(v, 0) + 1
+        return [{"nome": k, "n": v} for k, v in sorted(c.items(), key=lambda kv: -kv[1])[:5]]
+
+    n = len(slots) or 1
+    media = lambda xs: round(sum(xs) / len(xs), 2) if xs else None
+    n_short = sum(1 for x in slots if x.get("direcao") == "SHORT")
+    estilo = {
+        "slots": len(slots),
+        "pct_long": round((len(slots) - n_short) / n * 100),
+        "pct_short": round(n_short / n * 100),
+        "pct_alvos": round(sum(1 for x in slots if x.get("tocou")) / n * 100),
+        "pct_positivos": round(sum(1 for x in slots if (x.get("ret") or 0) > 0) / n * 100),
+        "alfa_medio": media(alfas),
+        "eficiencia_media": media(efs),
+        "queda_media": media(quedas),
+        "setores": contar("setor"),
+        "ativos": contar("ticker"),
+    }
+    temporadas = []
+    for ano, lista in sorted(calcular_temporadas(hist).items(), reverse=True):
+        t = next((x for x in lista if x["user_id"] == user_id), None)
+        if t:
+            temporadas.append({"ano": ano, "posicao": t["posicao"], "de": len(lista), "pontos": t["pontos"]})
+    return {
+        "user_id": user_id, "username": s["username"],
+        "resumo": {k: s[k] for k in ("participacoes", "titulos", "podios", "melhor_sequencia", "sequencia_atual",
+                                     "sniper_hits", "alvos_tocados", "melhor_score", "mes_melhor_score")},
+        "media_score": round(s["soma_score"] / s["participacoes"], 2) if s["participacoes"] else None,
+        "medalhas": medalhas, "estilo": estilo, "edicoes": list(reversed(edicoes)), "temporadas": temporadas,
+    }
+
+
+def calcular_hall_of_fame(user_id=None):
+    hist = carregar_historico()
+    stats = _estatisticas(hist)
+    user_id = str(user_id) if user_id is not None else None
+
+    # Detentores das medalhas únicas
+    detentores = _detentores(stats)
 
     geral = []
     icones = {}

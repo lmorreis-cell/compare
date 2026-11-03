@@ -207,10 +207,15 @@ def enviar_relatorio(forcar=False):
 
     payload, erro = construir_relatorio()
     if erro:
+        est["ultimo_erro"] = f"{datetime.now().isoformat(timespec='seconds')}: {erro}"  # visível na Gestão e nos avisos ao Admin
+        _gravar_estado(est)
         return False, erro
 
     macro = snap.carregar("macro") or {}
-    if not forcar and est.get("data_mercado_enviada") == macro.get("data_mercado"):
+    # Só os envios AUTOMÁTICOS servem de referência: um envio manual feito à noite (depois da fotografia)
+    # já não bloqueia o briefing da manhã seguinte.
+    ref = est.get("data_mercado_auto", est.get("data_mercado_enviada") if not est.get("envio_manual") else None)
+    if not forcar and ref and ref == macro.get("data_mercado"):
         # Ex.: feriado nos EUA — não repete o mesmo briefing duas manhãs seguidas
         est["dia_envio"] = hoje
         _gravar_estado(est)
@@ -228,6 +233,10 @@ def enviar_relatorio(forcar=False):
         "dia_envio": hoje,
         "ultimo_envio": datetime.now().isoformat(timespec='seconds'),
         "data_mercado_enviada": macro.get("data_mercado"),
+        "ultimo_erro": None,
+        "envio_manual": bool(forcar),
     })
+    if not forcar:
+        est["data_mercado_auto"] = macro.get("data_mercado")
     _gravar_estado(est)
     return True, "Briefing Matinal enviado para o Discord."

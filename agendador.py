@@ -6,6 +6,13 @@ Dias úteis (segunda a sexta, hora de Lisboa):
     07:50 → envia o Briefing PSI para o Discord (sala WEBHOOK_RELATORIO_PSI; ver relatorio_psi.py)
     08:00 → envia o Briefing Matinal para o Discord (com o snapshot da noite anterior)
 
+Sábados (hora de Lisboa):
+    10:00 → envia o Briefing Semanal (relatorio_semanal.py; HORA_SEMANAL muda a hora)
+
+Todos os dias (hora de Lisboa):
+    03:00 → cópia de segurança dos dados (backups.py), enviada também para a sala privada do Admin
+    sempre → vigia: avisa o Admin em privado se a fotografia, um briefing ou um aviso falhar (alertas_admin.py)
+
 Todos os dias (10:00–21:59, hora de Lisboa):
     Liga Mensal → avisos automáticos no Discord (inscrições abertas, último dia, nevoeiro levantou,
     resumo da edição). Cada aviso sai uma única vez; ver liga_avisos.py. LIGA_AVISOS_ATIVO=0 desliga.
@@ -33,7 +40,10 @@ import yahoo_guard as yg
 import snapshot_diario as snap
 import relatorio_matinal as rel
 import relatorio_psi as rel_psi
+import relatorio_semanal as rel_sem
 import liga_avisos
+import backups
+import alertas_admin
 
 try:
     from zoneinfo import ZoneInfo
@@ -113,6 +123,12 @@ def _ciclo():
             rel_psi.envio_agendado(agora_lisboa())  # Briefing PSI (independente do snapshot e do briefing EUA)
         except Exception as e:
             print(f"[agendador] Erro no Briefing PSI: {e}")
+        for tarefa, nome in ((rel_sem.envio_agendado, "Briefing Semanal"), (backups.diario, "cópia de segurança"),
+                             (alertas_admin.vigiar, "vigia")):
+            try:
+                tarefa(agora_lisboa())
+            except Exception as e:
+                print(f"[agendador] Erro na {nome}: {e}")
         try:
             liga_avisos.verificar(agora_lisboa())  # avisos da Liga (independentes do snapshot e do briefing)
         except Exception as e:

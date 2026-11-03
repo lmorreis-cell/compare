@@ -2478,7 +2478,7 @@ def admin_relatorio_psi_enviar():
 
 # Arranca o relógio interno (snapshot às 22:30 e briefing às 08:00, dias úteis)
 agendador.iniciar()
-# Relógio do Briefing PSI (dias úteis às 08:10 de Lisboa, ou PSI_HORA_ENVIO)
+# Briefing PSI: o envio automático é feito pelo agendador.py (dias úteis às 07:50 de Lisboa, ou HORA_RELATORIO_PSI)
 rel_psi.iniciar()
 
 # Escola: /escola (membros) e /admin/escola (editor de lições)
@@ -2909,6 +2909,7 @@ def api_liga():
             prox = lj.proxima_janela(agora, cfg_liga)
 
             return jsonify({
+                "mapa": {"oculto": True, "participantes": len(lista)} if (nevoeiro and not is_admin) else _mapa_comunidade(lista),
                 "mes_ref": mes_ref,
                 "nome_edicao": lj.nome_edicao(mes_ref),
                 "janela_aberta": janela_aberta,
@@ -3050,6 +3051,54 @@ def api_liga():
                     "submetido_em": gravada["submetido_em"],
                     "entrada": [{"ticker": s["ticker"], "p0": s["p0"], "alvo": s["alvo"],
                                  "direcao": "LONG" if float(s["alvo"]) > float(s["p0"]) else "SHORT"} for s in gravada["slots"]]})
+
+
+def _mapa_comunidade(carteiras):
+    """Leitura agregada das carteiras de uma edição (só depois do nevoeiro): onde a comunidade apostou."""
+    slots = [(c.get('username', 'Membro'), s) for c in carteiras for s in c.get('slots', [])
+             if s.get('ticker') and not str(s.get('ticker')).startswith('🔒')]
+    if not slots:
+        return None
+    por_ticker, por_setor = {}, {}
+    for nome, s in slots:
+        t = por_ticker.setdefault(s['ticker'], {"ticker": s['ticker'], "n": 0, "membros": [], "ret": [], "long": 0, "short": 0})
+        t["n"] += 1
+        t["membros"].append(nome)
+        t["ret"].append(float(s.get('ret', 0) or 0))
+        t["long" if s.get('direcao', 'LONG') == 'LONG' else "short"] += 1
+        setor = s.get('setor') or 'Outro'
+        por_setor[setor] = por_setor.get(setor, 0) + 1
+    tickers = []
+    for t in por_ticker.values():
+        tickers.append({**t, "ret": round(sum(t["ret"]) / len(t["ret"]), 2)})
+    tickers.sort(key=lambda t: (-t["n"], -t["ret"]))
+    n = len(slots)
+    n_short = sum(1 for _, s in slots if s.get('direcao') == 'SHORT')
+    rets = [float(s.get('ret', 0) or 0) for _, s in slots]
+    repetidos = [t for t in tickers if t["n"] > 1]
+    media = round(sum(rets) / n, 2)
+    media_rep = round(sum(t["ret"] * t["n"] for t in repetidos) / sum(t["n"] for t in repetidos), 2) if repetidos else None
+    return {
+        "participantes": len(carteiras), "slots": n,
+        "pct_long": round((n - n_short) / n * 100), "pct_short": round(n_short / n * 100),
+        "pct_positivos": round(sum(1 for r in rets if r > 0) / n * 100),
+        "pct_alvos": round(sum(1 for _, s in slots if s.get('badge') in ('✅', '🎯🔥')) / n * 100),
+        "ret_medio": media,
+        "ret_consenso": media_rep,   # retorno médio dos ativos escolhidos por 2+ membros
+        "unicos": sum(1 for t in tickers if t["n"] == 1),
+        "top_tickers": tickers[:8],
+        "setores": [{"setor": k, "n": v} for k, v in sorted(por_setor.items(), key=lambda kv: -kv[1])],
+    }
+
+
+@app.route('/api/liga/perfil/<uid>')
+@requer_cargo(nivel_minimo=2)
+def api_liga_perfil(uid):
+    """Perfil público de um membro (só edições terminadas)."""
+    p = gam.perfil_membro(str(uid).strip())
+    if not p:
+        return jsonify({"erro": "Este membro ainda não terminou nenhuma edição da Liga."}), 404
+    return jsonify(p)
 
 
 @app.route('/api/liga/hall_of_fame')
@@ -3202,6 +3251,120 @@ def admin_liga_janelas():
             avisos = {"erro": str(e)}
         return jsonify({"padrao": cfg['padrao'], "edicoes": edicoes, "hoje": agora.date().isoformat(),
                         "inscricao_aberta": lj.edicao_inscricao(agora, cfg), "avisos": avisos})
+
+
+# ==========================================
+# 💾 ADMIN: CÓPIAS DE SEGURANÇA E AVISOS PRIVADOS
+# ==========================================
+import backups
+import alertas_admin
+
+
+def _origem_propria():
+    """Recusa pedidos de escrita vindos de outro site (o cookie de sessão viaja sozinho)."""
+    from urllib.parse import urlparse
+    origem = request.headers.get("Origin") or request.headers.get("Referer")
+    return bool(origem) and urlparse(origem).netloc == request.host
+
+
+@app.route('/api/admin/backups')
+def admin_backups_lista():
+    if not _e_admin():
+        return jsonify({"erro": "Acesso negado. Apenas Admin."}), 403
+    return jsonify({"copias": backups.listar(), "manter": backups.MANTER,
+                    "incluidos": backups._ficheiros(), "alertas": alertas_admin.estado()})
+
+
+@app.route('/api/admin/backups/criar', methods=['POST'])
+def admin_backups_criar():
+    if not _e_admin() or not _origem_propria():
+        return jsonify({"erro": "Acesso negado."}), 403
+    try:
+        nome, tamanho, n = backups.criar("manual")
+    except Exception as e:
+        return jsonify({"erro": f"Falhou: {e}"}), 500
+    return jsonify({"sucesso": True, "mensagem": f"Cópia criada: {n} ficheiros, {tamanho / 1024:.0f} KB. Descarrega-a para guardares fora do servidor."})
+
+
+@app.route('/api/admin/backups/descarregar/<nome>')
+def admin_backups_descarregar(nome):
+    if not _e_admin():
+        return jsonify({"erro": "Acesso negado. Apenas Admin."}), 403
+    caminho = backups.caminho_valido(nome)
+    if not caminho:
+        return jsonify({"erro": "Cópia não encontrada."}), 404
+    return send_file(os.path.abspath(caminho), as_attachment=True, download_name=nome, mimetype="application/zip")
+
+
+@app.route('/api/admin/backups/repor', methods=['POST'])
+def admin_backups_repor():
+    if not _e_admin() or not _origem_propria():
+        return jsonify({"erro": "Acesso negado."}), 403
+    corpo = request.get_json(silent=True) or {}
+    if corpo.get("confirmar") != "REPOR":
+        return jsonify({"erro": "Confirmação em falta."}), 400
+    try:
+        n, previa = backups.repor(corpo.get("nome", ""), so=corpo.get("so") or None)
+    except ValueError as e:
+        return jsonify({"erro": str(e)}), 404
+    except Exception as e:
+        return jsonify({"erro": f"Falhou: {e}"}), 500
+    _liga_ultimo_calculo.clear()  # a classificação da Liga volta a ser lida do disco
+    return jsonify({"sucesso": True, "mensagem": f"{n} ficheiros repostos. O estado anterior ficou guardado em {previa} (podes voltar atrás com ele)."})
+
+
+@app.route('/api/admin/backups/conteudo/<nome>')
+def admin_backups_conteudo(nome):
+    if not _e_admin():
+        return jsonify({"erro": "Acesso negado. Apenas Admin."}), 403
+    c = backups.conteudo(nome)
+    if c is None:
+        return jsonify({"erro": "Cópia não encontrada."}), 404
+    return jsonify({"ficheiros": c})
+
+
+@app.route('/api/admin/alertas/teste', methods=['POST'])
+def admin_alertas_teste():
+    if not _e_admin() or not _origem_propria():
+        return jsonify({"erro": "Acesso negado."}), 403
+    ok, info = alertas_admin.avisar(f"teste:{datetime.now().isoformat()}", "Teste dos avisos privados",
+                                    "Se estás a ler isto, os avisos de falhas e as cópias de segurança diárias vão chegar a esta sala.",
+                                    "info")
+    if ok:
+        return jsonify({"sucesso": True, "mensagem": "Mensagem de teste enviada para a tua sala privada."})
+    return jsonify({"erro": "Não foi possível enviar: " + info + (". Define WEBHOOK_ADMIN nas Variáveis da Discloud." if "WEBHOOK" in info else "")}), 400
+
+
+# ==========================================
+# 🗓️ ADMIN: BRIEFING SEMANAL
+# ==========================================
+import relatorio_semanal as rel_sem
+
+
+@app.route('/api/admin/semanal/estado')
+def admin_semanal_estado():
+    if not _e_admin():
+        return jsonify({"erro": "Acesso negado. Apenas Admin."}), 403
+    return jsonify(rel_sem.estado())
+
+
+@app.route('/api/admin/semanal/preview')
+def admin_semanal_preview():
+    if not _e_admin():
+        return jsonify({"erro": "Acesso negado. Apenas Admin."}), 403
+    payload, erro = rel_sem.construir_relatorio()
+    if erro:
+        return render_template_string(HTML_PREVIEW_BRIEFING, erro=erro, e=None, cor="#f0ad4e")
+    e = payload["embeds"][0]
+    return render_template_string(HTML_PREVIEW_BRIEFING, erro=None, e=e, cor=f"#{e['color']:06x}")
+
+
+@app.route('/api/admin/semanal/enviar')
+def admin_semanal_enviar():
+    if not _e_admin():
+        return jsonify({"erro": "Acesso negado. Apenas Admin."}), 403
+    ok, msg = rel_sem.enviar_relatorio(forcar=request.args.get('forcar') == '1')
+    return jsonify({"sucesso": ok, "mensagem": msg} if ok else {"sucesso": False, "erro": msg})
 
 
 if __name__ == "__main__":
