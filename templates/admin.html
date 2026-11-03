@@ -262,6 +262,7 @@
       <ul class="regras">
         <li><b>SEC</b> (administradores e fundamentos dos EUA): exige identificação. Define <code>SEC_USER_AGENT</code> nas Variáveis da Discloud com um nome e um e-mail de contacto, ex.: <code>Portal Bolsa contacto@teudominio.pt</code>.</li>
         <li><b>Posições curtas</b>: se um regulador mudar o endereço do ficheiro, corrige-o aqui. Se não tiver download automático (ex.: CNMV), descarrega a lista oficial no site e carrega-a aqui.</li>
+        <li><b>Comunicados da CMVM</b> (dirigentes, participações qualificadas, ações próprias): lidos de hora a hora nos dias úteis. Os novos de dirigentes e participações são publicados em <code>WEBHOOK_CMVM</code> ou, se não existir, na sala do Briefing PSI, e entram no Briefing PSI da manhã.</li>
         <li><b>Tesouro dos EUA, OCDE e CFTC</b>: não precisam de configuração (atualizam depois das 22:00; a OCDE de 3 em 3 dias). <b>13F</b>: as carteiras dos grandes investidores atualizam às 04:00.</li>
         <li><b>Certificados de Aforro</b>: o IGCP não tem API. No início de cada mês, introduz a taxa base que o IGCP publica.</li>
       </ul>
@@ -629,6 +630,7 @@ function pintarFontes(d) {
     ...(d.mundo ? [
       ["Curva de juros dos EUA (Tesouro)", d.mundo.tesouro_ultimo_dia ? `último dia: ${dataPt(d.mundo.tesouro_ultimo_dia, false)} · atualizado ${dataPt(d.mundo.tesouro_atualizado_em)}` : `<span style="color:var(--amarelo)">ainda não descarregada (automático depois das 22:00)</span>`],
       ["Indicadores avançados (OCDE)", d.mundo.ocde_ultimo_mes ? `último mês: ${esc(d.mundo.ocde_ultimo_mes)} · atualizado ${dataPt(d.mundo.ocde_atualizado_em)}` : `<span style="color:var(--amarelo)">ainda não descarregados</span>`],
+      ...(d.cmvm ? [["Comunicados CMVM (dirigentes, participações, ações próprias)", d.cmvm.atualizado_em ? `${Object.values(d.cmvm.n || {}).reduce((a, b) => a + b, 0)} comunicados guardados · último: ${dataPt(d.cmvm.ultimo, false)} · atualizado ${dataPt(d.cmvm.atualizado_em)}` : `<span style="color:var(--amarelo)">ainda não lidos (automático em dias úteis, de hora a hora)</span>`]] : []),
       ["Commitments of Traders (CFTC)", d.mundo.cot_ultimo_relatorio ? `relatório de ${dataPt(d.mundo.cot_ultimo_relatorio, false)} · atualizado ${dataPt(d.mundo.cot_atualizado_em)}` : `<span style="color:var(--amarelo)">ainda não descarregado (automático depois das 22:00)</span>`],
     ] : []),
     ["SEC (EUA)", d.sec_user_agent ? `<span style="color:var(--verde)">✔ SEC_USER_AGENT definido</span>` : `<span style="color:var(--amarelo)">⚠ Falta SEC_USER_AGENT (nome + e-mail)</span>`],

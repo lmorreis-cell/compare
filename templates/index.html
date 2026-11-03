@@ -2068,6 +2068,21 @@
         <div id="of-curtas-fontes" style="font-size:10px; color:#6e7681; margin-top:10px"></div>
     </div>
 
+    <div style="background-color:#161b22; border:1px solid #30363d; border-radius:8px; padding:20px; margin-bottom:22px; border-left:4px solid #2ea043">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:6px">
+            <h3 style="margin:0; font-size:15px; color:#2ea043; text-transform:uppercase">🏢 Cotadas portuguesas: dirigentes, participações qualificadas & ações próprias (CMVM) <span class="dica-edu" style="font-size:11px;color:#8b949e;cursor:help;text-transform:none">ℹ️<span class="dica-texto" style="width:380px">Comunicados oficiais que as cotadas portuguesas são obrigadas a publicar na CMVM. <b>Transações de dirigentes</b>: administradores e pessoas próximas que compram ou vendem ações da própria empresa (Regulamento europeu de abuso de mercado, comunicação em 3 dias úteis). <b>Participações qualificadas</b>: quando um acionista passa (para cima ou para baixo) os limiares de 5%, 10%, 15%, 20%, 25%, 1/3, 50%... do capital. <b>Ações próprias</b>: a empresa a recomprar as suas ações (programas de recompra, que reduzem o número de ações em circulação). O valor, o preço e a quantidade estão no PDF oficial de cada comunicado.</span></span></h3>
+            <span id="of-cmvm-atual" style="font-size:11px; color:#8b949e"></span>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin:10px 0 12px 0; align-items:center">
+            <input type="text" id="of-cmvm-q" class="input-moderno" placeholder="Empresa ou ticker (ex.: BCP.LS, Galp)" style="max-width:260px; padding:9px 12px; font-size:12px" onkeydown="if(event.key==='Enter') ofCmvm()">
+            <select id="of-cmvm-tipo" class="input-moderno" style="max-width:220px; padding:9px 10px; font-size:12px" onchange="ofCmvm()">
+                <option value="">Todos os tipos</option><option value="TRAN">👔 Transações de dirigentes</option><option value="PQ">🏛️ Participações qualificadas</option><option value="ACPR">🔁 Ações próprias</option>
+            </select>
+            <button class="btn-moderno" onclick="ofCmvm()" style="background:#2ea043; color:#fff; padding:9px 16px; font-size:12px">🔎 Ver</button>
+        </div>
+        <div id="of-cmvm" style="font-size:12px; color:#8b949e">A carregar...</div>
+    </div>
+
     <div style="background-color:#161b22; border:1px solid #30363d; border-radius:8px; padding:20px; margin-bottom:22px; border-left:4px solid #b388ff">
         <h3 style="margin:0 0 6px 0; font-size:15px; color:#b388ff; text-transform:uppercase">🇺🇸 Administradores & Fundamentos oficiais (SEC) <span class="dica-edu" style="font-size:11px;color:#8b949e;cursor:help;text-transform:none">ℹ️<span class="dica-texto" style="width:360px">Nos EUA, administradores, diretores e acionistas com mais de 10% têm de comunicar à SEC cada compra ou venda de ações da própria empresa (formulário 4), em 2 dias úteis. Compras em bolsa feitas com dinheiro próprio são o sinal mais interessante: ninguém conhece melhor a empresa. Vendas são menos informativas (impostos, diversificação, planos pré-programados 10b5-1). Os fundamentos vêm diretamente dos relatórios anuais (10-K) entregues à SEC, sem intermediários.</span></span></h3>
         <div style="display:flex; gap:8px; flex-wrap:wrap; margin:10px 0 14px 0">
@@ -2087,7 +2102,7 @@
         <div id="of-13f" style="font-size:12px; color:#8b949e"></div>
     </div>
 
-    <div style="font-size:10px; color:#6e7681">Fontes: Banco Central Europeu (ECB Data Portal) · U.S. Department of the Treasury · OCDE · CFTC · IGCP (Certificados de Aforro, inserido pelo Admin) · CMVM, CNMV, AMF, Bundesanzeiger/BaFin, Consob e AFM (posições curtas) · FINRA (short interest e volume diário a descoberto) · SEC EDGAR (formulários 4, 8-K, 10-K e 13F). Conteúdo educativo, não é recomendação de investimento.</div>
+    <div style="font-size:10px; color:#6e7681">Fontes: Banco Central Europeu (ECB Data Portal) · U.S. Department of the Treasury · OCDE · CFTC · IGCP (Certificados de Aforro, inserido pelo Admin) · CMVM (comunicados de dirigentes, participações qualificadas e ações próprias) · CNMV, AMF, Bundesanzeiger/BaFin, Consob e AFM (posições curtas) · FINRA (short interest e volume diário a descoberto) · SEC EDGAR (formulários 4, 8-K, 10-K e 13F). Conteúdo educativo, não é recomendação de investimento.</div>
 </div>
 
 <div id="tab-liga" class="tab-content">
@@ -7825,6 +7840,7 @@ function renderizarCalendarioDiario() {
         ofCarregado = true;
         ofJuros();
         ofMundo();
+        ofCmvm();
         of13fLista();
         ofPesquisarCurtas();
     }
@@ -8123,6 +8139,37 @@ function renderizarCalendarioDiario() {
                     <td style="padding:5px; text-align:right"><a href="${x.url}" target="_blank" rel="noopener" style="color:#c9d1d9">${usd(x.valor)}</a></td></tr>`).join('') || '<tr><td colspan="6" style="padding:8px">Sem transações nos formulários recentes.</td></tr>'}</tbody></table></div>
                 <div style="font-size:10px; color:#6e7681; margin-top:6px">Fonte: ${escHTML(d.fonte)}. Linhas esbatidas: atribuições, exercício de opções e retenções para impostos (não são decisões de compra/venda em bolsa).</div>`;
         } catch (e) { div.innerHTML = 'Erro ao consultar a SEC.'; }
+    }
+
+    async function ofCmvm() {
+        const q = document.getElementById('of-cmvm-q').value.trim(), tipo = document.getElementById('of-cmvm-tipo').value;
+        const div = document.getElementById('of-cmvm');
+        div.innerHTML = 'A carregar...';
+        try {
+            const d = await (await fetch('/api/oficial/cmvm?' + new URLSearchParams({ q, tipo }))).json();
+            document.getElementById('of-cmvm-atual').innerText = d.atualizado_em ? `Atualizado ${ofData(d.atualizado_em)} · fonte: ${d.fonte}` : '';
+            if (!d.atualizado_em) { div.innerHTML = 'Os comunicados da CMVM ainda não foram lidos neste servidor (acontece automaticamente nos dias úteis, ou o Admin pode testar as fontes na Gestão).'; return; }
+            const ic = { TRAN: '👔', PQ: '🏛️', ACPR: '🔁' };
+            const sent = { compra: ['🟢 compra', '#3fb950'], venda: ['🔴 venda', '#d9534f'], sobe: ['⬆️ aumenta', '#3fb950'], desce: ['⬇️ reduz', '#d9534f'] };
+            let h = '';
+            if (!q && (d.mais_ativos || []).length) {
+                h += `<div style="margin-bottom:10px"><strong style="color:#c9d1d9">Mais comunicados nos últimos 90 dias:</strong> ${d.mais_ativos.map(m => `<a href="#" onclick="document.getElementById('of-cmvm-q').value=${escHTML(JSON.stringify(m.emitente))}; ofCmvm(); return false" style="color:#2ea043">${escHTML(m.emitente)}</a> <span style="color:#6e7681">(${[m.TRAN ? '👔' + m.TRAN : '', m.PQ ? '🏛️' + m.PQ : '', m.ACPR ? '🔁' + m.ACPR : ''].filter(Boolean).join(' ')})</span>`).join(' · ')}</div>`;
+            }
+            if (!d.itens.length) {
+                h += `<div>${q ? `Sem comunicados destes tipos para «${escHTML(q)}» nos últimos 2 anos${(d.nomes_usados || []).length ? ' (procurei também por: ' + d.nomes_usados.map(escHTML).join(', ') + ')' : ''}.` : 'Sem comunicados nos últimos 60 dias.'}</div>`;
+            } else {
+                h += `<div style="overflow-x:auto; max-height:460px; overflow-y:auto"><table style="width:100%; border-collapse:collapse; font-size:12px; margin-top:0">
+                    <thead style="color:#8b949e; font-size:10px; text-transform:uppercase; position:sticky; top:0; background:#161b22"><tr><th style="padding:5px; text-align:left">Data</th><th style="padding:5px; text-align:left">Tipo</th><th style="padding:5px; text-align:left">Empresa</th><th style="padding:5px; text-align:left">Comunicado</th><th style="padding:5px"></th></tr></thead>
+                    <tbody>${d.itens.map(i => `<tr style="border-top:1px solid #21262d">
+                        <td style="padding:5px; white-space:nowrap">${ofData(i.data)}${i.hora ? ' <span style="color:#6e7681">' + i.hora + '</span>' : ''}</td>
+                        <td style="padding:5px; white-space:nowrap" title="${escHTML(d.tipos[i.tipo] || '')}">${ic[i.tipo] || ''} ${i.sentido ? `<span style="color:${sent[i.sentido][1]}">${sent[i.sentido][0]}</span>` : ''}</td>
+                        <td style="padding:5px; color:#fff">${escHTML(i.emitente)}</td>
+                        <td style="padding:5px">${escHTML(i.resumo || i.descricao)}</td>
+                        <td style="padding:5px; text-align:right; white-space:nowrap">${i.url ? `<a href="${escHTML(i.url)}" target="_blank" rel="noopener" style="color:#58a6ff">PDF ↗</a>` : ''}</td></tr>`).join('')}</tbody></table></div>`;
+            }
+            h += `<div style="font-size:10px; color:#6e7681; margin-top:6px">Fonte: CMVM · <a href="${escHTML(d.pagina)}" target="_blank" rel="noopener" style="color:#6e7681">ver no site da CMVM ↗</a> · 🟢/🔴 e ⬆️/⬇️ são deduzidos do título do comunicado; quando o título não o diz, abre o PDF.</div>`;
+            div.innerHTML = h;
+        } catch (e) { div.innerHTML = 'Erro ao carregar os comunicados da CMVM.'; }
     }
 
     async function of13fLista() {
