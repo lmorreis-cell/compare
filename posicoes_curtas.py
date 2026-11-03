@@ -236,6 +236,15 @@ def _ler_conteudo_(conteudo, tipo, pais):
             continue
     if texto is None:
         return []
+    if "<html" in texto[:600].lower() and "<table" not in texto.lower():
+        # Página sem tabela: os dados devem ser carregados por JavaScript a partir de outro endereço.
+        _ultimo_diag[pais]["pagina_sem_tabela"] = True
+        _ultimo_diag[pais]["scripts"] = re.findall(r'<script[^>]+src="([^"]+)"', texto, re.I)[:10]
+        _ultimo_diag[pais]["urls"] = list(dict.fromkeys(re.findall(r'["\'](/[A-Za-z0-9_./?=&%-]{6,}|https?://[^"\' ]{8,})["\']', texto)))[:25]
+        _ultimo_diag[pais]["iframes"] = re.findall(r'<iframe[^>]+src="([^"]+)"', texto, re.I)[:5]
+        visivel = re.sub(r"<script.*?</script>|<style.*?</style>", " ", texto, flags=re.S | re.I)
+        _ultimo_diag[pais]["texto"] = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", visivel)).strip()[:500]
+        return []
     if "<table" in texto.lower():
         out = []
         tabelas = _tabelas_html(texto)
@@ -298,9 +307,13 @@ def _descarregar(fonte):
         s.get(fonte["sessao"], timeout=30)  # alguns sites só servem o ficheiro depois de abrir a página
     url = fonte.get("url")
     if not url and fonte.get("procurar_xlsx") and fonte.get("pagina"):
-        pag = s.get(fonte["pagina"], timeout=30).text
+        resp = s.get(fonte["pagina"], timeout=30)
+        pag = resp.text
         m = re.search(r'href="([^"]+\.xlsx?[^"]*)"', pag, re.I)
         if not m:
+            pais = next((k for k, v in fontes().items() if v.get("nome") == fonte.get("nome")), "?")
+            _ultimo_diag[pais] = {"pagina": fonte["pagina"], "estado_http": resp.status_code, "url_final": resp.url, "bytes": len(pag),
+                                  "inicio": re.sub(r"\s+", " ", pag[:300])}
             raise RuntimeError("Não encontrei o ficheiro Excel na página (pode estar protegida contra robôs).")
         url = requests.compat.urljoin(fonte["pagina"], m.group(1).replace("&amp;", "&"))
     if not url:
@@ -472,14 +485,27 @@ def short_interest_eua(ticker):
     t = ticker.upper().strip()
     if t in _cache_finra and time.time() - _cache_finra[t][0] < 43200:
         return _cache_finra[t][1]
-    corpo = {"compareFilters": [{"compareType": "EQUAL", "fieldName": "symbolCode", "fieldValue": t}],
-             "sortFields": ["-settlementDate"], "limit": 6}
-    r = requests.post(FINRA_URL, json=corpo, headers={**UA, "Accept": "application/json", "Content-Type": "application/json"}, timeout=30)
-    r.raise_for_status()
+    filtro = [{"compareType": "EQUAL", "fieldName": "symbolCode", "fieldValue": t}]
+    hoje = date.today()
+    # Tenta do pedido mais completo para o mais simples (a FINRA recusa com 400 combinações que não suporta)
+    tentativas = [
+        {"compareFilters": filtro, "dateRangeFilters": [{"fieldName": "settlementDate", "startDate": (hoje - timedelta(days=120)).isoformat(),
+                                                          "endDate": hoje.isoformat()}], "limit": 20},
+        {"compareFilters": filtro, "limit": 200},
+    ]
+    r, erro = None, None
+    for corpo in tentativas:
+        r = requests.post(FINRA_URL, json=corpo, headers={**UA, "Accept": "application/json", "Content-Type": "application/json"}, timeout=30)
+        if r.status_code in (200, 204):
+            break
+        erro = f"FINRA respondeu {r.status_code}: {r.text[:150]}"
+    else:
+        raise RuntimeError(erro)
     try:
-        linhas = r.json() or []
+        linhas = r.json() if r.status_code == 200 and r.content else []
     except ValueError:
-        linhas = []  # a FINRA responde vazio quando não há dados para o símbolo
+        linhas = []  # a FINRA responde 204 sem corpo quando não há dados para o símbolo
+    linhas = sorted(linhas, key=lambda d: str(d.get("settlementDate") or ""), reverse=True)[:6]
     out = []
     for d in linhas:
         out.append({
