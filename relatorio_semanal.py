@@ -210,6 +210,30 @@ def _campo_escola(hoje):
 
 
 # ------------------------------------------------------------------ montagem
+def _campo_macro_oficial():
+    """Curva dos EUA (Tesouro), extremos de posicionamento (CFTC) e ciclo (OCDE). Só lê cópias locais."""
+    try:
+        import fontes_mundo
+        d = fontes_mundo.painel()
+    except Exception:
+        return ""
+    linhas = []
+    t = d.get("tesouro") or {}
+    s3 = (t.get("spreads") or {}).get("10A-3M")
+    if t.get("sinal") and s3:
+        ic = {"verde": "🟢", "amarelo": "🟡", "vermelho": "🔴"}[t["sinal"]["cor"]]
+        linhas.append(f"{ic} **Curva dos EUA (10a − 3m):** {s3['atual']:+.2f}".replace(".", ",") + f" p.p. ({'invertida' if s3['invertida'] else 'positiva'})")
+    ext = [m for m in (d.get("cot") or {}).get("mercados", []) if m.get("extremo")]
+    if ext:
+        linhas.append("🧭 **Especuladores em extremo (CFTC):** " + ", ".join(
+            f"{m['nome']} {'muito comprados' if m['indice'] >= 90 else 'muito vendidos'}" for m in ext[:5]))
+    areas = {a["id"]: a for a in (d.get("ocde") or {}).get("areas", [])}
+    fases = [f"{areas[k]['nome']} {areas[k]['icone']} {areas[k]['fase_nome'].lower()}" for k in ("USA", "EA20", "PRT") if k in areas]
+    if fases:
+        linhas.append("🌍 **Ciclo (OCDE):** " + " · ".join(fases))
+    return "\n".join(linhas)
+
+
 def construir_relatorio(agora=None):
     agora = agora or datetime.now()
     hoje = agora.date()
@@ -250,6 +274,9 @@ def construir_relatorio(agora=None):
         b = macro.get("breadth", {})
         rrg += f"\n🧭 **{b.get('acima_ema50', 0)}/{b.get('total', 11)}** setores acima da EMA 50 no fecho de sexta."
         campos.append({"name": "🌀 Rotação setorial (21 dias)", "value": rrg[:1024], "inline": False})
+    mo = _campo_macro_oficial()
+    if mo:
+        campos.append({"name": "🏦 Dados oficiais (Tesouro · CFTC · OCDE)", "value": mo[:1024], "inline": False})
     campos.append({"name": "🔎 Sinais do Screener desta semana", "value": _campo_sinais(hoje)[:1024], "inline": False})
     liga = _campo_liga(agora)
     if liga:

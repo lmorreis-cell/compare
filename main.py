@@ -3379,6 +3379,7 @@ def admin_semanal_enviar():
 # ==========================================
 import posicoes_curtas
 import sec_dados
+import fontes_mundo
 
 _nomes_cache = {}
 
@@ -3411,6 +3412,22 @@ def _nomes_da_empresa(q):
 @requer_cargo(nivel_minimo=2)
 def api_oficial_juros():
     return jsonify(fontes_bce.painel())
+
+
+@app.route('/api/oficial/mundo')
+@requer_cargo(nivel_minimo=2)
+def api_oficial_mundo():
+    """Curva dos EUA (Tesouro), ciclo económico (OCDE) e posicionamento nos futuros (CFTC). Só lê cópias locais."""
+    d = fontes_mundo.painel()
+    # Diferencial EUA − área do euro a 10 anos (curva AAA do BCE), útil para perceber o euro/dólar
+    try:
+        eu10 = next((c["taxa"] for c in fontes_bce.painel()["curva"] if c["id"] == "SR_10Y"), None)
+        us10 = next((c["taxa"] for c in d["tesouro"].get("curva", []) if c["id"] == "10A"), None)
+        if eu10 is not None and us10 is not None:
+            d["tesouro"]["diferencial_10a"] = {"eua": us10, "euro": eu10, "dif": round(us10 - eu10, 3)}
+    except Exception:
+        pass
+    return jsonify(d)
 
 
 @app.route('/api/oficial/curtas')
@@ -3458,6 +3475,7 @@ def admin_fontes_estado():
     if not _e_admin():
         return jsonify({"erro": "Acesso negado. Apenas Admin."}), 403
     return jsonify({"bce": fontes_bce.estado(), "curtas": posicoes_curtas.estado(),
+                    "mundo": fontes_mundo.estado(),
                     "sec_user_agent": bool((os.environ.get("SEC_USER_AGENT") or "").strip())})
 
 
@@ -3507,6 +3525,8 @@ def _correr_teste_fontes():
         except Exception as e:
             r["FINRA · short interest EUA"] = {"ok": False, "msg": str(e)[:300]}
         r["SEC · insiders e fundamentos"] = sec_dados.testar()
+        for k, v in fontes_mundo.testar().items():
+            r[k] = v
     finally:
         _teste_fontes["a_correr"] = False
         _teste_fontes["fim"] = datetime.now().isoformat(timespec="seconds")

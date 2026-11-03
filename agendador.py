@@ -13,6 +13,7 @@ Todos os dias (hora de Lisboa):
     03:00 → cópia de segurança dos dados (backups.py), enviada também para a sala privada do Admin
     17:00 → câmbios de referência e juros do BCE (fontes_bce.py)
     19:00 → posições curtas publicadas pelos reguladores europeus (posicoes_curtas.py)
+    22:00 → curva de juros dos EUA e Commitments of Traders da CFTC; 12:00 → indicadores avançados da OCDE (fontes_mundo.py)
     sempre → vigia: avisa o Admin em privado se a fotografia, um briefing ou um aviso falhar (alertas_admin.py)
 
 Todos os dias (10:00–21:59, hora de Lisboa):
@@ -48,6 +49,7 @@ import backups
 import alertas_admin
 import fontes_bce
 import posicoes_curtas
+import fontes_mundo
 
 try:
     from zoneinfo import ZoneInfo
@@ -129,7 +131,8 @@ def _ciclo():
             print(f"[agendador] Erro no Briefing PSI: {e}")
         for tarefa, nome in ((rel_sem.envio_agendado, "Briefing Semanal"), (backups.diario, "cópia de segurança"),
                              (alertas_admin.vigiar, "vigia"), (fontes_bce.diario, "atualização do BCE"),
-                             (posicoes_curtas.diario, "atualização das posições curtas")):
+                             (posicoes_curtas.diario, "atualização das posições curtas"),
+                             (fontes_mundo.diario, "atualização dos dados macro (Tesouro/OCDE/CFTC)")):
             try:
                 tarefa(agora_lisboa())
             except Exception as e:
