@@ -14,3 +14,4 @@ fundamentalanalysis
 waitress==3.0.0
 tzdata
 openpyxl
+xlrd
