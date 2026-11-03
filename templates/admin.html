@@ -821,8 +821,10 @@ async function atualizar() {
     $("atualizado").textContent = "sem ligação ao servidor";
   }
   clearTimeout(temporizador);
-  temporizador = setTimeout(atualizar, aCorrer ? 5000 : 15000);
+  // Separador escondido (outra aba/janela minimizada): atualiza só de minuto a minuto para não ocupar o servidor
+  temporizador = setTimeout(atualizar, document.hidden ? 60000 : (aCorrer ? 5000 : 15000));
 }
+document.addEventListener("visibilitychange", () => { if (!document.hidden && Date.now() - ultimaAtualizacao > 15000) atualizar(); });
 setInterval(() => {
   if (ultimaAtualizacao) $("atualizado").textContent = `atualizado há ${Math.round((Date.now() - ultimaAtualizacao) / 1000)} s`;
 }, 1000);
