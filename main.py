@@ -3462,10 +3462,28 @@ def admin_fontes_estado():
 
 
 _teste_fontes = {"a_correr": False, "resultados": {}, "inicio": None, "fim": None}
+ARQ_TESTE_FONTES = "teste_fontes.json"
+
+
+def _gravar_teste():
+    """O progresso fica em disco: assim qualquer processo do servidor (ou um reinício) consegue mostrá-lo."""
+    try:
+        tmp = ARQ_TESTE_FONTES + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(_teste_fontes, f, ensure_ascii=False)
+        os.replace(tmp, ARQ_TESTE_FONTES)
+    except Exception:
+        pass
+
+
+class _ResultadosTeste(dict):
+    def __setitem__(self, k, v):
+        super().__setitem__(k, v)
+        _gravar_teste()
 
 
 def _correr_teste_fontes():
-    r = _teste_fontes["resultados"]
+    r = _teste_fontes["resultados"] = _ResultadosTeste()
     try:
         try:
             ok, msg = fontes_bce.atualizar_cambios(forcar=True)
@@ -3492,6 +3510,7 @@ def _correr_teste_fontes():
     finally:
         _teste_fontes["a_correr"] = False
         _teste_fontes["fim"] = datetime.now().isoformat(timespec="seconds")
+        _gravar_teste()
 
 
 @app.route('/api/admin/fontes/testar', methods=['GET', 'POST'])
@@ -3505,8 +3524,20 @@ def admin_fontes_testar():
             return jsonify({"erro": "Acesso negado."}), 403
         if not _teste_fontes["a_correr"]:
             _teste_fontes.update({"a_correr": True, "resultados": {}, "inicio": datetime.now().isoformat(timespec="seconds"), "fim": None})
+            _gravar_teste()
             threading.Thread(target=_correr_teste_fontes, daemon=True, name="teste-fontes").start()
-    return jsonify(_teste_fontes)
+        return jsonify(_teste_fontes)
+    try:
+        with open(ARQ_TESTE_FONTES, "r", encoding="utf-8") as f:
+            estado = json.load(f)
+    except Exception:
+        estado = dict(_teste_fontes)
+    # Teste interrompido (ex.: o servidor reiniciou a meio): ao fim de 6 minutos dá-se por terminado
+    if estado.get("a_correr") and estado.get("inicio") and \
+            (datetime.now() - datetime.fromisoformat(estado["inicio"])).total_seconds() > 360:
+        estado["a_correr"] = False
+        estado["interrompido"] = True
+    return jsonify(estado)
 
 
 @app.route('/api/admin/curtas/fonte', methods=['POST'])

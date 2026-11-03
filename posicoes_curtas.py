@@ -247,12 +247,15 @@ def _ler_conteudo_(conteudo, tipo, pais):
             except ImportError:
                 raise RuntimeError("Ficheiro .xls antigo: falta o pacote «xlrd» no servidor (acrescenta xlrd ao requirements.txt).")
             motor = "xlrd"
-        folhas = pd.read_excel(io.BytesIO(conteudo), sheet_name=None, header=None, engine=motor)
-        # Se houver uma folha das posições atuais (ex.: CNMV «Última - Current»), lê só essa:
-        # as outras podem ser séries agregadas por emitente, sem detentor.
-        atuais = {n: df for n, df in folhas.items() if re.search(r"current|actual|[uú]ltima|attual|aktuell|vigent", str(n), re.I)}
-        if atuais:
-            folhas = atuais
+        # Vê primeiro os nomes das folhas e lê SÓ a das posições atuais (ex.: CNMV «Última - Current»).
+        # Ler o livro inteiro (anos de histórico) gasta muita memória e pode derrubar o servidor.
+        livro = pd.ExcelFile(io.BytesIO(conteudo), engine=motor)
+        nomes = livro.sheet_names
+        atuais = [n for n in nomes if re.search(r"current|actual|[uú]ltima|attual|aktuell|vigent", str(n), re.I)]
+        escolhidas = atuais or nomes[:3]
+        _ultimo_diag[pais]["folhas_no_livro"] = [str(n) for n in nomes]
+        folhas = {n: livro.parse(n, header=None) for n in escolhidas}
+        livro.close()
         out = []
         _ultimo_diag[pais]["folhas"] = {}
         for nome, df in folhas.items():
