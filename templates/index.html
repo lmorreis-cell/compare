@@ -377,6 +377,7 @@
 
             <button class="tab-btn" onclick="abrirSeparador(event, 'tab-risco'); carregarLaboratorioRisco();">🛡️ Risco & Stress</button>
             <button class="tab-btn" onclick="abrirSeparador(event, 'tab-diario'); atualizarDiarioBordo();">📓 Diário de Bordo</button>
+            <button class="tab-btn" onclick="abrirSeparador(event, 'tab-oficial'); carregarOficial();">🏦 Juros & Dados Oficiais</button>
             
             <button class="tab-btn" onclick="abrirSeparador(event, 'tab-liga'); carregarLiga();" style="color: #e3b341;">🏆 Liga Mensal</button>
        
@@ -2014,6 +2015,44 @@
     </div>
 
     <!-- SEPARADOR 9: LIGA MENSAL DE CARTEIRAS -->
+<!-- ==========================================
+     🏦 JUROS & DADOS OFICIAIS (BCE, reguladores europeus, FINRA, SEC)
+     ========================================== -->
+<div id="tab-oficial" class="tab-content">
+
+    <div style="background-color:#161b22; border:1px solid #30363d; border-radius:8px; padding:20px; margin-bottom:22px; border-left:4px solid #58a6ff">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px">
+            <h3 style="margin:0; font-size:15px; color:#58a6ff; text-transform:uppercase">💶 Juros & Poupança <span class="dica-edu" style="font-size:11px;color:#8b949e;cursor:help;text-transform:none">ℹ️<span class="dica-texto" style="width:320px">Taxas oficiais que mexem com o teu dinheiro: as taxas do BCE (que determinam a Euribor), a Euribor (que define a prestação da casa e a taxa dos Certificados de Aforro), a curva de rendimentos (quanto rende emprestar ao Estado a vários prazos) e a inflação. Fonte: Banco Central Europeu. Atualizado uma vez por dia.</span></span></h3>
+            <span id="of-juros-atual" style="font-size:11px; color:#8b949e"></span>
+        </div>
+        <div id="of-juros" style="font-size:12px; color:#8b949e">A carregar...</div>
+    </div>
+
+    <div style="background-color:#161b22; border:1px solid #30363d; border-radius:8px; padding:20px; margin-bottom:22px; border-left:4px solid #d9534f">
+        <h3 style="margin:0 0 6px 0; font-size:15px; color:#d9534f; text-transform:uppercase">🐻 Posições curtas por cotada <span class="dica-edu" style="font-size:11px;color:#8b949e;cursor:help;text-transform:none">ℹ️<span class="dica-texto" style="width:360px">Uma posição curta (short) é uma aposta na descida: o investidor vende ações que pediu emprestadas para as recomprar mais baratas. Na União Europeia, quem tiver uma posição curta líquida de 0,5% ou mais do capital de uma empresa tem de a tornar pública (Regulamento UE 236/2012), por isso sabemos QUEM está curto e quanto. Nos EUA não há lista por investidor: a FINRA publica apenas o total de ações vendidas a descoberto, duas vezes por mês. Muitas posições curtas não são necessariamente um mau sinal (podem ser coberturas de outras posições), mas um aumento rápido merece atenção. E se a cotação subir, quem está curto pode ser forçado a recomprar (short squeeze).</span></span></h3>
+        <div style="font-size:11px; color:#8b949e; margin-bottom:12px">Pesquisa por ticker (ex.: EGL.LS, SAN.MC, AAPL), nome da empresa ou ISIN. Europa: Portugal, Espanha, França, Alemanha, Itália e Países Baixos · EUA: total vendido a descoberto (FINRA).</div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px">
+            <input type="text" id="of-curtas-q" class="input-moderno" placeholder="Ticker, empresa ou ISIN" style="max-width:280px; padding:9px 12px; font-size:12px" onkeydown="if(event.key==='Enter') ofPesquisarCurtas()">
+            <button class="btn-moderno" onclick="ofPesquisarCurtas()" style="background:#d9534f; color:#fff; padding:9px 16px; font-size:12px">🔎 Pesquisar</button>
+            <button class="btn-moderno" onclick="document.getElementById('of-curtas-q').value=''; ofPesquisarCurtas()" style="background:#21262d; color:#c9d1d9; padding:9px 14px; font-size:12px">🇵🇹 Mais shortadas</button>
+        </div>
+        <div id="of-curtas" style="font-size:12px; color:#8b949e">A carregar...</div>
+        <div id="of-curtas-fontes" style="font-size:10px; color:#6e7681; margin-top:10px"></div>
+    </div>
+
+    <div style="background-color:#161b22; border:1px solid #30363d; border-radius:8px; padding:20px; margin-bottom:22px; border-left:4px solid #b388ff">
+        <h3 style="margin:0 0 6px 0; font-size:15px; color:#b388ff; text-transform:uppercase">🇺🇸 Administradores & Fundamentos oficiais (SEC) <span class="dica-edu" style="font-size:11px;color:#8b949e;cursor:help;text-transform:none">ℹ️<span class="dica-texto" style="width:360px">Nos EUA, administradores, diretores e acionistas com mais de 10% têm de comunicar à SEC cada compra ou venda de ações da própria empresa (formulário 4), em 2 dias úteis. Compras em bolsa feitas com dinheiro próprio são o sinal mais interessante: ninguém conhece melhor a empresa. Vendas são menos informativas (impostos, diversificação, planos pré-programados 10b5-1). Os fundamentos vêm diretamente dos relatórios anuais (10-K) entregues à SEC, sem intermediários.</span></span></h3>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin:10px 0 14px 0">
+            <input type="text" id="of-sec-q" class="input-moderno" placeholder="Ticker dos EUA (ex.: AAPL)" style="max-width:220px; padding:9px 12px; font-size:12px; text-transform:uppercase" onkeydown="if(event.key==='Enter') ofSec('insiders')">
+            <button class="btn-moderno" onclick="ofSec('insiders')" style="background:#6e40c9; color:#fff; padding:9px 14px; font-size:12px">👔 Administradores</button>
+            <button class="btn-moderno" onclick="ofSec('fundamentos')" style="background:#21262d; color:#c9d1d9; padding:9px 14px; font-size:12px">📑 Fundamentos (10-K)</button>
+        </div>
+        <div id="of-sec" style="font-size:12px; color:#8b949e">Indica um ticker americano.</div>
+    </div>
+
+    <div style="font-size:10px; color:#6e7681">Fontes: Banco Central Europeu (ECB Data Portal) · IGCP (Certificados de Aforro, inserido pelo Admin) · CMVM, CNMV, AMF, Bundesanzeiger/BaFin, Consob e AFM (posições curtas) · FINRA (short interest) · SEC EDGAR. Conteúdo educativo, não é recomendação de investimento.</div>
+</div>
+
 <div id="tab-liga" class="tab-content">
     
     <!-- CABEÇALHO E REGRAS OFICIAIS -->
@@ -4952,6 +4991,11 @@
             alert("⚠️ Preenche todos os campos obrigatórios (Data, Tipo, Carteira, Ticker, Quantidade e Preço válidos).");
             return;
         }
+        // Câmbio em falta numa moeda estrangeira: nunca assumir 1,0 (falsearia as mais-valias)
+        if (moeda !== 'EUR' && !(parseFloat(document.getElementById('trade-cambio').value) > 0)) {
+            alert("⚠️ Falta o câmbio da data da operação. Introduz o valor do extrato da corretora (unidades da moeda por 1 €).");
+            return;
+        }
 
         // 2. Auditoria Específica para VENDAS (Existência e Quantidade em Carteira)
         if (tipo === 'VENDA') {
@@ -5950,19 +5994,20 @@
 
         try {
             inputCambio.value = "...";
-            const resposta = await fetch(`/api/cambio/${dataInput}`);
+            const resposta = await fetch(`/api/cambio/${dataInput}?moeda=${moeda}`);
             const dados = await resposta.json();
-            
-            console.log("Câmbio recebido da API:", dados); // Vê o resultado na consola F12 do browser
-            
             if (dados.cambio) {
                 inputCambio.value = dados.cambio;
+                inputCambio.title = `Fonte: ${dados.fonte === 'BCE' ? 'câmbio de referência do BCE (o mesmo que o Banco de Portugal divulga)' : dados.fonte} · ${dados.data}${dados.nota ? ' · ' + dados.nota : ''}. Podes corrigir à mão com o valor do extrato.`;
             } else {
-                inputCambio.value = 1.08;
+                inputCambio.value = '';
+                inputCambio.title = dados.erro || 'Câmbio indisponível: introduz o valor do extrato.';
+                inputCambio.placeholder = 'extrato';
             }
-        } catch (erro) {  
+        } catch (erro) {
             console.error("Erro ao obter câmbio automático:", erro);
-            inputCambio.value = 1.08;
+            inputCambio.value = '';
+            inputCambio.placeholder = 'extrato';
         }
     }
     // ==========================================
@@ -7704,6 +7749,163 @@ function renderizarCalendarioDiario() {
         linha.style.display = 'table-row';
     }
 
+
+    // ===== 🏦 JUROS & DADOS OFICIAIS =====
+    const ofPct = (v, c = 2) => v === null || v === undefined ? '—' : `${Number(v).toFixed(c).replace('.', ',')}%`;
+    const ofData = iso => !iso ? '—' : (iso.length === 7 ? ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'][parseInt(iso.slice(5, 7)) - 1] + ' ' + iso.slice(0, 4) : iso.slice(0, 10).split('-').reverse().join('/'));
+    const ofDica = (t, w = 280) => `<span class="dica-edu" style="color:#8b949e;cursor:help">ℹ️<span class="dica-texto" style="width:${w}px">${t}</span></span>`;
+    let ofCarregado = false;
+
+    function carregarOficial() {
+        if (ofCarregado) return;
+        ofCarregado = true;
+        ofJuros();
+        ofPesquisarCurtas();
+    }
+
+    function ofMini(serie, cor = '#58a6ff', larg = 220, alt = 46) {
+        if (!serie || serie.length < 2) return '';
+        const v = serie.map(p => p[1]), lo = Math.min(...v), hi = Math.max(...v), r = (hi - lo) || 1;
+        const pts = v.map((x, i) => `${(i / (v.length - 1) * larg).toFixed(1)},${(alt - 4 - (x - lo) / r * (alt - 8)).toFixed(1)}`).join(' ');
+        return `<svg viewBox="0 0 ${larg} ${alt}" style="width:100%; max-width:${larg}px; height:${alt}px; display:block"><polyline points="${pts}" fill="none" stroke="${cor}" stroke-width="1.8"/></svg>`;
+    }
+
+    async function ofJuros() {
+        const div = document.getElementById('of-juros');
+        try {
+            const d = await (await fetch('/api/oficial/juros')).json();
+            if (d.erro) { div.innerHTML = d.erro; return; }
+            document.getElementById('of-juros-atual').innerText = d.atualizado_em ? `Atualizado ${ofData(d.atualizado_em)} · fonte: ${d.fonte}` : '';
+            if (!d.diretoras.length && !d.euribor.length) { div.innerHTML = 'Os dados do BCE ainda não foram descarregados neste servidor (acontece automaticamente depois das 17:00, ou o Admin pode testar as fontes na Gestão).'; return; }
+            const caixa = (t, v, sub, dica, extra = '') => `<div style="background:#0d1117; border:1px solid #30363d; border-radius:6px; padding:10px 12px; flex:1 1 170px">
+                <div style="font-size:10px; color:#8b949e; text-transform:uppercase">${t} ${dica ? ofDica(dica) : ''}</div>
+                <div style="font-size:20px; font-weight:900; color:#f0f2f5; margin-top:2px">${v}</div><div style="font-size:11px; color:#8b949e">${sub}</div>${extra}</div>`;
+            const dfr = d.diretoras.find(x => x.id === 'DFR');
+            const e3 = d.euribor.find(x => x.id === 'EURIBOR3MD_'), e12 = d.euribor.find(x => x.id === 'EURIBOR1YD_');
+            const ipt = d.inflacao.find(x => x.id === 'PT'), iea = d.inflacao.find(x => x.id === 'U2');
+            const ca = d.certificados_aforro;
+            let h = `<div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:16px">
+                ${dfr ? caixa('Taxa de depósito do BCE', ofPct(dfr.taxa), `em vigor desde ${ofData(dfr.desde)}`, 'A taxa que o BCE paga aos bancos pelos depósitos. É a taxa diretora que hoje mais pesa na Euribor e nas taxas dos depósitos a prazo.') : ''}
+                ${e3 ? caixa('Euribor 3 meses', ofPct(e3.taxa, 3), `média de ${ofData(e3.mes)}${e3.ha_um_ano !== null ? ' · há 1 ano: ' + ofPct(e3.ha_um_ano, 3) : ''}`, 'Média mensal publicada pelo BCE. A Euribor a 3 meses define a taxa base dos Certificados de Aforro e de muitos créditos à habitação.', ofMini(e3.serie)) : ''}
+                ${e12 ? caixa('Euribor 12 meses', ofPct(e12.taxa, 3), `média de ${ofData(e12.mes)}${e12.ha_um_ano !== null ? ' · há 1 ano: ' + ofPct(e12.ha_um_ano, 3) : ''}`, 'Indexante mais usado nos créditos à habitação em Portugal. Desce antes da Euribor a 3 meses quando o mercado espera cortes de juros.', ofMini(e12.serie)) : ''}
+                ${ipt ? caixa('Inflação em Portugal', ofPct(ipt.taxa, 1), `variação homóloga do IHPC · ${ofData(ipt.mes)}${iea ? ' · área do euro: ' + ofPct(iea.taxa, 1) : ''}`, 'Quanto subiram os preços face ao mesmo mês do ano anterior (Índice Harmonizado de Preços no Consumidor). Uma aplicação só faz crescer o teu poder de compra se render mais do que isto, depois de impostos.', ofMini(ipt.serie, '#e3b341')) : ''}
+                ${ca ? caixa('Certificados de Aforro', ofPct(ca.taxa, 3), `taxa base de ${ofData(ca.mes)} · fonte IGCP`, 'Taxa base bruta para novas subscrições da Série F nesse mês (atualizada pelo Admin a partir do IGCP). Acrescem prémios de permanência a partir do 2.º ano.') : ''}
+            </div>`;
+            if (d.curva.length) {
+                const max = Math.max(...d.curva.map(c => c.taxa), 0.5);
+                h += `<div style="font-weight:bold; color:#c9d1d9; margin-bottom:6px">📈 Curva de rendimentos da área do euro (obrigações AAA) ${ofDica('Quanto rende emprestar dinheiro aos Estados da área do euro com rating AAA, a cada prazo. Normalmente prazos longos rendem mais (curva positiva). Quando os curtos rendem mais do que os longos (curva invertida), o mercado está a antecipar descidas de juros, muitas vezes por medo de abrandamento económico. A linha cinzenta mostra a mesma curva há um ano.', 320)}</div>
+                <div style="display:flex; align-items:flex-end; gap:10px; height:120px; margin-bottom:6px; max-width:560px">${d.curva.map(c => `
+                    <div style="flex:1; text-align:center; font-size:10px">
+                        <div style="color:#f0f2f5; font-weight:bold">${ofPct(c.taxa)}</div>
+                        <div style="position:relative; height:${Math.max(4, c.taxa / max * 80)}px; background:#58a6ff; border-radius:3px 3px 0 0">
+                            ${c.ha_um_ano !== null ? `<div title="Há 1 ano: ${ofPct(c.ha_um_ano)}" style="position:absolute; left:-3px; right:-3px; bottom:${Math.max(0, c.ha_um_ano / max * 80) - 1}px; border-top:2px dashed #8b949e"></div>` : ''}
+                        </div>
+                        <div style="color:#8b949e; margin-top:3px">${c.prazo}</div></div>`).join('')}</div>`;
+            }
+            if (d.comparador.length) {
+                h += `<div style="font-weight:bold; color:#c9d1d9; margin:14px 0 6px 0">🧮 Quanto rende mesmo? ${ofDica('Taxa bruta → líquida (depois da taxa liberatória de IRS de 28%) → real (depois de descontar a inflação de Portugal). Uma taxa real negativa significa que, mesmo a ganhar juros, perdes poder de compra. Valores indicativos: não incluem comissões, prémios de permanência nem o englobamento.', 320)}</div>
+                <div style="overflow-x:auto"><table style="width:100%; border-collapse:collapse; font-size:12px; margin-top:0; max-width:720px">
+                    <thead style="color:#8b949e; font-size:10px; text-transform:uppercase"><tr><th style="padding:6px; text-align:left">Aplicação</th><th style="padding:6px; text-align:right">Bruta</th><th style="padding:6px; text-align:right">Líquida (IRS 28%)</th><th style="padding:6px; text-align:right">Real (− inflação PT ${ofPct(d.inflacao_pt, 1)})</th></tr></thead>
+                    <tbody>${d.comparador.map(c => `<tr style="border-top:1px solid #21262d"><td style="padding:6px">${c.nome} <span style="color:#6e7681; font-size:10px">${c.fonte}</span></td>
+                        <td style="padding:6px; text-align:right">${ofPct(c.bruta)}</td><td style="padding:6px; text-align:right">${ofPct(c.liquida)}</td>
+                        <td style="padding:6px; text-align:right; font-weight:bold; color:${(c.real ?? 0) >= 0 ? '#5cb85c' : '#d9534f'}">${ofPct(c.real)}</td></tr>`).join('')}</tbody></table></div>`;
+            }
+            if (d.erros && d.erros.length) h += `<div style="color:#e3b341; font-size:11px; margin-top:8px">⚠️ Alguns dados não foram atualizados na última tentativa; estão a ser mostrados os últimos disponíveis.</div>`;
+            div.innerHTML = h;
+        } catch (e) { div.innerHTML = 'Erro ao carregar os juros.'; }
+    }
+
+    function ofTabelaCurtas(g) {
+        const bandeira = { PT: '🇵🇹', ES: '🇪🇸', FR: '🇫🇷', DE: '🇩🇪', IT: '🇮🇹', NL: '🇳🇱' }[g.pais] || '🇪🇺';
+        return `<details style="background:#0d1117; border:1px solid #30363d; border-radius:6px; padding:8px 12px; margin-bottom:6px">
+            <summary style="cursor:pointer; display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap">
+                <span>${bandeira} <strong style="color:#fff">${escHTML(g.emitente)}</strong> <span style="color:#6e7681">${g.isin || ''}</span></span>
+                <span><strong style="color:#d9534f">${ofPct(g.total)}</strong> do capital · ${g.posicoes.length} detentor${g.posicoes.length !== 1 ? 'es' : ''}</span>
+            </summary>
+            <table style="width:100%; border-collapse:collapse; font-size:12px; margin-top:6px">
+                <thead style="color:#8b949e; font-size:10px; text-transform:uppercase"><tr><th style="padding:4px; text-align:left">Detentor</th><th style="padding:4px; text-align:right">Posição</th><th style="padding:4px; text-align:right">Data</th></tr></thead>
+                <tbody>${g.posicoes.map(p => `<tr style="border-top:1px solid #21262d"><td style="padding:4px">${escHTML(p.detentor)}</td><td style="padding:4px; text-align:right; color:#d9534f">${ofPct(p.pct)}</td><td style="padding:4px; text-align:right; color:#8b949e">${ofData(p.data)}</td></tr>`).join('')}</tbody>
+            </table></details>`;
+    }
+
+    async function ofPesquisarCurtas() {
+        const q = document.getElementById('of-curtas-q').value.trim();
+        const div = document.getElementById('of-curtas');
+        div.innerHTML = 'A procurar...';
+        try {
+            const d = await (await fetch('/api/oficial/curtas' + (q ? '?q=' + encodeURIComponent(q) : ''))).json();
+            const f = d.fontes || {};
+            document.getElementById('of-curtas-fontes').innerHTML = 'Fontes: ' + Object.entries(f).map(([k, v]) =>
+                `${v.ok === true ? '🟢' : v.ok === false ? '🔴' : '⚪'} ${escHTML(v.nome)}${v.em ? ' (' + ofData(v.em) + ')' : ''}`).join(' · ')
+                + ' · Só são públicas as posições ≥ 0,5% do capital.';
+            if (!q) {
+                const pt = d.ranking_pt || [], eu = d.ranking || [];
+                div.innerHTML = (pt.length ? `<div style="font-weight:bold; color:#c9d1d9; margin-bottom:6px">🇵🇹 Cotadas portuguesas com posições curtas públicas</div>${pt.map(ofTabelaCurtas).join('')}`
+                                           : '<div style="margin-bottom:10px">🇵🇹 Nenhuma cotada portuguesa tem hoje posições curtas acima de 0,5% publicadas (ou a fonte da CMVM ainda não foi lida).</div>')
+                    + (eu.length ? `<div style="font-weight:bold; color:#c9d1d9; margin:14px 0 6px 0">🇪🇺 As mais shortadas entre as fontes europeias</div>${eu.map(ofTabelaCurtas).join('')}` : '');
+                return;
+            }
+            let h = '';
+            if ((d.europa || []).length) h += d.europa.map(ofTabelaCurtas).join('');
+            else h += `<div style="margin-bottom:10px">🇪🇺 Sem posições curtas públicas (≥ 0,5%) para «${escHTML(q)}»${(d.nomes_usados || []).length ? ' (procurei também por: ' + d.nomes_usados.map(escHTML).join(', ') + ')' : ''}. Só cobre ações cuja autoridade de supervisão seja PT, ES, FR, DE, IT ou NL.</div>`;
+            if (d.eua) {
+                if (d.eua.erro) h += `<div style="color:#e3b341">🇺🇸 ${escHTML(d.eua.erro)}</div>`;
+                else if (!d.eua.datas.length) h += `<div>🇺🇸 A FINRA não tem short interest para ${escHTML(d.eua.ticker)}.</div>`;
+                else {
+                    const u = d.eua.datas[0];
+                    const n = v => v === null || v === undefined ? '—' : Number(v).toLocaleString('pt-PT');
+                    h += `<div style="background:#0d1117; border:1px solid #30363d; border-radius:6px; padding:10px 12px; margin-top:8px">
+                        <div style="font-weight:bold; color:#fff; margin-bottom:6px">🇺🇸 ${escHTML(u.nome || d.eua.ticker)} · short interest (FINRA) ${ofDica('Número de ações vendidas a descoberto e ainda não recompradas na data de liquidação. «Dias para cobrir» = ações curtas ÷ volume médio diário: quantos dias de negociação seriam precisos para todos recomprarem. Acima de 5–7 dias, um aumento de preço pode forçar recompras em cadeia (short squeeze).', 300)}</div>
+                        <table style="width:100%; border-collapse:collapse; font-size:12px; margin-top:0">
+                        <thead style="color:#8b949e; font-size:10px; text-transform:uppercase"><tr><th style="padding:4px; text-align:left">Liquidação</th><th style="padding:4px; text-align:right">Ações curtas</th><th style="padding:4px; text-align:right">Variação</th><th style="padding:4px; text-align:right">Dias p/ cobrir</th></tr></thead>
+                        <tbody>${d.eua.datas.map(x => `<tr style="border-top:1px solid #21262d"><td style="padding:4px">${ofData(x.data)}</td><td style="padding:4px; text-align:right">${n(x.acoes)}</td>
+                            <td style="padding:4px; text-align:right; color:${(x.variacao_pct || 0) >= 0 ? '#d9534f' : '#5cb85c'}">${x.variacao_pct === null || x.variacao_pct === undefined ? '—' : (x.variacao_pct >= 0 ? '+' : '') + Number(x.variacao_pct).toFixed(1).replace('.', ',') + '%'}</td>
+                            <td style="padding:4px; text-align:right">${x.dias_cobrir === null || x.dias_cobrir === undefined || x.dias_cobrir >= 999 ? '—' : Number(x.dias_cobrir).toFixed(1).replace('.', ',')}</td></tr>`).join('')}</tbody></table></div>`;
+                }
+            }
+            div.innerHTML = h;
+        } catch (e) { div.innerHTML = 'Erro na pesquisa.'; }
+    }
+
+    async function ofSec(tipo) {
+        const t = document.getElementById('of-sec-q').value.trim().toUpperCase();
+        const div = document.getElementById('of-sec');
+        if (!t) { div.innerHTML = 'Indica um ticker americano.'; return; }
+        div.innerHTML = 'A consultar a SEC...';
+        try {
+            const r = await fetch(`/api/oficial/sec/${encodeURIComponent(t)}?tipo=${tipo}`);
+            const d = await r.json();
+            if (d.erro) { div.innerHTML = `<span style="color:#e3b341">${escHTML(d.erro)}</span>`; return; }
+            const usd = v => v === null || v === undefined ? '—' : (Math.abs(v) >= 1e9 ? (v / 1e9).toFixed(2).replace('.', ',') + ' mM$' : Math.abs(v) >= 1e6 ? (v / 1e6).toFixed(1).replace('.', ',') + ' M$' : Number(v).toLocaleString('pt-PT') + ' $');
+            if (tipo === 'fundamentos') {
+                const L = [['Receitas', 'receitas', usd], ['Resultado operacional', 'resultado_operacional', usd], ['Lucro líquido', 'lucro_liquido', usd],
+                           ['Margem líquida', 'margem_liquida', v => v === null ? '—' : v.toFixed(1).replace('.', ',') + '%'], ['EPS diluído', 'eps_diluido', v => v === null ? '—' : v.toFixed(2).replace('.', ',') + ' $'],
+                           ['Fluxo de caixa operacional', 'fluxo_operacional', usd], ['Free cash flow', 'fcf', usd], ['Caixa', 'caixa', usd],
+                           ['Dívida de longo prazo', 'divida_lp', usd], ['Capital próprio', 'capital_proprio', usd], ['ROE', 'roe', v => v === null ? '—' : v.toFixed(1).replace('.', ',') + '%']];
+                div.innerHTML = `<div style="font-weight:bold; color:#fff; margin-bottom:6px">${escHTML(d.empresa || t)} · relatórios anuais (10-K) ${ofDica('Valores tal como entregues à SEC no relatório anual (ano fiscal da empresa, que pode não coincidir com o ano civil). Free cash flow = fluxo de caixa operacional − investimento em ativos fixos. ROE = lucro líquido ÷ capital próprio. Se uma linha aparece vazia, a empresa reporta essa rubrica com outro nome.', 300)}</div>
+                    <div style="overflow-x:auto"><table style="width:100%; border-collapse:collapse; font-size:12px; margin-top:0"><thead style="color:#8b949e; font-size:10px"><tr><th style="padding:5px; text-align:left">Ano fiscal</th>${d.anos.map(a => `<th style="padding:5px; text-align:right">${a.ano}</th>`).join('')}</tr></thead>
+                    <tbody>${L.map(([n, k, f]) => `<tr style="border-top:1px solid #21262d"><td style="padding:5px">${n}</td>${d.anos.map(a => `<td style="padding:5px; text-align:right">${f(a[k] ?? null)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
+                    <div style="font-size:10px; color:#6e7681; margin-top:6px">Fonte: ${escHTML(d.fonte)}.</div>`;
+                return;
+            }
+            const res = d.resumo;
+            const linhas = d.formularios.flatMap(f => f.transacoes.map(x => ({ ...x, dono: f.donos[0] || {}, url: f.url, entrega: f.data_entrega })));
+            div.innerHTML = `<div style="font-weight:bold; color:#fff; margin-bottom:8px">${escHTML(d.empresa)} · últimos ${d.formularios.length} formulários 4</div>
+                <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px">
+                    <div style="background:#0d1117; border:1px solid #30363d; border-radius:6px; padding:8px 12px">🟢 Compras em bolsa: <strong style="color:#5cb85c">${res.n_compras}</strong> · ${usd(res.compras_valor)}</div>
+                    <div style="background:#0d1117; border:1px solid #30363d; border-radius:6px; padding:8px 12px">🔴 Vendas em bolsa: <strong style="color:#d9534f">${res.n_vendas}</strong> · ${usd(res.vendas_valor)}</div>
+                </div>
+                <div style="overflow-x:auto"><table style="width:100%; border-collapse:collapse; font-size:12px; margin-top:0">
+                <thead style="color:#8b949e; font-size:10px; text-transform:uppercase"><tr><th style="padding:5px; text-align:left">Data</th><th style="padding:5px; text-align:left">Quem</th><th style="padding:5px; text-align:left">Operação</th><th style="padding:5px; text-align:right">Ações</th><th style="padding:5px; text-align:right">Preço</th><th style="padding:5px; text-align:right">Valor</th></tr></thead>
+                <tbody>${linhas.map(x => `<tr style="border-top:1px solid #21262d; ${x.classe === 'outro' ? 'opacity:0.6' : ''}">
+                    <td style="padding:5px">${ofData(x.data)}</td><td style="padding:5px">${escHTML(x.dono.nome || '—')}<div style="font-size:10px; color:#8b949e">${escHTML(x.dono.cargo || '')}</div></td>
+                    <td style="padding:5px; color:${x.classe === 'compra' ? '#5cb85c' : x.classe === 'venda' ? '#d9534f' : '#8b949e'}">${escHTML(x.tipo)}${x.plano_10b5_1 ? ' <span title="Operação pré-programada num plano 10b5-1: decidida meses antes, é um sinal fraco." style="font-size:10px; color:#8b949e">(plano 10b5-1)</span>' : ''}</td>
+                    <td style="padding:5px; text-align:right">${x.acoes === null ? '—' : Number(x.acoes).toLocaleString('pt-PT')}</td><td style="padding:5px; text-align:right">${x.preco === null ? '—' : x.preco.toFixed(2).replace('.', ',') + ' $'}</td>
+                    <td style="padding:5px; text-align:right"><a href="${x.url}" target="_blank" rel="noopener" style="color:#c9d1d9">${usd(x.valor)}</a></td></tr>`).join('') || '<tr><td colspan="6" style="padding:8px">Sem transações nos formulários recentes.</td></tr>'}</tbody></table></div>
+                <div style="font-size:10px; color:#6e7681; margin-top:6px">Fonte: ${escHTML(d.fonte)}. Linhas esbatidas: atribuições, exercício de opções e retenções para impostos (não são decisões de compra/venda em bolsa).</div>`;
+        } catch (e) { div.innerHTML = 'Erro ao consultar a SEC.'; }
+    }
+
     async function carregarLiga(forcarRecalculo = false) {
         carregarHallOfFame(); // medalhas, Hall of Fame e histórico (em paralelo com a classificação)
         const tbody = document.getElementById('tbody-liga');
@@ -8978,17 +9180,20 @@ async function dvdCambioAuto() {
     const inp = document.getElementById('dvd-cambio');
     if (moeda === 'EUR') { bloco.style.display = 'none'; inp.value = 1; return; }
     bloco.style.display = 'flex';
-    if (moeda !== 'USD') {
-        document.getElementById('dvd-dica-pais').innerHTML = `ℹ️ Introduz o câmbio ${moeda} por 1 € da data de pagamento (consulta o extrato ou o BCE).`;
-        return;
-    }
     if (!data) return;
+    const dica = document.getElementById('dvd-dica-pais');
     try {
         inp.value = '...';
-        const r = await fetch(`/api/cambio/${data}`);
+        const r = await fetch(`/api/cambio/${data}?moeda=${moeda}`);
         const j = await r.json();
-        inp.value = j.cambio || 1.08;
-    } catch (e) { inp.value = 1.08; }
+        if (j.cambio) {
+            inp.value = j.cambio;
+            dica.innerHTML = `ℹ️ Câmbio ${moeda} por 1 € ${j.fonte === 'BCE' ? 'de referência do <b>BCE</b>' : 'do <b>' + j.fonte + '</b>'} de ${j.data.split('-').reverse().join('/')}${j.nota ? ' (' + j.nota + ')' : ''}. Se o extrato da corretora usar outro, corrige o valor.`;
+        } else {
+            inp.value = '';
+            dica.innerHTML = `⚠️ ${j.erro || 'Câmbio indisponível.'}`;
+        }
+    } catch (e) { inp.value = ''; dica.innerHTML = '⚠️ Câmbio indisponível: introduz o valor do extrato.'; }
 }
 
 function dvdAdicionar() {

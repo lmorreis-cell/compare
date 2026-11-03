@@ -137,6 +137,7 @@
     <div class="mosaico" data-ir="c-psi"><div class="rot" id="m-psi-r"><span class="ponto"></span>Briefing PSI</div><div class="val" id="m-psi">—</div><div class="det" id="m-psi-d">&nbsp;</div></div>
     <div class="mosaico" data-ir="c-liga"><div class="rot" id="m-liga-r"><span class="ponto"></span>Liga Mensal</div><div class="val" id="m-liga">—</div><div class="det" id="m-liga-d">&nbsp;</div></div>
     <div class="mosaico" data-ir="c-backups"><div class="rot" id="m-bk-r"><span class="ponto"></span>Cópias de segurança</div><div class="val" id="m-bk">—</div><div class="det" id="m-bk-d">&nbsp;</div></div>
+    <div class="mosaico" data-ir="c-fontes"><div class="rot" id="m-fo-r"><span class="ponto"></span>Fontes oficiais</div><div class="val" id="m-fo">—</div><div class="det" id="m-fo-d">&nbsp;</div></div>
     <div class="mosaico" data-ir="c-online"><div class="rot ok" id="m-on-r"><span class="ponto"></span>Membros</div><div class="val" id="m-on">—</div><div class="det" id="m-on-d">&nbsp;</div></div>
   </section>
 
@@ -254,6 +255,34 @@
       <div class="msg" id="msg-bk"></div>
     </article>
 
+    <!-- FONTES OFICIAIS -->
+    <article class="cartao largo" id="c-fontes">
+      <div class="cab"><span style="font-size:20px">🏛️</span><h2>Fontes oficiais (BCE, reguladores, FINRA, SEC)</h2><span class="pilula" id="p-fo">—</span></div>
+      <p class="explica">Dados oficiais e gratuitos do separador <b>«Juros &amp; Dados Oficiais»</b> do terminal e dos câmbios do Cofre. Atualizam-se sozinhos uma vez por dia (BCE às 17:00, posições curtas às 19:00) e ficam guardados no servidor: os membros nunca vão diretamente a estas fontes. Usa <b>«Testar fontes»</b> depois de instalar ou se algo deixar de aparecer: testa cada fonte a partir do servidor e diz-te o que falhou.</p>
+      <ul class="regras">
+        <li><b>SEC</b> (administradores e fundamentos dos EUA): exige identificação. Define <code>SEC_USER_AGENT</code> nas Variáveis da Discloud com um nome e um e-mail de contacto, ex.: <code>Portal Bolsa contacto@teudominio.pt</code>.</li>
+        <li><b>Posições curtas</b>: se um regulador mudar o endereço do ficheiro, corrige-o aqui. Se não tiver download automático (ex.: CNMV), descarrega a lista oficial no site e carrega-a aqui.</li>
+        <li><b>Certificados de Aforro</b>: o IGCP não tem API. No início de cada mês, introduz a taxa base que o IGCP publica.</li>
+      </ul>
+      <table class="dados" id="t-fo"></table>
+      <div class="padrao-liga">
+        <b style="color:var(--texto)">Certificados de Aforro:</b> mês <input type="month" id="fo-ca-mes" class="campo"> taxa base <input type="text" id="fo-ca-taxa" class="campo" placeholder="2,474" style="width:80px"> %
+        <button class="btn sec" id="b-fo-ca">Gravar taxa</button>
+        <span id="fo-ca-ultima" style="font-size:12px"></span>
+      </div>
+      <table class="dados tabela" id="t-fo-curtas">
+        <thead><tr><th>Regulador</th><th>Estado</th><th>Endereço do ficheiro / página</th><th>Ficheiro manual</th></tr></thead>
+        <tbody><tr><td colspan="4" class="vazio">a carregar…</td></tr></tbody>
+      </table>
+      <table class="dados tabela" id="t-fo-teste" style="display:none">
+        <thead><tr><th>Fonte</th><th>Resultado</th></tr></thead><tbody></tbody>
+      </table>
+      <div class="acoes">
+        <button class="btn prim" id="b-fo-testar">🧪 Testar fontes agora</button>
+      </div>
+      <div class="msg" id="msg-fo"></div>
+    </article>
+
     <!-- BRIEFING SEMANAL -->
     <article class="cartao" id="c-semanal">
       <div class="cab"><span style="font-size:20px">🗓️</span><h2>Briefing Semanal (sábado)</h2><span class="pilula" id="p-sem">—</span></div>
@@ -310,6 +339,7 @@
         <li><code>/api/admin/relatorio_psi/preview</code><span>Pré-visualização do Briefing PSI.</span></li>
         <li><code>/api/admin/online</code><span>Membros online e últimas visitas.</span></li>
         <li><code>/api/admin/semanal/preview</code><span>Pré-visualização do Briefing Semanal.</span></li>
+        <li><code>/api/admin/fontes</code><span>Estado das fontes oficiais (BCE, posições curtas, SEC).</span></li>
         <li><code>/api/admin/backups</code><span>Cópias de segurança e registo dos avisos privados.</span></li>
         <li><code>/api/admin/liga/janelas</code><span>Janelas de inscrição da Liga Mensal e datas de entrada das carteiras.</span></li>
         <li><code>/admin/escola</code><span>Editor das lições da Escola.</span></li>
@@ -568,6 +598,81 @@ $("c-liga").addEventListener("click", ev => {
 $("b-liga-padrao").addEventListener("click", () =>
   ligaAcao("POST", { padrao: { dia_inicio: $("liga-di").value, dia_fim: $("liga-df").value } }, "", "✅ Padrão gravado. Aplica-se às edições cuja janela ainda não abriu."));
 
+// ---------------- Fontes oficiais
+let foEditado = false;
+function pintarFontes(d) {
+  if (!d || !d.bce) return;
+  const b = d.bce, c = d.curtas;
+  const okBce = b.cambios_ultimo_dia && (Date.now() - new Date(b.cambios_ultimo_dia)) < 5 * 864e5;
+  const fontesCurtas = Object.values(c.fontes || {});
+  const falhas = fontesCurtas.filter(f => f.ok === false).length;
+  const cls = !okBce ? "erro" : (falhas || !d.sec_user_agent ? "aviso" : "ok");
+  pilula("p-fo", cls, !okBce ? "BCE sem dados recentes" : (falhas ? `${falhas} fonte(s) com falha` : (!d.sec_user_agent ? "SEC por ativar" : "Tudo em dia")));
+  mosaico("fo", cls, okBce ? "BCE em dia" : "BCE em falta", `${c.total || 0} posições curtas · SEC ${d.sec_user_agent ? "ativa" : "por ativar"}`);
+  linhas("t-fo", [
+    ["Câmbios do BCE", b.cambios_ultimo_dia ? `último dia: ${dataPt(b.cambios_ultimo_dia, false)} · ${b.moedas.length} moedas · atualizado ${dataPt(b.cambios_atualizado_em)}` : `<span style="color:var(--vermelho)">ainda não descarregados</span>`],
+    ["Juros, Euribor e inflação (BCE)", b.juros_atualizado_em ? `atualizado ${dataPt(b.juros_atualizado_em)}` + (b.juros_erros.length ? ` · <span style="color:var(--amarelo)">${esc(b.juros_erros.join("; "))}</span>` : "") : `<span style="color:var(--vermelho)">ainda não descarregados</span>`],
+    ["Posições curtas", c.atualizado_em ? `${c.total} posições atuais · atualizado ${dataPt(c.atualizado_em)}` : "ainda não descarregadas"],
+    ["SEC (EUA)", d.sec_user_agent ? `<span style="color:var(--verde)">✔ SEC_USER_AGENT definido</span>` : `<span style="color:var(--amarelo)">⚠ Falta SEC_USER_AGENT (nome + e-mail)</span>`],
+  ]);
+  $("fo-ca-ultima").innerHTML = b.ca_ultimo ? `Última: <b>${esc(b.ca_ultimo.mes)}</b> · ${String(b.ca_ultimo.taxa).replace(".", ",")}%` : `<span style="color:var(--amarelo)">Ainda sem taxa</span>`;
+  if (!$("fo-ca-mes").value) $("fo-ca-mes").value = new Date().toISOString().slice(0, 7);
+  if (foEditado || $("c-fontes").contains(document.activeElement)) return;
+  $("t-fo-curtas").querySelector("tbody").innerHTML = Object.entries(c.fontes).map(([k, f]) => `<tr>
+      <td><b>${esc(f.nome)}</b><div style="font-size:11px;color:var(--suave)"><a href="${esc(f.pagina || "#")}" target="_blank" rel="noopener">página oficial ↗</a></div></td>
+      <td>${f.ok === true ? `<span class="pilula ok"><span class="ponto"></span>${f.n || 0} ${(f.n || 0) === 1 ? "posição" : "posições"}</span>` : f.ok === false ? `<span class="pilula erro" title="${esc(f.msg || "")}"><span class="ponto"></span>Falhou</span><div style="font-size:11px;color:#fca5a5;max-width:240px">${esc((f.msg || "").slice(0, 140))}</div>` : `<span class="pilula"><span class="ponto"></span>${f.ativa ? "por testar" : "desativada"}</span>`}
+        ${f.em ? `<div style="font-size:11px;color:var(--suave)">${dataPt(f.em)}</div>` : ""}</td>
+      <td><input class="campo" style="width:100%;min-width:220px" id="fo-url-${k}" value="${esc(f.url || "")}" placeholder="${f.procurar_xlsx ? "procura o Excel na página oficial" : "sem download automático"}">
+        <div style="margin-top:4px;display:flex;gap:6px;align-items:center"><label style="font-size:12px"><input type="checkbox" id="fo-ativa-${k}" ${f.ativa ? "checked" : ""}> ativa</label>
+        <button class="btn sec" style="padding:4px 10px" data-fo-gravar="${k}">Gravar</button></div>${f.nota ? `<div style="font-size:11px;color:var(--suave)">${esc(f.nota)}</div>` : ""}</td>
+      <td><label class="btn sec" style="padding:5px 10px;cursor:pointer">📤 Carregar<input type="file" accept=".csv,.xlsx,.xls,.html,.htm" data-fo-upload="${k}" style="display:none"></label>
+        ${f.manual ? `<div style="font-size:11px;color:var(--suave)">há um ficheiro carregado</div>` : ""}</td></tr>`).join("");
+}
+async function foPost(url, corpo, form) {
+  const r = await fetch(url, form ? { method: "POST", credentials: "same-origin", body: form }
+    : { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify(corpo || {}) });
+  let j = null; try { j = await r.json(); } catch (e) {}
+  return { ok: r.ok, j, estado: r.status };
+}
+async function foRecarregar() { foEditado = false; const r = await pedir("/api/admin/fontes"); if (r.ok) pintarFontes(r.j); }
+$("c-fontes").addEventListener("input", () => { foEditado = true; });
+$("c-fontes").addEventListener("click", async ev => {
+  const g = ev.target.closest("[data-fo-gravar]");
+  if (!g) return;
+  const k = g.dataset.foGravar;
+  const r = await foPost("/api/admin/curtas/fonte", { pais: k, url: $("fo-url-" + k).value.trim(), ativa: $("fo-ativa-" + k).checked });
+  msg("msg-fo", r.j && r.j.sucesso ? "ok" : "erro", (r.j && (r.j.mensagem || r.j.erro)) || `Erro ${r.estado}`);
+  foRecarregar();
+});
+$("c-fontes").addEventListener("change", async ev => {
+  const inp = ev.target.closest("[data-fo-upload]");
+  if (!inp || !inp.files.length) return;
+  const fd = new FormData(); fd.append("pais", inp.dataset.foUpload); fd.append("ficheiro", inp.files[0]);
+  msg("msg-fo", "info", "A ler o ficheiro…");
+  const r = await foPost("/api/admin/curtas/upload", null, fd);
+  msg("msg-fo", r.j && r.j.sucesso ? "ok" : "erro", (r.j && (r.j.mensagem || r.j.erro)) || `Erro ${r.estado}`);
+  foRecarregar();
+});
+$("b-fo-ca").addEventListener("click", async () => {
+  const r = await foPost("/api/admin/juros/ca", { mes: $("fo-ca-mes").value, taxa: $("fo-ca-taxa").value });
+  msg("msg-fo", r.j && r.j.sucesso ? "ok" : "erro", (r.j && (r.j.mensagem || r.j.erro)) || `Erro ${r.estado}`);
+  if (r.j && r.j.sucesso) $("fo-ca-taxa").value = "";
+  foRecarregar();
+});
+$("b-fo-testar").addEventListener("click", async () => {
+  $("b-fo-testar").disabled = true; $("b-fo-testar").textContent = "⏳ A testar (até 2 min)…";
+  msg("msg-fo", "info", "A testar cada fonte a partir do servidor…");
+  const r = await foPost("/api/admin/fontes/testar");
+  $("b-fo-testar").disabled = false; $("b-fo-testar").textContent = "🧪 Testar fontes agora";
+  if (!r.j || !r.j.resultados) { msg("msg-fo", "erro", (r.j && r.j.erro) || `Erro ${r.estado}`); return; }
+  const t = $("t-fo-teste"); t.style.display = "";
+  t.querySelector("tbody").innerHTML = Object.entries(r.j.resultados).map(([n, v]) =>
+    `<tr><td>${esc(n)}</td><td>${v.ok === true ? "🟢" : v.ok === false ? "🔴" : "⚪"} ${esc(v.msg || "")}</td></tr>`).join("");
+  const falhas = Object.values(r.j.resultados).filter(v => v.ok === false).length;
+  msg("msg-fo", falhas ? "erro" : "ok", falhas ? `${falhas} fonte(s) falharam: vê o detalhe na tabela.` : "Todas as fontes responderam.");
+  foRecarregar();
+});
+
 // ---------------- Briefing Semanal
 function pintarSemanal(b) {
   if (!b) return;
@@ -661,7 +766,8 @@ $("b-bk-teste").addEventListener("click", async () => {
 // ---------------- Ciclo
 async function atualizar() {
   try {
-    const [snap, yahoo, online, esc_, liga, bk, sem] = await Promise.all([pedir("/api/admin/snapshot"), pedir("/api/admin/yahoo"), pedir("/api/admin/online"), pedir("/api/admin/escola"), pedir("/api/admin/liga/janelas"), pedir("/api/admin/backups"), pedir("/api/admin/semanal/estado")]);
+    const [snap, yahoo, online, esc_, liga, bk, sem, fo] = await Promise.all([pedir("/api/admin/snapshot"), pedir("/api/admin/yahoo"), pedir("/api/admin/online"), pedir("/api/admin/escola"), pedir("/api/admin/liga/janelas"), pedir("/api/admin/backups"), pedir("/api/admin/semanal/estado"), pedir("/api/admin/fontes")]);
+    if (fo.ok && fo.j) pintarFontes(fo.j);
     if (sem.ok && sem.j) pintarSemanal(sem.j);
     if (bk.ok && bk.j) pintarBackups(bk.j);
     if (liga.ok && liga.j) pintarLiga(liga.j);
