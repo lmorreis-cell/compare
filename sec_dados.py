@@ -221,6 +221,394 @@ def fundamentos(ticker):
     return {"ticker": ticker.upper(), "cik": num, "fonte": "SEC EDGAR (relatórios anuais 10-K, XBRL)", **dados}
 
 
+# ---------------------------------------------------------------
+# 13F: CARTEIRAS DOS GRANDES INVESTIDORES (trimestral, 45 dias de atraso)
+# ---------------------------------------------------------------
+# CIK confirmado pela SEC: o nome mostrado vem sempre da própria SEC (se um CIK estiver errado, vê-se logo).
+GESTORES_13F = [
+    ("0001067983", "Berkshire Hathaway", "Warren Buffett"),
+    ("0001336528", "Pershing Square", "Bill Ackman"),
+    ("0001061768", "Baupost Group", "Seth Klarman"),
+    ("0001536411", "Duquesne Family Office", "Stanley Druckenmiller"),
+    ("0001656456", "Appaloosa", "David Tepper"),
+    ("0001709323", "Himalaya Capital", "Li Lu"),
+    ("0001040273", "Third Point", "Dan Loeb"),
+    ("0001079114", "Greenlight Capital", "David Einhorn"),
+    ("0001350694", "Bridgewater Associates", "Ray Dalio (fundador)"),
+    ("0001167483", "Tiger Global", "Chase Coleman"),
+    ("0001061165", "Lone Pine Capital", "Stephen Mandel (fundador)"),
+    ("0001697748", "ARK Investment Management", "Cathie Wood"),
+    ("0001112520", "Akre Capital", "Chuck Akre (fundador)"),
+]
+
+
+def _local(tag):
+    return tag.split("}")[-1]
+
+
+def _filho(no, nome):
+    for c in no.iter():
+        if _local(c.tag) == nome:
+            return c.text.strip() if c.text else None
+    return None
+
+
+def _ler_info_table(xml):
+    """Lê a «information table» do 13F (independente dos namespaces) e junta linhas do mesmo título."""
+    raiz = ET.fromstring(xml)
+    por_chave = {}
+    for it in raiz.iter():
+        if _local(it.tag) != "infoTable":
+            continue
+        cusip = (_filho(it, "cusip") or "").upper()
+        put_call = (_filho(it, "putCall") or "").strip().capitalize()
+        chave = (cusip, put_call)
+        valor = float(_filho(it, "value") or 0)
+        acoes = float(_filho(it, "sshPrnamt") or 0)
+        p = por_chave.setdefault(chave, {"emitente": _filho(it, "nameOfIssuer"), "classe": _filho(it, "titleOfClass"),
+                                         "cusip": cusip, "opcao": put_call or None, "valor": 0.0, "acoes": 0.0})
+        p["valor"] += valor
+        p["acoes"] += acoes
+    return list(por_chave.values())
+
+
+def _13f_entregas(num):
+    sub = _cache(f"sub_{num}.json", 86400, lambda: _get(f"https://data.sec.gov/submissions/CIK{num}.json").json())
+    rec = sub.get("filings", {}).get("recent", {})
+    por_periodo = {}
+    for i, forma in enumerate(rec.get("form", [])):
+        if forma != "13F-HR":
+            continue
+        periodo = (rec.get("reportDate") or [None] * (i + 1))[i]
+        if periodo and periodo not in por_periodo:  # a lista vem do mais recente para o mais antigo
+            por_periodo[periodo] = {"periodo": periodo, "entregue": rec["filingDate"][i], "acc": rec["accessionNumber"][i]}
+    return sub.get("name"), sorted(por_periodo.values(), key=lambda x: x["periodo"], reverse=True)
+
+
+def _13f_posicoes(num, acc):
+    def produzir():
+        pasta = f"https://www.sec.gov/Archives/edgar/data/{int(num)}/{acc.replace('-', '')}"
+        itens = _get(pasta + "/index.json").json().get("directory", {}).get("item", [])
+        xmls = [x for x in itens if x.get("name", "").lower().endswith(".xml") and x["name"].lower() != "primary_doc.xml"]
+        if not xmls:
+            raise RuntimeError("Tabela de posições não encontrada na entrega.")
+        maior = max(xmls, key=lambda x: int(x.get("size") or 0) if str(x.get("size") or "").isdigit() else 0)
+        return _ler_info_table(_get(f"{pasta}/{maior['name']}", "application/xml").content)
+    return _cache(f"13f_{acc}.json", None, produzir)  # uma entrega nunca muda: cache permanente
+
+
+def carteira_13f(cik_gestor):
+    """Posições do último 13F-HR comparadas com o trimestre anterior."""
+    num = re.sub(r"\D", "", str(cik_gestor)).zfill(10)
+    nome_sec, entregas = _13f_entregas(num)
+    if not entregas:
+        return {"erro": "Este CIK não tem entregas 13F-HR na SEC."}
+    atual = entregas[0]
+    pos = _13f_posicoes(num, atual["acc"])
+    ant = _13f_posicoes(num, entregas[1]["acc"]) if len(entregas) > 1 else None
+    total = sum(p["valor"] for p in pos if not p["opcao"]) or 1
+    mapa_ant = {(p["cusip"], p["opcao"]): p for p in (ant or [])}
+    linhas = []
+    for p in sorted(pos, key=lambda x: -x["valor"]):
+        a = mapa_ant.get((p["cusip"], p["opcao"]))
+        if ant is None:
+            mov, var = None, None
+        elif not a:
+            mov, var = "nova", None
+        else:
+            var = round((p["acoes"] - a["acoes"]) / a["acoes"] * 100, 1) if a["acoes"] else None
+            mov = "reforco" if var is not None and var >= 1 else ("reducao" if var is not None and var <= -1 else "igual")
+        linhas.append({**p, "peso": round(p["valor"] / total * 100, 2) if not p["opcao"] else None, "movimento": mov, "variacao_acoes": var})
+    vendidas = []
+    if ant is not None:
+        atuais = {(p["cusip"], p["opcao"]) for p in pos}
+        vendidas = sorted([p for p in ant if (p["cusip"], p["opcao"]) not in atuais], key=lambda x: -x["valor"])
+    return {"cik": num, "gestor": nome_sec, "periodo": atual["periodo"], "entregue": atual["entregue"],
+            "periodo_anterior": entregas[1]["periodo"] if len(entregas) > 1 else None,
+            "valor_total": round(sum(p["valor"] for p in pos if not p["opcao"])), "n_posicoes": len(pos),
+            "posicoes": linhas, "vendidas": vendidas[:30],
+            "url": f"https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK={num}&type=13F-HR",
+            "fonte": "SEC EDGAR (formulário 13F-HR)"}
+
+
+def _norm_nome(n):
+    n = re.sub(r"[^A-Z0-9 ]", " ", (n or "").upper().replace("&", " "))
+    n = re.sub(r"\b(INC|CORP|CORPORATION|CO|COMPANY|LTD|LIMITED|PLC|HOLDINGS?|HLDGS?|GROUP|GRP|SA|NV|AG|THE|CL|CLASS|COM|NEW|DEL|OF|AND|A|B|C)\b", " ", n)
+    return n.split()
+
+
+def _mesmo_emitente(nome_13f, nome_sec):
+    """Os 13F usam nomes abreviados («BANK AMER CORP», «OCCIDENTAL PETE CORP»): a 1.ª palavra tem de coincidir e
+    cada palavra seguinte tem de partilhar as 3 primeiras letras com uma palavra do nome oficial."""
+    a, b = _norm_nome(nome_13f), _norm_nome(nome_sec)
+    if not a or not b or a[0] != b[0]:
+        return False
+    return all(any(x[:3] == y[:3] for y in b[1:]) for x in a[1:]) and abs(len(a) - len(b)) <= 1
+
+
+def quem_detem(ticker):
+    """Quais dos gestores acompanhados têm esta ação no último 13F. Usa só gestores já em cache (rápido)."""
+    c = cik(ticker)
+    if not c:
+        return {"erro": f"{ticker.upper()} não encontrado na lista da SEC."}
+    out = []
+    for g_cik, g_nome, g_pessoa in GESTORES_13F:
+        if not os.path.exists(os.path.join(PASTA, f"sub_{g_cik}.json")):
+            continue
+        try:
+            d = carteira_13f(g_cik)
+        except Exception:
+            continue
+        for p in d.get("posicoes", []):
+            if not p["opcao"] and _mesmo_emitente(p["emitente"], c[1]):
+                out.append({"gestor": g_nome, "pessoa": g_pessoa, "cik": g_cik, "peso": p["peso"], "valor": p["valor"], "classe": p["classe"],
+                            "acoes": p["acoes"], "movimento": p["movimento"], "variacao_acoes": p["variacao_acoes"], "periodo": d["periodo"]})
+    return {"ticker": ticker.upper(), "empresa": c[1], "detentores": sorted(out, key=lambda x: -(x["peso"] or 0)),
+            "nota": "Correspondência pelo nome do emitente (os 13F não indicam o ticker)."}
+
+
+def lista_gestores():
+    """Lista para o separador, com o resumo de cada um (só a partir da cache; nunca bloqueia)."""
+    out = []
+    for g_cik, g_nome, g_pessoa in GESTORES_13F:
+        item = {"cik": g_cik, "nome": g_nome, "pessoa": g_pessoa}
+        caminho = os.path.join(PASTA, f"sub_{g_cik}.json")
+        if os.path.exists(caminho):
+            try:
+                nome_sec, entregas = _13f_entregas(g_cik)
+                if entregas:
+                    item.update({"periodo": entregas[0]["periodo"], "entregue": entregas[0]["entregue"]})
+            except Exception:
+                pass
+        out.append(item)
+    return out
+
+
+def atualizar_13f():
+    """Descarrega (com calma) os 13F de todos os gestores acompanhados. Corre de madrugada."""
+    ok, erros = 0, []
+    for g_cik, g_nome, _ in GESTORES_13F:
+        try:
+            d = carteira_13f(g_cik)
+            if d.get("erro"):
+                erros.append(f"{g_nome}: {d['erro']}")
+            else:
+                ok += 1
+        except SemUserAgent:
+            raise
+        except Exception as e:
+            erros.append(f"{g_nome}: {str(e)[:80]}")
+    return ok, erros
+
+
+# ---------------------------------------------------------------
+# 8-K: COMUNICADOS DE EVENTOS RELEVANTES
+# ---------------------------------------------------------------
+ITENS_8K = {
+    "1.01": ("Acordo relevante celebrado", "media"), "1.02": ("Fim de um acordo relevante", "media"),
+    "1.03": ("Falência ou insolvência", "alta"), "1.05": ("Incidente de cibersegurança relevante", "alta"),
+    "2.01": ("Aquisição ou venda de ativos concluída", "media"), "2.02": ("Resultados divulgados", "baixa"),
+    "2.03": ("Nova dívida ou obrigação financeira relevante", "media"), "2.04": ("Evento que antecipa o vencimento de dívida", "alta"),
+    "2.05": ("Custos de reestruturação ou saída de uma atividade", "media"), "2.06": ("Imparidades (perdas de valor) relevantes", "alta"),
+    "3.01": ("Aviso de exclusão da bolsa ou incumprimento das regras de cotação", "alta"),
+    "3.02": ("Venda de ações não registada (diluição)", "media"), "3.03": ("Alteração dos direitos dos acionistas", "media"),
+    "4.01": ("Mudança de auditor", "alta"), "4.02": ("Contas anteriores deixam de ser fiáveis (reexpressão)", "alta"),
+    "5.01": ("Mudança de controlo da empresa", "alta"), "5.02": ("Saída ou entrada de administradores/diretores", "media"),
+    "5.03": ("Alteração dos estatutos ou do ano fiscal", "baixa"), "5.07": ("Resultados de votações da assembleia", "baixa"),
+    "7.01": ("Divulgação ao mercado (Reg FD), p. ex. apresentações", "baixa"), "8.01": ("Outros eventos", "baixa"),
+    "9.01": ("Demonstrações financeiras e anexos", "baixa"),
+}
+_PESO = {"alta": 3, "media": 2, "baixa": 1}
+
+
+def eventos(ticker, dias=90, sub_validade=3600):
+    """8-K recentes (com os itens traduzidos e a importância). Usa o JSON de submissões (1 pedido, cache 1 h)."""
+    c = cik(ticker)
+    if not c:
+        return {"erro": f"{ticker.upper()} não encontrado na lista da SEC (só empresas cotadas nos EUA)."}
+    num, nome = c
+    sub = _cache(f"sub_{num}.json", sub_validade, lambda: _get(f"https://data.sec.gov/submissions/CIK{num}.json").json())
+    rec = sub.get("filings", {}).get("recent", {})
+    limite = (date.today() - timedelta(days=dias)).isoformat()
+    out = []
+    for i, forma in enumerate(rec.get("form", [])):
+        if forma not in ("8-K", "8-K/A"):
+            continue
+        dia = rec["filingDate"][i]
+        if dia < limite:
+            break
+        cods = [x.strip() for x in (rec.get("items") or [""] * (i + 1))[i].split(",") if x.strip()]
+        itens = [{"codigo": k, "nome": ITENS_8K.get(k, ("Item " + k, "baixa"))[0], "nivel": ITENS_8K.get(k, ("", "baixa"))[1]}
+                 for k in cods if k != "9.01"]
+        nivel = max((x["nivel"] for x in itens), key=lambda n: _PESO[n], default="baixa")
+        acc = rec["accessionNumber"][i]
+        out.append({"data": dia, "hora": (rec.get("acceptanceDateTime") or [""] * (i + 1))[i][11:16] or None,
+                    "forma": forma, "itens": itens, "nivel": nivel,
+                    "url": f"https://www.sec.gov/Archives/edgar/data/{int(num)}/{acc.replace('-', '')}/{rec['primaryDocument'][i]}",
+                    "acc": acc})
+    return {"ticker": ticker.upper(), "empresa": nome, "eventos": out, "fonte": "SEC EDGAR (formulário 8-K)"}
+
+
+def eventos_lote(tickers, dias=3):
+    """Para os alertas locais do browser: só recebe tickers, não guarda nada. Inclui compras de administradores."""
+    res = []
+    for t in tickers[:25]:
+        try:
+            ev = eventos(t, dias=dias)
+        except SemUserAgent:
+            raise
+        except Exception:
+            continue
+        for e in ev.get("eventos", []):
+            if e["nivel"] in ("alta", "media") or any(i["codigo"] == "2.02" for i in e["itens"]):
+                res.append({"ticker": ev["ticker"], "empresa": ev["empresa"], **e})
+        # Compras em bolsa de administradores (Form 4, código P) nos últimos 10 dias
+        try:
+            ins = insiders(t, maximo=10)
+            lim = (date.today() - timedelta(days=10)).isoformat()
+            compras = [x for f in ins.get("formularios", []) if f["data_entrega"] >= lim
+                       for x in f["transacoes"] if x["codigo"] == "P" and not x.get("plano_10b5_1")]
+            if compras:
+                res.append({"ticker": ev.get("ticker", t.upper()), "empresa": ins.get("empresa"), "tipo": "insider",
+                            "data": max(x["data"] or "" for x in compras), "n": len(compras),
+                            "valor": round(sum(x["valor"] or 0 for x in compras))})
+        except Exception:
+            pass
+    return res
+
+
+# ---------------------------------------------------------------
+# VIGILÂNCIA PARA O DISCORD (lista definida pelo Admin + ações americanas da Liga)
+# ---------------------------------------------------------------
+ARQ_VIGIA = "sec_vigia.json"
+
+
+def _ler_json(caminho, omissao):
+    try:
+        with open(caminho, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return omissao
+
+
+def _gravar_json(caminho, dados):
+    tmp = caminho + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(dados, f, ensure_ascii=False)
+    os.replace(tmp, caminho)
+
+
+def vigia_config():
+    d = _ler_json(ARQ_VIGIA, {})
+    return {"tickers": d.get("tickers", []), "incluir_liga": d.get("incluir_liga", True), "nivel_minimo": d.get("nivel_minimo", "media"),
+            "vistos": d.get("vistos", []), "ultima": d.get("ultima"), "enviados": d.get("enviados", 0)}
+
+
+def gravar_vigia(tickers=None, incluir_liga=None, nivel_minimo=None):
+    d = _ler_json(ARQ_VIGIA, {})
+    if tickers is not None:
+        d["tickers"] = sorted({t.strip().upper() for t in tickers if re.fullmatch(r"[A-Z]{1,5}([.\-][A-Z])?", t.strip().upper())})[:60]
+    if incluir_liga is not None:
+        d["incluir_liga"] = bool(incluir_liga)
+    if nivel_minimo in ("alta", "media", "baixa"):
+        d["nivel_minimo"] = nivel_minimo
+    _gravar_json(ARQ_VIGIA, d)
+    return vigia_config()
+
+
+def _tickers_liga():
+    """Ações americanas (sem sufixo de bolsa) nas carteiras da Liga."""
+    d = _ler_json("liga_carteiras.json", {})
+    achados = set()
+
+    def andar(x):
+        if isinstance(x, dict):
+            for k, v in x.items():
+                if k.lower() in ("ticker", "ativo", "simbolo") and isinstance(v, str):
+                    achados.add(v.strip().upper())
+                else:
+                    andar(v)
+        elif isinstance(x, list):
+            for v in x:
+                andar(v)
+    meses = sorted(k for k in d if re.fullmatch(r"\d{4}-\d{2}", str(k)))[-2:]  # só a edição atual e a anterior
+    andar([d[m] for m in meses] if meses else d)
+    return sorted(t for t in achados if re.fullmatch(r"[A-Z]{1,5}([.\-][A-Z])?", t))
+
+
+def _webhook_eventos():
+    for v in ("WEBHOOK_EVENTOS", "WEBHOOK_RELATORIO", "WEBHOOK_SNIPER"):
+        u = (os.environ.get(v) or "").strip()
+        if u:
+            return u
+    return None
+
+
+def vigiar(agora):
+    """De 30 em 30 min (dias úteis, 11:00–23:59 de Lisboa) procura 8-K novos dos tickers vigiados e publica no Discord."""
+    if agora.weekday() >= 5 or agora.hour < 11:
+        return
+    cfg = vigia_config()
+    if cfg["ultima"] and time.time() - cfg["ultima"] < 1800:
+        return
+    tickers = list(cfg["tickers"]) + (_tickers_liga() if cfg["incluir_liga"] else [])
+    tickers = sorted(set(tickers))[:60]
+    d = _ler_json(ARQ_VIGIA, {})
+    d["ultima"] = time.time()
+    _gravar_json(ARQ_VIGIA, d)
+    if not tickers or not (os.environ.get("SEC_USER_AGENT") or "").strip():
+        return
+    vistos = set(d.get("vistos", []))
+    primeira_vez = not d.get("semeado")  # 1.ª execução: memoriza o que já existe sem publicar
+    minimo = _PESO[cfg["nivel_minimo"]]
+    novos = []
+    for t in tickers:
+        try:
+            ev = eventos(t, dias=4, sub_validade=1500)
+        except Exception:
+            continue
+        for e in ev.get("eventos", []):
+            if e["acc"] in vistos:
+                continue
+            vistos.add(e["acc"])
+            if not primeira_vez and _PESO[e["nivel"]] >= minimo:
+                novos.append({"ticker": ev["ticker"], "empresa": ev["empresa"], **e})
+    d = _ler_json(ARQ_VIGIA, {})
+    d["vistos"] = sorted(vistos)[-3000:]
+    d["semeado"] = True
+    url = _webhook_eventos()
+    if novos and url:
+        icone = {"alta": "🔴", "media": "🟡", "baixa": "⚪"}
+        campos = [{"name": f"{icone[e['nivel']]} {e['ticker']} · {e['empresa']}"[:256],
+                   "value": ("\n".join(f"• {i['nome']}" for i in e["itens"]) or "• Comunicado 8-K") + f"\n[Ler na SEC]({e['url']})", "inline": False}
+                  for e in novos[:10]]
+        try:
+            requests.post(url, json={"embeds": [{"title": "📰 Comunicados relevantes à SEC (8-K)", "color": 15105570, "fields": campos,
+                                                 "footer": {"text": "Fonte: SEC EDGAR · Informação educativa, não é recomendação de investimento"}}]}, timeout=15)
+            d["enviados"] = d.get("enviados", 0) + len(novos[:10])
+        except Exception as e:
+            print(f"[sec] Discord 8-K falhou: {e}")
+    _gravar_json(ARQ_VIGIA, d)
+
+
+_ultima_13f = {"dia": None}
+
+
+def diario(agora):
+    """Às 04:00 atualiza os 13F (só traz entregas novas; as antigas ficam em cache) e corre a vigilância de 8-K."""
+    try:
+        vigiar(agora)
+    except Exception as e:
+        print(f"[sec] vigilância 8-K: {e}")
+    if agora.hour == 4 and _ultima_13f["dia"] != agora.date() and (os.environ.get("SEC_USER_AGENT") or "").strip():
+        _ultima_13f["dia"] = agora.date()
+        try:
+            ok, erros = atualizar_13f()
+            print(f"[sec] 13F: {ok} gestores atualizados" + (f"; erros: {'; '.join(erros)}" if erros else ""))
+        except Exception as e:
+            print(f"[sec] 13F falhou: {e}")
+
+
 def testar():
     """Para a Gestão: confirma se o servidor consegue falar com a SEC."""
     try:

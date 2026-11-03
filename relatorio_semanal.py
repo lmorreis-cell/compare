@@ -228,7 +228,7 @@ def _campo_macro_oficial():
         linhas.append("🧭 **Especuladores em extremo (CFTC):** " + ", ".join(
             f"{m['nome']} {'muito comprados' if m['indice'] >= 90 else 'muito vendidos'}" for m in ext[:5]))
     areas = {a["id"]: a for a in (d.get("ocde") or {}).get("areas", [])}
-    fases = [f"{areas[k]['nome']} {areas[k]['icone']} {areas[k]['fase_nome'].lower()}" for k in ("USA", "EA20", "PRT") if k in areas]
+    fases = [f"{ {'USA': '🇺🇸', 'EA20': '🇪🇺', 'PRT': '🇵🇹'}[k]} {areas[k]['nome']} {areas[k]['icone']} {areas[k]['fase_nome'].lower()}" for k in ("USA", "EA20", "PRT") if k in areas]
     if fases:
         linhas.append("🌍 **Ciclo (OCDE):** " + " · ".join(fases))
     return "\n".join(linhas)

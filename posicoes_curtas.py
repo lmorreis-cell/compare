@@ -648,6 +648,53 @@ def short_interest_eua(ticker):
     return res
 
 
+FINRA_SHO_URL = "https://api.finra.org/data/group/otcMarket/name/regShoDaily"
+_cache_sho = {}
+
+
+def volume_curto_eua(ticker, dias=40):
+    """Volume diário vendido a descoberto (FINRA Reg SHO, negociação fora de bolsa reportada à FINRA).
+    A FINRA devolve uma linha por plataforma de reporte e por dia: soma-se tudo por dia. Cache de 6 h."""
+    t = ticker.upper().strip()
+    if t in _cache_sho and time.time() - _cache_sho[t][0] < 21600:
+        return _cache_sho[t][1]
+    hoje = date.today()
+    filtro = [{"compareType": "EQUAL", "fieldName": "securitiesInformationProcessorSymbolIdentifier", "fieldValue": t}]
+    tentativas = [
+        {"compareFilters": filtro, "dateRangeFilters": [{"fieldName": "tradeReportDate", "startDate": (hoje - timedelta(days=dias)).isoformat(),
+                                                          "endDate": hoje.isoformat()}], "limit": 500},
+        {"compareFilters": filtro, "limit": 500},
+    ]
+    r, erro = None, None
+    for corpo in tentativas:
+        r = requests.post(FINRA_SHO_URL, json=corpo, headers={**UA, "Accept": "application/json", "Content-Type": "application/json"}, timeout=30)
+        if r.status_code in (200, 204):
+            break
+        erro = f"FINRA respondeu {r.status_code}: {r.text[:150]}"
+    else:
+        raise RuntimeError(erro)
+    try:
+        linhas = r.json() if r.status_code == 200 and r.content else []
+    except ValueError:
+        linhas = []
+    por_dia = {}
+    for d in linhas:
+        dia = str(_campo(d, "tradeReportDate") or "")[:10]
+        if not dia:
+            continue
+        x = por_dia.setdefault(dia, [0.0, 0.0])
+        x[0] += float(_campo(d, "shortParQuantity") or 0) + float(_campo(d, "shortExemptParQuantity") or 0)
+        x[1] += float(_campo(d, "totalParQuantity") or 0)
+    serie = [{"data": k, "curto": v[0], "total": v[1], "racio": round(v[0] / v[1] * 100, 1) if v[1] else None}
+             for k, v in sorted(por_dia.items())][-25:]
+    validos = [x["racio"] for x in serie if x["racio"] is not None]
+    res = {"ticker": t, "fonte": "FINRA Reg SHO (volume diário vendido a descoberto)", "dias": serie,
+           "media_20": round(sum(validos[-20:]) / len(validos[-20:]), 1) if validos else None,
+           "ultimo": serie[-1] if serie else None}
+    _cache_sho[t] = (time.time(), res)
+    return res
+
+
 # ---------------------------------------------------------------
 # LEMBRETES DAS FONTES MANUAIS (ex.: Consob)
 # ---------------------------------------------------------------

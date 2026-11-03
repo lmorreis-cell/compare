@@ -223,10 +223,10 @@ def painel_tesouro():
 # 2. INDICADORES AVANÇADOS DA OCDE (CLI)
 # ===============================================================
 URL_CLI = "https://sdmx.oecd.org/public/rest/data/OECD.SDD.STES,DSD_STES@DF_CLI/.M.LI...AA...H"
-AREAS = {
-    "USA": "🇺🇸 EUA", "EA20": "🇪🇺 Área do euro", "DEU": "🇩🇪 Alemanha", "FRA": "🇫🇷 França", "ESP": "🇪🇸 Espanha",
-    "ITA": "🇮🇹 Itália", "PRT": "🇵🇹 Portugal", "GBR": "🇬🇧 Reino Unido", "JPN": "🇯🇵 Japão", "CHN": "🇨🇳 China",
-    "IND": "🇮🇳 Índia", "BRA": "🇧🇷 Brasil", "G7": "🌐 G7", "G20": "🌐 G20", "OECD": "🌐 OCDE",
+AREAS = {  # sem bandeiras: no Windows os emojis de bandeiras aparecem como letras («US», «DE»)
+    "USA": "EUA", "EA20": "Área do euro", "DEU": "Alemanha", "FRA": "França", "ESP": "Espanha",
+    "ITA": "Itália", "PRT": "Portugal", "GBR": "Reino Unido", "JPN": "Japão", "CHN": "China",
+    "IND": "Índia", "BRA": "Brasil", "G7": "G7", "G20": "G20", "OECD": "OCDE",
 }
 ORDEM_AREAS = list(AREAS)
 
@@ -375,6 +375,9 @@ def painel_cot():
             leitura = "Especuladores claramente vendedores."
         else:
             leitura = "Posicionamento na zona média dos últimos 3 anos."
+        if cod == "043602":
+            leitura += (" Atenção: nos futuros de obrigações, grande parte da posição vendedora dos «especuladores» é o chamado"
+                        " basis trade (fundos vendem o futuro e compram a obrigação para ganhar a diferença), não uma aposta na descida.")
         out["mercados"].append({
             "codigo": cod, "nome": nome, "grupo": grupo, "dia": dia,
             "liquido": liq, "variacao": liq - ant, "pct_oi": round(liq / oi * 100, 1) if oi else None,

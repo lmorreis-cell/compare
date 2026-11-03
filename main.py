@@ -3451,6 +3451,10 @@ def api_oficial_curtas():
             resposta["eua"] = posicoes_curtas.short_interest_eua(q.replace("-", "."))
         except Exception as e:
             resposta["eua"] = {"erro": f"FINRA indisponível: {str(e)[:150]}"}
+        try:
+            resposta["eua_volume"] = posicoes_curtas.volume_curto_eua(q.replace("-", "."))
+        except Exception as e:
+            resposta["eua_volume"] = {"erro": f"FINRA (volume diário) indisponível: {str(e)[:150]}"}
     return jsonify(resposta)
 
 
@@ -3462,12 +3466,72 @@ def api_oficial_sec(ticker):
         return jsonify({"erro": "Indica um ticker americano (ex.: AAPL, MSFT, BRK.B)."}), 400
     tipo = request.args.get('tipo', 'insiders')
     try:
-        dados = sec_dados.fundamentos(ticker) if tipo == 'fundamentos' else sec_dados.insiders(ticker)
+        if tipo == 'fundamentos':
+            dados = sec_dados.fundamentos(ticker)
+        elif tipo == 'eventos':
+            dados = sec_dados.eventos(ticker)
+        elif tipo == 'grandes':
+            dados = sec_dados.quem_detem(ticker)
+        else:
+            dados = sec_dados.insiders(ticker)
     except sec_dados.SemUserAgent as e:
         return jsonify({"erro": "Dados da SEC ainda não ativados pelo Admin (" + str(e) + ")"}), 503
     except Exception as e:
         return jsonify({"erro": f"SEC indisponível: {str(e)[:200]}"}), 503
     return jsonify(dados), (404 if dados.get("erro") else 200)
+
+
+@app.route('/api/oficial/13f')
+@requer_cargo(nivel_minimo=2)
+def api_oficial_13f_lista():
+    return jsonify({"gestores": sec_dados.lista_gestores()})
+
+
+@app.route('/api/oficial/13f/<cik_gestor>')
+@requer_cargo(nivel_minimo=2)
+def api_oficial_13f(cik_gestor):
+    if not re.fullmatch(r"\d{1,10}", cik_gestor or ""):
+        return jsonify({"erro": "CIK inválido (só algarismos)."}), 400
+    try:
+        dados = sec_dados.carteira_13f(cik_gestor)
+    except sec_dados.SemUserAgent as e:
+        return jsonify({"erro": "Dados da SEC ainda não ativados pelo Admin (" + str(e) + ")"}), 503
+    except Exception as e:
+        return jsonify({"erro": f"SEC indisponível: {str(e)[:200]}"}), 503
+    return jsonify(dados), (404 if dados.get("erro") else 200)
+
+
+@app.route('/api/oficial/eventos_lote', methods=['POST'])
+@requer_cargo(nivel_minimo=2)
+def api_oficial_eventos_lote():
+    """Alertas locais do browser: recebe só tickers americanos, responde e não guarda nada."""
+    corpo = request.get_json(silent=True) or {}
+    tickers = [str(t).strip().upper() for t in (corpo.get("tickers") or []) if re.fullmatch(r"[A-Za-z]{1,5}([.\-][A-Za-z])?", str(t).strip())][:25]
+    if not tickers:
+        return jsonify({"eventos": []})
+    try:
+        return jsonify({"eventos": sec_dados.eventos_lote(tickers)})
+    except sec_dados.SemUserAgent:
+        return jsonify({"eventos": [], "aviso": "SEC por ativar"})
+
+
+@app.route('/api/admin/sec/vigia', methods=['GET', 'POST'])
+def admin_sec_vigia():
+    if not _e_admin():
+        return jsonify({"erro": "Acesso negado. Apenas Admin."}), 403
+    if request.method == 'POST':
+        if not _origem_propria():
+            return jsonify({"erro": "Origem inválida."}), 403
+        c = request.get_json(silent=True) or {}
+        texto = c.get("tickers")
+        lista = re.split(r"[\s,;]+", texto) if isinstance(texto, str) else texto
+        cfg = sec_dados.gravar_vigia(lista, c.get("incluir_liga"), c.get("nivel_minimo"))
+    else:
+        cfg = sec_dados.vigia_config()
+    cfg.pop("vistos", None)
+    cfg["tickers_liga"] = sec_dados._tickers_liga()
+    cfg["webhook"] = bool(sec_dados._webhook_eventos())
+    return jsonify(cfg)
 
 
 @app.route('/api/admin/fontes')
@@ -3525,6 +3589,18 @@ def _correr_teste_fontes():
         except Exception as e:
             r["FINRA · short interest EUA"] = {"ok": False, "msg": str(e)[:300]}
         r["SEC · insiders e fundamentos"] = sec_dados.testar()
+        if r["SEC · insiders e fundamentos"].get("ok"):
+            try:
+                ok_13f, erros_13f = sec_dados.atualizar_13f()
+                r["SEC · carteiras 13F"] = {"ok": ok_13f > 0, "msg": f"{ok_13f} de {len(sec_dados.GESTORES_13F)} gestores lidos."
+                                            + (" Falhas: " + "; ".join(erros_13f) if erros_13f else "")}
+            except Exception as e:
+                r["SEC · carteiras 13F"] = {"ok": False, "msg": str(e)[:300]}
+        try:
+            d = posicoes_curtas.volume_curto_eua("AAPL")
+            r["FINRA · volume diário a descoberto"] = {"ok": bool(d["dias"]), "msg": f"{len(d['dias'])} dias para AAPL · média {d['media_20']}%." if d["dias"] else "Sem dados devolvidos."}
+        except Exception as e:
+            r["FINRA · volume diário a descoberto"] = {"ok": False, "msg": str(e)[:300]}
         for k, v in fontes_mundo.testar().items():
             r[k] = v
     finally:
