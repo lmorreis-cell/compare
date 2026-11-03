@@ -5,6 +5,10 @@ Dias úteis (segunda a sexta, hora de Lisboa):
     22:30 → tira o Snapshot diário (depois do fecho de Wall Street, às 21:00 em Lisboa)
     08:00 → envia o Briefing Matinal para o Discord (com o snapshot da noite anterior)
 
+Todos os dias (10:00–21:59, hora de Lisboa):
+    Liga Mensal → avisos automáticos no Discord (inscrições abertas, último dia, nevoeiro levantou,
+    resumo da edição). Cada aviso sai uma única vez; ver liga_avisos.py. LIGA_AVISOS_ATIVO=0 desliga.
+
 Travões de segurança (para nunca repetir o erro do loop):
   - O snapshot só corre uma vez por dia; se falhar, tenta no máximo 3 vezes, com 45 min de intervalo.
   - O snapshot só corre na janela 22:30–23:59: um reinício do servidor a meio do dia não o dispara.
@@ -26,6 +30,7 @@ from datetime import datetime, timedelta
 import yahoo_guard as yg
 import snapshot_diario as snap
 import relatorio_matinal as rel
+import liga_avisos
 
 try:
     from zoneinfo import ZoneInfo
@@ -101,6 +106,10 @@ def _ciclo():
                 print(f"[agendador] Briefing Matinal: {msg}")
         except Exception as e:
             print(f"[agendador] Erro no ciclo: {e}")
+        try:
+            liga_avisos.verificar(agora_lisboa())  # avisos da Liga (independentes do snapshot e do briefing)
+        except Exception as e:
+            print(f"[agendador] Erro nos avisos da Liga: {e}")
         time.sleep(60)
 
 

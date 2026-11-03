@@ -2755,7 +2755,7 @@ def atualizar_pontuacoes_liga(mes_ref, dados_liga):
     ini_janela, fim_janela, _ = lj.janela(mes_ref)
 
     # 1 único download em lote, desde a abertura das inscrições (as carteiras entram ao longo da janela)
-    tickers_unicos = sorted({s['ticker'] for c in carteiras_mes.values() for s in c['slots']})
+    tickers_unicos = sorted({s['ticker'] for c in carteiras_mes.values() for s in c['slots']} | {lj.BENCHMARK})
     dados_mes = yg.download(tickers_unicos, start=(ini_janela - timedelta(days=5)).isoformat(), interval="1d", group_by="ticker")
     fatia = lambda t: yg.fatia(dados_mes, t)
 
@@ -2788,6 +2788,15 @@ def atualizar_pontuacoes_liga(mes_ref, dados_liga):
         c['retorno_base'] = round(ret_soma / 3.0, 2)
         c['bonus_total'] = round(bonus_soma, 2)
         c['score_total'] = round(c['retorno_base'] + c['bonus_total'], 2)
+
+        # Mercado e risco (reconstruído das cotações diárias; se falhar, mantém o último cálculo)
+        try:
+            m = lj.metricas_carteira(c['slots'], fatia, entrada, lj.ultimo_dia(mes_ref))
+            if m:
+                m['eficiencia'] = lj.eficiencia(c['score_total'], m['queda_max'])
+                c['metricas'] = m
+        except Exception as e:
+            print(f"[liga] Métricas de {c.get('username')}: {e}")
 
     guardar_dados_liga(dados_liga)
     return _ordenar_liga(carteiras_mes)
@@ -2884,6 +2893,9 @@ def api_liga():
                         {"ticker": "🔒 SECRETO", "direcao": "-", "p0": 0.0, "alvo": 0.0, "ret": 0.0, "bonus": 0.0, "badge": "🔒"}
                     ]
                     c_oculto['tese'] = "🔒 A tese e os ativos estão ocultados até ao fecho das inscrições."
+                    # Das versões anteriores só se mostra a hora (os ativos ficam no nevoeiro)
+                    c_oculto['versoes'] = [{"submetido_em": v.get("submetido_em"), "substituida_em": v.get("substituida_em"),
+                                            "oculta": True} for v in c.get('versoes', [])]
                     lista_segura.append(c_oculto)
                 else:
                     lista_segura.append(c)
@@ -2986,7 +2998,19 @@ def api_liga():
             "badge": "📈" if direcao == "LONG" else "📉"
         })
 
+    # Histórico de alterações: guarda a versão anterior (transparência; visível a todos quando o nevoeiro levanta)
+    anterior = (dados_liga.get(ed_destino) or {}).get(user_id)
+    versoes = list(anterior.get("versoes", [])) if anterior else []
+    if anterior:
+        versoes.append({
+            "submetido_em": anterior.get("submetido_em"),
+            "estimada": bool(anterior.get("submetido_em_estimado")),
+            "tese": anterior.get("tese", ""),
+            "slots": [{"ticker": x["ticker"], "p0": x["p0"], "alvo": x["alvo"]} for x in anterior.get("slots", [])],
+            "substituida_em": agora.isoformat(timespec='seconds'),
+        })
     dados_liga.setdefault(ed_destino, {})[user_id] = {
+        "versoes": versoes[-20:],
         "user_id": user_id,
         "username": username,
         "mes_ref": ed_destino,
@@ -3019,7 +3043,13 @@ def api_liga():
         except Exception:
             pass
 
-    return jsonify({"sucesso": True, "mensagem": f"Carteira validada para a edição de {lj.nome_edicao(ed_destino)}! Setores: {', '.join(mapa_setores.keys())}."})
+    gravada = dados_liga[ed_destino][user_id]
+    return jsonify({"sucesso": True,
+                    "mensagem": f"Carteira validada para a edição de {lj.nome_edicao(ed_destino)}! Setores: {', '.join(mapa_setores.keys())}.",
+                    "edicao": ed_destino, "nome_edicao": lj.nome_edicao(ed_destino),
+                    "submetido_em": gravada["submetido_em"],
+                    "entrada": [{"ticker": s["ticker"], "p0": s["p0"], "alvo": s["alvo"],
+                                 "direcao": "LONG" if float(s["alvo"]) > float(s["p0"]) else "SHORT"} for s in gravada["slots"]]})
 
 
 @app.route('/api/liga/hall_of_fame')
@@ -3165,8 +3195,13 @@ def admin_liga_janelas():
             info['so_fim'] = info['estado'] == 'aberta'
             edicoes.append(info)
             ed = lj.mes_seguinte(ed)
+        try:
+            import liga_avisos
+            avisos = liga_avisos.resumo_estado(agora)
+        except Exception as e:
+            avisos = {"erro": str(e)}
         return jsonify({"padrao": cfg['padrao'], "edicoes": edicoes, "hoje": agora.date().isoformat(),
-                        "inscricao_aberta": lj.edicao_inscricao(agora, cfg)})
+                        "inscricao_aberta": lj.edicao_inscricao(agora, cfg), "avisos": avisos})
 
 
 if __name__ == "__main__":

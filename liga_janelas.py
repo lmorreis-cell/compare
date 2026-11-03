@@ -262,6 +262,86 @@ def pontuar_slot(s, df, entrada, fim_mes=None):
 
 
 # ---------------------------------------------------------------
+# COMPARAÇÃO COM O MERCADO, EVOLUÇÃO DIÁRIA E RISCO
+# ---------------------------------------------------------------
+BENCHMARK = "^GSPC"          # S&P 500
+BENCHMARK_NOME = "S&P 500"
+
+
+def _closes(df):
+    """Série {data: fecho} de um OHLC diário."""
+    if df is None or getattr(df, "empty", True):
+        return {}
+    out = {}
+    for t, v in df["Close"].dropna().items():
+        out[t.date()] = float(v)
+    return out
+
+
+def metricas_carteira(slots, fatia_fn, entrada, fim=None):
+    """Evolução diária do retorno da carteira (média dos 3 slots, como na classificação), o mesmo
+    para o S&P 500 desde o fecho do dia de entrada, a queda máxima e a eficiência.
+    Não grava nada: tudo se reconstrói a partir das cotações diárias."""
+    bench = _closes(fatia_fn(BENCHMARK))
+    series = []
+    for s in slots:
+        c = _closes(fatia_fn(s["ticker"]))
+        p0 = float(s["p0"])
+        is_long = float(s["alvo"]) > p0
+        series.append((c, p0, is_long))
+    dias = sorted({d for c, _, _ in series for d in c if d > entrada and (fim is None or d <= fim)})
+    if not dias:
+        return None
+
+    # Base do S&P 500: fecho do dia de entrada (ou o último antes dele)
+    base_b = None
+    for d in sorted(bench):
+        if d <= entrada:
+            base_b = bench[d]
+    if base_b is None and bench:
+        base_b = bench[min(bench)]
+
+    # Ponto de partida: no momento da entrada a carteira vale exatamente o p0 (0%) e o S&P 500 o fecho desse dia
+    serie, ultimos, ult_b = [[entrada.isoformat(), 0.0, 0.0 if base_b else None]], [None] * len(series), base_b
+    for d in dias:
+        rets = []
+        for i, (c, p0, is_long) in enumerate(series):
+            if d in c:
+                ultimos[i] = c[d]
+            if ultimos[i] is None:
+                rets.append(0.0)
+                continue
+            r = (ultimos[i] - p0) / p0 * 100.0
+            rets.append(r if is_long else -r)
+        if d in bench:
+            ult_b = bench[d]
+        rb = round((ult_b / base_b - 1) * 100.0, 2) if (ult_b and base_b) else None
+        serie.append([d.isoformat(), round(sum(rets) / len(rets), 2), rb])
+
+    # Queda máxima: maior descida desde um pico (o ponto de partida conta como pico, valor 100)
+    pico, queda = 100.0, 0.0
+    for _, r, _ in serie:
+        v = 100.0 + r
+        pico = max(pico, v)
+        queda = max(queda, (pico - v) / pico * 100.0)
+    bench_ret = serie[-1][2]
+    ret = serie[-1][1]
+    return {
+        "serie": serie,
+        "bench_ret": bench_ret,
+        "alfa": round(ret - bench_ret, 2) if bench_ret is not None else None,
+        "queda_max": round(queda, 2),
+    }
+
+
+def eficiencia(score, queda_max):
+    """Score por cada 1% de queda máxima sofrida (queda mínima considerada: 1%)."""
+    if score is None or queda_max is None:
+        return None
+    return round(score / max(queda_max, 1.0), 2)
+
+
+# ---------------------------------------------------------------
 # MIGRAÇÃO ÚNICA: a 1.ª ronda (20 out – 5 nov) ficou partida entre "2026-10" e "2026-11"
 # ---------------------------------------------------------------
 def migrar_primeira_edicao_se_preciso():

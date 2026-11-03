@@ -85,6 +85,8 @@ def _pontuar_slot(s, df):
 def _fechar_mes(mes_ref, carteiras_mes):
     carteiras = copy.deepcopy(carteiras_mes)
     tickers = sorted({s['ticker'] for c in carteiras.values() for s in c.get('slots', [])})
+    if tickers:
+        tickers = sorted(set(tickers) | {lj.BENCHMARK})
     dados = None
     ini_janela, fim_janela, _o = lj.janela(mes_ref)
     fim_mes = lj.ultimo_dia(mes_ref)
@@ -111,19 +113,33 @@ def _fechar_mes(mes_ref, carteiras_mes):
         slots = [_slot_final(s, entrada) for s in c.get('slots', [])]
         retorno = round(sum(s['ret'] for s in slots) / 3.0, 2)  # igual à Liga ao vivo: média dos 3 slots
         bonus = round(sum(s['bonus'] for s in slots), 2)
+        try:
+            met = lj.metricas_carteira(slots, fatia, entrada, fim_mes) or {}
+        except Exception:
+            met = {}
         ranking.append({
             "user_id": str(c.get('user_id', uid)),
             "username": c.get('username', 'Trader'),
             "tese": c.get('tese', ''),
             "submetido_em": entrada.isoformat(),
+            "alteracoes": len(c.get('versoes', [])),
             "slots": slots,
             "retorno_base": retorno,
             "bonus_total": bonus,
             "score_total": round(retorno + bonus, 2),
+            "bench_ret": met.get("bench_ret"),
+            "alfa": met.get("alfa"),
+            "queda_max": met.get("queda_max"),
+            "eficiencia": lj.eficiencia(round(retorno + bonus, 2), met.get("queda_max")),
+            "serie": met.get("serie", []),
         })
     ranking.sort(key=lambda x: x['score_total'], reverse=True)
     for i, r in enumerate(ranking, 1):
         r['posicao'] = i
+    # Prémio "Gestor Prudente" da edição: melhor eficiência entre quem terminou em terreno positivo
+    elegiveis = [r for r in ranking if r['score_total'] > 0 and r.get('eficiencia') is not None]
+    if elegiveis:
+        max(elegiveis, key=lambda r: (r['eficiencia'], r['score_total']))['premio_prudente'] = True
     return {"mes": mes_ref, "fechado_em": datetime.now().isoformat(timespec='seconds'),
             "participantes": len(ranking), "ranking": ranking}
 
@@ -180,6 +196,15 @@ MEDALHAS = [
     {"id": "pleno", "icone": "💚", "stat": "plenos_verdes", "niveis": [1, 3, 6],
      "nomes": ["Pleno Verde", "Mãos de Ferro", "Gestor Impecável"],
      "desc": "Edição em que os 3 ativos da carteira terminaram o mês com retorno positivo."},
+    {"id": "mercado", "icone": "📊", "stat": "vitorias_mercado", "niveis": [1, 3, 6],
+     "nomes": ["Bateu o Mercado", "Gestor Ativo", "Alfa Consistente"],
+     "desc": "Edição em que a tua carteira rendeu mais do que o S&P 500 no mesmo período (desde a tua entrada até ao fim do mês). Subir com o mercado é fácil; bater o mercado é o verdadeiro teste."},
+    {"id": "prudente", "icone": "🛡️", "stat": "premios_prudente", "niveis": [1, 3, 5],
+     "nomes": ["Gestor Prudente", "Mão Segura", "Mestre do Risco"],
+     "desc": "Prémio de cada edição para a melhor eficiência: score ÷ queda máxima sofrida durante o mês (só conta quem terminou positivo). Premeia quem ganhou com menos sobressaltos, não quem arriscou mais."},
+    {"id": "temporada", "icone": "🏆", "stat": "temporadas_ganhas", "niveis": [1, 2, 3],
+     "nomes": ["Campeão da Temporada", "Bicampeão da Temporada", "Lenda da Liga"],
+     "desc": "Terminar uma temporada (o ano civil completo) em 1.º lugar na classificação por pontos. Só conta depois de o ano terminar."},
     {"id": "presenca", "icone": "📅", "stat": "participacoes", "niveis": [3, 6, 12],
      "nomes": ["Regular", "Veterano", "Pilar da Comunidade"],
      "desc": "Número de edições da Liga em que participaste."},
@@ -191,6 +216,44 @@ MEDALHAS = [
 ]
 MIN_SHORTS = 3
 
+# ---------------------------------------------------------------
+# TEMPORADA ANUAL (pontos por posição em cada edição, ao estilo da Fórmula 1)
+# ---------------------------------------------------------------
+PONTOS_POSICAO = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1]
+PONTOS_PRESENCA = 1  # cada edição jogada vale sempre 1 ponto: a regularidade conta
+
+
+def pontos_edicao(posicao):
+    return (PONTOS_POSICAO[posicao - 1] if 1 <= posicao <= len(PONTOS_POSICAO) else 0) + PONTOS_PRESENCA
+
+
+def calcular_temporadas(hist):
+    """{ano: [ {user_id, username, pontos, edicoes, vitorias, podios, melhor_pos, detalhe:[{mes, posicao, pontos}]} ] }"""
+    temporadas = {}
+    for mes in sorted(hist):
+        ano = mes[:4]
+        tabela = temporadas.setdefault(ano, {})
+        for r in hist[mes].get("ranking", []):
+            uid = r["user_id"]
+            t = tabela.setdefault(uid, {"user_id": uid, "username": r["username"], "pontos": 0, "edicoes": 0,
+                                        "vitorias": 0, "podios": 0, "melhor_pos": None, "detalhe": []})
+            t["username"] = r["username"]
+            pts = pontos_edicao(r["posicao"])
+            t["pontos"] += pts
+            t["edicoes"] += 1
+            t["vitorias"] += 1 if r["posicao"] == 1 else 0
+            t["podios"] += 1 if r["posicao"] <= 3 else 0
+            t["melhor_pos"] = r["posicao"] if t["melhor_pos"] is None else min(t["melhor_pos"], r["posicao"])
+            t["detalhe"].append({"mes": mes, "posicao": r["posicao"], "pontos": pts})
+    resultado = {}
+    for ano, tabela in temporadas.items():
+        # Desempate: mais vitórias, mais pódios, melhor posição
+        lista = sorted(tabela.values(), key=lambda t: (-t["pontos"], -t["vitorias"], -t["podios"], t["melhor_pos"] or 99))
+        for i, t in enumerate(lista, 1):
+            t["posicao"] = i
+        resultado[ano] = lista
+    return resultado
+
 
 def _estatisticas(hist):
     meses = sorted(hist)
@@ -199,7 +262,7 @@ def _estatisticas(hist):
     def novo(uid, nome):
         return {"user_id": uid, "username": nome, "participacoes": 0, "titulos": 0, "podios": 0,
                 "melhor_sequencia": 0, "sequencia_atual": 0, "sniper_hits": 0, "alvos_tocados": 0,
-                "plenos_verdes": 0, "melhor_score": None, "mes_melhor_score": None, "soma_score": 0.0,
+                "plenos_verdes": 0, "vitorias_mercado": 0, "premios_prudente": 0, "temporadas_ganhas": 0, "melhor_score": None, "mes_melhor_score": None, "soma_score": 0.0,
                 "shorts": [], "longs": [], "meses": []}
 
     for mes in meses:
@@ -222,6 +285,10 @@ def _estatisticas(hist):
             slots = r.get("slots", [])
             s["sniper_hits"] += sum(1 for x in slots if x.get("sniper"))
             s["alvos_tocados"] += sum(1 for x in slots if x.get("tocou"))
+            if r.get("alfa") is not None and r["alfa"] > 0:
+                s["vitorias_mercado"] += 1
+            if r.get("premio_prudente"):
+                s["premios_prudente"] += 1
             if len(slots) == 3 and all(x.get("ret", 0) > 0 for x in slots):
                 s["plenos_verdes"] += 1
             for x in slots:
@@ -233,6 +300,12 @@ def _estatisticas(hist):
                 s["melhor_sequencia"] = max(s["melhor_sequencia"], s["sequencia_atual"])
             else:
                 s["sequencia_atual"] = 0
+
+    # Campeões de temporadas já terminadas (anos anteriores ao atual)
+    ano_atual = str(datetime.now().year)
+    for ano, lista in calcular_temporadas(hist).items():
+        if ano < ano_atual and lista and lista[0]["user_id"] in stats:
+            stats[lista[0]["user_id"]]["temporadas_ganhas"] += 1
 
     for s in stats.values():
         s["media_score"] = round(s["soma_score"] / s["participacoes"], 2) if s["participacoes"] else 0
@@ -330,5 +403,8 @@ def calcular_hall_of_fame(user_id=None):
                      **{m["stat"]: 0 for m in MEDALHAS if "stat" in m}}
             minhas = {"medalhas": _medalhas_do_membro(vazio, detentores), "stats": None, "historico": []}
 
+    temporadas = calcular_temporadas(hist)
     return {"edicoes": edicoes, "geral": geral, "recordes": recordes, "minhas": minhas, "icones": icones,
+            "temporadas": temporadas, "ano_atual": str(datetime.now().year),
+            "pontos_posicao": PONTOS_POSICAO, "pontos_presenca": PONTOS_PRESENCA,
             "catalogo": [{"id": m["id"], "icone": m["icone"], "nomes": m["nomes"], "niveis": m.get("niveis"), "desc": m["desc"]} for m in MEDALHAS]}
