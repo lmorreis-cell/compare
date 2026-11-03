@@ -34,8 +34,9 @@ LIMIAR = 0.5
 _lock = threading.Lock()
 
 FONTES_INICIAIS = {
-    "PT": {"nome": "CMVM (Portugal)", "url": "https://www.cmvm.pt/PInstitucional/Content?Input=EBFFB649F6E814A9FF14425A585ADD6EA3C5815FA2332671623D5BE5A91518E4",
-           "pagina": "https://www.cmvm.pt/PInstitucional/Content?Input=EBFFB649F6E814A9FF14425A585ADD6EA3C5815FA2332671623D5BE5A91518E4", "ativa": True},
+    "PT": {"nome": "CMVM (Portugal)", "url": "", "tipo": "cmvm",
+           "pagina": "https://www.cmvm.pt/PInstitucional/Content?Input=EBFFB649F6E814A9FF14425A585ADD6EA3C5815FA2332671623D5BE5A91518E4", "ativa": True,
+           "nota": "Lido diretamente do serviço de dados da página «Interesses a descoberto relevantes» da CMVM (não precisa de endereço)."},
     "ES": {"nome": "CNMV (Espanha)", "url": "", "pagina": "https://www.cnmv.es/portal/consultas/busqueda-entidades",
            "ativa": True, "nota": "A CNMV publica as posições por emitente; se não houver ficheiro único, carrega-o na Gestão."},
     "FR": {"nome": "AMF (França)", "url": "https://www.data.gouv.fr/fr/datasets/r/c2539d1c-8531-4937-9cba-3bd8e9786cc5",
@@ -43,7 +44,12 @@ FONTES_INICIAIS = {
     "DE": {"nome": "Bundesanzeiger / BaFin (Alemanha)", "url": "https://www.bundesanzeiger.de/pub/de/nlp?0--top~csv~form~panel-form-csv~resource~link",
            "pagina": "https://www.bundesanzeiger.de/pub/de/nlp", "sessao": "https://www.bundesanzeiger.de/pub/de/nlp", "ativa": True},
     "IT": {"nome": "Consob (Itália)", "url": "", "pagina": "https://www.consob.it/web/area-pubblica/pnc",
-           "procurar_xlsx": True, "ativa": True},
+           "modo": "manual", "lembrete_dias": 7, "ativa": True,
+           "nota": "Manual: o site da Consob tem uma proteção anti-robô (captcha), por isso o ficheiro é carregado por ti. "
+                   "1) Abre a página oficial no teu browser e resolve o captcha, se aparecer. "
+                   "2) Descarrega o ficheiro Excel das «posizioni nette corte» (lista atual). "
+                   "3) Aqui, carrega em «Carregar» e escolhe esse ficheiro. "
+                   "A Consob atualiza todos os dias; recebes um lembrete se o ficheiro tiver mais de 7 dias."},
     "NL": {"nome": "AFM (Países Baixos)", "url": "https://www.afm.nl/export.aspx?type=8a46a4ef-f196-4467-a7ab-1ae1cb58f0e7&format=csv",
            "pagina": "https://www.afm.nl/en/sector/registers/meldingenregisters/netto-shortposities-actueel", "ativa": True},
 }
@@ -99,6 +105,17 @@ def fontes():
         _gravar(ARQ_FONTES, f)
     for k, v in FONTES_INICIAIS.items():  # novas fontes acrescentadas em versões futuras
         f.setdefault(k, json.loads(json.dumps(v)))
+    # Migrações: CMVM passa a usar o serviço de dados; Consob passa a modo manual com lembrete
+    alterado = False
+    if f["PT"].get("tipo") != "cmvm" and not f["PT"].get("tipo_definido_admin"):
+        f["PT"].update({k: FONTES_INICIAIS["PT"][k] for k in ("url", "tipo", "nota")})
+        alterado = True
+    if f["IT"].get("modo") != "manual" and f["IT"].get("procurar_xlsx"):
+        f["IT"].pop("procurar_xlsx", None)
+        f["IT"].update({k: FONTES_INICIAIS["IT"][k] for k in ("url", "modo", "lembrete_dias", "nota")})
+        alterado = True
+    if alterado:
+        _gravar(ARQ_FONTES, f)
     return f
 
 
@@ -327,6 +344,64 @@ def _descarregar(fonte):
 _url_usado = {}
 
 
+# ---------------------------------------------------------------
+# CMVM: a página é uma aplicação OutSystems que vai buscar os dados a um serviço interno (acesso anónimo)
+# ---------------------------------------------------------------
+CMVM_BASE = "https://www.cmvm.pt/PInstitucional"
+CMVM_LISTA = ("CMVM_SDI_Emitentes_CW/InteressesDescobertoRelevantes/InteressesDescobertoRelevantes/DataActionDataAction1",
+              "CMVM_SDI_Emitentes_CW.InteressesDescobertoRelevantes.InteressesDescobertoRelevantes.mvc.js", "HfYr7Hu4MGXtIpklugdcAg")
+CMVM_DETALHE = ("CMVM_SDI_Emitentes_CW/InteressesDescobertoRelevantes/InteressesDescobertoRelevantesDet/DataActionGetDescobertoRelevante",
+                "CMVM_SDI_Emitentes_CW.InteressesDescobertoRelevantes.InteressesDescobertoRelevantesDet.mvc.js", "2hBXLnSku+pnpvjltT8Sew")
+CMVM_CSRF_ANONIMO = "T6C+9iB49TLra4jEsMeSckDMNhQ="  # token público que o OutSystems usa para visitantes sem sessão
+
+
+def _cmvm_api_version(s, acao):
+    """Lê a versão atual da ação no script da página (muda quando a CMVM publica uma nova versão do site)."""
+    caminho, script, omissao = acao
+    nome = caminho.rsplit("/", 1)[1]
+    try:
+        js = s.get(f"{CMVM_BASE}/scripts/{script}", timeout=30).text
+        m = re.search(r'callDataAction\("' + re.escape(nome) + r'",\s*"[^"]*",\s*"([^"]+)"', js)
+        if m:
+            return m.group(1)
+    except Exception:
+        pass
+    return omissao
+
+
+def _descarregar_cmvm():
+    s = requests.Session()
+    s.headers.update({**UA, "Content-Type": "application/json; charset=UTF-8", "Accept": "application/json",
+                      "X-CSRFToken": CMVM_CSRF_ANONIMO, "OutSystems-locale": "pt-PT"})
+    mv = s.get(f"{CMVM_BASE}/moduleservices/moduleversioninfo?{int(time.time() * 1000)}", timeout=30).json()["versionToken"]
+    v_lista, v_det = _cmvm_api_version(s, CMVM_LISTA), _cmvm_api_version(s, CMVM_DETALHE)
+
+    def chamar(acao, versao, variaveis):
+        r = s.post(f"{CMVM_BASE}/screenservices/{acao[0]}", timeout=30, data=json.dumps({
+            "versionInfo": {"moduleVersion": mv, "apiVersion": versao}, "viewName": "ContentSplit.ContentSDI",
+            "screenData": {"variables": variaveis}}))
+        r.raise_for_status()
+        return r.json()["data"]
+
+    emitentes = chamar(CMVM_LISTA, v_lista, {"MaxRecords": 500, "StartIndex": 0})["InteressesDescobertoRelevantesLst2"]["List"]
+    if not emitentes:
+        raise RuntimeError("O serviço da CMVM devolveu a lista de emitentes vazia.")
+    posicoes = []
+    for e in emitentes:
+        d = chamar(CMVM_DETALHE, v_det, {"MaxRecords": 100, "StartIndex": 0, "Step": 0, "isin_cod": "", "datapos": "", "datacom": "",
+                                          "num_tit": 0, "Titular": "", "Num_Ent": e["emi_id"], "_num_EntInDataFetchStatus": 1,
+                                          "Nome": e["nom_ent"], "_nomeInDataFetchStatus": 1})
+        isin = (d.get("Detail") or {}).get("isin_cod") or ""
+        for p in (d.get("DetailList") or {}).get("List") or []:
+            pct = _num(p.get("percent"))
+            if pct is None:
+                continue
+            posicoes.append({"pais": "PT", "detentor": (p.get("Titular") or "—").strip(), "emitente": e["nom_ent"],
+                             "isin": (p.get("isin_code") or isin or "").strip().upper(), "pct": round(pct, 2), "data": _data(p.get("data_pos"))})
+        time.sleep(0.4)  # 42 emitentes ≈ 20 s: devagar, para não sobrecarregar o site da CMVM
+    return posicoes, len(emitentes)
+
+
 def _consolidar(posicoes):
     """Fica com a última posição de cada (detentor, emitente). É «atual» se for ≥ 0,5%."""
     ultimo = {}
@@ -353,6 +428,24 @@ def atualizar(paises=None, forcar=False):
                 relatorio[pais] = {"ok": None, "msg": "Desativada"}
                 continue
             try:
+                if fonte.get("modo") == "manual":
+                    manual = _ficheiro_manual(pais)
+                    if not manual:
+                        relatorio[pais] = {"ok": None, "msg": "Modo manual: ainda não carregaste o ficheiro (vê as instruções)."}
+                        continue
+                    with open(manual, "rb") as fh:
+                        posicoes = _consolidar(_ler_conteudo(fh.read(), "", pais))
+                    dias = (datetime.now() - datetime.fromtimestamp(os.path.getmtime(manual))).days
+                    por_pais[pais] = posicoes
+                    relatorio[pais] = {"ok": True, "n": len(posicoes), "dias_ficheiro": dias,
+                                       "msg": f"{len(posicoes)} posições do ficheiro carregado há {dias} dia(s)."}
+                    continue
+                if fonte.get("tipo") == "cmvm":
+                    brutas, n_emit = _descarregar_cmvm()
+                    posicoes = _consolidar(brutas)
+                    por_pais[pais] = posicoes
+                    relatorio[pais] = {"ok": True, "n": len(posicoes), "msg": f"{len(posicoes)} posições atuais em {n_emit} emitentes (serviço da CMVM)."}
+                    continue
                 manual = _ficheiro_manual(pais)
                 if manual and (not fonte.get("url") and not fonte.get("procurar_xlsx")):
                     with open(manual, "rb") as fh:
@@ -405,7 +498,9 @@ def carregar_manual(pais, nome, conteudo):
         raise ValueError("País desconhecido.")
     posicoes = _consolidar(_ler_conteudo(conteudo, "", pais))
     if not posicoes:
-        raise ValueError("Não reconheci posições neste ficheiro. Confirma que é a lista oficial de posições curtas.")
+        diag = json.dumps(_ultimo_diag.get(pais) or {}, ensure_ascii=False)[:700]
+        raise ValueError("Não reconheci posições neste ficheiro. Confirma que é a lista oficial de posições curtas. "
+                         f"Diagnóstico (envia-o se precisares de ajuda): {diag}")
     os.makedirs(PASTA_MANUAL, exist_ok=True)
     ext = os.path.splitext(nome)[1].lower()[:6] or ".csv"
     with open(os.path.join(PASTA_MANUAL, f"{pais}_{datetime.now():%Y%m%d%H%M%S}{ext}"), "wb") as fh:
@@ -463,7 +558,8 @@ def estado():
     d = _ler(ARQ_DADOS, {"fontes": {}})
     f = fontes()
     return {"atualizado_em": d.get("atualizado_em"), "total": len(d.get("posicoes", [])),
-            "fontes": {k: {**v, **(d.get("fontes", {}).get(k) or {}), "manual": bool(_ficheiro_manual(k))} for k, v in f.items()}}
+            "fontes": {k: {**v, **(d.get("fontes", {}).get(k) or {}), "manual": bool(_ficheiro_manual(k)),
+                           "idade_manual": idade_manual(k)} for k, v in f.items()}}
 
 
 # ---------------------------------------------------------------
@@ -523,6 +619,30 @@ def short_interest_eua(ticker):
 
 
 # ---------------------------------------------------------------
+# LEMBRETES DAS FONTES MANUAIS (ex.: Consob)
+# ---------------------------------------------------------------
+def idade_manual(pais):
+    m = _ficheiro_manual(pais)
+    return None if not m else (datetime.now() - datetime.fromtimestamp(os.path.getmtime(m))).days
+
+
+def _lembretes_manuais(agora):
+    """Uma vez por semana, se o ficheiro de uma fonte manual tiver mais dias do que o limite, avisa o Admin."""
+    import alertas_admin as aa
+    semana = agora.strftime("%G-S%V")
+    for pais, f in fontes().items():
+        if f.get("modo") != "manual" or not f.get("ativa"):
+            continue
+        dias = idade_manual(pais)
+        limite = int(f.get("lembrete_dias") or 7)
+        if dias is None or dias > limite:
+            estado = "Ainda não carregaste nenhum ficheiro." if dias is None else f"O último ficheiro tem {dias} dias."
+            aa.avisar(f"lembrete-{pais}:{semana}", f"Posições curtas: atualizar a lista da {f['nome']}",
+                      f"{estado}\n\n{f.get('nota', '')}\n\nPágina oficial: {f.get('pagina', '')}\n"
+                      "Depois: Área de Gestão → Fontes oficiais → «Carregar» na linha da Consob.", "info")
+
+
+# ---------------------------------------------------------------
 # AGENDADOR
 # ---------------------------------------------------------------
 _ultima = {"t": 0}
@@ -540,6 +660,7 @@ def diario(agora):
         return
     _ultima["t"] = time.time()
     rel = atualizar()
+    _lembretes_manuais(agora)
     falhas = {k: v["msg"] for k, v in rel.items() if v.get("ok") is False}
     print(f"[curtas] {sum(1 for v in rel.values() if v.get('ok'))} fontes OK, {len(falhas)} com falha.")
     if falhas:
