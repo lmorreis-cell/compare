@@ -356,6 +356,7 @@
                 <label><input type="checkbox" class="cal-tipo" value="fiscal" checked> ⏳ Lotes com lucro a 30 dias de um marco fiscal (relógio de detenção)</label>
                 <label><input type="checkbox" class="cal-tipo" value="abate" checked> ✂️ Janela de abate fiscal (novembro e dezembro)</label>
                 <label><input type="checkbox" class="cal-tipo" value="backup" checked> 💾 Lembrete de backup do Cofre (dados só existem neste browser)</label>
+                <label><input type="checkbox" class="cal-tipo" value="sec8k" checked> 📰 Comunicados relevantes à SEC (8-K) e compras de administradores nas ações americanas em carteira</label>
             </div>
         </details>
         <div id="cal-rodape" style="font-size: 10px; color: #6e7681; margin-top: 12px;"></div>
@@ -2030,7 +2031,7 @@
 
     <div style="background-color:#161b22; border:1px solid #30363d; border-radius:8px; padding:20px; margin-bottom:22px; border-left:4px solid #3fb950">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px">
-            <h3 style="margin:0; font-size:15px; color:#3fb950; text-transform:uppercase">🇺🇸 Curva de juros dos EUA & sinal de recessão <span class="dica-edu" style="font-size:11px;color:#8b949e;cursor:help;text-transform:none">ℹ️<span class="dica-texto" style="width:360px">Quanto rende emprestar ao Estado americano a cada prazo (dados oficiais do Tesouro dos EUA, publicados ao fim de cada dia útil). O indicador mais seguido é a diferença entre o juro a 10 anos e o juro a 3 meses: quando fica negativa (curva invertida), o mercado espera que a Reserva Federal tenha de cortar juros, normalmente por causa de um abrandamento. Desde os anos 60, quase todas as recessões dos EUA foram precedidas por uma inversão, com 6 a 24 meses de atraso, mas houve falsos alarmes e o sinal não diz quando. Não é uma previsão: é um termómetro.</span></span></h3>
+            <h3 style="margin:0; font-size:15px; color:#3fb950; text-transform:uppercase">💵 Curva de juros dos EUA & sinal de recessão <span class="dica-edu" style="font-size:11px;color:#8b949e;cursor:help;text-transform:none">ℹ️<span class="dica-texto" style="width:360px">Quanto rende emprestar ao Estado americano a cada prazo (dados oficiais do Tesouro dos EUA, publicados ao fim de cada dia útil). O indicador mais seguido é a diferença entre o juro a 10 anos e o juro a 3 meses: quando fica negativa (curva invertida), o mercado espera que a Reserva Federal tenha de cortar juros, normalmente por causa de um abrandamento. Desde os anos 60, quase todas as recessões dos EUA foram precedidas por uma inversão, com 6 a 24 meses de atraso, mas houve falsos alarmes e o sinal não diz quando. Não é uma previsão: é um termómetro.</span></span></h3>
             <span id="of-tesouro-atual" style="font-size:11px; color:#8b949e"></span>
         </div>
         <div id="of-tesouro" style="font-size:12px; color:#8b949e">A carregar...</div>
@@ -2070,11 +2071,20 @@
             <input type="text" id="of-sec-q" class="input-moderno" placeholder="Ticker dos EUA (ex.: AAPL)" style="max-width:220px; padding:9px 12px; font-size:12px; text-transform:uppercase" onkeydown="if(event.key==='Enter') ofSec('insiders')">
             <button class="btn-moderno" onclick="ofSec('insiders')" style="background:#6e40c9; color:#fff; padding:9px 14px; font-size:12px">👔 Administradores</button>
             <button class="btn-moderno" onclick="ofSec('fundamentos')" style="background:#21262d; color:#c9d1d9; padding:9px 14px; font-size:12px">📑 Fundamentos (10-K)</button>
+            <button class="btn-moderno" onclick="ofSec('eventos')" style="background:#21262d; color:#c9d1d9; padding:9px 14px; font-size:12px">📰 Eventos (8-K)</button>
+            <button class="btn-moderno" onclick="ofSec('grandes')" style="background:#21262d; color:#c9d1d9; padding:9px 14px; font-size:12px">🐋 Quem dos grandes tem?</button>
         </div>
         <div id="of-sec" style="font-size:12px; color:#8b949e">Indica um ticker americano.</div>
     </div>
 
-    <div style="font-size:10px; color:#6e7681">Fontes: Banco Central Europeu (ECB Data Portal) · U.S. Department of the Treasury · OCDE · CFTC · IGCP (Certificados de Aforro, inserido pelo Admin) · CMVM, CNMV, AMF, Bundesanzeiger/BaFin, Consob e AFM (posições curtas) · FINRA (short interest) · SEC EDGAR. Conteúdo educativo, não é recomendação de investimento.</div>
+    <div style="background-color:#161b22; border:1px solid #30363d; border-radius:8px; padding:20px; margin-bottom:22px; border-left:4px solid #39c5cf">
+        <h3 style="margin:0 0 6px 0; font-size:15px; color:#39c5cf; text-transform:uppercase">🐋 Carteiras dos grandes investidores (13F) <span class="dica-edu" style="font-size:11px;color:#8b949e;cursor:help;text-transform:none">ℹ️<span class="dica-texto" style="width:380px">Os gestores com mais de 100 milhões de dólares em ações americanas têm de entregar à SEC, todos os trimestres, a lista das posições (formulário 13F), até 45 dias depois do fim do trimestre. Limites importantes: os dados chegam com até 4,5 meses de atraso (a posição pode já ter mudado), só mostram posições compradas em ações e opções americanas (não mostram vendas a descoberto, obrigações, liquidez nem ações europeias) e o «peso» é sobre a parte declarada, não sobre o património total. Bom para estudar o raciocínio de grandes investidores; mau para copiar à pressa.</span></span></h3>
+        <div style="font-size:11px; color:#8b949e; margin-bottom:10px">Escolhe um gestor. 🆕 posição nova · ⬆️ reforçou · ⬇️ reduziu face ao trimestre anterior.</div>
+        <div id="of-13f-lista" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px"></div>
+        <div id="of-13f" style="font-size:12px; color:#8b949e"></div>
+    </div>
+
+    <div style="font-size:10px; color:#6e7681">Fontes: Banco Central Europeu (ECB Data Portal) · U.S. Department of the Treasury · OCDE · CFTC · IGCP (Certificados de Aforro, inserido pelo Admin) · CMVM, CNMV, AMF, Bundesanzeiger/BaFin, Consob e AFM (posições curtas) · FINRA (short interest e volume diário a descoberto) · SEC EDGAR (formulários 4, 8-K, 10-K e 13F). Conteúdo educativo, não é recomendação de investimento.</div>
 </div>
 
 <div id="tab-liga" class="tab-content">
@@ -7785,6 +7795,7 @@ function renderizarCalendarioDiario() {
         ofCarregado = true;
         ofJuros();
         ofMundo();
+        of13fLista();
         ofPesquisarCurtas();
     }
 
@@ -7903,7 +7914,18 @@ function renderizarCalendarioDiario() {
         // Relógio do ciclo: x = nível − 100, y = variação a 3 meses
         const L = 300, A = 220, mx = Math.max(1.5, ...o.areas.map(a => Math.abs(a.nivel - 100))) * 1.15, my = Math.max(0.6, ...o.areas.map(a => Math.abs(a.var_3m))) * 1.15;
         const X = v => (L / 2 + v / mx * (L / 2 - 14)).toFixed(1), Y = v => (A / 2 - v / my * (A / 2 - 14)).toFixed(1);
-        const pontos = o.areas.map(a => `<g><title>${escHTML(a.nome)}: ${a.fase_nome} (nível ${a.nivel.toFixed(1).replace('.', ',')})</title><circle cx="${X(a.nivel - 100)}" cy="${Y(a.var_3m)}" r="4" fill="#f0f2f5"/><text x="${+X(a.nivel - 100) + 6}" y="${+Y(a.var_3m) + 3}" fill="#c9d1d9" font-size="10">${a.nome.split(' ')[0]} ${escHTML(a.id)}</text></g>`).join('');
+        // Etiquetas sem sobreposição: se uma etiqueta colidir com outra já colocada, desce/sobe até ter espaço (com linha-guia)
+        const colocadas = [];
+        const pontos = o.areas.map(a => {
+            const cx = +X(a.nivel - 100), cy = +Y(a.var_3m), lw = a.id.length * 6.5 + 4;
+            let lx = cx + 6, ly = cy + 3;
+            if (lx + lw > L - 2) lx = cx - 6 - lw;
+            for (let k = 0; k < 14 && colocadas.some(c => Math.abs(c.x - lx) < Math.max(c.w, lw) && Math.abs(c.y - ly) < 11); k++)
+                ly = cy + 3 + (k % 2 ? -1 : 1) * 11 * Math.ceil((k + 1) / 2);
+            colocadas.push({ x: lx, y: ly, w: lw });
+            const guia = Math.abs(ly - cy - 3) > 1 ? `<line x1="${cx}" y1="${cy}" x2="${lx < cx ? lx + lw : lx}" y2="${ly - 3}" stroke="#6e7681" stroke-width="0.6"/>` : '';
+            return `<g><title>${escHTML(a.nome)}: ${a.fase_nome} (nível ${a.nivel.toFixed(1).replace('.', ',')})</title>${guia}<circle cx="${cx}" cy="${cy}" r="3.5" fill="#f0f2f5"/><text x="${lx}" y="${ly}" fill="#c9d1d9" font-size="10">${escHTML(a.id)}</text></g>`;
+        }).join('');
         const relogio = `<svg viewBox="0 0 ${L} ${A}" style="width:100%; max-width:${L}px; height:auto; display:block; background:#0d1117; border:1px solid #30363d; border-radius:6px">
             <rect x="${L / 2}" y="0" width="${L / 2}" height="${A / 2}" fill="#3fb950" opacity="0.08"/><rect x="${L / 2}" y="${A / 2}" width="${L / 2}" height="${A / 2}" fill="#e3b341" opacity="0.08"/>
             <rect x="0" y="${A / 2}" width="${L / 2}" height="${A / 2}" fill="#d9534f" opacity="0.08"/><rect x="0" y="0" width="${L / 2}" height="${A / 2}" fill="#58a6ff" opacity="0.08"/>
@@ -7995,6 +8017,18 @@ function renderizarCalendarioDiario() {
                             <td style="padding:4px; text-align:right">${x.dias_cobrir === null || x.dias_cobrir === undefined || x.dias_cobrir >= 999 ? '—' : Number(x.dias_cobrir).toFixed(1).replace('.', ',')}</td></tr>`).join('')}</tbody></table></div>`;
                 }
             }
+            const vol = d.eua_volume;
+            if (vol && vol.erro) h += `<div style="color:#e3b341; margin-top:6px">🇺🇸 ${escHTML(vol.erro)}</div>`;
+            else if (vol && vol.dias && vol.dias.length) {
+                const u = vol.ultimo, med = vol.media_20;
+                h += `<div style="background:#0d1117; border:1px solid #30363d; border-radius:6px; padding:10px 12px; margin-top:8px">
+                    <div style="font-weight:bold; color:#fff; margin-bottom:6px">🇺🇸 Volume diário vendido a descoberto (FINRA Reg SHO) ${ofDica('Percentagem do volume negociado fora das bolsas (reportado à FINRA) que foi uma venda a descoberto. ATENÇÃO: não é o mesmo que o short interest. Os criadores de mercado vendem a descoberto todos os dias só para servir compradores e fecham essas vendas pouco depois, por isso valores de 40–50% são normais. O que interessa é a variação face à média da própria ação: um salto persistente pode indicar pressão vendedora.', 340)}</div>
+                    <div style="display:flex; gap:14px; flex-wrap:wrap; align-items:center">
+                        <div>Último dia (${ofData(u.data)}): <strong style="color:${u.racio !== null && med !== null && u.racio > med + 10 ? '#d9534f' : '#f0f2f5'}">${u.racio === null ? '—' : u.racio.toFixed(1).replace('.', ',') + '%'}</strong></div>
+                        <div>Média de 20 dias: <strong>${med === null ? '—' : med.toFixed(1).replace('.', ',') + '%'}</strong></div>
+                        <div style="flex:1 1 200px; max-width:260px">${ofMini(vol.dias.filter(x => x.racio !== null).map(x => [x.data, x.racio]), '#d9534f', 260, 36)}</div>
+                    </div></div>`;
+            }
             div.innerHTML = h;
         } catch (e) { div.innerHTML = 'Erro na pesquisa.'; }
     }
@@ -8009,6 +8043,29 @@ function renderizarCalendarioDiario() {
             const d = await r.json();
             if (d.erro) { div.innerHTML = `<span style="color:#e3b341">${escHTML(d.erro)}</span>`; return; }
             const usd = v => v === null || v === undefined ? '—' : (Math.abs(v) >= 1e9 ? (v / 1e9).toFixed(2).replace('.', ',') + ' mM$' : Math.abs(v) >= 1e6 ? (v / 1e6).toFixed(1).replace('.', ',') + ' M$' : Number(v).toLocaleString('pt-PT') + ' $');
+            if (tipo === 'eventos') {
+                const cor = { alta: '#d9534f', media: '#e3b341', baixa: '#8b949e' };
+                div.innerHTML = `<div style="font-weight:bold; color:#fff; margin-bottom:6px">${escHTML(d.empresa || t)} · comunicados 8-K dos últimos 90 dias ${ofDica('Nos EUA, as empresas têm de entregar um 8-K em regra até 4 dias úteis depois de um acontecimento relevante. Vermelho = eventos que merecem leitura imediata (falência, contas reexpressas, mudança de auditor, aviso de exclusão da bolsa, imparidades); amarelo = relevantes (aquisições, nova dívida, saída de administradores); cinzento = de rotina (resultados, votações, apresentações).', 320)}</div>`
+                    + (d.eventos.length ? `<div style="overflow-x:auto"><table style="width:100%; border-collapse:collapse; font-size:12px; margin-top:0">
+                    <thead style="color:#8b949e; font-size:10px; text-transform:uppercase"><tr><th style="padding:5px; text-align:left">Data</th><th style="padding:5px; text-align:left">O que foi comunicado</th><th style="padding:5px"></th></tr></thead>
+                    <tbody>${d.eventos.map(e => `<tr style="border-top:1px solid #21262d"><td style="padding:5px; white-space:nowrap">${ofData(e.data)}${e.hora ? ' ' + e.hora : ''}</td>
+                        <td style="padding:5px">${(e.itens.length ? e.itens : [{ nome: 'Comunicado 8-K', nivel: 'baixa' }]).map(i => `<div><span style="color:${cor[i.nivel]}">●</span> ${escHTML(i.nome)}</div>`).join('')}${e.forma === '8-K/A' ? '<div style="font-size:10px; color:#8b949e">(correção de um 8-K anterior)</div>' : ''}</td>
+                        <td style="padding:5px; text-align:right"><a href="${e.url}" target="_blank" rel="noopener" style="color:#58a6ff">Ler ↗</a></td></tr>`).join('')}</tbody></table></div>`
+                    : '<div>Sem comunicados 8-K nos últimos 90 dias.</div>')
+                    + `<div style="font-size:10px; color:#6e7681; margin-top:6px">Fonte: ${escHTML(d.fonte)}. Recebe estes avisos automaticamente: Alertas pessoais → 📰 Comunicados à SEC.</div>`;
+                return;
+            }
+            if (tipo === 'grandes') {
+                const mv = { nova: '🆕 nova', reforco: '⬆️ reforçou', reducao: '⬇️ reduziu', igual: '= manteve' };
+                div.innerHTML = `<div style="font-weight:bold; color:#fff; margin-bottom:6px">${escHTML(d.empresa || t)} · quem dos grandes investidores acompanhados a tem (último 13F) ${ofDica(escHTML(d.nota || '') + ' Os 13F chegam com até 45 dias de atraso depois do fim do trimestre.', 260)}</div>`
+                    + (d.detentores.length ? `<table style="width:100%; border-collapse:collapse; font-size:12px; margin-top:0"><thead style="color:#8b949e; font-size:10px; text-transform:uppercase"><tr><th style="padding:5px; text-align:left">Gestor</th><th style="padding:5px; text-align:right">Peso na carteira</th><th style="padding:5px; text-align:right">Valor</th><th style="padding:5px; text-align:left">Movimento</th><th style="padding:5px; text-align:right">Trimestre</th></tr></thead>
+                        <tbody>${d.detentores.map(x => `<tr style="border-top:1px solid #21262d"><td style="padding:5px"><a href="#" onclick="of13f('${x.cik}'); return false" style="color:#39c5cf">${escHTML(x.gestor)}</a> <span style="color:#6e7681">${escHTML(x.pessoa)}</span></td>
+                            <td style="padding:5px; text-align:right; font-weight:bold">${x.peso === null ? '—' : x.peso.toFixed(2).replace('.', ',') + '%'}</td><td style="padding:5px; text-align:right">${usd(x.valor)}</td>
+                            <td style="padding:5px">${mv[x.movimento] || '—'}${x.variacao_acoes !== null && x.movimento !== 'igual' && x.movimento !== 'nova' ? ` (${x.variacao_acoes > 0 ? '+' : ''}${x.variacao_acoes.toFixed(0)}% ações)` : ''}</td>
+                            <td style="padding:5px; text-align:right; color:#8b949e">${ofData(x.periodo)}</td></tr>`).join('')}</tbody></table>`
+                        : '<div>Nenhum dos gestores acompanhados tinha esta ação no último 13F (ou as carteiras ainda não foram descarregadas no servidor).</div>');
+                return;
+            }
             if (tipo === 'fundamentos') {
                 const L = [['Receitas', 'receitas', usd], ['Resultado operacional', 'resultado_operacional', usd], ['Lucro líquido', 'lucro_liquido', usd],
                            ['Margem líquida', 'margem_liquida', v => v === null ? '—' : v.toFixed(1).replace('.', ',') + '%'], ['EPS diluído', 'eps_diluido', v => v === null ? '—' : v.toFixed(2).replace('.', ',') + ' $'],
@@ -8036,6 +8093,47 @@ function renderizarCalendarioDiario() {
                     <td style="padding:5px; text-align:right"><a href="${x.url}" target="_blank" rel="noopener" style="color:#c9d1d9">${usd(x.valor)}</a></td></tr>`).join('') || '<tr><td colspan="6" style="padding:8px">Sem transações nos formulários recentes.</td></tr>'}</tbody></table></div>
                 <div style="font-size:10px; color:#6e7681; margin-top:6px">Fonte: ${escHTML(d.fonte)}. Linhas esbatidas: atribuições, exercício de opções e retenções para impostos (não são decisões de compra/venda em bolsa).</div>`;
         } catch (e) { div.innerHTML = 'Erro ao consultar a SEC.'; }
+    }
+
+    async function of13fLista() {
+        const box = document.getElementById('of-13f-lista');
+        try {
+            const d = await (await fetch('/api/oficial/13f')).json();
+            box.innerHTML = (d.gestores || []).map(g => `<button class="btn-moderno" onclick="of13f('${g.cik}')" title="${escHTML(g.pessoa)}${g.periodo ? ' · último 13F: ' + ofData(g.periodo) : ''}" style="background:#21262d; color:#c9d1d9; padding:7px 11px; font-size:11px; text-transform:none">${escHTML(g.nome)}<span style="color:#6e7681"> · ${escHTML(g.pessoa)}</span></button>`).join('')
+                + `<input type="text" id="of-13f-cik" class="input-moderno" placeholder="Outro gestor: CIK" title="O CIK é o número do gestor na SEC (procura o nome em sec.gov/edgar/search)" style="max-width:150px; padding:7px 10px; font-size:11px" onkeydown="if(event.key==='Enter') of13f(this.value)">`;
+        } catch (e) { box.innerHTML = ''; }
+    }
+
+    async function of13f(cik) {
+        cik = String(cik || '').replace(/\D/g, '');
+        const div = document.getElementById('of-13f');
+        if (!cik) return;
+        div.innerHTML = 'A ler o 13F na SEC (a primeira consulta de cada gestor pode demorar alguns segundos)...';
+        try {
+            const d = await (await fetch('/api/oficial/13f/' + cik)).json();
+            if (d.erro) { div.innerHTML = `<span style="color:#e3b341">${escHTML(d.erro)}</span>`; return; }
+            const usd = v => v === null || v === undefined ? '—' : (Math.abs(v) >= 1e9 ? (v / 1e9).toFixed(2).replace('.', ',') + ' mM$' : Math.abs(v) >= 1e6 ? (v / 1e6).toFixed(1).replace('.', ',') + ' M$' : Number(v).toLocaleString('pt-PT') + ' $');
+            const mv = { nova: ['🆕', '#39c5cf'], reforco: ['⬆️', '#3fb950'], reducao: ['⬇️', '#d9534f'], igual: ['', '#8b949e'] };
+            const acoes = d.posicoes.filter(p => !p.opcao), opcoes = d.posicoes.filter(p => p.opcao);
+            const n = { nova: acoes.filter(p => p.movimento === 'nova').length, reforco: acoes.filter(p => p.movimento === 'reforco').length, reducao: acoes.filter(p => p.movimento === 'reducao').length };
+            const top10 = acoes.slice(0, 10).reduce((a, p) => a + (p.peso || 0), 0);
+            div.innerHTML = `<div style="font-weight:bold; color:#fff; margin-bottom:8px">${escHTML(d.gestor)} · trimestre terminado a ${ofData(d.periodo)} <span style="font-weight:normal; color:#8b949e">(entregue a ${ofData(d.entregue)})</span></div>
+                <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px">
+                    <div style="background:#0d1117; border:1px solid #30363d; border-radius:6px; padding:8px 12px">Valor declarado: <strong style="color:#fff">${usd(d.valor_total)}</strong></div>
+                    <div style="background:#0d1117; border:1px solid #30363d; border-radius:6px; padding:8px 12px">${acoes.length} posições · 10 maiores = <strong style="color:#fff">${top10.toFixed(0)}%</strong> ${ofDica('Concentração: quanto pesam as 10 maiores posições. Investidores de convicção (como Buffett) têm carteiras muito concentradas; gestores quantitativos espalham-se por centenas de ações.', 260)}</div>
+                    ${d.periodo_anterior ? `<div style="background:#0d1117; border:1px solid #30363d; border-radius:6px; padding:8px 12px">Face a ${ofData(d.periodo_anterior)}: 🆕 ${n.nova} novas · ⬆️ ${n.reforco} reforços · ⬇️ ${n.reducao} reduções · ❌ ${d.vendidas.length} vendidas</div>` : ''}
+                </div>
+                <div style="overflow-x:auto; max-height:420px; overflow-y:auto"><table style="width:100%; border-collapse:collapse; font-size:12px; margin-top:0">
+                <thead style="color:#8b949e; font-size:10px; text-transform:uppercase; position:sticky; top:0; background:#161b22"><tr><th style="padding:5px; text-align:left">Emitente</th><th style="padding:5px; text-align:right">Peso</th><th style="padding:5px; text-align:right">Valor</th><th style="padding:5px; text-align:right">Ações</th><th style="padding:5px; text-align:left">Movimento</th></tr></thead>
+                <tbody>${acoes.slice(0, 60).map(p => `<tr style="border-top:1px solid #21262d"><td style="padding:5px">${escHTML(p.emitente || '')} <span style="color:#6e7681; font-size:10px">${escHTML(p.classe || '')}</span></td>
+                    <td style="padding:5px; text-align:right; font-weight:bold">${p.peso === null ? '—' : p.peso.toFixed(2).replace('.', ',') + '%'}</td><td style="padding:5px; text-align:right">${usd(p.valor)}</td>
+                    <td style="padding:5px; text-align:right; color:#8b949e">${Number(p.acoes).toLocaleString('pt-PT')}</td>
+                    <td style="padding:5px; color:${(mv[p.movimento] || ['', '#8b949e'])[1]}">${(mv[p.movimento] || [''])[0]} ${p.movimento === 'nova' ? 'nova' : p.variacao_acoes !== null && p.movimento !== 'igual' ? (p.variacao_acoes > 0 ? '+' : '') + p.variacao_acoes.toFixed(0) + '%' : ''}</td></tr>`).join('')}</tbody></table></div>
+                ${acoes.length > 60 ? `<div style="font-size:11px; color:#8b949e; margin-top:4px">+ ${acoes.length - 60} posições mais pequenas.</div>` : ''}
+                ${d.vendidas.length ? `<div style="margin-top:10px"><strong style="color:#d9534f">❌ Vendidas por completo:</strong> ${d.vendidas.slice(0, 15).map(v => escHTML(v.emitente || '') + (v.opcao ? ' (' + v.opcao + ')' : '')).join(' · ')}</div>` : ''}
+                ${opcoes.length ? `<div style="margin-top:6px; color:#8b949e">Opções declaradas: ${opcoes.slice(0, 10).map(o => `${escHTML(o.emitente || '')} (${o.opcao === 'Put' ? 'put, aposta na descida ou proteção' : 'call'})`).join(' · ')}</div>` : ''}
+                <div style="font-size:10px; color:#6e7681; margin-top:8px">Fonte: ${escHTML(d.fonte)} · <a href="${d.url}" target="_blank" rel="noopener" style="color:#6e7681">ver na SEC ↗</a></div>`;
+        } catch (e) { div.innerHTML = 'Erro ao ler o 13F.'; }
     }
 
     async function carregarLiga(forcarRecalculo = false) {
@@ -9389,7 +9487,7 @@ let calAlertas = [], calUltima = null;
 
 function calTiposAtivos() {
     const guardado = calLerJSON('alertasTipos', null);
-    return guardado || ['preco', 'earnings', 'fiscal', 'abate', 'backup'];
+    return guardado || ['preco', 'earnings', 'fiscal', 'abate', 'backup', 'sec8k'];
 }
 
 function calLotesAbertos() {
@@ -9510,6 +9608,38 @@ async function calVerificar(manual) {
                 dica: 'É o preço da privacidade: como nada é guardado no servidor, és tu quem guarda a cópia de segurança. Um backup mensal chega para a maioria das pessoas.'
             });
         }
+    }
+
+    // 7. Comunicados à SEC (8-K) e compras de administradores (só os tickers vão ao servidor; nada fica guardado lá)
+    if (tipos.includes('sec8k')) {
+        const eua = tickLotes.filter(t => /^[A-Z]{1,5}([.-][A-Z])?$/.test(t)).slice(0, 25);
+        let evs = null;
+        const cache = calLerJSON('calCacheSec', null);
+        if (cache && cache.chave === eua.join(',') && Date.now() - cache.t < 2 * 3600 * 1000) evs = cache.eventos;
+        else if (eua.length) {
+            try {
+                evs = (await calPost('/api/oficial/eventos_lote', { tickers: eua })).eventos || [];
+                localStorage.setItem('calCacheSec', JSON.stringify({ chave: eua.join(','), t: Date.now(), eventos: evs }));
+            } catch (e) { evs = []; }
+        }
+        (evs || []).forEach(e => {
+            if (e.tipo === 'insider') {
+                novos.push({
+                    id: `ins-${e.ticker}-${e.data}`, nivel: 'media', icone: '👔', tipo: 'sec8k',
+                    titulo: `${e.ticker}: ${e.n} compra${e.n > 1 ? 's' : ''} em bolsa por administradores (${Math.round(e.valor).toLocaleString('pt-PT')} $)`,
+                    texto: 'Alguém de dentro da empresa comprou ações com dinheiro próprio nos últimos 10 dias. Vê os detalhes no separador 🏦 Juros & Dados Oficiais → Administradores.',
+                    dica: 'Vendas de administradores têm muitas explicações (impostos, diversificação); compras em bolsa só têm uma: acham que a ação vale mais. Não é garantia, mas é dos sinais oficiais mais seguidos.'
+                });
+                return;
+            }
+            const itens = (e.itens || []).map(i => dvdEsc(i.nome)).join(' · ') || 'Comunicado 8-K';
+            novos.push({
+                id: `8k-${e.acc}`, nivel: e.nivel === 'alta' ? 'alta' : 'media', icone: '📰', tipo: 'sec8k',
+                titulo: `${e.ticker} comunicou à SEC (${e.data}): ${(e.itens || [])[0] ? e.itens[0].nome : '8-K'}`,
+                texto: `${itens}. <a href="${e.url}" target="_blank" rel="noopener" style="color:#58a6ff">Ler o comunicado ↗</a>`,
+                dica: 'O formulário 8-K é obrigatório nos EUA sempre que acontece algo relevante (resultados, aquisições, saída de um CEO, mudança de auditor...), em regra em 4 dias úteis. Os eventos marcados como importantes (falência, contas reexpressas, exclusão da bolsa, mudança de auditor) merecem leitura imediata.'
+            });
+        });
     }
 
     const ordem = { alta: 0, media: 1, info: 2 };

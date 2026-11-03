@@ -262,6 +262,7 @@
       <ul class="regras">
         <li><b>SEC</b> (administradores e fundamentos dos EUA): exige identificação. Define <code>SEC_USER_AGENT</code> nas Variáveis da Discloud com um nome e um e-mail de contacto, ex.: <code>Portal Bolsa contacto@teudominio.pt</code>.</li>
         <li><b>Posições curtas</b>: se um regulador mudar o endereço do ficheiro, corrige-o aqui. Se não tiver download automático (ex.: CNMV), descarrega a lista oficial no site e carrega-a aqui.</li>
+        <li><b>Tesouro dos EUA, OCDE e CFTC</b>: não precisam de configuração (atualizam depois das 22:00; a OCDE de 3 em 3 dias). <b>13F</b>: as carteiras dos grandes investidores atualizam às 04:00.</li>
         <li><b>Certificados de Aforro</b>: o IGCP não tem API. No início de cada mês, introduz a taxa base que o IGCP publica.</li>
       </ul>
       <table class="dados" id="t-fo"></table>
@@ -269,6 +270,18 @@
         <b style="color:var(--texto)">Certificados de Aforro:</b> mês <input type="month" id="fo-ca-mes" class="campo"> taxa base <input type="text" id="fo-ca-taxa" class="campo" placeholder="2,474" style="width:80px"> %
         <button class="btn sec" id="b-fo-ca">Gravar taxa</button>
         <span id="fo-ca-ultima" style="font-size:12px"></span>
+      </div>
+      <div class="padrao-liga" id="fo-vigia" style="display:block">
+        <b style="color:var(--texto)">📰 Avisos de comunicados à SEC (8-K) no Discord</b>
+        <span class="dica" title="De 30 em 30 minutos (dias úteis, 11:00–24:00) o servidor vê se as empresas desta lista entregaram 8-K novos à SEC e publica-os no canal WEBHOOK_EVENTOS (ou, se não existir, no do Briefing EUA). Os membros recebem também avisos das SUAS posições nos alertas pessoais do terminal, calculados no browser.">ℹ️</span>
+        <div style="margin-top:6px">Tickers americanos a vigiar (separados por espaço ou vírgula):</div>
+        <textarea id="fo-vigia-tickers" class="campo" rows="2" style="width:100%;max-width:640px" placeholder="AAPL MSFT NVDA TSLA"></textarea>
+        <div style="margin-top:6px; display:flex; gap:14px; flex-wrap:wrap; align-items:center">
+          <label><input type="checkbox" id="fo-vigia-liga"> incluir as ações americanas da Liga</label>
+          <label>avisar a partir de <select id="fo-vigia-nivel" class="campo"><option value="alta">só eventos graves</option><option value="media">eventos relevantes</option><option value="baixa">todos (inclui resultados)</option></select></label>
+          <button class="btn sec" id="b-fo-vigia">Gravar lista</button>
+        </div>
+        <div id="fo-vigia-info" style="font-size:12px; color:var(--suave); margin-top:4px"></div>
       </div>
       <table class="dados tabela" id="t-fo-curtas">
         <thead><tr><th>Regulador</th><th>Estado</th><th>Endereço do ficheiro / página</th><th>Ficheiro manual</th></tr></thead>
@@ -673,6 +686,22 @@ $("c-fontes").addEventListener("change", async ev => {
   msg("msg-fo", r.j && r.j.sucesso ? "ok" : "erro", (r.j && (r.j.mensagem || r.j.erro)) || `Erro ${r.estado}`);
   foRecarregar();
 });
+function foPintarVigia(v) {
+  if (!v) return;
+  if (document.activeElement !== $("fo-vigia-tickers")) $("fo-vigia-tickers").value = (v.tickers || []).join(" ");
+  $("fo-vigia-liga").checked = !!v.incluir_liga;
+  $("fo-vigia-nivel").value = v.nivel_minimo || "media";
+  $("fo-vigia-info").innerHTML = (v.webhook ? "" : `<span style="color:var(--amarelo)">⚠ Sem WEBHOOK_EVENTOS / WEBHOOK_RELATORIO definido: nada será publicado.</span> `)
+    + (v.incluir_liga && v.tickers_liga.length ? `Da Liga: ${esc(v.tickers_liga.join(", "))}. ` : "")
+    + (v.ultima ? `Última verificação: ${dataPt(new Date(v.ultima * 1000).toISOString())} · ${v.enviados || 0} aviso(s) publicado(s) até hoje.` : "Ainda não verificou (começa no próximo dia útil depois das 11:00; na 1.ª vez só memoriza o que já existe).");
+}
+async function foCarregarVigia() { const r = await pedir("/api/admin/sec/vigia"); if (r.ok) foPintarVigia(r.j); }
+$("b-fo-vigia").addEventListener("click", async () => {
+  const r = await foPost("/api/admin/sec/vigia", { tickers: $("fo-vigia-tickers").value, incluir_liga: $("fo-vigia-liga").checked, nivel_minimo: $("fo-vigia-nivel").value });
+  msg("msg-fo", r.ok ? "ok" : "erro", r.ok ? `Lista gravada: ${(r.j.tickers || []).length} tickers.` : ((r.j && r.j.erro) || `Erro ${r.estado}`));
+  if (r.ok) foPintarVigia(r.j);
+});
+foCarregarVigia();
 $("b-fo-ca").addEventListener("click", async () => {
   const r = await foPost("/api/admin/juros/ca", { mes: $("fo-ca-mes").value, taxa: $("fo-ca-taxa").value });
   msg("msg-fo", r.j && r.j.sucesso ? "ok" : "erro", (r.j && (r.j.mensagem || r.j.erro)) || `Erro ${r.estado}`);
