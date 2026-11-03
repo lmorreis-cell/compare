@@ -35,14 +35,24 @@ _lock = threading.Lock()
 # ---------------------------------------------------------------
 # ACESSO À API
 # ---------------------------------------------------------------
-def pedir_csv(fluxo, chave, **params):
-    """Devolve as linhas (dicts) do CSV SDMX do BCE. Lança exceção se falhar."""
+def pedir_csv(fluxo, chave, tentativas=3, **params):
+    """Devolve as linhas (dicts) do CSV SDMX do BCE. O BCE responde por vezes com 504/timeout quando está
+    carregado: tenta até 3 vezes, com pausas crescentes. Lança exceção se todas falharem."""
     params = {"format": "csvdata", "detail": "dataonly", **params}
-    r = requests.get(f"{API}/{fluxo}/{chave}", params=params, headers=UA, timeout=30)
-    if r.status_code == 404:
-        return []  # sem dados para o período pedido (não é erro)
-    r.raise_for_status()
-    return list(csv.DictReader(io.StringIO(r.text)))
+    ultimo_erro = None
+    for n in range(tentativas):
+        try:
+            r = requests.get(f"{API}/{fluxo}/{chave}", params=params, headers=UA, timeout=60)
+            if r.status_code == 404:
+                return []  # sem dados para o período pedido (não é erro)
+            if r.status_code in (429, 500, 502, 503, 504):
+                raise RuntimeError(f"BCE respondeu {r.status_code}")
+            r.raise_for_status()
+            return list(csv.DictReader(io.StringIO(r.text)))
+        except Exception as e:
+            ultimo_erro = e
+            time.sleep(5 * (n + 1))
+    raise RuntimeError(f"{fluxo}/{chave}: {str(ultimo_erro)[:160]}")
 
 
 def _ler(caminho, omissao):
@@ -105,12 +115,12 @@ def cambio(moeda, dia):
 # ---------------------------------------------------------------
 # 2. JUROS E POUPANÇA
 # ---------------------------------------------------------------
+# Uma série por pedido (pedidos pequenos: o BCE responde melhor) — grupo: [(fluxo, chave, parâmetros)]
 SERIES = {
-    # fluxo, chave, parâmetros
-    "diretoras": ("FM", "D.U2.EUR.4F.KR.DFR+MRR_FR+MLFR.LEV", {"startPeriod": "2022-01-01"}),
-    "euribor": ("FM", "M.U2.EUR.RT.MM.EURIBOR1MD_+EURIBOR3MD_+EURIBOR6MD_+EURIBOR1YD_.HSTA", {"startPeriod": "2021-01"}),
-    "curva": ("YC", "B.U2.EUR.4F.G_N_A.SV_C_YM.SR_3M+SR_1Y+SR_2Y+SR_5Y+SR_10Y+SR_30Y", {"lastNObservations": "300"}),
-    "inflacao": ("ICP", "M.PT+U2.N.000000.4.ANR", {"startPeriod": "2021-01"}),
+    "diretoras": [("FM", f"B.U2.EUR.4F.KR.{k}.LEV", {"lastNObservations": "12"}) for k in ("DFR", "MRR_FR", "MLFR")],
+    "euribor": [("FM", f"M.U2.EUR.RT.MM.{k}.HSTA", {"lastNObservations": "40"}) for k in ("EURIBOR1MD_", "EURIBOR3MD_", "EURIBOR6MD_", "EURIBOR1YD_")],
+    "curva": [("YC", f"B.U2.EUR.4F.G_N_A.SV_C_YM.{k}", {"lastNObservations": "270"}) for k in ("SR_3M", "SR_1Y", "SR_2Y", "SR_5Y", "SR_10Y", "SR_30Y")],
+    "inflacao": [("ICP", f"M.{k}.N.000000.4.ANR", {"lastNObservations": "40"}) for k in ("PT", "U2")],
 }
 NOMES = {
     "DFR": "Facilidade de depósito", "MRR_FR": "Operações principais de refinanciamento", "MLFR": "Facilidade de cedência marginal",
@@ -143,20 +153,22 @@ def atualizar_juros(forcar=False):
         if not forcar and (dados.get("atualizado_em") or "")[:10] == date.today().isoformat():
             return True, "Já atualizado hoje."
         novo, erros = {"series": {}}, []
-        for grupo, (fluxo, chave, params) in SERIES.items():
-            try:
-                linhas = pedir_csv(fluxo, chave, **params)
-                for l in linhas:
-                    v = l.get("OBS_VALUE")
-                    if v in (None, "", "NaN"):
-                        continue
-                    sid = _id_serie(l, grupo)
-                    novo["series"].setdefault(grupo, {}).setdefault(sid, []).append([l["TIME_PERIOD"], float(v)])
+        antigos = dados.get("series") or {}
+        for grupo, pedidos in SERIES.items():
+            for fluxo, chave, params in pedidos:
+                sid_pedida = next(i for i in IDS[grupo] if i in chave.split("."))
+                try:
+                    linhas = pedir_csv(fluxo, chave, **params)
+                    for l in linhas:
+                        v = l.get("OBS_VALUE")
+                        if v in (None, "", "NaN"):
+                            continue
+                        novo["series"].setdefault(grupo, {}).setdefault(sid_pedida, []).append([l["TIME_PERIOD"], float(v)])
+                except Exception as e:
+                    erros.append(f"{grupo}/{sid_pedida}: {str(e)[:120]}")
+                    if sid_pedida in (antigos.get(grupo) or {}):  # mantém o último valor bom desta série
+                        novo["series"].setdefault(grupo, {})[sid_pedida] = antigos[grupo][sid_pedida]
                 time.sleep(1)
-            except Exception as e:
-                erros.append(f"{grupo}: {e}")
-                if grupo in (dados.get("series") or {}):
-                    novo["series"][grupo] = dados["series"][grupo]  # mantém o último bom
         for grupo in novo["series"].values():
             for s in grupo.values():
                 s.sort()

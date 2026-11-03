@@ -3461,34 +3461,52 @@ def admin_fontes_estado():
                     "sec_user_agent": bool((os.environ.get("SEC_USER_AGENT") or "").strip())})
 
 
-@app.route('/api/admin/fontes/testar', methods=['POST'])
+_teste_fontes = {"a_correr": False, "resultados": {}, "inicio": None, "fim": None}
+
+
+def _correr_teste_fontes():
+    r = _teste_fontes["resultados"]
+    try:
+        try:
+            ok, msg = fontes_bce.atualizar_cambios(forcar=True)
+            r["BCE · câmbios"] = {"ok": ok, "msg": msg}
+        except Exception as e:
+            r["BCE · câmbios"] = {"ok": False, "msg": str(e)[:300]}
+        try:
+            ok, msg = fontes_bce.atualizar_juros(forcar=True)
+            r["BCE · juros e inflação"] = {"ok": ok, "msg": msg}
+        except Exception as e:
+            r["BCE · juros e inflação"] = {"ok": False, "msg": str(e)[:300]}
+        try:
+            nomes = posicoes_curtas.fontes()
+            for pais, v in posicoes_curtas.atualizar().items():
+                r[f"Posições curtas · {nomes[pais]['nome']}"] = v
+        except Exception as e:
+            r["Posições curtas"] = {"ok": False, "msg": str(e)[:300]}
+        try:
+            d = posicoes_curtas.short_interest_eua("AAPL")
+            r["FINRA · short interest EUA"] = {"ok": bool(d["datas"]), "msg": f"{len(d['datas'])} datas para AAPL." if d["datas"] else "Sem dados devolvidos."}
+        except Exception as e:
+            r["FINRA · short interest EUA"] = {"ok": False, "msg": str(e)[:300]}
+        r["SEC · insiders e fundamentos"] = sec_dados.testar()
+    finally:
+        _teste_fontes["a_correr"] = False
+        _teste_fontes["fim"] = datetime.now().isoformat(timespec="seconds")
+
+
+@app.route('/api/admin/fontes/testar', methods=['GET', 'POST'])
 def admin_fontes_testar():
-    """Testa, a partir do servidor, cada fonte oficial. Pode demorar até 1–2 minutos."""
-    if not _e_admin() or not _origem_propria():
+    """POST arranca o teste em segundo plano (pode demorar 1–3 min); GET devolve o progresso.
+    Assim o pedido nunca excede o tempo-limite do proxy da Discloud (erro 504)."""
+    if not _e_admin():
         return jsonify({"erro": "Acesso negado."}), 403
-    r = {}
-    try:
-        ok, msg = fontes_bce.atualizar_cambios(forcar=True)
-        r["BCE · câmbios"] = {"ok": ok, "msg": msg}
-    except Exception as e:
-        r["BCE · câmbios"] = {"ok": False, "msg": str(e)[:300]}
-    try:
-        ok, msg = fontes_bce.atualizar_juros(forcar=True)
-        r["BCE · juros e inflação"] = {"ok": ok, "msg": msg}
-    except Exception as e:
-        r["BCE · juros e inflação"] = {"ok": False, "msg": str(e)[:300]}
-    try:
-        for pais, v in posicoes_curtas.atualizar().items():
-            r[f"Posições curtas · {posicoes_curtas.fontes()[pais]['nome']}"] = v
-    except Exception as e:
-        r["Posições curtas"] = {"ok": False, "msg": str(e)[:300]}
-    try:
-        d = posicoes_curtas.short_interest_eua("AAPL")
-        r["FINRA · short interest EUA"] = {"ok": bool(d["datas"]), "msg": f"{len(d['datas'])} datas para AAPL." if d["datas"] else "Sem dados devolvidos."}
-    except Exception as e:
-        r["FINRA · short interest EUA"] = {"ok": False, "msg": str(e)[:300]}
-    r["SEC · insiders e fundamentos"] = sec_dados.testar()
-    return jsonify({"resultados": r})
+    if request.method == 'POST':
+        if not _origem_propria():
+            return jsonify({"erro": "Acesso negado."}), 403
+        if not _teste_fontes["a_correr"]:
+            _teste_fontes.update({"a_correr": True, "resultados": {}, "inicio": datetime.now().isoformat(timespec="seconds"), "fim": None})
+            threading.Thread(target=_correr_teste_fontes, daemon=True, name="teste-fontes").start()
+    return jsonify(_teste_fontes)
 
 
 @app.route('/api/admin/curtas/fonte', methods=['POST'])

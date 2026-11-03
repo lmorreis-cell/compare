@@ -57,7 +57,7 @@ COLUNAS = {
     "isin": ["isin"],
     "pct": ["net short position", "posicao curta", "position courte", "netto-leerverkaufsposition", "posizione netta corta",
             "posizione", "posicion corta", "netto shortpositie", "% ", "(%)", "percentage", "percentagem", "pourcentage", "prozent",
-            "ratio", "position"],
+            "ratio", "position", "liquida curta", "curta liquida", "posicao liquida", "short position", "netta corta", "posicion neta"],
     "data": ["position date", "data da posicao", "date de debut", "date de la position", "datum", "data della posizione",
              "fecha de la posicion", "positiedatum", "date", "data", "fecha"],
 }
@@ -160,6 +160,7 @@ def _data(v):
 
 def _mapear_colunas(cabecalho):
     norm = [_sem_acentos(c) for c in cabecalho]
+    norm = [c if c.strip() != "%" else "(%)" for c in norm]  # cabeçalho só com «%»
     mapa = {}
     for campo in ("isin", "detentor", "emitente", "pct", "data"):
         for i, c in enumerate(norm):
@@ -176,7 +177,7 @@ def _mapear_colunas(cabecalho):
 
 def _linhas_para_posicoes(linhas, pais):
     """linhas = lista de listas (1.ª linha útil = cabeçalho). Procura o cabeçalho nas primeiras 15 linhas."""
-    for i, cab in enumerate(linhas[:15]):
+    for i, cab in enumerate(linhas[:40]):
         mapa = _mapear_colunas([str(c or "") for c in cab])
         if not mapa:
             continue
@@ -196,15 +197,35 @@ def _linhas_para_posicoes(linhas, pais):
     return []
 
 
+_ultimo_diag = {}
+
+
+def _amostra(linhas, n=4):
+    out = []
+    for l in linhas[:n]:
+        celulas = [str(c).strip()[:40] for c in l if str(c).strip()]
+        if celulas:
+            out.append(" | ".join(celulas)[:240])
+    return out
+
+
 def _ler_conteudo(conteudo, tipo, pais):
-    """Aceita CSV (, ; tab), XLSX/XLS e HTML com tabelas."""
+    """Aceita CSV (, ; tab), XLSX/XLS e HTML com tabelas. Guarda uma amostra para diagnóstico."""
+    _ultimo_diag[pais] = {"bytes": len(conteudo), "tipo": tipo, "inicio": conteudo[:160].decode("latin-1", "replace")}
+    return _ler_conteudo_(conteudo, tipo, pais)
+
+
+def _ler_conteudo_(conteudo, tipo, pais):
     cab = conteudo[:8]
     if cab.startswith(b"PK") or "spreadsheet" in tipo or "excel" in tipo:
         import pandas as pd
         folhas = pd.read_excel(io.BytesIO(conteudo), sheet_name=None, header=None)
         out = []
-        for df in folhas.values():
-            out.extend(_linhas_para_posicoes(df.fillna("").values.tolist(), pais))
+        _ultimo_diag[pais]["folhas"] = {}
+        for nome, df in folhas.items():
+            linhas = df.fillna("").values.tolist()
+            _ultimo_diag[pais]["folhas"][str(nome)] = _amostra(linhas)
+            out.extend(_linhas_para_posicoes(linhas, pais))
         return out
     texto = None
     for enc in ("utf-8-sig", "cp1252", "latin-1"):
@@ -217,12 +238,20 @@ def _ler_conteudo(conteudo, tipo, pais):
         return []
     if "<table" in texto.lower():
         out = []
-        for tabela in _tabelas_html(texto):
+        tabelas = _tabelas_html(texto)
+        _ultimo_diag[pais]["tabelas_html"] = [_amostra(t, 3) for t in tabelas[:4]]
+        _ultimo_diag[pais]["n_tabelas"] = len(tabelas)
+        if not tabelas:
+            # Página sem tabela: pode carregar os dados por JavaScript ou ter links para ficheiros
+            _ultimo_diag[pais]["links"] = list(dict.fromkeys(re.findall(r'(?:href|src)="([^"]+(?:\.xlsx?|\.csv|export|download|shortselling|iframe)[^"]*)"', texto, re.I)))[:8]
+        for tabela in tabelas:
             out.extend(_linhas_para_posicoes(tabela, pais))
         return out
     amostra = texto[:5000]
     sep = max([";", ",", "\t", "|"], key=lambda s: amostra.count(s))
-    return _linhas_para_posicoes(list(csv.reader(io.StringIO(texto), delimiter=sep)), pais)
+    linhas = list(csv.reader(io.StringIO(texto), delimiter=sep))
+    _ultimo_diag[pais]["csv"] = _amostra(linhas)
+    return _linhas_para_posicoes(linhas, pais)
 
 
 def _tabelas_html(texto):
@@ -278,7 +307,11 @@ def _descarregar(fonte):
         raise RuntimeError("Sem endereço configurado.")
     r = s.get(url, timeout=60)
     r.raise_for_status()
+    _url_usado[fonte.get("nome", "")] = url
     return r.content, r.headers.get("Content-Type", "").lower()
+
+
+_url_usado = {}
 
 
 def _consolidar(posicoes):
@@ -318,6 +351,7 @@ def atualizar(paises=None, forcar=False):
                 posicoes = _consolidar(_ler_conteudo(conteudo, tipo, pais))
                 if not posicoes:
                     raise RuntimeError("O ficheiro foi lido mas não reconheci posições (o formato mudou?).")
+                _ultimo_diag.pop(pais, None)
                 por_pais[pais] = posicoes
                 relatorio[pais] = {"ok": True, "msg": f"{len(posicoes)} posições atuais ({origem}).", "n": len(posicoes)}
                 time.sleep(2)
@@ -334,6 +368,9 @@ def atualizar(paises=None, forcar=False):
                                        "msg": f"{len(posicoes)} posições do ficheiro carregado na Gestão (download automático falhou: {str(e)[:120]})."}
                 except Exception:
                     relatorio[pais] = {"ok": False, "msg": str(e)[:300]}
+                    diag = dict(_ultimo_diag.get(pais) or {})
+                    diag["url"] = _url_usado.get(fonte.get("nome", ""), fonte.get("url"))
+                    relatorio[pais]["diagnostico"] = json.dumps(diag, ensure_ascii=False)[:1800]
         dados["posicoes"] = [p for lista in por_pais.values() for p in lista]
         dados["fontes"] = {**dados.get("fontes", {}), **{k: {**v, "em": datetime.now().isoformat(timespec="seconds")}
                                                           for k, v in relatorio.items()}}
