@@ -223,6 +223,21 @@ def _campo_macro_oficial():
     if t.get("sinal") and s3:
         ic = {"verde": "🟢", "amarelo": "🟡", "vermelho": "🔴"}[t["sinal"]["cor"]]
         linhas.append(f"{ic} **Curva dos EUA (10a − 3m):** {s3['atual']:+.2f}".replace(".", ",") + f" p.p. ({'invertida' if s3['invertida'] else 'positiva'})")
+    rec = t.get("recessao")
+    if rec:
+        linhas.append(f"📉 **Probabilidade de recessão nos EUA a 12 meses (modelo da Fed de NY):** {rec['prob']:.0f}%")
+    try:
+        import fontes_bce
+        jb = fontes_bce.painel()
+        st = next((x for x in jb.get("stress", []) if x["id"] == "U2"), None)
+        if st:
+            linhas.append(f"🌡️ **Stress financeiro na área do euro (BCE):** {st['icone']} {st['valor']:.2f}".replace(".", ",") + f" ({st['nivel']})")
+        pt = next((x for x in jb.get("divida", []) if x["id"] == "PT"), None)
+        if pt and pt.get("spread_de") is not None:
+            taxa, premio = f"{pt['taxa']:.2f}".replace(".", ","), f"{pt['spread_de']:+.2f}".replace(".", ",")
+            linhas.append(f"🇵🇹 **Dívida portuguesa a 10 anos:** {taxa}% · prémio vs Alemanha {premio} p.p. ({pt['mes']})")
+    except Exception:
+        pass
     ext = [m for m in (d.get("cot") or {}).get("mercados", []) if m.get("extremo")]
     if ext:
         linhas.append("🧭 **Especuladores em extremo (CFTC):** " + ", ".join(
@@ -276,7 +291,7 @@ def construir_relatorio(agora=None):
         campos.append({"name": "🌀 Rotação setorial (21 dias)", "value": rrg[:1024], "inline": False})
     mo = _campo_macro_oficial()
     if mo:
-        campos.append({"name": "🏦 Dados oficiais (Tesouro · CFTC · OCDE)", "value": mo[:1024], "inline": False})
+        campos.append({"name": "🏦 Dados oficiais (Tesouro · BCE · CFTC · OCDE)", "value": mo[:1024], "inline": False})
     campos.append({"name": "🔎 Sinais do Screener desta semana", "value": _campo_sinais(hoje)[:1024], "inline": False})
     liga = _campo_liga(agora)
     if liga:

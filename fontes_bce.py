@@ -4,7 +4,8 @@ fontes_bce.py — Dados oficiais do Banco Central Europeu (API SDMX pública, gr
     1. Câmbios de referência do BCE (os mesmos que o Banco de Portugal divulga) para o Cofre e os Dividendos.
        Uma cópia local (bce_cambios.json) é atualizada uma vez por dia; consultar um câmbio nunca vai à internet.
     2. Juros e Poupança: taxas diretoras do BCE, Euribor (médias mensais), curva de rendimentos AAA da
-       área do euro e inflação (IHPC) de Portugal e da área do euro. Atualizado uma vez por dia (juros_bce.json).
+       área do euro, inflação (IHPC) de Portugal e da área do euro, juro da dívida pública a 10 anos de PT/DE/ES/IT/FR/GR
+       e o termómetro de stress financeiro (CISS). Atualizado uma vez por dia (juros_bce.json).
     3. Certificados de Aforro: o IGCP não tem API, por isso a taxa base do mês é inserida pelo Admin
        (juros_manual.json).
 
@@ -121,12 +122,18 @@ SERIES = {
     "euribor": [("FM", f"M.U2.EUR.RT.MM.{k}.HSTA", {"lastNObservations": "40"}) for k in ("EURIBOR1MD_", "EURIBOR3MD_", "EURIBOR6MD_", "EURIBOR1YD_")],
     "curva": [("YC", f"B.U2.EUR.4F.G_N_A.SV_C_YM.{k}", {"lastNObservations": "270"}) for k in ("SR_3M", "SR_1Y", "SR_2Y", "SR_5Y", "SR_10Y", "SR_30Y")],
     "inflacao": [("ICP", f"M.{k}.N.000000.4.ANR", {"lastNObservations": "40"}) for k in ("PT", "U2")],
+    # Juro da dívida pública a 10 anos (taxa de longo prazo para efeitos de convergência, média mensal)
+    "divida": [("IRS", f"M.{k}.L.L40.CI.0000.EUR.N.Z", {"lastNObservations": "62"}) for k in ("PT", "DE", "ES", "IT", "FR", "GR")],
+    # Termómetro de stress financeiro do BCE (CISS diário, entre 0 e 1)
+    "stress": [("CISS", f"D.{k}.Z0Z.4F.EC.SS_CIN.IDX", {"lastNObservations": "1600"}) for k in ("U2", "PT", "US")],
 }
+# Se uma série não existir (404/vazia), tenta esta alternativa (ex.: CISS original da área do euro)
+ALTERNATIVAS = {("stress", "U2"): ("CISS", "D.U2.Z0Z.4F.EC.SS_CI.IDX", {"lastNObservations": "1600"})}
 NOMES = {
     "DFR": "Facilidade de depósito", "MRR_FR": "Operações principais de refinanciamento", "MLFR": "Facilidade de cedência marginal",
     "EURIBOR1MD_": "Euribor 1 mês", "EURIBOR3MD_": "Euribor 3 meses", "EURIBOR6MD_": "Euribor 6 meses", "EURIBOR1YD_": "Euribor 12 meses",
     "SR_3M": "3 meses", "SR_1Y": "1 ano", "SR_2Y": "2 anos", "SR_5Y": "5 anos", "SR_10Y": "10 anos", "SR_30Y": "30 anos",
-    "PT": "Portugal", "U2": "Área do euro",
+    "PT": "Portugal", "U2": "Área do euro", "DE": "Alemanha", "ES": "Espanha", "IT": "Itália", "FR": "França", "GR": "Grécia", "US": "EUA",
 }
 
 
@@ -135,6 +142,8 @@ IDS = {
     "euribor": ("EURIBOR1MD_", "EURIBOR3MD_", "EURIBOR6MD_", "EURIBOR1YD_"),
     "curva": ("SR_3M", "SR_1Y", "SR_2Y", "SR_5Y", "SR_10Y", "SR_30Y"),
     "inflacao": ("PT", "U2"),
+    "divida": ("PT", "DE", "ES", "IT", "FR", "GR"),
+    "stress": ("U2", "PT", "US"),
 }
 
 
@@ -159,6 +168,11 @@ def atualizar_juros(forcar=False):
                 sid_pedida = next(i for i in IDS[grupo] if i in chave.split("."))
                 try:
                     linhas = pedir_csv(fluxo, chave, **params)
+                    if not linhas and (grupo, sid_pedida) in ALTERNATIVAS:
+                        f2, c2, p2 = ALTERNATIVAS[(grupo, sid_pedida)]
+                        linhas = pedir_csv(f2, c2, **p2)
+                    if not linhas:
+                        erros.append(f"{grupo}/{sid_pedida}: o BCE não devolveu dados ({fluxo}.{chave})")
                     for l in linhas:
                         v = l.get("OBS_VALUE")
                         if v in (None, "", "NaN"):
@@ -226,6 +240,38 @@ def painel():
     inf = s.get("inflacao") or {}
     out["inflacao"] = [{"id": k, "nome": NOMES[k], "mes": _ultimo(inf[k])[0], "taxa": _ultimo(inf[k])[1], "serie": inf[k][-36:]}
                        for k in ("PT", "U2") if inf.get(k)]
+
+    # Dívida pública a 10 anos e prémio de risco face à Alemanha (pontos percentuais)
+    div = s.get("divida") or {}
+    de = div.get("DE") or []
+    de_por_mes = dict(de)
+    out["divida"] = []
+    for k in ("PT", "ES", "IT", "FR", "GR", "DE"):
+        serie = div.get(k)
+        if not serie:
+            continue
+        mes, taxa = serie[-1]
+        um_ano = _ha_um_ano(serie)
+        spread = round(taxa - de_por_mes[mes], 3) if mes in de_por_mes and k != "DE" else None
+        spreads = [[m, round(v - de_por_mes[m], 3)] for m, v in serie if m in de_por_mes] if k != "DE" else []
+        out["divida"].append({"id": k, "nome": NOMES[k], "mes": mes, "taxa": taxa, "ha_um_ano": um_ano[1] if um_ano else None,
+                              "spread_de": spread, "spread_max_5a": max((x[1] for x in spreads), default=None),
+                              "serie": serie[-60:], "serie_spread": spreads[-60:]})
+    # Stress financeiro (CISS): valor atual, posição face aos últimos anos e nível
+    st = s.get("stress") or {}
+    out["stress"] = []
+    for k in ("U2", "PT", "US"):
+        serie = st.get(k)
+        if not serie or len(serie) < 20:
+            continue
+        dia, v = serie[-1]
+        valores = [x for _, x in serie]
+        percentil = round(sum(1 for x in valores if x <= v) / len(valores) * 100)
+        nivel = ("calmo", "🟢") if v < 0.15 else ("tensão moderada", "🟡") if v < 0.3 else ("stress elevado", "🟠") if v < 0.5 else ("crise", "🔴")
+        semanal = serie[::5] + ([serie[-1]] if (len(serie) - 1) % 5 else [])
+        out["stress"].append({"id": k, "nome": NOMES[k], "dia": dia, "valor": round(v, 4), "percentil": percentil,
+                              "nivel": nivel[0], "icone": nivel[1], "max_periodo": round(max(valores), 3), "desde": serie[0][0],
+                              "ha_um_mes": round(serie[-22][1], 4) if len(serie) > 22 else None, "serie": semanal[-160:]})
 
     ca = manual().get("certificados_aforro") or []
     out["certificados_aforro"] = ca[-1] if ca else None

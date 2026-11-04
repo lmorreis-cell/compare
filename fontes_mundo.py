@@ -156,6 +156,29 @@ def _no_dia_ou_antes(dias, alvo):
     return max(antes) if antes else None
 
 
+def _prob_recessao(dias):
+    """Modelo publicado pela Fed de Nova Iorque (Estrella & Mishkin): P(recessão nos 12 meses seguintes) =
+    Φ(−0,5333 − 0,6330 × spread), com o spread 10 anos − 3 meses em média mensal (pontos percentuais).
+    A Fed usa o juro das T-bills em base equivalente de obrigação; aqui usa-se a taxa a 3 meses da curva do Tesouro,
+    por isso o valor é uma aproximação muito próxima do publicado."""
+    from math import erf, sqrt
+    por_mes = {}
+    for k, v in dias.items():
+        if "10A" in v and "3M" in v:
+            por_mes.setdefault(k[:7], []).append(v["10A"] - v["3M"])
+    serie = []
+    for mes in sorted(por_mes):
+        media = sum(por_mes[mes]) / len(por_mes[mes])
+        z = -0.5333 - 0.6330 * media
+        serie.append([mes, round(100 * 0.5 * (1 + erf(z / sqrt(2))), 1), round(media, 3)])
+    if not serie:
+        return None
+    atual = serie[-1]
+    return {"mes": atual[0], "prob": atual[1], "spread_medio": atual[2], "ha_um_ano": serie[-13][1] if len(serie) > 12 else None,
+            "maximo": max(x[1] for x in serie), "mes_maximo": max(serie, key=lambda x: x[1])[0],
+            "serie": [[m, p] for m, p, _ in serie[-36:]], "mes_incompleto": atual[0] == date.today().strftime("%Y-%m")}
+
+
 def painel_tesouro():
     d = _ler(ARQ_TESOURO, {"dias": {}})
     dias = d.get("dias") or {}
@@ -203,6 +226,7 @@ def painel_tesouro():
                          "uteis_12m": len(um_ano), "minimo_3a": min(v for _, v in serie), "desinversao": desinversao,
                          "serie": [[k, v] for k, v in semanal]}
     out["spreads"] = spreads
+    out["recessao"] = _prob_recessao(dias)
     s = spreads.get("10A-3M")
     if s:
         if s["invertida"]:
