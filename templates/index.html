@@ -2043,6 +2043,14 @@
         <div id="of-juros" style="font-size:12px; color:#8b949e">A carregar...</div>
     </div>
 
+    <div style="background-color:#161b22; border:1px solid #30363d; border-radius:8px; padding:20px; margin-bottom:22px; border-left:4px solid #a371f7">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px">
+            <h3 style="margin:0; font-size:15px; color:#a371f7; text-transform:uppercase">📊 Portugal em números <span class="dica-edu" style="font-size:11px;color:#8b949e;cursor:help;text-transform:none">ℹ️<span class="dica-texto" style="width:360px">Quanto pagam e cobram os bancos em Portugal (médias mensais dos NOVOS depósitos e empréstimos, publicadas pelo Banco de Portugal) comparado com os bancos da área do euro, e os grandes números da economia portuguesa: inflação (inclui a estimativa rápida do mês acabado de terminar), desemprego e preços das casas. Estes últimos são os dados do INE harmonizados e publicados pelo Eurostat, para se poderem comparar com a área do euro.</span></span></h3>
+            <span id="of-pt-atual" style="font-size:11px; color:#8b949e"></span>
+        </div>
+        <div id="of-pt" style="font-size:12px; color:#8b949e">A carregar...</div>
+    </div>
+
     <div style="background-color:#161b22; border:1px solid #30363d; border-radius:8px; padding:20px; margin-bottom:22px; border-left:4px solid #ff7b72">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px">
             <h3 style="margin:0; font-size:15px; color:#ff7b72; text-transform:uppercase">🌡️ Termómetro de stress financeiro (BCE) <span class="dica-edu" style="font-size:11px;color:#8b949e;cursor:help;text-transform:none">ℹ️<span class="dica-texto" style="width:380px">O CISS («Composite Indicator of Systemic Stress») é o indicador do Banco Central Europeu para medir, todos os dias, o nível de tensão no sistema financeiro. Junta a volatilidade e as quedas das ações, dos juros, das moedas, dos bancos e do mercado monetário, e dá mais peso quando vários mercados estão em stress AO MESMO TEMPO. Vai de 0 (calma total) a 1. Referências: crise financeira de 2008 ≈ 0,8; início da pandemia em 2020 ≈ 0,5; normalidade abaixo de 0,15. Não prevê crises: mostra a temperatura de hoje.</span></span></h3>
@@ -2121,7 +2129,7 @@
         <div id="of-13f" style="font-size:12px; color:#8b949e"></div>
     </div>
 
-    <div style="font-size:10px; color:#6e7681">Fontes: Banco Central Europeu (ECB Data Portal) · U.S. Department of the Treasury · OCDE · CFTC · IGCP (Certificados de Aforro, inserido pelo Admin) · CMVM (comunicados de dirigentes, participações qualificadas e ações próprias) · CNMV, AMF, Bundesanzeiger/BaFin, Consob e AFM (posições curtas) · FINRA (short interest e volume diário a descoberto) · SEC EDGAR (formulários 4, 8-K, 10-K e 13F). Conteúdo educativo, não é recomendação de investimento.</div>
+    <div style="font-size:10px; color:#6e7681">Fontes: Banco Central Europeu (ECB Data Portal) · Banco de Portugal (BPstat) · Eurostat/INE · U.S. Department of the Treasury · OCDE · CFTC · IGCP (Certificados de Aforro, inserido pelo Admin) · CMVM (comunicados de dirigentes, participações qualificadas e ações próprias) · CNMV, AMF, Bundesanzeiger/BaFin, Consob e AFM (posições curtas) · FINRA (short interest e volume diário a descoberto) · SEC EDGAR (formulários 4, 8-K, 10-K e 13F). Conteúdo educativo, não é recomendação de investimento.</div>
 </div>
 
 <div id="tab-liga" class="tab-content">
@@ -7921,6 +7929,7 @@ function renderizarCalendarioDiario() {
         if (ofCarregado) return;
         ofCarregado = true;
         ofJuros();
+        ofPortugal();
         ofMundo();
         ofCmvm();
         of13fLista();
@@ -8111,6 +8120,43 @@ function renderizarCalendarioDiario() {
                     <div style="position:absolute; left:calc(${x.indice}% - 4px); top:-2px; width:8px; height:12px; border-radius:2px; background:${cor}"></div></div>
                     <strong style="color:${cor}; width:24px; text-align:right">${x.indice}</strong></div></td>
                 <td style="padding:5px; width:110px">${ofMini(x.serie, '#f778ba', 110, 24)}</td></tr>`; }).join('')}</tbody></table></div>`;
+    }
+
+    async function ofPortugal() {
+        const div = document.getElementById('of-pt');
+        let d;
+        try { d = await (await fetch('/api/oficial/portugal')).json(); } catch (e) { div.innerHTML = 'Erro ao carregar.'; return; }
+        const b = d.bancos || {}, e = d.economia || {};
+        if (!Object.keys(b).length && !Object.keys(e).length) { div.innerHTML = 'Os dados do Banco de Portugal e do Eurostat ainda não foram descarregados neste servidor (acontece automaticamente depois das 12:00, ou o Admin pode testar as fontes na Gestão).'; return; }
+        document.getElementById('of-pt-atual').innerText = `Fontes: ${d.fonte_bdp} · ${d.fonte_eurostat}`;
+        const pp = v => v === null || v === undefined ? '—' : (v >= 0 ? '+' : '') + v.toFixed(2).replace('.', ',') + ' p.p.';
+        const caixa = (tit, v, sub, dica, extra = '') => `<div style="background:#0d1117; border:1px solid #30363d; border-radius:6px; padding:10px 12px; flex:1 1 200px">
+            <div style="font-size:10px; color:#8b949e; text-transform:uppercase">${tit} ${ofDica(dica)}</div>
+            <div style="font-size:20px; font-weight:900; color:#f0f2f5; margin-top:2px">${v}</div><div style="font-size:11px; color:#8b949e">${sub}</div>${extra}</div>`;
+        let h = '';
+        if (Object.keys(b).length) {
+            h += `<div style="font-weight:bold; color:#c9d1d9; margin-bottom:8px">🏦 Quanto pagam e cobram os bancos (novas operações, média do mês)</div><div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:16px">`;
+            if (b.dep_pt) h += caixa('Depósitos a prazo', ofPct(b.dep_pt.taxa), `${ofData(b.dep_pt.mes)} · área do euro: ${b.dep_ae ? ofPct(b.dep_ae.taxa) : '—'}${b.dep_pt.ha_um_ano !== null ? ' · há 1 ano: ' + ofPct(b.dep_pt.ha_um_ano) : ''}`,
+                'Juro médio bruto dos novos depósitos a prazo de particulares em Portugal. É uma média: há bancos (sobretudo os mais pequenos e os digitais) que pagam bastante mais. Se ficar abaixo da média da área do euro, os bancos portugueses estão a remunerar pior as poupanças do que os europeus.', ofMini(b.dep_pt.serie, '#a371f7'));
+            if (b.hab_pt) h += caixa('Crédito à habitação (TAA)', ofPct(b.hab_pt.taxa), `${ofData(b.hab_pt.mes)} · área do euro: ${b.hab_ae ? ofPct(b.hab_ae.taxa) : '—'}${b.hab_taeg ? ' · TAEG: ' + ofPct(b.hab_taeg.taxa) : ''}`,
+                'Taxa de juro média dos novos empréstimos à habitação. A TAEG inclui também comissões e seguros obrigatórios, por isso é o custo real do crédito. Em Portugal a maioria dos créditos é a taxa variável ou mista, por isso segue de perto a Euribor.', ofMini(b.hab_pt.serie, '#e3b341'));
+            if (b.cons_pt) h += caixa('Crédito ao consumo (TAA)', ofPct(b.cons_pt.taxa), `${ofData(b.cons_pt.mes)}${b.cons_pt.ha_um_ano !== null ? ' · há 1 ano: ' + ofPct(b.cons_pt.ha_um_ano) : ''}`,
+                'Juro médio dos novos créditos pessoais e automóvel. Compara com o que rendem os depósitos: a diferença é a margem dos bancos e mostra porque pagar dívidas caras costuma ser o «investimento» com melhor retorno garantido.');
+            if (b.dep_pt && b.hab_pt) h += caixa('Margem dos bancos', pp(b.hab_pt.taxa - b.dep_pt.taxa), 'crédito à habitação − depósitos a prazo', 'Diferença entre o que os bancos cobram no crédito à habitação e o que pagam nos depósitos. É uma das principais fontes de lucro dos bancos (margem financeira): ajuda a perceber os resultados do BCP e dos outros bancos cotados.');
+            h += '</div>';
+        }
+        if (Object.keys(e).length) {
+            const nomeAE = a => a && a !== 'EA' ? `área do euro (${a.replace('EA', '')} países)` : 'área do euro';
+            h += `<div style="font-weight:bold; color:#c9d1d9; margin-bottom:8px">📈 Economia portuguesa</div><div style="display:flex; flex-wrap:wrap; gap:10px">`;
+            if (e.inflacao) h += caixa('Inflação (homóloga, IHPC)', ofPct(e.inflacao.pt, 1), `${ofData(e.inflacao.periodo)} · ${nomeAE(e.inflacao.area)}: ${ofPct(e.inflacao.ae, 1)}${e.inflacao.pt_ha_um_ano !== null ? ' · há 1 ano: ' + ofPct(e.inflacao.pt_ha_um_ano, 1) : ''}`,
+                'Subida dos preços face ao mesmo mês do ano anterior. O valor do mês mais recente é a estimativa rápida (publicada no último dia útil do mês) e pode ser revisto. O INE também divulga o IPC nacional, que difere ligeiramente deste índice harmonizado.', ofMini(e.inflacao.serie, '#e3b341'));
+            if (e.desemprego) h += caixa('Taxa de desemprego', ofPct(e.desemprego.pt, 1), `${ofData(e.desemprego.periodo)} · ${nomeAE(e.desemprego.area)}: ${ofPct(e.desemprego.ae, 1)}${e.desemprego.pt_ha_um_ano !== null ? ' · há 1 ano: ' + ofPct(e.desemprego.pt_ha_um_ano, 1) : ''}`,
+                'Estimativa mensal, ajustada da sazonalidade (sem os efeitos do verão, do Natal, etc.). O INE publica também a taxa trimestral do Inquérito ao Emprego, que pode diferir umas décimas.', ofMini(e.desemprego.serie, '#58a6ff'));
+            if (e.habitacao) h += caixa('Preços das casas (variação anual)', ofPct(e.habitacao.pt, 1), `${e.habitacao.periodo.replace(/^(\d{4})-Q(\d)$/, '$2.º trimestre de $1')} · ${nomeAE(e.habitacao.area)}: ${ofPct(e.habitacao.ae, 1)}${e.habitacao.pt_ha_um_ano !== null ? ' · há 1 ano: ' + ofPct(e.habitacao.pt_ha_um_ano, 1) : ''}`,
+                'Quanto subiram os preços das casas transacionadas face ao mesmo trimestre do ano anterior (índice de preços da habitação). Dados trimestrais, publicados com cerca de 3 meses de atraso.', ofMini(e.habitacao.serie, '#d9534f'));
+            h += '</div>';
+        }
+        div.innerHTML = h;
     }
 
     function ofStress(lista) {
