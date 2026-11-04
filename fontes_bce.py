@@ -282,6 +282,13 @@ def painel():
     linhas = []
     if out["certificados_aforro"]:
         linhas.append(("Certificados de Aforro (taxa base do mês)", out["certificados_aforro"]["taxa"], "IGCP (inserido pelo Admin)"))
+    try:  # juro médio que os bancos portugueses pagam nos novos depósitos a prazo (Banco de Portugal)
+        import fontes_portugal
+        dep = fontes_portugal.painel()["bancos"].get("dep_pt")
+        if dep:
+            linhas.append((f"Depósito a prazo (média dos bancos em PT, {dep['mes']})", dep["taxa"], "Banco de Portugal"))
+    except Exception:
+        pass
     for e in out["euribor"]:
         if e["id"] == "EURIBOR3MD_":
             linhas.append(("Euribor 3 meses (média mensal)", e["taxa"], "BCE"))

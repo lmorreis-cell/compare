@@ -3448,6 +3448,7 @@ import posicoes_curtas
 import sec_dados
 import fontes_mundo
 import cmvm_comunicados
+import fontes_portugal
 
 _nomes_cache = {}
 
@@ -3549,6 +3550,13 @@ def api_oficial_sec(ticker):
     return jsonify(dados), (404 if dados.get("erro") else 200)
 
 
+@app.route('/api/oficial/portugal')
+@requer_cargo(nivel_minimo=2)
+def api_oficial_portugal():
+    """Juros dos bancos em Portugal (Banco de Portugal) e inflação/desemprego/habitação (Eurostat/INE). Só lê cópias locais."""
+    return jsonify(fontes_portugal.painel())
+
+
 @app.route('/api/oficial/cmvm')
 @requer_cargo(nivel_minimo=2)
 def api_oficial_cmvm():
@@ -3619,7 +3627,7 @@ def admin_fontes_estado():
     if not _e_admin():
         return jsonify({"erro": "Acesso negado. Apenas Admin."}), 403
     return jsonify({"bce": fontes_bce.estado(), "curtas": posicoes_curtas.estado(),
-                    "mundo": fontes_mundo.estado(), "cmvm": cmvm_comunicados.estado(),
+                    "mundo": fontes_mundo.estado(), "cmvm": cmvm_comunicados.estado(), "portugal": fontes_portugal.estado(),
                     "sec_user_agent": bool((os.environ.get("SEC_USER_AGENT") or "").strip())})
 
 
@@ -3696,6 +3704,9 @@ def _correr_teste_fontes():
             r["FINRA · volume diário a descoberto"] = {"ok": False, "msg": str(e)[:300]}
         _passo("CMVM · comunicados de dirigentes e participações")
         r["CMVM · dirigentes, participações e ações próprias"] = cmvm_comunicados.testar()
+        _passo("Banco de Portugal e Eurostat")
+        for k, v in fontes_portugal.testar().items():
+            r[k] = v
         _passo("Tesouro dos EUA, OCDE e CFTC")
         for k, v in fontes_mundo.testar().items():
             r[k] = v
