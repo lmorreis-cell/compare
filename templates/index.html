@@ -1157,14 +1157,25 @@
                     <!-- O Javascript vai injetar as tuas corretoras aqui -->
                 </datalist>
 
-                <input type="text" id="trade-ticker" class="input-moderno" placeholder="Ticker" style="max-width: 90px; text-transform: uppercase;">
+                <input type="text" id="trade-ticker" class="input-moderno" placeholder="Ticker" style="max-width: 110px; text-transform: uppercase;" onchange="cofreTickerAlterado()" title="Ticker como no Yahoo Finance. EUA: sem sufixo (classes de ações com hífen: BRK-B). Europa: com o sufixo da bolsa, ex.: NOVO-B.CO (Copenhaga), ASML.AS (Amesterdão), SAP.DE (Xetra), EDP.LS (Lisboa), SHEL.L (Londres), NESN.SW (Suíça).">
                 <input type="number" id="trade-qtd" class="input-moderno" placeholder="Qtd" step="0.0001" style="max-width: 80px;">
                 <input type="number" id="trade-preco" class="input-moderno" placeholder="Preço" step="0.01" style="max-width: 80px;">
                 <input type="number" id="trade-custo" class="input-moderno" placeholder="Custos" step="0.01" style="max-width: 80px; border-color: #d9534f;" title="Comissões da corretora e taxas de bolsa">
 
-                <select id="trade-moeda" class="input-moderno" style="max-width: 90px; font-weight: bold; color: #e3b341;" onchange="controlarCampoCambio(); buscarCambioAutomatico();">
+                <select id="trade-moeda" class="input-moderno" style="max-width: 100px; font-weight: bold; color: #e3b341;" onchange="controlarCampoCambio(); buscarCambioAutomatico();" title="Moeda em que a ação negoceia (a do preço que vês no extrato). Escolhida automaticamente a partir do sufixo do ticker, mas podes mudar.">
                     <option value="EUR">EUR (€)</option>
                     <option value="USD" selected>USD ($)</option>
+                    <option value="GBP">GBP (£)</option>
+                    <option value="CHF">CHF</option>
+                    <option value="DKK">DKK (kr)</option>
+                    <option value="SEK">SEK (kr)</option>
+                    <option value="NOK">NOK (kr)</option>
+                    <option value="PLN">PLN (zł)</option>
+                    <option value="CAD">CAD (C$)</option>
+                    <option value="BRL">BRL (R$)</option>
+                    <option value="JPY">JPY (¥)</option>
+                    <option value="HKD">HKD (HK$)</option>
+                    <option value="AUD">AUD (A$)</option>
                 </select>
 
                 <div id="bloco-cambio" style="display: flex; align-items: center; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 0 10px; height: 44px;">
@@ -4994,7 +5005,7 @@
                     qtdParaVender -= qtdDesteLote;
                     lucroTradeEUR += pnlParcialEUR;
 
-                    let simbolo = lote.moeda === 'USD' ? '$' : '€';
+                    let simbolo = simboloMoeda(lote.moeda);
                     detalhesCasamento.push(`${simbolo}${formatarPreco(lote.precoCompraOriginal)}`);
                 }
 
@@ -5030,7 +5041,7 @@
         const data = document.getElementById('trade-data').value;
         const tipo = document.getElementById('trade-tipo').value;
         const carteira = document.getElementById('trade-carteira').value.trim();
-        const ticker = document.getElementById('trade-ticker').value.trim().toUpperCase();
+        const ticker = normalizarTickerCofre(document.getElementById('trade-ticker').value);
         const qtd = parseFloat(document.getElementById('trade-qtd').value);
         const precoOriginal = parseFloat(document.getElementById('trade-preco').value);
         const custoOriginal = parseFloat(document.getElementById('trade-custo').value) || 0;
@@ -5079,7 +5090,8 @@
             if (!resp.ok || !dadosCotacao.preco) {
                 const prosseguir = confirm(
                     `⚠️ Alerta de Ticker: O ativo "${ticker}" não devolveu cotação na API da bolsa.\n\n` +
-                    `Se for uma cotada europeia, normalmente necessita do sufixo da praça (ex: ${ticker}.DE para Xetra/Alemanha, ${ticker}.LS para Lisboa, ${ticker}.MC para Madrid).\n\n` +
+                    `Se for uma cotada europeia, normalmente necessita do sufixo da praça (ex: ${ticker}.DE para Xetra/Alemanha, ${ticker}.LS para Lisboa, ${ticker}.MC para Madrid, ${ticker}.CO para Copenhaga, ${ticker}.L para Londres).\n` +
+                    `Ações com classes usam hífen: Novo Nordisk = NOVO-B.CO, Berkshire Hathaway B = BRK-B.\n\n` +
                     `Clica "Cancelar" para corrigir o ticker, ou "OK" se quiseres registar mesmo assim.`
                 );
                 if (!prosseguir) return;
@@ -5280,7 +5292,7 @@
                 alocacaoTicker[lote.ticker] = capitalExpostoEUR;
             }
             
-            let simbolo = lote.moeda === 'USD' ? '$' : '€';
+            let simbolo = simboloMoeda(lote.moeda);
             let nomeCarteira = lote.carteira || "Geral";
             carteirasUnicas.add(nomeCarteira);
 
@@ -5288,7 +5300,7 @@
             // MOTOR DE PNL LATENTE (AO VIVO)
             // ==========================================
             let precoMercadoOriginal = cachePrecosAtuais[lote.ticker] || lote.precoCompraOriginal; 
-            let cambioAtual = lote.moeda === 'USD' ? cacheCambioLive : 1.0;
+            let cambioAtual = cambioLive(lote.moeda, lote.cambio);
             let valorMercadoEUR = (lote.qtdRestante * precoMercadoOriginal) / cambioAtual; 
             
             let pnlLatenteEUR = valorMercadoEUR - capitalExpostoEUR;
@@ -5439,7 +5451,7 @@
                 let precoMercadoOriginal = cachePrecosAtuais[lote.ticker] || lote.precoCompraOriginal; 
                 
                 // NOVO: Aplica o câmbio atualizado se for USD, ou 1.0 se for EUR
-                let cambioAtual = lote.moeda === 'USD' ? cacheCambioLive : 1.0;
+                let cambioAtual = cambioLive(lote.moeda, lote.cambio);
                 
                 // Converte para Euros ao segundo
                 let valorMercadoEUR = (lote.qtdRestante * precoMercadoOriginal) / cambioAtual; 
@@ -5677,7 +5689,7 @@
             // Lucro latente com as mesmas cotações e câmbio ao vivo do resto do Cofre
             const temCotacao = cachePrecosAtuais[lote.ticker] !== undefined;
             const precoMercado = temCotacao ? cachePrecosAtuais[lote.ticker] : lote.precoCompraOriginal;
-            const cambioAtual = lote.moeda === 'USD' ? cacheCambioLive : 1.0;
+            const cambioAtual = cambioLive(lote.moeda, lote.cambio);
             const custoEUR = lote.qtdRestante * lote.precoCompraEUR;
             const valorEUR = (lote.qtdRestante * precoMercado) / cambioAtual;
             const pnl = valorEUR - custoEUR;
@@ -5748,7 +5760,7 @@
                 prioridade = urgente ? 1 : 2;
             }
 
-            const simbolo = lote.moeda === 'USD' ? '$' : '€';
+            const simbolo = simboloMoeda(lote.moeda);
             const corPnl = pnl >= 0 ? '#5cb85c' : '#d9534f';
             const pnlPct = custoEUR > 0 ? (pnl / custoEUR) * 100 : 0;
 
@@ -6018,7 +6030,7 @@
     function controlarCampoCambio() {
         const moeda = document.getElementById('trade-moeda').value;
         const blocoCambio = document.getElementById('bloco-cambio');
-        if (moeda === 'USD') {
+        if (moeda !== 'EUR') {
             blocoCambio.style.display = 'flex';
         } else {
             blocoCambio.style.display = 'none';
@@ -6068,6 +6080,66 @@
     let modoGraficoAlocacao = 'custo';
     let cachePrecosAtuais = {};
     let cacheCambioLive = 1.08; // Valor de arranque, será substituído pela API
+    let cacheCambiosLive = {};  // outras moedas (DKK, GBP, CHF...): câmbio de referência do BCE mais recente
+
+    // Moedas suportadas no Cofre (todas têm câmbio oficial do BCE)
+    const MOEDAS_COFRE = { EUR: '€', USD: '$', GBP: '£', CHF: 'CHF ', DKK: 'kr ', SEK: 'kr ', NOK: 'kr ', PLN: 'zł ', CAD: 'C$', BRL: 'R$', JPY: '¥', HKD: 'HK$', AUD: 'A$' };
+    function simboloMoeda(m) { return MOEDAS_COFRE[m] || ((m || '') + ' '); }
+
+    // Câmbio atual (unidades da moeda por 1 €). Se ainda não houver câmbio atual, usa o da compra do lote.
+    function cambioLive(moeda, cambioCompra) {
+        if (!moeda || moeda === 'EUR') return 1.0;
+        if (moeda === 'USD') return cacheCambioLive;
+        return cacheCambiosLive[moeda] || cambioCompra || 1.0;
+    }
+
+    // Sufixo do ticker → moeda da bolsa (para pré-selecionar a moeda no formulário)
+    const SUFIXO_MOEDA = { CO: 'DKK', L: 'GBP', IL: 'GBP', SW: 'CHF', ST: 'SEK', OL: 'NOK', WA: 'PLN', TO: 'CAD', V: 'CAD', SA: 'BRL', T: 'JPY', HK: 'HKD', AX: 'AUD',
+        LS: 'EUR', AS: 'EUR', PA: 'EUR', DE: 'EUR', F: 'EUR', MI: 'EUR', MC: 'EUR', BR: 'EUR', HE: 'EUR', IR: 'EUR', VI: 'EUR' };
+
+    // Ações americanas com classes (BRK.B, BF.B): o Yahoo usa hífen (BRK-B). Os sufixos de bolsa de 1 letra (.L, .F, .V, .T) mantêm-se.
+    function normalizarTickerCofre(t) {
+        t = (t || '').trim().toUpperCase().replace(/\s+/g, '');
+        if (/^[A-Z]{1,5}[.\/][ABCK]$/.test(t)) t = t.replace(/[.\/]/, '-');
+        return t;
+    }
+
+    function cofreTickerAlterado() {
+        const campo = document.getElementById('trade-ticker');
+        const t = normalizarTickerCofre(campo.value);
+        if (t !== campo.value.trim().toUpperCase()) campo.value = t;
+        const m = t.match(/\.([A-Z]{1,2})$/);
+        const moeda = m ? SUFIXO_MOEDA[m[1]] : (/^[A-Z]{1,5}(-[A-Z])?$/.test(t) ? 'USD' : null);
+        const sel = document.getElementById('trade-moeda');
+        if (moeda && sel.value !== moeda && [...sel.options].some(o => o.value === moeda)) {
+            sel.value = moeda;
+            controlarCampoCambio();
+            buscarCambioAutomatico();
+        }
+    }
+
+    // Câmbios atuais das moedas que não são EUR/USD (um pedido por moeda, só para as que tens em carteira)
+    async function atualizarCambiosLiveCofre() {
+        const hoje = new Date().toISOString().slice(0, 10);
+        const moedas = [...new Set(cofreAbertas.filter(l => l.qtdRestante > 0).map(l => l.moeda))].filter(m => m && m !== 'EUR' && m !== 'USD');
+        await Promise.all(moedas.map(async m => {
+            try {
+                const d = await (await fetch(`/api/cambio/${hoje}?moeda=${m}`)).json();
+                if (d.cambio) cacheCambiosLive[m] = d.cambio;
+            } catch (e) { }
+        }));
+    }
+
+    // A Bolsa de Londres cota a maioria das ações em pence (GBp): 100 pence = 1 £. Se o lote foi registado em libras,
+    // converte a cotação para libras quando ela é claramente 100× o preço de compra.
+    function normalizarPrecosCofre(precos) {
+        Object.keys(precos || {}).forEach(t => {
+            if (!/\.(L|IL)$/.test(t)) return;
+            const lote = cofreAbertas.find(l => l.ticker === t && l.moeda === 'GBP');
+            if (lote && precos[t] > lote.precoCompraOriginal * 20) precos[t] = precos[t] / 100;
+        });
+        return precos;
+    }
 
     async function mudarModoGrafico(modo) {
     modoGraficoAlocacao = modo;
@@ -6093,7 +6165,8 @@
                 if (resp.ok) {
                     const dados = await resp.json();
                     if (dados.cambio) cacheCambioLive = dados.cambio;
-                    if (dados.precos) Object.assign(cachePrecosAtuais, dados.precos);
+                    if (dados.precos) Object.assign(cachePrecosAtuais, normalizarPrecosCofre(dados.precos));
+                    await atualizarCambiosLiveCofre();
                 }
             } catch(e) {
                 console.error("Falha ao atualizar gráfico live:", e);
@@ -6125,8 +6198,9 @@
                 const dados = await resp.json();
                 if (dados.cambio) cacheCambioLive = dados.cambio;
                 if (dados.precos) {
-                    Object.assign(cachePrecosAtuais, dados.precos);
+                    Object.assign(cachePrecosAtuais, normalizarPrecosCofre(dados.precos));
                 }
+                await atualizarCambiosLiveCofre();
             }
         } catch(e) {
             console.warn("Aviso na sincronização em lote:", e);
@@ -6617,7 +6691,7 @@
     lotesAtivos.forEach(lote => {
         capitalInvestidoTotal += (lote.qtdRestante * lote.precoCompraEUR);
         let precoMercadoOriginal = cachePrecosAtuais[lote.ticker] || lote.precoCompraOriginal;
-        let cambioAtual = lote.moeda === 'USD' ? cacheCambioLive : 1.0;
+        let cambioAtual = cambioLive(lote.moeda, lote.cambio);
         let valorMercadoEUR = (lote.qtdRestante * precoMercadoOriginal) / cambioAtual; 
         
         if (alocacaoAtual[lote.ticker]) {
@@ -6916,7 +6990,7 @@ async function carregarLaboratorioRisco() {
     lotesAtivos.forEach(lote => {
         capitalInvestidoTotal += (lote.qtdRestante * lote.precoCompraEUR);
         let precoMercadoOriginal = cachePrecosAtuais[lote.ticker] || lote.precoCompraOriginal;
-        let cambioAtual = lote.moeda === 'USD' ? cacheCambioLive : 1.0;
+        let cambioAtual = cambioLive(lote.moeda, lote.cambio);
         let valorMercadoEUR = (lote.qtdRestante * precoMercadoOriginal) / cambioAtual; 
         
         if (alocacaoAtual[lote.ticker]) {
@@ -7072,7 +7146,7 @@ async function executarSimulacaoRisco() {
     
     cofreAbertas.filter(l => l.qtdRestante > 0 && (filtroSuj === 'TODOS' || (l.sujeito || 'A') === filtroSuj)).forEach(lote => {
         let precoMercadoOriginal = cachePrecosAtuais[lote.ticker] || lote.precoCompraOriginal;
-        let cambioAtual = lote.moeda === 'USD' ? cacheCambioLive : 1.0;
+        let cambioAtual = cambioLive(lote.moeda, lote.cambio);
         let valorMercadoEUR = (lote.qtdRestante * precoMercadoOriginal) / cambioAtual; 
         
         if (alocacaoAtual[lote.ticker]) {
@@ -9069,7 +9143,7 @@ function renderizarCalendarioDiario() {
 
         lotesAtivos.forEach(lote => {
             const precoLive = cachePrecosAtuais[lote.ticker] || lote.precoCompraOriginal;
-            const cambioAtual = lote.moeda === 'USD' ? cacheCambioLive : 1.0;
+            const cambioAtual = cambioLive(lote.moeda, lote.cambio);
             const custoTotalEUR = lote.qtdRestante * lote.precoCompraEUR;
             const valorAtualEUR = (lote.qtdRestante * precoLive) / cambioAtual;
             const pnlLatenteEUR = valorAtualEUR - custoTotalEUR;
@@ -9589,7 +9663,7 @@ async function calVerificar(manual) {
     // 1. Cotações (só tickers, num único pedido)
     const pedir = [...new Set([...(tipos.includes('preco') ? tickPrecos : []), ...((tipos.includes('fiscal') || tipos.includes('abate')) ? tickLotes : [])])];
     if (pedir.length) {
-        try { precos = (await calPost('/api/cotacoes_lote', { tickers: pedir })).precos || {}; } catch (e) { }
+        try { precos = normalizarPrecosCofre((await calPost('/api/cotacoes_lote', { tickers: pedir })).precos || {}); await atualizarCambiosLiveCofre(); } catch (e) { }
     }
 
     // 2. Alertas de preço
@@ -9661,7 +9735,7 @@ async function calVerificar(manual) {
         lotes.forEach(l => {
             const p = precos[l.ticker]; if (p === undefined) return;
             const pnlOrig = (p - l.precoCompraOriginal) * l.qtdRestante;
-            const pnlEur = l.moeda === 'USD' ? pnlOrig / cambio : pnlOrig;
+            const pnlEur = l.moeda === 'USD' ? pnlOrig / cambio : pnlOrig / cambioLive(l.moeda, l.cambio);
             if (pnlEur < 0) { perdas += pnlEur; nPerdas++; }
         });
         if (realizado > 0 && nPerdas > 0) novos.push({
