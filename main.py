@@ -223,9 +223,76 @@ def callback_discord():
 
     dados_user = r_membro.json().get('user', {})
     session['user_id'] = dados_user.get('id')
-    session['username'] = dados_user.get('global_name') or dados_user.get('username') or 'Membro'
+    # Nome que aparece no servidor: alcunha do servidor → nome de exibição global → nome de utilizador
+    nome = (r_membro.json().get('nick') or dados_user.get('global_name') or dados_user.get('username') or 'Membro').strip()
+    session['username'] = nome
+    try:
+        _atualizar_nome_membro(str(dados_user.get('id') or ''), nome)
+    except Exception as e:
+        print(f"[login] não foi possível atualizar o nome do membro: {e}")
     
     return redirect(url_for('dashboard_central'))
+
+ARQ_NOMES_MEMBROS = "nomes_membros.json"
+
+
+def _gravar_json_atomico(caminho, dados, indent=None):
+    tmp = caminho + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(dados, f, ensure_ascii=False, indent=indent)
+    os.replace(tmp, caminho)
+
+
+def _atualizar_nome_membro(uid, nome):
+    """Se o membro mudou de nome no Discord, atualiza-o nos últimos acessos e na Liga (carteiras e histórico)."""
+    if not uid or not nome:
+        return
+    try:
+        with open(ARQ_NOMES_MEMBROS, "r", encoding="utf-8") as f:
+            nomes = json.load(f)
+    except Exception:
+        nomes = {}
+    antigos = {nomes.get(uid)} - {None, nome}
+    # 1.ª vez com este ficheiro: procura o nome antigo nas carteiras da Liga (estão guardadas por user_id)
+    liga = carregar_dados_liga()
+    for mes in liga.values():
+        if isinstance(mes, dict) and isinstance(mes.get(uid), dict) and mes[uid].get("username") not in (None, nome):
+            antigos.add(mes[uid]["username"])
+    if nomes.get(uid) != nome:
+        nomes[uid] = nome
+        _gravar_json_atomico(ARQ_NOMES_MEMBROS, nomes)
+    if not antigos:
+        return
+    # Últimos acessos (guardados pelo nome)
+    for velho in antigos:
+        if velho in utilizadores_ativos:
+            t = utilizadores_ativos.pop(velho)
+            if nome not in utilizadores_ativos or utilizadores_ativos[nome] < t:
+                utilizadores_ativos[nome] = t
+    _gravar_json_atomico(ARQUIVO_ACESSOS, {u: d.isoformat() for u, d in utilizadores_ativos.items()})
+    # Liga: carteiras de todas as edições e histórico de rankings
+    mudou = False
+    for mes in liga.values():
+        if isinstance(mes, dict) and isinstance(mes.get(uid), dict) and mes[uid].get("username") != nome:
+            mes[uid]["username"] = nome
+            mudou = True
+    if mudou:
+        guardar_dados_liga(liga)
+    try:
+        with open("liga_historico.json", "r", encoding="utf-8") as f:
+            hist = json.load(f)
+        mudou = False
+        for ed in hist.values():
+            for r in (ed.get("ranking") or []) if isinstance(ed, dict) else []:
+                if str(r.get("user_id")) == uid and r.get("username") != nome:
+                    r["username"] = nome
+                    mudou = True
+        if mudou:
+            _gravar_json_atomico("liga_historico.json", hist, indent=2)
+    except FileNotFoundError:
+        pass
+    print(f"[login] {', '.join(sorted(antigos))} passou a chamar-se {nome}")
+
 
 @app.route('/logout')
 def logout():
