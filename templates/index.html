@@ -2043,6 +2043,14 @@
         <div id="of-juros" style="font-size:12px; color:#8b949e">A carregar...</div>
     </div>
 
+    <div style="background-color:#161b22; border:1px solid #30363d; border-radius:8px; padding:20px; margin-bottom:22px; border-left:4px solid #ff7b72">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px">
+            <h3 style="margin:0; font-size:15px; color:#ff7b72; text-transform:uppercase">🌡️ Termómetro de stress financeiro (BCE) <span class="dica-edu" style="font-size:11px;color:#8b949e;cursor:help;text-transform:none">ℹ️<span class="dica-texto" style="width:380px">O CISS («Composite Indicator of Systemic Stress») é o indicador do Banco Central Europeu para medir, todos os dias, o nível de tensão no sistema financeiro. Junta a volatilidade e as quedas das ações, dos juros, das moedas, dos bancos e do mercado monetário, e dá mais peso quando vários mercados estão em stress AO MESMO TEMPO. Vai de 0 (calma total) a 1. Referências: crise financeira de 2008 ≈ 0,8; início da pandemia em 2020 ≈ 0,5; normalidade abaixo de 0,15. Não prevê crises: mostra a temperatura de hoje.</span></span></h3>
+            <span id="of-stress-atual" style="font-size:11px; color:#8b949e"></span>
+        </div>
+        <div id="of-stress" style="font-size:12px; color:#8b949e">A carregar...</div>
+    </div>
+
     <div style="background-color:#161b22; border:1px solid #30363d; border-radius:8px; padding:20px; margin-bottom:22px; border-left:4px solid #3fb950">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px">
             <h3 style="margin:0; font-size:15px; color:#3fb950; text-transform:uppercase">💵 Curva de juros dos EUA & sinal de recessão <span class="dica-edu" style="font-size:11px;color:#8b949e;cursor:help;text-transform:none">ℹ️<span class="dica-texto" style="width:360px">Quanto rende emprestar ao Estado americano a cada prazo (dados oficiais do Tesouro dos EUA, publicados ao fim de cada dia útil). O indicador mais seguido é a diferença entre o juro a 10 anos e o juro a 3 meses: quando fica negativa (curva invertida), o mercado espera que a Reserva Federal tenha de cortar juros, normalmente por causa de um abrandamento. Desde os anos 60, quase todas as recessões dos EUA foram precedidas por uma inversão, com 6 a 24 meses de atraso, mas houve falsos alarmes e o sinal não diz quando. Não é uma previsão: é um termómetro.</span></span></h3>
@@ -7932,7 +7940,7 @@ function renderizarCalendarioDiario() {
             const d = await (await fetch('/api/oficial/juros')).json();
             if (d.erro) { div.innerHTML = d.erro; return; }
             document.getElementById('of-juros-atual').innerText = d.atualizado_em ? `Atualizado ${ofData(d.atualizado_em)} · fonte: ${d.fonte}` : '';
-            if (!d.diretoras.length && !d.euribor.length) { div.innerHTML = 'Os dados do BCE ainda não foram descarregados neste servidor (acontece automaticamente depois das 17:00, ou o Admin pode testar as fontes na Gestão).'; return; }
+            if (!d.diretoras.length && !d.euribor.length) { div.innerHTML = 'Os dados do BCE ainda não foram descarregados neste servidor (acontece automaticamente depois das 17:00, ou o Admin pode testar as fontes na Gestão).'; ofStress(d.stress || []); return; }
             const caixa = (t, v, sub, dica, extra = '') => `<div style="background:#0d1117; border:1px solid #30363d; border-radius:6px; padding:10px 12px; flex:1 1 170px">
                 <div style="font-size:10px; color:#8b949e; text-transform:uppercase">${t} ${dica ? ofDica(dica) : ''}</div>
                 <div style="font-size:20px; font-weight:900; color:#f0f2f5; margin-top:2px">${v}</div><div style="font-size:11px; color:#8b949e">${sub}</div>${extra}</div>`;
@@ -7966,8 +7974,21 @@ function renderizarCalendarioDiario() {
                         <td style="padding:6px; text-align:right">${ofPct(c.bruta)}</td><td style="padding:6px; text-align:right">${ofPct(c.liquida)}</td>
                         <td style="padding:6px; text-align:right; font-weight:bold; color:${(c.real ?? 0) >= 0 ? '#5cb85c' : '#d9534f'}">${ofPct(c.real)}</td></tr>`).join('')}</tbody></table></div>`;
             }
+            if ((d.divida || []).length) {
+                const pt = d.divida.find(x => x.id === 'PT');
+                h += `<div style="font-weight:bold; color:#c9d1d9; margin:16px 0 6px 0">🏛️ Juro da dívida pública a 10 anos e prémio de risco ${ofDica('Quanto pagam os Estados para se financiarem a 10 anos (média mensal, dados harmonizados do BCE). O «prémio de risco» é a diferença face à Alemanha, o devedor considerado mais seguro da área do euro: mostra quanto mais os investidores exigem para emprestar a cada país. Em 2012, no auge da crise das dívidas, o prémio de Portugal passou os 10 pontos percentuais.', 340)}</div>
+                <div style="display:flex; flex-wrap:wrap; gap:16px; align-items:flex-start">
+                <table style="border-collapse:collapse; font-size:12px; margin-top:0; width:auto; flex:0 1 460px">
+                    <thead style="color:#8b949e; font-size:10px; text-transform:uppercase"><tr><th style="padding:5px; text-align:left">País</th><th style="padding:5px; text-align:right">Juro 10 anos</th><th style="padding:5px; text-align:right">Há 1 ano</th><th style="padding:5px; text-align:right">Prémio vs Alemanha</th></tr></thead>
+                    <tbody>${d.divida.map(x => `<tr style="border-top:1px solid #21262d; ${x.id === 'PT' ? 'background:#0d1117; font-weight:bold' : ''}"><td style="padding:5px">${escHTML(x.nome)}</td>
+                        <td style="padding:5px; text-align:right">${ofPct(x.taxa)}</td><td style="padding:5px; text-align:right; color:#8b949e">${ofPct(x.ha_um_ano)}</td>
+                        <td style="padding:5px; text-align:right">${x.spread_de === null ? '<span style="color:#8b949e">referência</span>' : (x.spread_de >= 0 ? '+' : '') + x.spread_de.toFixed(2).replace('.', ',') + ' p.p.'}</td></tr>`).join('')}</tbody></table>
+                ${pt && pt.serie_spread.length > 2 ? `<div style="flex:1 1 260px; max-width:360px"><div style="font-size:11px; color:#8b949e">Prémio de risco de Portugal (5 anos): ${ofData(pt.serie_spread[0][0])} → ${ofData(pt.mes)}</div>${ofMini(pt.serie_spread, '#e3b341', 360, 60)}</div>` : ''}
+                </div><div style="font-size:10px; color:#6e7681; margin-top:4px">Último mês disponível: ${ofData((pt || d.divida[0]).mes)}.</div>`;
+            }
             if (d.erros && d.erros.length) h += `<div style="color:#e3b341; font-size:11px; margin-top:8px">⚠️ Alguns dados não foram atualizados na última tentativa; estão a ser mostrados os últimos disponíveis.</div>`;
             div.innerHTML = h;
+            ofStress(d.stress || []);
         } catch (e) { div.innerHTML = 'Erro ao carregar os juros.'; }
     }
 
@@ -8011,6 +8032,9 @@ function renderizarCalendarioDiario() {
         h += '<div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:16px">';
         if (s3) h += caixa('10 anos − 3 meses', `<span style="color:${s3.invertida ? '#d9534f' : '#3fb950'}">${pp(s3.atual)}</span>`, `${s3.invertida ? 'invertida' : 'positiva'} desde ${ofData(s3.desde)} · ${s3.dias_invertida_12m} de ${s3.uteis_12m} dias invertida no último ano`, 'O spread preferido da Reserva Federal de Nova Iorque para estimar a probabilidade de recessão a 12 meses. Negativo = curva invertida.');
         if (s2) h += caixa('10 anos − 2 anos', `<span style="color:${s2.invertida ? '#d9534f' : '#3fb950'}">${pp(s2.atual)}</span>`, `${s2.invertida ? 'invertida' : 'positiva'} desde ${ofData(s2.desde)}${s2.desinversao ? ' · última saída de inversão: ' + ofData(s2.desinversao) : ''}`, 'O spread mais citado pelos media. Os 2 anos refletem o que o mercado espera da Fed nos próximos tempos; os 10 anos, o crescimento e a inflação de longo prazo.');
+        if (t.recessao) h += caixa('Probabilidade de recessão (12 meses)', `<span style="color:${t.recessao.prob >= 50 ? '#d9534f' : t.recessao.prob >= 25 ? '#e3b341' : '#3fb950'}">${t.recessao.prob.toFixed(0)}%</span>`,
+            `modelo da Fed de Nova Iorque · ${ofData(t.recessao.mes)}${t.recessao.mes_incompleto ? ' (mês em curso)' : ''}${t.recessao.ha_um_ano !== null ? ' · há 1 ano: ' + t.recessao.ha_um_ano.toFixed(0) + '%' : ''}`,
+            'A Fed de Nova Iorque traduz a inclinação da curva (10 anos − 3 meses, média do mês) numa probabilidade de os EUA estarem em recessão daqui a 12 meses. Acima de 30% o modelo esteve historicamente perto das recessões, mas também deu falsos alarmes (em 2023 passou os 60% e a recessão não chegou). É só um modelo de uma variável: vale como termómetro, não como previsão. Calculado aqui com a fórmula pública e os dados do Tesouro.');
         if (t.diferencial_10a) h += caixa('EUA − área do euro (10 anos)', pp(t.diferencial_10a.dif), `EUA ${ofPct(t.diferencial_10a.eua)} · euro AAA ${ofPct(t.diferencial_10a.euro)}`, 'Quanto rende mais (ou menos) a dívida americana a 10 anos do que a da área do euro com rating AAA. Um diferencial a crescer tende a atrair capital para o dólar; a encolher, a favorecer o euro. É só um dos fatores do câmbio EUR/USD.');
         h += '</div>';
         const max = Math.max(...t.curva.map(c => Math.max(c.taxa, c.ha_um_ano || 0)), 0.5);
@@ -8087,6 +8111,19 @@ function renderizarCalendarioDiario() {
                     <div style="position:absolute; left:calc(${x.indice}% - 4px); top:-2px; width:8px; height:12px; border-radius:2px; background:${cor}"></div></div>
                     <strong style="color:${cor}; width:24px; text-align:right">${x.indice}</strong></div></td>
                 <td style="padding:5px; width:110px">${ofMini(x.serie, '#f778ba', 110, 24)}</td></tr>`; }).join('')}</tbody></table></div>`;
+    }
+
+    function ofStress(lista) {
+        const div = document.getElementById('of-stress');
+        if (!lista.length) { div.innerHTML = 'O termómetro do BCE ainda não foi descarregado neste servidor (acontece com a atualização diária do BCE depois das 17:00).'; return; }
+        document.getElementById('of-stress-atual').innerText = `Dados de ${ofData(lista[0].dia)} · fonte: Banco Central Europeu (CISS)`;
+        div.innerHTML = `<div style="display:flex; flex-wrap:wrap; gap:10px">${lista.map(x => `
+            <div style="background:#0d1117; border:1px solid #30363d; border-radius:6px; padding:10px 12px; flex:1 1 220px">
+                <div style="font-size:10px; color:#8b949e; text-transform:uppercase">${escHTML(x.nome)}</div>
+                <div style="font-size:20px; font-weight:900; color:#f0f2f5; margin-top:2px">${x.icone} ${x.valor.toFixed(3).replace('.', ',')} <span style="font-size:12px; font-weight:normal; color:#c9d1d9">${escHTML(x.nivel)}</span></div>
+                <div style="font-size:11px; color:#8b949e">mais alto do que em ${x.percentil}% dos dias desde ${ofData(x.desde)}${x.ha_um_mes !== null ? ' · há 1 mês: ' + x.ha_um_mes.toFixed(3).replace('.', ',') : ''}</div>
+                ${ofMini(x.serie, '#ff7b72', 260, 44)}</div>`).join('')}</div>
+            <div style="font-size:10px; color:#6e7681; margin-top:6px">Escala de 0 a 1: abaixo de 0,15 calmo · 0,15–0,30 tensão moderada · 0,30–0,50 stress elevado · acima de 0,50 crise.</div>`;
     }
 
     function ofTabelaCurtas(g) {
