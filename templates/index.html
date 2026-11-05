@@ -2035,6 +2035,14 @@
      ========================================== -->
 <div id="tab-oficial" class="tab-content">
 
+    <div style="background-color:#161b22; border:1px solid #30363d; border-radius:8px; padding:20px; margin-bottom:22px; border-left:4px solid #79c0ff">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:10px">
+            <h3 style="margin:0; font-size:15px; color:#79c0ff; text-transform:uppercase">📅 Agenda macro (próximas semanas) <span class="dica-edu" style="font-size:11px;color:#8b949e;cursor:help;text-transform:none">ℹ️<span class="dica-texto" style="width:340px">Os eventos que mais mexem com os mercados, lidos automaticamente dos calendários oficiais do BCE, da Reserva Federal e do Bureau of Labor Statistics dos EUA. Horas de Lisboa. Nestes dias e horas a volatilidade costuma subir: um stop muito apertado pode ser apanhado por um movimento brusco e as ordens a mercado podem ser executadas longe do preço esperado. 🔴 = evento de grande impacto.</span></span></h3>
+            <span id="of-agenda-atual" style="font-size:11px; color:#8b949e"></span>
+        </div>
+        <div id="of-agenda" style="font-size:12px; color:#8b949e">A carregar...</div>
+    </div>
+
     <div style="background-color:#161b22; border:1px solid #30363d; border-radius:8px; padding:20px; margin-bottom:22px; border-left:4px solid #58a6ff">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px">
             <h3 style="margin:0; font-size:15px; color:#58a6ff; text-transform:uppercase">💶 Juros & Poupança <span class="dica-edu" style="font-size:11px;color:#8b949e;cursor:help;text-transform:none">ℹ️<span class="dica-texto" style="width:320px">Taxas oficiais que mexem com o teu dinheiro: as taxas do BCE (que determinam a Euribor), a Euribor (que define a prestação da casa e a taxa dos Certificados de Aforro), a curva de rendimentos (quanto rende emprestar ao Estado a vários prazos) e a inflação. Fonte: Banco Central Europeu. Atualizado uma vez por dia.</span></span></h3>
@@ -2118,6 +2126,7 @@
             <button class="btn-moderno" onclick="ofSec('fundamentos')" style="background:#21262d; color:#c9d1d9; padding:9px 14px; font-size:12px">📑 Fundamentos (10-K)</button>
             <button class="btn-moderno" onclick="ofSec('eventos')" style="background:#21262d; color:#c9d1d9; padding:9px 14px; font-size:12px">📰 Eventos (8-K)</button>
             <button class="btn-moderno" onclick="ofSec('grandes')" style="background:#21262d; color:#c9d1d9; padding:9px 14px; font-size:12px">🐋 Quem dos grandes tem?</button>
+            <button class="btn-moderno" onclick="ofSec('acionistas')" style="background:#21262d; color:#c9d1d9; padding:9px 14px; font-size:12px">🎯 Acionistas com +5% (13D/13G)</button>
         </div>
         <div id="of-sec" style="font-size:12px; color:#8b949e">Indica um ticker americano.</div>
     </div>
@@ -2129,7 +2138,7 @@
         <div id="of-13f" style="font-size:12px; color:#8b949e"></div>
     </div>
 
-    <div style="font-size:10px; color:#6e7681">Fontes: Banco Central Europeu (ECB Data Portal) · Banco de Portugal (BPstat) · Eurostat/INE · U.S. Department of the Treasury · OCDE · CFTC · IGCP (Certificados de Aforro, inserido pelo Admin) · CMVM (comunicados de dirigentes, participações qualificadas e ações próprias) · CNMV, AMF, Bundesanzeiger/BaFin, Consob e AFM (posições curtas) · FINRA (short interest e volume diário a descoberto) · SEC EDGAR (formulários 4, 8-K, 10-K e 13F). Conteúdo educativo, não é recomendação de investimento.</div>
+    <div style="font-size:10px; color:#6e7681">Fontes: Banco Central Europeu (ECB Data Portal) · Banco de Portugal (BPstat) · Eurostat/INE · U.S. Department of the Treasury · OCDE · CFTC · IGCP (Certificados de Aforro, inserido pelo Admin) · CMVM (comunicados de dirigentes, participações qualificadas e ações próprias) · CNMV, AMF, Bundesanzeiger/BaFin, Consob e AFM (posições curtas) · FINRA (short interest e volume diário a descoberto) · SEC EDGAR (formulários 4, 8-K, 10-K, 13F e 13D/13G; fails-to-deliver) · Calendários oficiais do BCE, da Fed e do BLS. Conteúdo educativo, não é recomendação de investimento.</div>
 </div>
 
 <div id="tab-liga" class="tab-content">
@@ -7928,6 +7937,7 @@ function renderizarCalendarioDiario() {
     function carregarOficial() {
         if (ofCarregado) return;
         ofCarregado = true;
+        ofAgenda();
         ofJuros();
         ofPortugal();
         ofMundo();
@@ -8122,6 +8132,29 @@ function renderizarCalendarioDiario() {
                 <td style="padding:5px; width:110px">${ofMini(x.serie, '#f778ba', 110, 24)}</td></tr>`; }).join('')}</tbody></table></div>`;
     }
 
+    const ofQuinzena = p => { const m = /^(\d{4})(\d{2})([ab])$/.exec(p || ''); return m ? `${m[3] === 'a' ? '1.ª' : '2.ª'} quinzena de ${['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'][+m[2] - 1]} ${m[1]}` : (p || ''); };
+
+    async function ofAgenda() {
+        const div = document.getElementById('of-agenda');
+        try {
+            const d = await (await fetch('/api/oficial/calendario')).json();
+            const ev = d.eventos || [];
+            document.getElementById('of-agenda-atual').innerText = d.atualizado_em ? `Fontes: ${d.fonte}` : '';
+            if (!ev.length) { div.innerHTML = d.atualizado_em ? 'Sem eventos marcados nas próximas semanas.' : 'A agenda ainda não foi lida neste servidor (acontece automaticamente às 06:00, ou o Admin pode testar as fontes na Gestão).'; return; }
+            const sem = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+            const hoje = new Date().toISOString().slice(0, 10);
+            const cor = { BCE: '#58a6ff', Fed: '#3fb950', BLS: '#e3b341' };
+            div.innerHTML = `<div style="display:flex; flex-direction:column; gap:4px; max-height:300px; overflow-y:auto">${ev.slice(0, 30).map(e => {
+                const dt = new Date(e.data + 'T12:00:00');
+                return `<div style="display:flex; gap:10px; align-items:center; padding:5px 8px; border-radius:5px; background:${e.data === hoje ? '#1f2a3a' : '#0d1117'}; border:1px solid ${e.data === hoje ? '#79c0ff' : '#21262d'}">
+                    <div style="width:92px; color:${e.data === hoje ? '#79c0ff' : '#c9d1d9'}; font-weight:bold; white-space:nowrap">${e.data === hoje ? 'HOJE' : sem[dt.getDay()] + ' ' + e.data.slice(8, 10) + '/' + e.data.slice(5, 7)}</div>
+                    <div style="width:44px; color:#8b949e">${e.hora || ''}</div>
+                    <div style="width:18px">${e.nivel === 'alta' ? '🔴' : '🟡'}</div>
+                    <div style="flex:1">${escHTML(e.titulo)} ${ofDica(escHTML(e.explica || ''), 280)}</div>
+                    <div style="font-size:10px; color:${cor[e.fonte] || '#8b949e'}">${escHTML(e.fonte)}</div></div>`; }).join('')}</div>`;
+        } catch (e) { div.innerHTML = 'Erro ao carregar a agenda.'; }
+    }
+
     async function ofPortugal() {
         const div = document.getElementById('of-pt');
         let d;
@@ -8199,7 +8232,9 @@ function renderizarCalendarioDiario() {
                 const pt = d.ranking_pt || [], eu = d.ranking || [];
                 div.innerHTML = (pt.length ? `<div style="font-weight:bold; color:#c9d1d9; margin-bottom:6px">🇵🇹 Cotadas portuguesas com posições curtas públicas</div>${pt.map(ofTabelaCurtas).join('')}`
                                            : '<div style="margin-bottom:10px">🇵🇹 Nenhuma cotada portuguesa tem hoje posições curtas acima de 0,5% publicadas (ou a fonte da CMVM ainda não foi lida).</div>')
-                    + (eu.length ? `<div style="font-weight:bold; color:#c9d1d9; margin:14px 0 6px 0">🇪🇺 As mais shortadas entre as fontes europeias</div>${eu.map(ofTabelaCurtas).join('')}` : '');
+                    + (eu.length ? `<div style="font-weight:bold; color:#c9d1d9; margin:14px 0 6px 0">🇪🇺 As mais shortadas entre as fontes europeias</div>${eu.map(ofTabelaCurtas).join('')}` : '')
+                    + ((d.ftd_ranking && d.ftd_ranking.ranking.length) ? `<div style="font-weight:bold; color:#c9d1d9; margin:14px 0 6px 0">🇺🇸 Maiores falhas de entrega nos EUA (${d.ftd_ranking.periodos.slice().reverse().map(ofQuinzena).join(' e ')}) ${ofDica('Títulos com o maior valor de ações não entregues num só dia, segundo a SEC. Inclui ETFs, onde as falhas são frequentes por razões técnicas de criação e resgate de unidades.', 280)}</div>
+                        <div style="display:flex; flex-wrap:wrap; gap:6px">${d.ftd_ranking.ranking.slice(0, 15).map(r => `<a href="#" onclick="document.getElementById('of-curtas-q').value='${escHTML(r.ticker)}'; ofPesquisarCurtas(); return false" title="${escHTML(r.nome)}" style="background:#0d1117; border:1px solid #30363d; border-radius:6px; padding:5px 9px; color:#c9d1d9; text-decoration:none">${escHTML(r.ticker)} <span style="color:#6e7681">${(r.valor_max / 1e6).toFixed(1).replace('.', ',')} M$</span></a>`).join('')}</div>` : '');
                 return;
             }
             let h = '';
@@ -8219,6 +8254,15 @@ function renderizarCalendarioDiario() {
                             <td style="padding:4px; text-align:right; color:${(x.variacao_pct || 0) >= 0 ? '#d9534f' : '#5cb85c'}">${x.variacao_pct === null || x.variacao_pct === undefined ? '—' : (x.variacao_pct >= 0 ? '+' : '') + Number(x.variacao_pct).toFixed(1).replace('.', ',') + '%'}</td>
                             <td style="padding:4px; text-align:right">${x.dias_cobrir === null || x.dias_cobrir === undefined || x.dias_cobrir >= 999 ? '—' : Number(x.dias_cobrir).toFixed(1).replace('.', ',')}</td></tr>`).join('')}</tbody></table></div>`;
                 }
+            }
+            const ftd = d.eua_ftd;
+            if (ftd && ftd.dias && ftd.dias.length) {
+                const n = v => v === null || v === undefined ? '—' : Number(v).toLocaleString('pt-PT');
+                const top = ftd.dias.slice().sort((a, b) => b.acoes - a.acoes).slice(0, 5);
+                h += `<div style="background:#0d1117; border:1px solid #30363d; border-radius:6px; padding:10px 12px; margin-top:8px">
+                    <div style="font-weight:bold; color:#fff; margin-bottom:6px">🇺🇸 Falhas de entrega (SEC fails-to-deliver) ${ofDica('Ações vendidas que não foram entregues ao comprador na data de liquidação (2 dias úteis depois). Acontece por atrasos administrativos e, por vezes, por vendas a descoberto sem ter as ações emprestadas («a seco»). Números pontuais são normais; falhas grandes e persistentes, durante semanas, merecem atenção. A SEC publica estes dados com cerca de 2 semanas de atraso. Não confundir com o total de posições curtas.', 340)}</div>
+                    <div style="color:#8b949e; margin-bottom:4px">${ftd.dias.length} dia(s) com falhas (${ftd.periodos.slice().reverse().map(ofQuinzena).join(' e ')}) · maiores:</div>
+                    <table style="width:100%; border-collapse:collapse; font-size:12px; margin-top:0"><tbody>${top.map(x => `<tr style="border-top:1px solid #21262d"><td style="padding:4px">${ofData(x.data)}</td><td style="padding:4px; text-align:right">${n(x.acoes)} ações</td><td style="padding:4px; text-align:right; color:#8b949e">${x.valor ? '≈ ' + n(x.valor) + ' $' : ''}</td></tr>`).join('')}</tbody></table></div>`;
             }
             const vol = d.eua_volume;
             if (vol && vol.erro) h += `<div style="color:#e3b341; margin-top:6px">🇺🇸 ${escHTML(vol.erro)}</div>`;
@@ -8256,6 +8300,20 @@ function renderizarCalendarioDiario() {
                         <td style="padding:5px; text-align:right"><a href="${e.url}" target="_blank" rel="noopener" style="color:#58a6ff">Ler ↗</a></td></tr>`).join('')}</tbody></table></div>`
                     : '<div>Sem comunicados 8-K nos últimos 90 dias.</div>')
                     + `<div style="font-size:10px; color:#6e7681; margin-top:6px">Fonte: ${escHTML(d.fonte)}. Recebe estes avisos automaticamente: Alertas pessoais → 📰 Comunicados à SEC.</div>`;
+                return;
+            }
+            if (tipo === 'acionistas') {
+                const fil = d.filings || [];
+                div.innerHTML = `<div style="font-weight:bold; color:#fff; margin-bottom:6px">${escHTML(d.empresa || t)} · quem comunicou ter mais de 5% (últimos 2 anos) ${ofDica('Quem passa os 5% de uma empresa americana tem de o declarar à SEC. 13G = investidor passivo (fundos de índice, gestoras como Vanguard ou BlackRock), que não pretende influenciar a gestão. 13D = investidor que PODE querer mudar a empresa (ativista: pedir lugares na administração, venda de negócios, recompras...), e tem de explicar a intenção. Um 13D novo de um ativista conhecido costuma mexer com a cotação. «/A» = atualização de uma declaração anterior.', 340)}</div>`
+                    + (fil.length ? `<div style="overflow-x:auto"><table style="width:100%; border-collapse:collapse; font-size:12px; margin-top:0">
+                    <thead style="color:#8b949e; font-size:10px; text-transform:uppercase"><tr><th style="padding:5px; text-align:left">Entregue</th><th style="padding:5px; text-align:left">Tipo</th><th style="padding:5px; text-align:left">Quem</th><th style="padding:5px; text-align:right">% do capital</th><th style="padding:5px"></th></tr></thead>
+                    <tbody>${fil.map(f => `<tr style="border-top:1px solid #21262d"><td style="padding:5px; white-space:nowrap">${ofData(f.data)}</td>
+                        <td style="padding:5px; white-space:nowrap">${f.ativista ? '<span style="color:#f778ba; font-weight:bold">🎯 13D ativista</span>' : '<span style="color:#8b949e">13G passivo</span>'}${f.alteracao ? ' <span style="color:#6e7681">(atualização)</span>' : ''}</td>
+                        <td style="padding:5px">${f.detentores.length ? escHTML(f.detentores.join(', ')) : '<span style="color:#6e7681">formato antigo: ver o documento</span>'}${f.objetivo ? `<div style="font-size:11px; color:#8b949e; margin-top:3px">Intenção declarada: ${escHTML(f.objetivo.slice(0, 280))}${f.objetivo.length > 280 ? '…' : ''}</div>` : ''}</td>
+                        <td style="padding:5px; text-align:right; font-weight:bold">${f.pct === null ? '—' : f.pct.toFixed(1).replace('.', ',') + '%'}</td>
+                        <td style="padding:5px; text-align:right; white-space:nowrap"><a href="${f.url}" target="_blank" rel="noopener" style="color:#58a6ff">Ler ↗</a></td></tr>`).join('')}</tbody></table></div>`
+                    : '<div>Sem declarações 13D/13G nos últimos 2 anos.</div>')
+                    + `<div style="font-size:10px; color:#6e7681; margin-top:6px">Fonte: ${escHTML(d.fonte)}. A «intenção declarada» é o texto original (em inglês) do ponto 4 do 13D.</div>`;
                 return;
             }
             if (tipo === 'grandes') {
