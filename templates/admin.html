@@ -626,7 +626,7 @@ function pintarFontes(d) {
   mosaico("fo", cls, okBce ? "BCE em dia" : "BCE em falta", `${c.total || 0} posições curtas · SEC ${d.sec_user_agent ? "ativa" : "por ativar"}`);
   linhas("t-fo", [
     ["Câmbios do BCE", b.cambios_ultimo_dia ? `último dia: ${dataPt(b.cambios_ultimo_dia, false)} · ${b.moedas.length} moedas · atualizado ${dataPt(b.cambios_atualizado_em)}` : `<span style="color:var(--vermelho)">ainda não descarregados</span>`],
-    ["Juros, Euribor e inflação (BCE)", b.juros_atualizado_em ? `atualizado ${dataPt(b.juros_atualizado_em)}` + (b.juros_erros.length ? ` · <span style="color:var(--amarelo)">${esc(b.juros_erros.join("; "))}</span>` : "") : `<span style="color:var(--vermelho)">ainda não descarregados</span>`],
+    ["Juros, Euribor e inflação (BCE)", b.juros_atualizado_em ? `atualizado ${dataPt(b.juros_atualizado_em)}` + (b.juros_erros.length ? ` · <span style="color:var(--amarelo)">${esc(b.juros_erros.join("; "))}${b.juros_ultima_falha ? " · última tentativa " + dataPt(b.juros_ultima_falha) : ""}. Mantêm-se os últimos dados bons; o Portal volta a tentar de hora a hora.</span>` : "") : `<span style="color:var(--vermelho)">ainda não descarregados</span>`],
     ["Posições curtas", c.atualizado_em ? `${c.total} posições atuais · atualizado ${dataPt(c.atualizado_em)}` : "ainda não descarregadas"],
     ...(d.mundo ? [
       ["Curva de juros dos EUA (Tesouro)", d.mundo.tesouro_ultimo_dia ? `último dia: ${dataPt(d.mundo.tesouro_ultimo_dia, false)} · atualizado ${dataPt(d.mundo.tesouro_atualizado_em)}` : `<span style="color:var(--amarelo)">ainda não descarregada (automático depois das 22:00)</span>`],
