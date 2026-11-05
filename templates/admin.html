@@ -110,7 +110,8 @@
   .padrao-liga { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 13px; color: var(--suave); background: var(--cartao2); border: 1px solid var(--borda); border-radius: 10px; padding: 10px 12px; margin-bottom: 14px; }
   .regras { margin: 0 0 14px; padding-left: 18px; color: var(--suave); font-size: 12.5px; line-height: 1.6; }
   .regras b { color: var(--texto); font-weight: 600; }
-  @media (max-width: 600px) { .grelha { grid-template-columns: 1fr; } .seta { display: none; } .marca span, #atualizado { display: none; } .topo-in { padding: 10px 14px; } main { padding: 18px 14px 50px; } .dados.tabela { display: block; overflow-x: auto; white-space: nowrap; } }
+  @media (max-width: 600px) { .grelha { grid-template-columns: 1fr; } .seta { display: none; } .marca span, #atualizado { display: none; } .topo-in { padding: 10px 14px; } main { padding: 18px 14px 50px; } .dados.tabela { display: block; overflow-x: auto; white-space: nowrap; } .cab { flex-wrap: wrap; } .pilula { white-space: normal; max-width: 100%; margin-left: 0; } .dados:not(.tabela) td { word-break: break-word; } }
+  html, body { overflow-x: hidden; }
 </style>
 </head>
 <body>

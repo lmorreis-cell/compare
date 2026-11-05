@@ -186,6 +186,10 @@
             opacity: 1; 
             bottom: 140%; /* Efeito de levitação suave */
         }
+        /* Tooltips escondidos não ocupam espaço: senão, no telemóvel, «alargam» a página e o browser encolhe tudo */
+        .dica-edu .dica-texto { display: none; max-width: calc(100vw - 16px); box-sizing: border-box; }
+        .dica-edu:hover .dica-texto, .dica-texto.dica-flutuante { display: block; }
+        html, body { overflow-x: hidden; }
         /* ==========================================
            CARCAÇA DO TERMINAL TÁTICO
            ========================================== */
@@ -259,6 +263,30 @@
             from { opacity: 0; transform: translateY(-5px); } 
             to { opacity: 1; transform: translateY(0); } 
         }
+        /* ==========================================
+           TELEMÓVEL E TABLET: o mesmo terminal, adaptado ao ecrã pequeno
+           ========================================== */
+        @media (max-width: 760px) {
+            body { padding: 8px !important; }
+            .terminal-global { padding: 14px 10px !important; margin-top: 10px; border-radius: 10px; }
+            .titulo-terminal { font-size: 17px !important; letter-spacing: 0.5px !important; }
+            /* Separadores em grelha (3 por linha) em vez de uma fila cortada */
+            .tab-menu { flex-wrap: wrap; gap: 4px; border-bottom: none; }
+            .tab-btn { flex: 1 1 31%; font-size: 10.5px; padding: 8px 3px; border-radius: 6px; border: 1px solid #30363d; border-bottom-width: 1px; }
+            .tab-btn.active { border-color: #58a6ff; }
+            /* Cartões com menos margem interior (os estilos estão escritos nos próprios elementos) */
+            .tab-content [style*="padding: 20px"], .tab-content [style*="padding:20px"], .tab-content [style*="padding: 25px"] { padding: 12px !important; }
+            .tab-content h3, .tab-content h4 { font-size: 13px !important; line-height: 1.35; }
+            /* Tabelas: letra mais pequena e deslizam para o lado se ainda forem largas */
+            .tab-content table { font-size: 11px !important; }
+            .tab-content th, .tab-content td { padding: 4px 3px !important; }
+            .tab-content table:not([data-sem-scroll]) { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            .tab-content input, .tab-content select, .tab-content button { font-size: 14px; }  /* evita o zoom automático do iPhone ao tocar */
+            .tab-content input.input-moderno, .tab-content select.input-moderno { max-width: 100% !important; flex: 1 1 140px; }
+            .js-plotly-plot, .plot-container { max-width: 100% !important; }
+            .dica-edu .dica-texto { width: auto !important; }
+        }
+
     </style>
     <!-- Biblioteca Plotly.js para gráficos interativos -->
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js" charset="utf-8"></script>
@@ -7910,13 +7938,13 @@ function renderizarCalendarioDiario() {
     // Tooltips que nunca ficam cortados: ao passar o rato, a caixa é colocada em coordenadas do ecrã,
     // acima do ícone (ou abaixo, se não houver espaço) e sempre dentro da janela.
     (function () {
-        const raiz = document.getElementById('tab-oficial');
-        if (!raiz) return;
+        const raiz = document.body;  // todos os tooltips do terminal (no telemóvel e nas tabelas com scroll)
         raiz.addEventListener('mouseover', ev => {
             const d = ev.target.closest('.dica-edu');
             if (!d || !raiz.contains(d)) return;
             const t = d.querySelector(':scope > .dica-texto');
             if (!t || t.classList.contains('dica-flutuante')) return;
+            t.dataset.l0 = t.style.left; t.dataset.t0 = t.style.top;
             t.classList.add('dica-flutuante');
             const r = d.getBoundingClientRect(), w = t.offsetWidth, h = t.offsetHeight, m = 8;
             let left = Math.min(Math.max(m, r.left + r.width / 2 - w / 2), window.innerWidth - w - m);
@@ -7929,9 +7957,9 @@ function renderizarCalendarioDiario() {
             const d = ev.target.closest('.dica-edu');
             if (!d || d.contains(ev.relatedTarget)) return;
             const t = d.querySelector(':scope > .dica-texto');
-            if (t && t.classList.contains('dica-flutuante')) { t.classList.remove('dica-flutuante'); t.style.left = ''; t.style.top = ''; }
+            if (t && t.classList.contains('dica-flutuante')) { t.classList.remove('dica-flutuante'); t.style.left = t.dataset.l0 || ''; t.style.top = t.dataset.t0 || ''; }
         });
-        window.addEventListener('scroll', () => raiz.querySelectorAll('.dica-flutuante').forEach(t => { t.classList.remove('dica-flutuante'); t.style.left = ''; t.style.top = ''; }), true);
+        window.addEventListener('scroll', () => raiz.querySelectorAll('.dica-flutuante').forEach(t => { t.classList.remove('dica-flutuante'); t.style.left = t.dataset.l0 || ''; t.style.top = t.dataset.t0 || ''; }), true);
     })();
 
     function carregarOficial() {
