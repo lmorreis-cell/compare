@@ -186,10 +186,27 @@ def atualizar_juros(forcar=False):
         for grupo in novo["series"].values():
             for s in grupo.values():
                 s.sort()
+        total = sum(len(p) for p in SERIES.values())
+        if len(erros) >= total:
+            # O BCE não respondeu a nada (ex.: manutenção, erro 503): não mexe nos dados guardados e tenta mais tarde
+            dados["ultima_falha"] = datetime.now().isoformat(timespec="seconds")
+            dados["erros"] = [_resumo_erros(erros)]
+            _gravar(ARQ_JUROS, dados)
+            raise RuntimeError(f"BCE indisponível: {_resumo_erros(erros)}. Mantêm-se os dados de {(dados.get('atualizado_em') or '—')[:10]}.")
         novo["atualizado_em"] = datetime.now().isoformat(timespec="seconds")
         novo["erros"] = erros
         _gravar(ARQ_JUROS, novo)
-        return not erros, ("Juros atualizados." if not erros else "; ".join(erros))
+        return not erros, ("Juros atualizados." if not erros else _resumo_erros(erros))
+
+
+def _resumo_erros(erros):
+    """«23 séries: BCE respondeu 503» em vez de uma lista enorme."""
+    import re as _re
+    grupos = {}
+    for e in erros:
+        motivo = (_re.search(r"BCE respondeu \d+|não devolveu dados|timed? ?out|Read timed out|Max retries", e) or [None])[0] or e.split(": ", 1)[-1][:60]
+        grupos.setdefault(motivo, []).append(e.split(":", 1)[0])
+    return "; ".join(f"{len(v)} série{'s' if len(v) > 1 else ''} ({', '.join(v[:4])}{'…' if len(v) > 4 else ''}): {k}" for k, v in grupos.items())
 
 
 def _ultimo(serie):
@@ -328,7 +345,9 @@ def diario(agora):
     for nome, f, arq in (("câmbios", atualizar_cambios, ARQ_CAMBIOS), ("juros", atualizar_juros, ARQ_JUROS)):
         existente = _ler(arq, {})
         vazio = not (existente.get("taxas") or existente.get("series"))
-        if (existente.get("atualizado_em") or "")[:10] == agora.date().isoformat() and not vazio:
+        feito_hoje = (existente.get("atualizado_em") or "")[:10] == agora.date().isoformat()
+        incompleto = bool(existente.get("erros")) and agora.hour < 23  # algumas séries falharam: volta a tentar
+        if feito_hoje and not vazio and not incompleto:
             continue
         if agora.hour < 17 and not vazio:
             continue
@@ -336,12 +355,16 @@ def diario(agora):
             continue
         _ultima_tentativa[nome] = time.time()
         try:
-            ok, msg = f()
+            ok, msg = f(forcar=incompleto)
             print(f"[bce] {nome}: {msg}")
         except Exception as e:
             print(f"[bce] {nome} falhou: {e}")
-            import alertas_admin as aa
-            aa.avisar(f"bce-{nome}:{agora.date()}", f"BCE: a atualização de {nome} falhou", str(e), "aviso")
+            # Falhas do BCE costumam ser passageiras (manutenção, sobrecarga): só avisa o Admin se ainda falhar à noite
+            if agora.hour >= 21 or vazio:
+                import alertas_admin as aa
+                aa.avisar(f"bce-{nome}:{agora.date()}", f"BCE: os {nome} não foram atualizados hoje",
+                          f"O BCE não respondeu em nenhuma das tentativas de hoje (desde as 17:00, de hora a hora). "
+                          f"O Portal continua a usar os últimos dados bons; amanhã tenta de novo.\n\nÚltimo erro: {str(e)[:300]}", "aviso")
 
 
 def estado():
@@ -352,6 +375,7 @@ def estado():
         "cambios_ultimo_dia": max((max(v) for v in c.get("taxas", {}).values() if v), default=None),
         "moedas": sorted(c.get("taxas", {}).keys()),
         "juros_atualizado_em": j.get("atualizado_em"),
-        "juros_erros": j.get("erros") or [],
+        "juros_erros": ([_resumo_erros(j["erros"])] if j.get("erros") and len(j["erros"]) > 1 else (j.get("erros") or [])),
+        "juros_ultima_falha": j.get("ultima_falha"),
         "ca_ultimo": (manual().get("certificados_aforro") or [None])[-1],
     }
