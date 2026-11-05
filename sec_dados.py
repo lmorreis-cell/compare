@@ -13,6 +13,8 @@ Regras de acesso da SEC (fair access):
 Cache em disco (pasta sec_cache/): lista de tickers 7 dias, filings e fundamentos 24 h, cada Form 4 para sempre.
 """
 
+import html
+import io
 import json
 import os
 import re
@@ -600,6 +602,13 @@ def diario(agora):
         vigiar(agora)
     except Exception as e:
         print(f"[sec] vigilância 8-K: {e}")
+    if agora.hour == 5 and _ultima_13f.get("ftd") != agora.date() and (os.environ.get("SEC_USER_AGENT") or "").strip():
+        _ultima_13f["ftd"] = agora.date()
+        try:
+            ok, msg = atualizar_ftd()
+            print(f"[sec] fails-to-deliver: {msg}")
+        except Exception as e:
+            print(f"[sec] fails-to-deliver falhou: {e}")
     if agora.hour == 4 and _ultima_13f["dia"] != agora.date() and (os.environ.get("SEC_USER_AGENT") or "").strip():
         _ultima_13f["dia"] = agora.date()
         try:
@@ -607,6 +616,129 @@ def diario(agora):
             print(f"[sec] 13F: {ok} gestores atualizados" + (f"; erros: {'; '.join(erros)}" if erros else ""))
         except Exception as e:
             print(f"[sec] 13F falhou: {e}")
+
+
+# ---------------------------------------------------------------
+# 13D / 13G: QUEM TEM MAIS DE 5% (E OS ACIONISTAS ATIVISTAS)
+# ---------------------------------------------------------------
+def _ler_13dg(xml):
+    """Formato XML da SEC (desde dezembro de 2024): nomes, % do capital, data do evento e, no 13D, o objetivo."""
+    t = xml.decode("utf-8", "replace") if isinstance(xml, bytes) else xml
+    g = lambda n: [html.unescape(x.strip()) for x in re.findall(rf"<{n}>([^<]*)</{n}>", t)]
+    nomes = list(dict.fromkeys(g("reportingPersonName") or g("filingPersonName")))
+    pcts = [float(x) for x in (g("percentOfClass") or g("classPercent")) if re.fullmatch(r"[0-9.]+", x or "")]
+    evento = (g("dateOfEvent") or g("eventDateRequiresFilingThisStatement") or [None])[0]
+    if evento and re.fullmatch(r"\d{2}/\d{2}/\d{4}", evento):
+        evento = f"{evento[6:]}-{evento[:2]}-{evento[3:5]}"
+    objetivo = re.sub(r"\s+", " ", (g("transactionPurpose") or [""])[0])[:600] or None
+    return {"detentores": nomes[:4], "pct": max(pcts) if pcts else None, "evento": evento, "objetivo": objetivo}
+
+
+def grandes_acionistas(ticker, meses=24, maximo=25):
+    """Últimos formulários 13D/13G (e alterações) sobre a empresa: quem passou os 5% e com que intenção."""
+    c = cik(ticker)
+    if not c:
+        return {"erro": f"{ticker.upper()} não encontrado na lista da SEC (só empresas cotadas nos EUA)."}
+    num, nome = c
+    sub = _cache(f"sub_{num}.json", 86400, lambda: _get(f"https://data.sec.gov/submissions/CIK{num}.json").json())
+    rec = sub.get("filings", {}).get("recent", {})
+    limite = (date.today() - timedelta(days=meses * 31)).isoformat()
+    out = []
+    for i, forma in enumerate(rec.get("form", [])):
+        if not re.match(r"^(SC 13[DG]|SCHEDULE 13[DG])(/A)?$", forma):
+            continue
+        dia = rec["filingDate"][i]
+        if dia < limite:
+            break
+        acc = rec["accessionNumber"][i]
+        pasta = f"https://www.sec.gov/Archives/edgar/data/{int(num)}/{acc.replace('-', '')}"
+        doc = re.sub(r"^xsl[^/]+/", "", rec["primaryDocument"][i])
+        item = {"data": dia, "forma": forma, "ativista": "13D" in forma, "alteracao": forma.endswith("/A"),
+                "url": f"{pasta}/{rec['primaryDocument'][i]}", "detentores": [], "pct": None, "evento": None, "objetivo": None}
+        if doc.lower().endswith(".xml"):
+            try:
+                item.update(_cache(f"13dg_{acc}.json", None, lambda: _ler_13dg(_get(f"{pasta}/{doc}", "application/xml").content)))
+            except Exception:
+                pass
+        out.append(item)
+        if len(out) >= maximo:
+            break
+    return {"ticker": ticker.upper(), "empresa": nome, "filings": out, "fonte": "SEC EDGAR (Schedule 13D/13G)"}
+
+
+# ---------------------------------------------------------------
+# FAILS-TO-DELIVER (ações vendidas que não foram entregues na data de liquidação)
+# ---------------------------------------------------------------
+ARQ_FTD = "sec_ftd.json"
+PAGINA_FTD = "https://www.sec.gov/data-research/sec-markets-data/fails-deliver-data"
+_ftd_mem = {"t": 0, "d": None}
+
+
+def atualizar_ftd(forcar=False):
+    """Descarrega os 2 ficheiros mais recentes (cada um cobre meio mês; saem com ~2 semanas de atraso)."""
+    import zipfile
+    d = _ler_json(ARQ_FTD, {})
+    pag = _get(PAGINA_FTD, "text/html").text
+    links = re.findall(r'href="([^"]*cnsfails(\d{6}[ab])\.zip)"', pag)
+    if not links:
+        raise RuntimeError("Não encontrei ficheiros na página da SEC (mudou o formato?).")
+    links = sorted({(p, u) for u, p in links}, reverse=True)[:2]
+    periodos = [p for p, _ in links]
+    if not forcar and d.get("periodos") == periodos:
+        return True, f"Já tinha os períodos {', '.join(periodos)}."
+    dados = {}
+    for periodo, url in links:
+        url = url if url.startswith("http") else "https://www.sec.gov" + url
+        z = zipfile.ZipFile(io.BytesIO(_get(url, "application/zip").content))
+        texto = z.read(z.namelist()[0]).decode("latin-1")
+        linhas = texto.splitlines()
+        cab = [c.strip().upper() for c in linhas[0].split("|")]
+        col = lambda chave: next(i for i, c in enumerate(cab) if chave in c)
+        i_d, i_s, i_q, i_p, i_n = col("SETTLEMENT"), col("SYMBOL"), col("QUANTITY"), col("PRICE"), col("DESCRIPTION")
+        for l in linhas[1:]:
+            p = l.split("|")
+            if len(p) <= max(i_d, i_s, i_q, i_p):
+                continue
+            try:
+                q = int(p[i_q])
+                preco = float(p[i_p]) if p[i_p].strip() not in ("", ".") else None
+            except ValueError:
+                continue
+            dia = p[i_d].strip()
+            dados.setdefault(p[i_s].strip().upper(), {"nome": p[i_n].strip(), "dias": []})["dias"].append(
+                [f"{dia[:4]}-{dia[4:6]}-{dia[6:8]}", q, preco])
+    for v in dados.values():
+        v["dias"] = sorted({d[0]: d for d in v["dias"]}.values())  # um registo por dia (ficheiros podem sobrepor-se)
+    # Ranking pelo valor máximo num só dia (quantidade × preço)
+    ranking = sorted(((sym, max((q * (pr or 0) for _, q, pr in v["dias"]), default=0), v["nome"]) for sym, v in dados.items()),
+                     key=lambda x: -x[1])[:25]
+    novo = {"periodos": periodos, "dados": dados, "ranking": [{"ticker": t, "valor_max": round(val), "nome": n} for t, val, n in ranking],
+            "atualizado_em": datetime.now().isoformat(timespec="seconds")}
+    _gravar_json(ARQ_FTD, novo)
+    _ftd_mem.update({"t": 0, "d": None})
+    return True, f"{len(dados)} títulos nos períodos {', '.join(periodos)}."
+
+
+def _ftd_dados():
+    if _ftd_mem["d"] is None or time.time() - _ftd_mem["t"] > 3600:
+        _ftd_mem.update({"t": time.time(), "d": _ler_json(ARQ_FTD, {})})
+    return _ftd_mem["d"]
+
+
+def ftd(ticker):
+    d = _ftd_dados()
+    t = ticker.upper().replace("-", ".")
+    v = (d.get("dados") or {}).get(t) or (d.get("dados") or {}).get(ticker.upper())
+    base = {"ticker": ticker.upper(), "periodos": d.get("periodos") or [], "fonte": "SEC (Fails-to-Deliver)"}
+    if not v:
+        return {**base, "dias": []}
+    dias = [{"data": dt, "acoes": q, "preco": pr, "valor": round(q * pr) if pr else None} for dt, q, pr in v["dias"]]
+    return {**base, "nome": v["nome"], "dias": dias, "max": max(dias, key=lambda x: x["acoes"])}
+
+
+def ranking_ftd():
+    d = _ftd_dados()
+    return {"periodos": d.get("periodos") or [], "ranking": d.get("ranking") or [], "atualizado_em": d.get("atualizado_em")}
 
 
 def testar():

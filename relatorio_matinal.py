@@ -182,6 +182,18 @@ def construir_relatorio():
             txt_forca += f"\n🏅 Maior força relativa: {', '.join(rk['top_mansfield'][:5])}"
         campos.append({"name": "🚀 Força Relativa", "value": txt_forca[:1024], "inline": False})
 
+    # Agenda de hoje (BCE, Fed, BLS), horas de Lisboa
+    try:
+        import calendario_macro as cm
+        from datetime import date as _d
+        hoje = [e for e in cm.proximos(0, _d.today())]
+        if hoje:
+            ic = {"alta": "🔴", "media": "🟡"}
+            campos.append({"name": "📅 Agenda de hoje (hora de Lisboa)", "inline": False,
+                           "value": "\n".join(f"{ic.get(e['nivel'], '⚪')} **{e.get('hora') or '—'}** · {e['titulo']}" for e in hoje)[:1024]})
+    except Exception as e:
+        print(f"[briefing] agenda indisponível: {e}")
+
     payload = {
         "embeds": [{
             "title": titulo,

@@ -3449,6 +3449,7 @@ import sec_dados
 import fontes_mundo
 import cmvm_comunicados
 import fontes_portugal
+import calendario_macro
 
 _nomes_cache = {}
 
@@ -3507,6 +3508,7 @@ def api_oficial_curtas():
     resposta = {"atualizado_em": est["atualizado_em"],
                 "fontes": {k: {"nome": v["nome"], "ok": v.get("ok"), "em": v.get("em"), "n": v.get("n")} for k, v in est["fontes"].items()}}
     if not q:
+        resposta["ftd_ranking"] = sec_dados.ranking_ftd()
         resposta["ranking_pt"] = posicoes_curtas.ranking("PT", 20)
         resposta["ranking"] = posicoes_curtas.ranking(None, 15)
         return jsonify(resposta)
@@ -3520,6 +3522,10 @@ def api_oficial_curtas():
             resposta["eua"] = posicoes_curtas.short_interest_eua(q.replace("-", "."))
         except Exception as e:
             resposta["eua"] = {"erro": f"FINRA indisponível: {str(e)[:150]}"}
+        try:
+            resposta["eua_ftd"] = sec_dados.ftd(q.replace("-", "."))
+        except Exception:
+            pass
         try:
             resposta["eua_volume"] = posicoes_curtas.volume_curto_eua(q.replace("-", "."))
         except Exception as e:
@@ -3541,6 +3547,8 @@ def api_oficial_sec(ticker):
             dados = sec_dados.eventos(ticker)
         elif tipo == 'grandes':
             dados = sec_dados.quem_detem(ticker)
+        elif tipo == 'acionistas':
+            dados = sec_dados.grandes_acionistas(ticker)
         else:
             dados = sec_dados.insiders(ticker)
     except sec_dados.SemUserAgent as e:
@@ -3548,6 +3556,13 @@ def api_oficial_sec(ticker):
     except Exception as e:
         return jsonify({"erro": f"SEC indisponível: {str(e)[:200]}"}), 503
     return jsonify(dados), (404 if dados.get("erro") else 200)
+
+
+@app.route('/api/oficial/calendario')
+@requer_cargo(nivel_minimo=2)
+def api_oficial_calendario():
+    """Agenda macro (BCE, Fed, BLS) dos próximos 45 dias, em hora de Lisboa. Só lê a cópia local."""
+    return jsonify(calendario_macro.painel())
 
 
 @app.route('/api/oficial/portugal')
@@ -3627,7 +3642,7 @@ def admin_fontes_estado():
     if not _e_admin():
         return jsonify({"erro": "Acesso negado. Apenas Admin."}), 403
     return jsonify({"bce": fontes_bce.estado(), "curtas": posicoes_curtas.estado(),
-                    "mundo": fontes_mundo.estado(), "cmvm": cmvm_comunicados.estado(), "portugal": fontes_portugal.estado(),
+                    "mundo": fontes_mundo.estado(), "cmvm": cmvm_comunicados.estado(), "portugal": fontes_portugal.estado(), "calendario": calendario_macro.estado(),
                     "sec_user_agent": bool((os.environ.get("SEC_USER_AGENT") or "").strip())})
 
 
@@ -3704,6 +3719,15 @@ def _correr_teste_fontes():
             r["FINRA · volume diário a descoberto"] = {"ok": False, "msg": str(e)[:300]}
         _passo("CMVM · comunicados de dirigentes e participações")
         r["CMVM · dirigentes, participações e ações próprias"] = cmvm_comunicados.testar()
+        _passo("Agenda macro (BCE, Fed, BLS)")
+        r["Agenda macro · BCE, Fed e BLS"] = calendario_macro.testar()
+        if r.get("SEC · insiders e fundamentos", {}).get("ok"):
+            _passo("SEC · fails-to-deliver")
+            try:
+                ok, msg = sec_dados.atualizar_ftd(forcar=True)
+                r["SEC · fails-to-deliver"] = {"ok": ok, "msg": msg}
+            except Exception as e:
+                r["SEC · fails-to-deliver"] = {"ok": False, "msg": str(e)[:300]}
         _passo("Banco de Portugal e Eurostat")
         for k, v in fontes_portugal.testar().items():
             r[k] = v

@@ -289,6 +289,14 @@ def construir_relatorio(agora=None):
         b = macro.get("breadth", {})
         rrg += f"\n🧭 **{b.get('acima_ema50', 0)}/{b.get('total', 11)}** setores acima da EMA 50 no fecho de sexta."
         campos.append({"name": "🌀 Rotação setorial (21 dias)", "value": rrg[:1024], "inline": False})
+    try:  # agenda da semana que começa (BCE, Fed, BLS)
+        import calendario_macro as cm
+        segunda = hoje + timedelta(days=(7 - hoje.weekday()) % 7 or 7)
+        ag = cm.texto_semana(segunda)
+        if ag:
+            campos.append({"name": "📅 Agenda da próxima semana (hora de Lisboa)", "value": ag[:1024], "inline": False})
+    except Exception as e:
+        print(f"[semanal] agenda indisponível: {e}")
     mo = _campo_macro_oficial()
     if mo:
         campos.append({"name": "🏦 Dados oficiais (Tesouro · BCE · CFTC · OCDE)", "value": mo[:1024], "inline": False})
