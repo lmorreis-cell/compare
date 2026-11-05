@@ -169,7 +169,10 @@
         @media (max-width: 620px) {
             .topo-inner { padding: 10px 16px; }
             .marca > div:last-child, .chip-user .nome-user, .admin-btn .admin-txt, .admin-btn .admin-online-txt { display: none; }
-            .topo-acoes { gap: 6px; }
+            .topo-acoes { gap: 6px; flex-wrap: nowrap; min-width: 0; }
+            .gestao-btn .gestao-txt { display: none; }          /* Gestão e Escola só com o ícone */
+            .gestao-btn, .admin-btn { padding: 6px 9px; }
+            .topo-acoes .btn-secundario { padding: 6px 10px; font-size: 13px; white-space: nowrap; flex-shrink: 0; }
             .tem-admin .chip-user .nivel { display: none; }
             .tem-admin .chip-user { padding-right: 4px; }
             .admin-caixa { position: fixed; top: 58px; left: 12px; right: 12px; width: auto; }
@@ -180,6 +183,11 @@
             .grelha { grid-template-columns: 1fr; }
             .cadeado { position: static; margin-top: 16px; }
             .bloqueado .atalhos { display: none; }
+        }
+        @media (max-width: 380px) {  /* telemóveis mais estreitos: o nível do membro sai da barra (continua no perfil) */
+            .chip-user .nivel { display: none; }
+            .chip-user { padding-right: 4px; }
+            .topo-inner { padding: 10px 10px; gap: 8px; }
         }
 {% endblock %}
 
@@ -226,7 +234,7 @@
                 {% if nivel >= 2 %}<span class="nivel nivel-2">Patrocinador</span>{% else %}<span class="nivel nivel-1">Trader Ativo</span>{% endif %}
             </div>
                 <a href="/escola" class="admin-btn gestao-btn">🎓<span class="gestao-txt">&nbsp;Escola</span></a>
-                <a href="/logout" class="btn-secundario">Sair</a>
+                <a href="/logout" class="btn-secundario" title="Terminar sessão">Sair</a>
         </div>
     </div>
 </header>
@@ -256,7 +264,7 @@
             </div>
             <div class="mercado-linhas">
                 <div class="metrica"><span>Amplitude</span><b id="m-breadth" class="esqueleto">0/11</b></div>
-                <div class="metrica"><span>VIX</span><b id="m-vix" class="esqueleto">00.0</b><em id="m-vix-var"></em></div>
+                <div class="metrica" title="VIX = «índice do medo»: a volatilidade que o mercado espera para o S&amp;P 500 nos próximos 30 dias. As cores são invertidas: VIX a descer (verde) = menos medo, bom para as ações; VIX a subir (vermelho) = mais medo. O número fica amarelo acima de 18 e vermelho acima de 25." style="cursor:help"><span>VIX ⓘ</span><b id="m-vix" class="esqueleto">00.0</b><em id="m-vix-var"></em></div>
             </div>
         </div>
     </section>
