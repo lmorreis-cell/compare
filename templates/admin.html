@@ -159,6 +159,8 @@
       <div class="passo"><span class="hora">03:00</span><b>💾 Cópia de segurança</b>Dados do portal, enviada para a tua sala privada.</div>
       <div class="seta">·</div>
       <div class="passo"><span class="hora" id="fluxo-hora-ed">12:30</span><b>❓ Pergunta do dia</b>Sondagem da Escola no Discord.</div>
+      <div class="seta">·</div>
+      <div class="passo"><span class="hora">19:00</span><b>📅 Véspera macro</b>Eventos importantes de amanhã no Discord.</div>
     </div>
   </section>
 
@@ -378,6 +380,15 @@
       <details id="d-news-reg" style="display:none"><summary id="s-news-reg">Registo</summary><pre id="pre-news-reg" style="white-space:pre-wrap;font-size:11.5px;max-height:360px;overflow:auto;background:#0b0e14;border:1px solid var(--borda);border-radius:8px;padding:10px;margin-top:8px"></pre></details>
     </article>
 
+    <!-- AVISO DE VÉSPERA DA AGENDA MACRO -->
+    <article class="cartao" id="c-mv">
+      <div class="cab"><span style="font-size:20px">📅</span><h2>Aviso de véspera (agenda macro)</h2><span class="pilula" id="p-mv">—</span></div>
+      <p class="explica">Na véspera das decisões do BCE e da Fed e dos grandes dados americanos (emprego, inflação), sai às 19:00 uma mensagem curta no Discord com a hora e o que está em jogo. Se no dia seguinte não houver nada importante, não sai nada. Sala: <b>WEBHOOK_MACRO</b> (ou, se não existir, a do Briefing EUA).</p>
+      <table class="dados" id="t-mv"></table>
+      <div class="acoes"><button class="btn disc" id="b-mv-enviar">📡 Enviar o de amanhã agora</button></div>
+      <div class="msg" id="msg-mv"></div>
+    </article>
+
     <!-- ESCOLA · PERGUNTA DO DIA NO DISCORD -->
     <article class="cartao" id="c-escola-disc">
       <div class="cab"><span style="font-size:20px">❓</span><h2>Pergunta do dia (Discord)</h2><span class="pilula" id="p-ed">—</span></div>
@@ -581,6 +592,30 @@ function pintarEscola(d) {
     pior ? ["Lição mais difícil", `<a href="/admin/escola#${pior[0]}">${esc(tituloPior)}</a> (${pior[1].taxa}%)`] : null,
   ]);
 }
+
+// ---------------- Aviso de véspera da agenda macro
+function pintarMacroVespera(d) {
+  if (!d) return;
+  const ev = d.eventos_amanha || [];
+  linhas("t-mv", [
+    ["Sala do Discord", d.webhook ? `<span style="color:var(--verde)">✔ ${esc(d.sala)}</span>` : `<span style="color:var(--vermelho)">✖ Falta WEBHOOK_MACRO</span>`],
+    ["Hora", `${esc(d.hora)} · ${d.niveis.includes("media") ? "importância alta e média" : "só importância alta"}`],
+    [`Amanhã (${dataPt(d.amanha, false)})`, ev.length ? ev.map(e => `${e.nivel === "alta" ? "🔴" : "🟡"} ${esc(e.hora || "—")} · ${esc(e.titulo)}`).join("<br>") : "nada importante"],
+    ["Último aviso", d.ultimo ? `${dataPt(d.ultimo)} · ${d.ultimo_n ? d.ultimo_n + " evento(s)" : "nada a enviar"}` : "—"],
+    d.erro ? ["Último erro", `<span style="color:#fca5a5">${esc(d.erro)}</span>`] : null,
+  ]);
+  if (!d.ativo) pilula("p-mv", "aviso", "Desligado");
+  else if (!d.webhook) pilula("p-mv", "erro", "Sem webhook");
+  else if (d.erro) pilula("p-mv", "erro", "Falhou");
+  else pilula("p-mv", ev.length ? "ok" : "", ev.length ? `Amanhã: ${ev.length} evento(s)` : "Amanhã: nada");
+}
+$("b-mv-enviar").addEventListener("click", async () => {
+  if (!confirm("Enviar já para o Discord o aviso dos eventos de amanhã?")) return;
+  const r = await fetch("/api/admin/macro_vespera", { method: "POST", credentials: "same-origin" });
+  let j = null; try { j = await r.json(); } catch (e) {}
+  msg("msg-mv", j && j.sucesso ? "ok" : "erro", (j && (j.mensagem || j.erro)) || `Erro ${r.status}`);
+  const p = await pedir("/api/admin/macro_vespera"); if (p.ok) pintarMacroVespera(p.j);
+});
 
 // ---------------- O que há de novo
 let novLista = [];
@@ -1061,11 +1096,12 @@ $("b-bk-teste").addEventListener("click", async () => {
 // ---------------- Ciclo
 async function atualizar() {
   try {
-    const [snap, yahoo, online, esc_, liga, bk, sem, fo, ed, nw, nv] = await Promise.all([pedir("/api/admin/snapshot"), pedir("/api/admin/yahoo"), pedir("/api/admin/online"), pedir("/api/admin/escola"), pedir("/api/admin/liga/janelas"), pedir("/api/admin/backups"), pedir("/api/admin/semanal/estado"), pedir("/api/admin/fontes"), pedir("/api/admin/escola/discord"), pedir("/api/admin/newsletters"), pedir("/api/admin/novidades")]);
+    const [snap, yahoo, online, esc_, liga, bk, sem, fo, ed, nw, nv, mv] = await Promise.all([pedir("/api/admin/snapshot"), pedir("/api/admin/yahoo"), pedir("/api/admin/online"), pedir("/api/admin/escola"), pedir("/api/admin/liga/janelas"), pedir("/api/admin/backups"), pedir("/api/admin/semanal/estado"), pedir("/api/admin/fontes"), pedir("/api/admin/escola/discord"), pedir("/api/admin/newsletters"), pedir("/api/admin/novidades"), pedir("/api/admin/macro_vespera")]);
     if (fo.ok && fo.j) pintarFontes(fo.j);
     if (ed.ok && ed.j) pintarEscolaDiscord(ed.j);
     if (nw.ok && nw.j) pintarNewsletters(nw.j);
     if (nv.ok && nv.j) pintarNovidades(nv.j);
+    if (mv.ok && mv.j) pintarMacroVespera(mv.j);
     if (sem.ok && sem.j) pintarSemanal(sem.j);
     if (bk.ok && bk.j) pintarBackups(bk.j);
     if (liga.ok && liga.j) pintarLiga(liga.j);
