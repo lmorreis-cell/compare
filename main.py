@@ -2568,6 +2568,9 @@ escola_discord.registar(app, e_admin=_e_admin)
 # Newsletters Radar States / Radar Europa geradas no próprio servidor (agendador + Área de Gestão)
 import newsletters_auto
 newsletters_auto.registar(app, e_admin=_e_admin)
+# Glossário pesquisável (/glossario), para todos os membros
+import glossario
+glossario.registar(app, requer_cargo=requer_cargo)
 
 
 # ==========================================
