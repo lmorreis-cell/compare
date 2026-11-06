@@ -2571,6 +2571,9 @@ newsletters_auto.registar(app, e_admin=_e_admin)
 # Glossário pesquisável (/glossario), para todos os membros
 import glossario
 glossario.registar(app, requer_cargo=requer_cargo)
+# «O que há de novo» (/novidades) + etiqueta «novo» na página inicial; gestão na Área de Gestão
+import novidades
+novidades.registar(app, requer_cargo=requer_cargo, e_admin=_e_admin)
 
 
 # ==========================================
