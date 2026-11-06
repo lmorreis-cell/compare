@@ -1025,6 +1025,18 @@ def calcular_position_sizing(a_comp):
 
     return f"{peso_final:.1f}%"
 
+def data_preco_live(info):
+    """Data (no fuso da bolsa) a que se refere o preço «live» do .info, ou None se não se souber.
+    Serve para nunca usar uma cotação guardada em cache como se fosse de hoje."""
+    try:
+        ts = info.get('regularMarketTime')
+        if isinstance(ts, (int, float)) and ts > 0:
+            fuso = pytz.timezone(info.get('exchangeTimezoneName') or 'America/New_York')
+            return datetime.fromtimestamp(ts, fuso).date()
+    except Exception:
+        pass
+    return None
+
 def auditar_fundamentais(ticker):
     try:
         ticker_obj = yg.ticker(ticker)
@@ -1128,7 +1140,8 @@ def auditar_fundamentais(ticker):
             # --- NOVAS MÉTRICAS INSTITUCIONAIS ---
             short_pct : info.get('shortPercentOfFloat', 0),
             insider_pct : info.get('heldPercentInsiders', 0),
-            "preco_live": info.get('currentPrice') or info.get('regularMarketPrice')
+            "preco_live": info.get('currentPrice') or info.get('regularMarketPrice'),
+            "preco_live_data": data_preco_live(info)
         }
     except Exception as e:
         return {"nome": ticker, "industria": "N/A", "setor": "Unknown", "roe": 0, "margem": 0, "pe_fwd": 0, "target_mean": 0, "debt_eq": 0, "margem_liq": 0, "eps": 0, "recom": "N/A", "next_earnings": None}
@@ -1367,41 +1380,41 @@ def executar_screener():
     volumes = dados_raw['Volume'].dropna(how='all')
     
     # --- NOVA INJEÇÃO GLOBAL EM TEMPO REAL ---
+    # Só entra uma cotação «live» se for MAIS RECENTE do que o último fecho do Yahoo, e entra com a data
+    # verdadeira da sessão (fuso da bolsa), nunca com a data de Lisboa. Antes, depois da meia-noite em Lisboa
+    # qualquer diferença entre o preço guardado em cache (.info, pedido 1x por dia) e o fecho criava uma vela
+    # falsa de «hoje»: foi assim que a Sunrun apareceu com -10,9% num dia em que subiu ~12%.
     print("A sincronizar cotações em tempo real na matriz global...")
     cache_fundamentais = {}
-    novos_precos = {}
-    novos_volumes = {}
-    
+    injetados = 0
     for ticker in tickers:
         try:
             # Puxa os dados e guarda na cache para não repetir pedidos à API
             f = auditar_fundamentais(ticker)
             cache_fundamentais[ticker] = f
-            preco_live = f.get('preco_live')
+            preco_live, data_live = f.get('preco_live'), f.get('preco_live_data')
             hist = fechos[ticker].dropna()
-            
-            # Se o preço live existe e é diferente do último fecho atrasado do Yahoo
-            if not hist.empty and preco_live and preco_live > 0 and round(preco_live, 2) != round(hist.iloc[-1], 2):
-                novos_precos[ticker] = preco_live
-                novos_volumes[ticker] = volumes[ticker].dropna().iloc[-1]
-        except: pass
-
-    # Atualiza a base de dados central com a vela de hoje ANTES dos relatórios!
-    if novos_precos:
-        hoje_str = datetime.now().strftime('%Y-%m-%d')
-        ultima_data_str = fechos.index[-1].strftime('%Y-%m-%d')
-        
-        if ultima_data_str == hoje_str:
-            # Já existe uma vela com a data de hoje. Vamos SOBRESCREVER para não duplicar.
-            for t, p in novos_precos.items():
-                fechos.iloc[-1, fechos.columns.get_loc(t)] = p
-            for t, v in novos_volumes.items():
-                volumes.iloc[-1, volumes.columns.get_loc(t)] = v
-        else:
-            # A última vela é de ontem. Adicionamos uma nova linha.
-            nova_data = fechos.index[-1] + pd.Timedelta(days=1)
-            fechos = pd.concat([fechos, pd.DataFrame([novos_precos], index=[nova_data])])
-            volumes = pd.concat([volumes, pd.DataFrame([novos_volumes], index=[nova_data])])
+            if hist.empty or not preco_live or preco_live <= 0 or data_live is None:
+                continue
+            ultima = hist.index[-1]
+            if data_live == ultima.date():
+                # mesma sessão (mercado aberto): atualiza a vela de hoje
+                fechos.loc[ultima, ticker] = preco_live
+                injetados += 1
+            elif data_live > ultima.date():
+                # sessão nova que o histórico diário ainda não tem: vela com a data certa da sessão
+                nova = pd.Timestamp(data_live)
+                if getattr(fechos.index, 'tz', None) is not None:
+                    nova = nova.tz_localize(fechos.index.tz)
+                fechos.loc[nova, ticker] = preco_live
+                volumes.loc[nova, ticker] = volumes[ticker].dropna().iloc[-1]
+                injetados += 1
+            # data_live < último fecho: a cotação em cache é antiga -> ignora e fica o fecho oficial
+        except Exception:
+            pass
+    fechos = fechos.sort_index()
+    volumes = volumes.sort_index()
+    print(f"   {injetados} cotações live mais recentes do que o último fecho.")
     # -----------------------------------------
 
     # Calcular a força base contra a média europeia
@@ -1786,15 +1799,15 @@ def analisar_destaques_pedido(tickers_str):
             f = auditar_fundamentais(ticker)
             preco_live = f.get('preco_live')
             
-            # Injeta a cotação live com proteção contra duplicação de datas
-            if preco_live and preco_live > 0 and round(preco_live, 2) != round(hist.iloc[-1], 2):
-                hoje_str = datetime.now().strftime('%Y-%m-%d')
-                ultima_data_str = hist.index[-1].strftime('%Y-%m-%d')
-                
-                if ultima_data_str == hoje_str:
+            # Injeta a cotação live só se for mais recente do que o último fecho, com a data certa da sessão
+            data_live = f.get('preco_live_data')
+            if preco_live and preco_live > 0 and data_live is not None:
+                if data_live == hist.index[-1].date():
                     hist.iloc[-1] = preco_live
-                else:
-                    nova_data = hist.index[-1] + pd.Timedelta(days=1)
+                elif data_live > hist.index[-1].date():
+                    nova_data = pd.Timestamp(data_live)
+                    if getattr(hist.index, 'tz', None) is not None:
+                        nova_data = nova_data.tz_localize(hist.index.tz)
                     hist.loc[nova_data] = preco_live
                     vol.loc[nova_data] = vol.iloc[-1]
 
