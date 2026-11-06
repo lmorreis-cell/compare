@@ -735,8 +735,8 @@ def visualizar_html(regiao):
 @app.route('/interativo')
 @requer_cargo(nivel_minimo=2)
 def ferramenta_interativa():
-    # Aqui colocas a lógica original que renderiza o 'index.html' dinâmico com o screener a correr em tempo real
-    return render_template('index.html')
+    # Terminal: recebe o nome e o «é Admin» para a barra de topo (igual à da página inicial)
+    return render_template('index.html', username=session.get('username', 'Membro'), is_admin=_e_admin())
 
 @app.route('/api/comparar/<ticker1>/<ticker2>')
 @cache.cached(timeout=300) 
