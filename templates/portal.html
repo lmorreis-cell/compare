@@ -235,6 +235,14 @@
             </div>
                 <a href="/escola" class="admin-btn gestao-btn">🎓<span class="gestao-txt">&nbsp;Escola</span></a>
                 <a href="/glossario" class="admin-btn gestao-btn" title="Glossário">📖<span class="gestao-txt">&nbsp;Glossário</span></a>
+                <a href="/novidades" class="admin-btn gestao-btn" title="O que há de novo" style="position:relative">🆕<span class="gestao-txt">&nbsp;Novidades</span><span id="nov-ponto" style="display:none;position:absolute;top:-3px;right:-3px;width:10px;height:10px;border-radius:50%;background:#f28b24;box-shadow:0 0 0 2px #0b0e14"></span></a>
+                <script>
+                    (function () {
+                        var ultima = "{{ novidades_ultima|default('') }}", visto = "";
+                        try { visto = localStorage.getItem("novidadesVisto") || ""; } catch (e) {}
+                        if (ultima && ultima > visto) document.getElementById("nov-ponto").style.display = "block";
+                    })();
+                </script>
                 <a href="/logout" class="btn-secundario" title="Terminar sessão">Sair</a>
         </div>
     </div>

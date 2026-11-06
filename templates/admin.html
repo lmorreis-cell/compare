@@ -344,6 +344,27 @@
       </div>
     </article>
 
+    <!-- O QUE HÁ DE NOVO -->
+    <article class="cartao largo" id="c-nov">
+      <div class="cab"><span style="font-size:20px">🆕</span><h2>O que há de novo</h2><span class="pilula" id="p-nov">—</span></div>
+      <p class="explica">As novidades aparecem em <a href="/novidades" target="_blank" style="color:var(--azul)">/novidades</a> e acendem um ponto laranja no botão 🆕 da página inicial de cada membro, até ele abrir a página. Marca <b>Patrocinador</b> nas que só funcionam no terminal: os outros membros veem-nas com a etiqueta, mas sem o botão «Experimentar».</p>
+      <div class="padrao-liga" style="flex-wrap:wrap;gap:8px">
+        <input type="hidden" id="nov-id">
+        <input type="date" id="nov-data" class="campo">
+        <input type="text" id="nov-icone" class="campo" placeholder="✨" style="width:52px;text-align:center">
+        <input type="text" id="nov-titulo" class="campo" placeholder="Título (ex.: Glossário)" style="flex:1;min-width:200px">
+        <input type="text" id="nov-link" class="campo" placeholder="Link (ex.: /glossario ou /interativo#tab-acoes)" style="flex:1;min-width:220px">
+        <textarea id="nov-texto" class="campo" rows="2" placeholder="Uma ou duas frases a explicar a novidade" style="flex-basis:100%;resize:vertical;font-family:inherit"></textarea>
+        <label style="font-size:13px"><input type="checkbox" id="nov-pat"> Só Patrocinador (terminal)</label>
+        <span style="margin-left:auto;display:flex;gap:8px">
+          <button class="btn sec" id="b-nov-limpar">Limpar</button>
+          <button class="btn prim" id="b-nov-gravar">➕ Publicar</button>
+        </span>
+      </div>
+      <div id="l-nov" style="margin-top:10px"></div>
+      <div class="msg" id="msg-nov"></div>
+    </article>
+
     <!-- NEWSLETTERS GERADAS NO SERVIDOR -->
     <article class="cartao largo" id="c-news">
       <div class="cab"><span style="font-size:20px">📰</span><h2>Newsletters · Radar States e Radar Europa</h2><span class="pilula" id="p-news">—</span></div>
@@ -560,6 +581,51 @@ function pintarEscola(d) {
     pior ? ["Lição mais difícil", `<a href="/admin/escola#${pior[0]}">${esc(tituloPior)}</a> (${pior[1].taxa}%)`] : null,
   ]);
 }
+
+// ---------------- O que há de novo
+let novLista = [];
+function pintarNovidades(d) {
+  if (!d || !d.novidades) return;
+  novLista = d.novidades;
+  pilula("p-nov", "", `${novLista.length} publicadas`);
+  $("l-nov").innerHTML = novLista.map(n => `<div style="display:flex;gap:10px;align-items:flex-start;border-top:1px solid var(--borda);padding:8px 0;font-size:13px">
+      <span style="font-size:18px">${esc(n.icone)}</span>
+      <div style="flex:1"><b style="color:var(--texto)">${esc(n.titulo)}</b> <span style="color:var(--suave)">· ${dataPt(n.data, false)}${n.nivel >= 2 ? " · Patrocinador" : ""}</span><div style="color:var(--suave)">${esc(n.texto)}</div></div>
+      <button class="btn sec" style="padding:4px 10px" data-nov-editar="${esc(n.id)}">Editar</button>
+      <button class="btn sec" style="padding:4px 10px" data-nov-apagar="${esc(n.id)}">🗑️</button>
+    </div>`).join("") || `<span class="vazio">Sem novidades publicadas.</span>`;
+}
+function novLimpar() {
+  ["nov-id", "nov-icone", "nov-titulo", "nov-link", "nov-texto"].forEach(i => $(i).value = "");
+  $("nov-data").value = new Date().toISOString().slice(0, 10); $("nov-pat").checked = false;
+  $("b-nov-gravar").textContent = "➕ Publicar";
+}
+async function novPost(corpo) {
+  const r = await fetch("/api/admin/novidades", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify(corpo) });
+  let j = null; try { j = await r.json(); } catch (e) {}
+  return { ok: r.ok, j, estado: r.status };
+}
+$("b-nov-limpar").addEventListener("click", novLimpar);
+$("b-nov-gravar").addEventListener("click", async () => {
+  const r = await novPost({ id: $("nov-id").value || undefined, data: $("nov-data").value, icone: $("nov-icone").value, titulo: $("nov-titulo").value,
+    link: $("nov-link").value, texto: $("nov-texto").value, nivel: $("nov-pat").checked ? 2 : 1 });
+  if (r.ok) { pintarNovidades(r.j); msg("msg-nov", "ok", $("nov-id").value ? "Novidade atualizada." : "Novidade publicada."); novLimpar(); }
+  else msg("msg-nov", "erro", (r.j && r.j.erro) || `Erro ${r.estado}`);
+});
+$("l-nov").addEventListener("click", async ev => {
+  const b = ev.target.closest("button"); if (!b) return;
+  if (b.dataset.novEditar) {
+    const n = novLista.find(x => x.id === b.dataset.novEditar); if (!n) return;
+    $("nov-id").value = n.id; $("nov-data").value = n.data; $("nov-icone").value = n.icone; $("nov-titulo").value = n.titulo;
+    $("nov-link").value = n.link || ""; $("nov-texto").value = n.texto; $("nov-pat").checked = n.nivel >= 2;
+    $("b-nov-gravar").textContent = "💾 Gravar alteração"; $("c-nov").scrollIntoView({ behavior: "smooth" });
+  } else if (b.dataset.novApagar) {
+    if (!confirm("Apagar esta novidade?")) return;
+    const r = await novPost({ apagar: b.dataset.novApagar });
+    if (r.ok) { pintarNovidades(r.j); msg("msg-nov", "ok", "Apagada."); }
+  }
+});
+novLimpar();
 
 // ---------------- Newsletters geradas no servidor
 let newsEditado = false, newsTemporizador = null;
@@ -995,10 +1061,11 @@ $("b-bk-teste").addEventListener("click", async () => {
 // ---------------- Ciclo
 async function atualizar() {
   try {
-    const [snap, yahoo, online, esc_, liga, bk, sem, fo, ed, nw] = await Promise.all([pedir("/api/admin/snapshot"), pedir("/api/admin/yahoo"), pedir("/api/admin/online"), pedir("/api/admin/escola"), pedir("/api/admin/liga/janelas"), pedir("/api/admin/backups"), pedir("/api/admin/semanal/estado"), pedir("/api/admin/fontes"), pedir("/api/admin/escola/discord"), pedir("/api/admin/newsletters")]);
+    const [snap, yahoo, online, esc_, liga, bk, sem, fo, ed, nw, nv] = await Promise.all([pedir("/api/admin/snapshot"), pedir("/api/admin/yahoo"), pedir("/api/admin/online"), pedir("/api/admin/escola"), pedir("/api/admin/liga/janelas"), pedir("/api/admin/backups"), pedir("/api/admin/semanal/estado"), pedir("/api/admin/fontes"), pedir("/api/admin/escola/discord"), pedir("/api/admin/newsletters"), pedir("/api/admin/novidades")]);
     if (fo.ok && fo.j) pintarFontes(fo.j);
     if (ed.ok && ed.j) pintarEscolaDiscord(ed.j);
     if (nw.ok && nw.j) pintarNewsletters(nw.j);
+    if (nv.ok && nv.j) pintarNovidades(nv.j);
     if (sem.ok && sem.j) pintarSemanal(sem.j);
     if (bk.ok && bk.j) pintarBackups(bk.j);
     if (liga.ok && liga.j) pintarLiga(liga.j);
