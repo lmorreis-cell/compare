@@ -157,6 +157,8 @@
       <div class="passo"><span class="hora">sáb 10:00</span><b>🗓️ Briefing Semanal</b>A semana inteira numa mensagem.</div>
       <div class="seta">·</div>
       <div class="passo"><span class="hora">03:00</span><b>💾 Cópia de segurança</b>Dados do portal, enviada para a tua sala privada.</div>
+      <div class="seta">·</div>
+      <div class="passo"><span class="hora" id="fluxo-hora-ed">12:30</span><b>❓ Pergunta do dia</b>Sondagem da Escola no Discord.</div>
     </div>
   </section>
 
@@ -340,6 +342,23 @@
         <a class="btn prim" href="/admin/escola">✏️ Abrir editor de lições</a>
         <a class="btn sec" href="/escola" target="_blank">🎓 Ver como membro</a>
       </div>
+    </article>
+
+    <!-- ESCOLA · PERGUNTA DO DIA NO DISCORD -->
+    <article class="cartao" id="c-escola-disc">
+      <div class="cab"><span style="font-size:20px">❓</span><h2>Pergunta do dia (Discord)</h2><span class="pilula" id="p-ed">—</span></div>
+      <p class="explica">Nos dias úteis, à hora escolhida, sai na sala da Escola uma pergunta do quiz da lição desse dia, como <b>sondagem</b> (os membros votam com um toque), e é revelada a resposta da véspera, escondida em spoiler. Ao sábado só sai a resposta de sexta, com o convite para a revisão. Os votos no Discord <b>não contam</b> para os pontos: esses são só do portal. Precisa de <b>WEBHOOK_ESCOLA</b> no Discloud.</p>
+      <table class="dados" id="t-ed"></table>
+      <div class="padrao-liga" style="margin-top:8px">
+        <label style="font-size:13px"><input type="checkbox" id="ed-ativo"> Ligado</label>
+        <span style="font-size:13px">às <input type="time" id="ed-hora" class="campo" min="06:00" max="21:59" step="60"></span>
+        <button class="btn sec" id="b-ed-gravar" style="margin-left:auto">Gravar</button>
+      </div>
+      <details id="d-ed-prev"><summary>Ver a próxima pergunta</summary><div id="ed-prev" style="margin-top:8px;font-size:13px"></div></details>
+      <div class="acoes">
+        <button class="btn disc" id="b-ed-enviar">📡 Enviar a de hoje agora</button>
+      </div>
+      <div class="msg" id="msg-ed"></div>
     </article>
 
     <!-- ATALHOS -->
@@ -528,6 +547,51 @@ function pintarEscola(d) {
     pior ? ["Lição mais difícil", `<a href="/admin/escola#${pior[0]}">${esc(tituloPior)}</a> (${pior[1].taxa}%)`] : null,
   ]);
 }
+
+// ---------------- Escola · pergunta do dia no Discord
+let edEditado = false;
+function pintarEscolaDiscord(d) {
+  if (!d) return;
+  if (!edEditado) { $("ed-ativo").checked = !!d.ativo; $("ed-hora").value = d.hora || "12:30"; }
+  $("fluxo-hora-ed").textContent = d.hora || "12:30";
+  const hojeIso = new Date().toISOString().slice(0, 10);
+  linhas("t-ed", [
+    ["Sala do Discord", d.webhook ? `<span style="color:var(--verde)">✔ WEBHOOK_ESCOLA</span>` : `<span style="color:var(--vermelho)">✖ Falta WEBHOOK_ESCOLA</span>`],
+    ["Link para o portal", d.portal_url ? esc(d.portal_url) + "/escola" : `<span style="color:var(--amarelo)">⚠ Define PORTAL_URL (ex.: https://…discloud.app)</span>`],
+    ["Último envio", d.ultimo_envio ? dataPt(d.ultimo_envio) + (d.envio_manual ? " (manual)" : "") + (d.ultimo_resultado ? ` · ${esc(d.ultimo_resultado)}` : "") : "—"],
+    d.pendente ? ["Resposta por revelar", esc(d.pendente)] : null,
+    d.ultimo_erro ? ["Último erro", `<span style="color:#fca5a5">${esc(d.ultimo_erro)}</span>`] : null,
+  ]);
+  const p = d.previsao;
+  $("ed-prev").innerHTML = p ? `<div style="color:var(--suave)">${p.hoje ? "Hoje" : "Próxima: " + dataPt(p.data, false)} · ${esc(p.titulo)} · ${p.sondagem ? "sai como <b>sondagem</b>" : "sai como mensagem com opções A), B)… (texto longo demais para sondagem)"}</div>
+      <div style="margin:6px 0"><b>${esc(p.pergunta)}</b></div>
+      <ol type="A" style="margin:0 0 0 18px;padding:0">${p.opcoes.map((o, i) => `<li${i === p.certa ? ' style="color:var(--verde)"' : ""}>${esc(o)}${i === p.certa ? " ✔" : ""}</li>`).join("")}</ol>`
+    : `<span class="vazio">Não há lições publicadas com quiz para os próximos dias.</span>`;
+  if (!d.webhook) pilula("p-ed", "erro", "Sem webhook");
+  else if (!d.ativo) pilula("p-ed", "aviso", "Desligado");
+  else if (d.ultimo_erro && (!d.dia_envio || d.dia_envio < hojeIso)) pilula("p-ed", "erro", "Falhou");
+  else if (d.dia_envio === hojeIso) pilula("p-ed", "ok", "Enviada hoje");
+  else pilula("p-ed", "", `Sai às ${d.hora}`);
+}
+async function edPost(url, corpo) {
+  const r = await fetch(url, { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify(corpo || {}) });
+  let j = null; try { j = await r.json(); } catch (e) {}
+  return { ok: r.ok, j, estado: r.status };
+}
+$("c-escola-disc").addEventListener("input", () => { edEditado = true; });
+$("b-ed-gravar").addEventListener("click", async () => {
+  const r = await edPost("/api/admin/escola/discord", { ativo: $("ed-ativo").checked, hora: $("ed-hora").value });
+  if (r.ok) { edEditado = false; pintarEscolaDiscord(r.j); msg("msg-ed", "ok", "Gravado."); }
+  else msg("msg-ed", "erro", (r.j && r.j.erro) || `Erro ${r.estado}`);
+});
+$("b-ed-enviar").addEventListener("click", async () => {
+  if (!confirm("Enviar agora a pergunta de hoje (e revelar a resposta pendente)?\n\nSó sai uma vez por dia: se já tiver saído hoje, não repete.")) return;
+  const b = $("b-ed-enviar"); b.disabled = true;
+  msg("msg-ed", "info", "A enviar…");
+  const r = await edPost("/api/admin/escola/discord/enviar");
+  msg("msg-ed", r.j && r.j.sucesso ? "ok" : "erro", (r.j && (r.j.mensagem || r.j.erro)) || `Erro ${r.estado}`);
+  b.disabled = false; atualizar();
+});
 
 // ---------------- Liga Mensal
 let ligaEditado = false;  // não redesenha a tabela enquanto estiveres a mexer nas datas
@@ -844,8 +908,9 @@ $("b-bk-teste").addEventListener("click", async () => {
 // ---------------- Ciclo
 async function atualizar() {
   try {
-    const [snap, yahoo, online, esc_, liga, bk, sem, fo] = await Promise.all([pedir("/api/admin/snapshot"), pedir("/api/admin/yahoo"), pedir("/api/admin/online"), pedir("/api/admin/escola"), pedir("/api/admin/liga/janelas"), pedir("/api/admin/backups"), pedir("/api/admin/semanal/estado"), pedir("/api/admin/fontes")]);
+    const [snap, yahoo, online, esc_, liga, bk, sem, fo, ed] = await Promise.all([pedir("/api/admin/snapshot"), pedir("/api/admin/yahoo"), pedir("/api/admin/online"), pedir("/api/admin/escola"), pedir("/api/admin/liga/janelas"), pedir("/api/admin/backups"), pedir("/api/admin/semanal/estado"), pedir("/api/admin/fontes"), pedir("/api/admin/escola/discord")]);
     if (fo.ok && fo.j) pintarFontes(fo.j);
+    if (ed.ok && ed.j) pintarEscolaDiscord(ed.j);
     if (sem.ok && sem.j) pintarSemanal(sem.j);
     if (bk.ok && bk.j) pintarBackups(bk.j);
     if (liga.ok && liga.j) pintarLiga(liga.j);

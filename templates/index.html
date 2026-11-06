@@ -69,6 +69,10 @@
             gap: 10px;
         }
 
+        /* Simulador de poupança: rótulo por cima do campo */
+        .sim-campo { display: flex; flex-direction: column; gap: 4px; flex: 1 1 150px; min-width: 130px; font-size: 11px; color: #8b949e; }
+        .sim-campo .input-moderno { width: 100%; box-sizing: border-box; padding: 9px 12px; font-size: 13px; flex: 0 0 auto !important; }
+
         /* Campos de Texto Modernos */
         .input-moderno {
             background: #0d1117;
@@ -2079,9 +2083,32 @@
         <div id="of-juros" style="font-size:12px; color:#8b949e">A carregar...</div>
     </div>
 
+    <div style="background-color:#161b22; border:1px solid #30363d; border-radius:8px; padding:20px; margin-bottom:22px; border-left:4px solid #3fb950">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px">
+            <h3 style="margin:0; font-size:15px; color:#3fb950; text-transform:uppercase">🌱 Simulador de poupança <span class="dica-edu" style="font-size:11px;color:#8b949e;cursor:help;text-transform:none">ℹ️<span class="dica-texto" style="width:380px">Mostra como o mesmo dinheiro cresce (ou perde valor) em quatro sítios diferentes ao longo dos anos: parado na conta, num depósito a prazo, em Certificados de Aforro e num ETF de ações. As taxas de juro já vêm preenchidas com os dados oficiais mais recentes (Banco de Portugal, IGCP, BCE) e podes alterá-las. As contas são feitas só no teu browser: nada do que escreves aqui é enviado para o servidor. É uma simulação educativa, não uma recomendação: o passado e as taxas de hoje não garantem o futuro.</span></span></h3>
+            <span id="sim-origem" style="font-size:11px; color:#8b949e"></span>
+        </div>
+        <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; margin-bottom:12px">
+            <label class="sim-campo"><span class="dica-edu">Montante inicial (€)<span class="dica-texto" style="width:220px; left:0; transform:none">O dinheiro que aplicas logo no início.</span></span><input type="number" id="sim-inicial" class="input-moderno" value="5000" min="0" step="100" oninput="simCalcular()"></label>
+            <label class="sim-campo"><span class="dica-edu">Por mês (€)<span class="dica-texto" style="width:240px; left:0; transform:none">Quanto juntas todos os meses. Poupar um valor fixo todos os meses (mesmo pequeno) é muitas vezes mais importante do que escolher a aplicação «perfeita».</span></span><input type="number" id="sim-mensal" class="input-moderno" value="150" min="0" step="10" oninput="simCalcular()"></label>
+            <label class="sim-campo"><span class="dica-edu">Anos<span class="dica-texto" style="width:240px; left:0; transform:none">Durante quanto tempo poupas. Experimenta 5, 15 e 30 anos: é com o tempo que os juros compostos (juros sobre juros) fazem a maior diferença.</span></span><input type="number" id="sim-anos" class="input-moderno" value="15" min="1" max="40" step="1" oninput="simCalcular()"></label>
+            <label class="sim-campo"><span class="dica-edu">Inflação média (%/ano)<span class="dica-texto" style="width:260px; left:0; transform:none">Quanto sobem os preços, em média, por ano. Vem preenchida com a inflação mais recente em Portugal; o objetivo do BCE é 2% a médio prazo. Serve para converter o resultado em «euros de hoje» (poder de compra).</span></span><input type="number" id="sim-inf" class="input-moderno" value="2" step="0.1" oninput="simCalcular()"></label>
+        </div>
+        <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; margin-bottom:14px">
+            <label class="sim-campo"><span class="dica-edu">🏦 Depósito a prazo (% bruto)<span class="dica-texto" style="width:270px; left:0; transform:none">Taxa média dos novos depósitos a prazo em Portugal (Banco de Portugal). Há bancos que pagam mais, sobretudo em campanhas. Os juros pagam 28% de IRS (retido na fonte) e os depósitos estão protegidos pelo Fundo de Garantia de Depósitos até 100 000 € por pessoa e por banco.</span></span><input type="number" id="sim-dep" class="input-moderno" value="1.5" step="0.05" oninput="simCalcular()"></label>
+            <label class="sim-campo"><span class="dica-edu">🇵🇹 Certificados de Aforro (taxa base %)<span class="dica-texto" style="width:300px; left:0; transform:none">Série F: a taxa base segue a Euribor a 3 meses, entre 0% e 2,5%, e é revista todos os meses. O simulador soma automaticamente os prémios de permanência: +0,25 p.p. do 2.º ao 5.º ano, +0,50 do 6.º ao 9.º, +1,00 no 10.º e 11.º, +1,50 no 12.º e 13.º e +1,75 no 14.º e 15.º. Cada entrega mensal conta como uma subscrição nova, com o seu próprio relógio de prémios. Juros trimestrais, com 28% de IRS retido. Capital garantido pelo Estado.</span></span><input type="number" id="sim-ca" class="input-moderno" value="2" min="0" max="2.5" step="0.05" oninput="simCalcular()"></label>
+            <label class="sim-campo"><span class="dica-edu">📈 ETF de ações (% ao ano, hipótese)<span class="dica-texto" style="width:320px; left:0; transform:none">Retorno médio anual que ASSUMES para um ETF de acumulação de ações mundiais. Não é uma taxa garantida: é uma hipótese. Historicamente, as ações mundiais renderam em média vários pontos percentuais acima da inflação em períodos longos, mas com anos muito maus pelo caminho (em 2008 caíram cerca de 40%). Experimenta valores prudentes (4–6%).</span></span><input type="number" id="sim-etf" class="input-moderno" value="6" step="0.5" oninput="simCalcular()"></label>
+            <label class="sim-campo"><span class="dica-edu">Custo do ETF (TER %)<span class="dica-texto" style="width:260px; left:0; transform:none">Comissão anual de gestão do ETF, descontada todos os dias ao valor do fundo. Os ETF de índices mundiais costumam custar entre 0,1% e 0,3% ao ano. Parece pouco, mas em 30 anos faz diferença.</span></span><input type="number" id="sim-ter" class="input-moderno" value="0.2" min="0" step="0.05" oninput="simCalcular()"></label>
+            <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:#c9d1d9; cursor:pointer; padding-bottom:8px"><input type="checkbox" id="sim-real" onchange="simCalcular()"> <span class="dica-edu">Ver em euros de hoje<span class="dica-texto" style="width:260px; left:0; transform:none">Desconta a inflação: mostra quanto valeria o resultado com os preços de hoje. É a forma honesta de comparar, porque 10 000 € daqui a 20 anos compram muito menos do que hoje.</span></span></label>
+        </div>
+        <div id="sim-grafico"></div>
+        <div id="sim-tabela" style="overflow-x:auto"></div>
+        <div style="font-size:10px; color:#6e7681; margin-top:8px; line-height:1.5">Simulação simplificada: taxas constantes durante todo o prazo, IRS à taxa liberatória de 28% (sem englobamento), sem comissões bancárias nem de corretagem. No depósito, os juros são capitalizados uma vez por ano. Nos Certificados de Aforro, cada subscrição deixa de render ao fim de 15 anos (prazo máximo da Série F). No ETF, o imposto de 28% sobre a mais-valia só é pago quando vendes: o valor mostrado é o que receberias se vendesses no fim de cada ano.</div>
+    </div>
+
     <div style="background-color:#161b22; border:1px solid #30363d; border-radius:8px; padding:20px; margin-bottom:22px; border-left:4px solid #a371f7">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px">
-            <h3 style="margin:0; font-size:15px; color:#a371f7; text-transform:uppercase">📊 Portugal em números <span class="dica-edu" style="font-size:11px;color:#8b949e;cursor:help;text-transform:none">ℹ️<span class="dica-texto" style="width:360px">Quanto pagam e cobram os bancos em Portugal (médias mensais dos NOVOS depósitos e empréstimos, publicadas pelo Banco de Portugal) comparado com os bancos da área do euro, e os grandes números da economia portuguesa: inflação (inclui a estimativa rápida do mês acabado de terminar), desemprego e preços das casas. Estes últimos são os dados do INE harmonizados e publicados pelo Eurostat, para se poderem comparar com a área do euro.</span></span></h3>
+            <h3 style="margin:0; font-size:15px; color:#a371f7; text-transform:uppercase">📊 Portugal em números <span class="dica-edu" style="font-size:11px;color:#8b949e;cursor:help;text-transform:none">ℹ️<span class="dica-texto" style="width:360px">Quanto pagam e cobram os bancos em Portugal (médias mensais dos NOVOS depósitos e empréstimos, publicadas pelo Banco de Portugal) comparado com os bancos da área do euro, e os grandes números da economia portuguesa: inflação (inclui a estimativa rápida do mês acabado de terminar), desemprego, preços das casas e a confiança de consumidores e empresas. Estes últimos são os dados do INE harmonizados e publicados pelo Eurostat, para se poderem comparar com a área do euro.</span></span></h3>
             <span id="of-pt-atual" style="font-size:11px; color:#8b949e"></span>
         </div>
         <div id="of-pt" style="font-size:12px; color:#8b949e">A carregar...</div>
@@ -7967,11 +7994,119 @@ function renderizarCalendarioDiario() {
         ofCarregado = true;
         ofAgenda();
         ofJuros();
+        simIniciar();
         ofPortugal();
         ofMundo();
         ofCmvm();
         of13fLista();
         ofPesquisarCurtas();
+    }
+
+    // =========================================================
+    // 🌱 SIMULADOR DE POUPANÇA (contas 100% no browser)
+    // =========================================================
+    let simPronto = false;
+    async function simIniciar() {
+        let j = {}, p = {};
+        try { [j, p] = await Promise.all([fetch('/api/oficial/juros').then(r => r.json()), fetch('/api/oficial/portugal').then(r => r.json())]); } catch (e) { }
+        const fontes = [];
+        const dep = p.bancos && p.bancos.dep_pt;
+        if (dep) { document.getElementById('sim-dep').value = dep.taxa.toFixed(2); fontes.push(`depósitos: BdP ${ofData(dep.mes)}`); }
+        const e3 = (j.euribor || []).find(x => x.id === 'EURIBOR3MD_');
+        if (j.certificados_aforro) { document.getElementById('sim-ca').value = Math.min(2.5, j.certificados_aforro.taxa).toFixed(3); fontes.push(`CA: IGCP ${ofData(j.certificados_aforro.mes)}`); }
+        else if (e3) { document.getElementById('sim-ca').value = Math.min(2.5, Math.max(0, e3.taxa)).toFixed(3); fontes.push('CA: Euribor 3M (BCE)'); }
+        if (j.inflacao_pt !== null && j.inflacao_pt !== undefined) { document.getElementById('sim-inf').value = j.inflacao_pt.toFixed(1); fontes.push('inflação: Eurostat/BCE'); }
+        document.getElementById('sim-origem').innerText = fontes.length ? 'Taxas preenchidas com: ' + fontes.join(' · ') : '';
+        simPronto = true;
+        simCalcular();
+    }
+
+    function simNum(id, min = -50, max = 1e9) {
+        const v = parseFloat(String(document.getElementById(id).value).replace(',', '.'));
+        return isNaN(v) ? 0 : Math.min(max, Math.max(min, v));
+    }
+
+    function simPremioCA(ano) { return ano <= 1 ? 0 : ano <= 5 ? 0.25 : ano <= 9 ? 0.5 : ano <= 11 ? 1 : ano <= 13 ? 1.5 : 1.75; }
+
+    function simCorrer(inicial, mensal, anos, taxas) {
+        const IRS = 0.28, meses = anos * 12;
+        let colchao = inicial, entregue = inicial, entregueHoje = inicial;   // entregueHoje: cada entrega em euros de hoje
+        let dep = inicial, depJuro = 0;
+        const ca = inicial > 0 ? [{ v: inicial, idade: 0, juro: 0 }] : [];
+        let etf = inicial;
+        const rEtf = Math.pow(1 + (taxas.etf - taxas.ter) / 100, 1 / 12) - 1;
+        const anual = [{ ano: 0, entregue, entregueHoje, colchao, dep, ca: inicial, etf: inicial }];
+        for (let m = 1; m <= meses; m++) {
+            // juros do mês
+            depJuro += dep * taxas.dep / 100 / 12;
+            for (const c of ca) {
+                if (c.idade >= 180) continue;                                  // prazo máximo da Série F (15 anos)
+                const ano = Math.floor(c.idade / 12) + 1;
+                c.juro += c.v * (taxas.ca + simPremioCA(ano)) / 100 / 12;
+                c.idade++;
+                if (c.idade % 3 === 0) { c.v += c.juro * (1 - IRS); c.juro = 0; }   // juros trimestrais, líquidos de IRS
+            }
+            etf *= 1 + rEtf;
+            if (m % 12 === 0) { dep += depJuro * (1 - IRS); depJuro = 0; }      // capitalização anual do depósito
+            // entrega do mês (no fim do mês)
+            if (mensal > 0) { colchao += mensal; dep += mensal; etf += mensal; entregue += mensal; entregueHoje += mensal / Math.pow(1 + (taxas.inf || 0) / 100, m / 12); ca.push({ v: mensal, idade: 0, juro: 0 }); }
+            if (m % 12 === 0) {
+                const caTotal = ca.reduce((a, c) => a + c.v, 0);
+                anual.push({ ano: m / 12, entregue, entregueHoje, colchao, dep, ca: caTotal, etf: etf - Math.max(0, etf - entregue) * IRS });
+            }
+        }
+        return anual;
+    }
+
+    function simCalcular() {
+        if (!simPronto) return;
+        const inicial = simNum('sim-inicial', 0), mensal = simNum('sim-mensal', 0), anos = Math.round(simNum('sim-anos', 1, 40));
+        const inf = simNum('sim-inf', -5, 30), real = document.getElementById('sim-real').checked;
+        const taxas = { dep: simNum('sim-dep', 0, 30), ca: simNum('sim-ca', 0, 2.5), etf: simNum('sim-etf', -30, 30), ter: simNum('sim-ter', 0, 5), inf };
+        const anual = simCorrer(inicial, mensal, anos, taxas);
+        const def = a => real ? Math.pow(1 + inf / 100, a) : 1;
+        const cen = [
+            { k: 'colchao', nome: '💤 Parado na conta', cor: '#8b949e', taxa: '0%' },
+            { k: 'dep', nome: '🏦 Depósito a prazo', cor: '#58a6ff', taxa: ofPct(taxas.dep) + ' bruto' },
+            { k: 'ca', nome: '🇵🇹 Certificados de Aforro', cor: '#e3b341', taxa: ofPct(taxas.ca) + ' + prémios' },
+            { k: 'etf', nome: '📈 ETF de ações (hipótese)', cor: '#3fb950', taxa: ofPct(taxas.etf) + ' − ' + ofPct(taxas.ter) + ' TER' },
+        ];
+        const eur = v => (v < 0 ? '−' : '') + Math.round(Math.abs(v)).toLocaleString('pt-PT') + ' €';
+        // gráfico
+        const W = Math.round(Math.min(720, Math.max(300, document.getElementById('sim-grafico').clientWidth || 720))), H = W < 500 ? 200 : 240, pe = 52, pd = 12, pt = 12, pb = 26;
+        const val = (x, k) => k === 'entregue' ? (real ? x.entregueHoje : x.entregue) : x[k] / def(x.ano);
+        const maxV0 = Math.max(...anual.map(x => Math.max(...cen.map(c => val(x, c.k)), val(x, 'entregue'))), 1);
+        const bruto = maxV0 / 4, mag = Math.pow(10, Math.floor(Math.log10(bruto))), norm = bruto / mag;
+        const passoY = (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 2.5 ? 2.5 : norm <= 5 ? 5 : 10) * mag, nY = Math.ceil(maxV0 / passoY), maxV = passoY * nY;
+        const X = a => pe + a / anos * (W - pe - pd), Y = v => pt + (1 - v / maxV) * (H - pt - pb);
+        const linha = (k, cor, extra = '') => `<polyline points="${anual.map(x => `${X(x.ano).toFixed(1)},${Y(val(x, k)).toFixed(1)}`).join(' ')}" fill="none" stroke="${cor}" stroke-width="2.2" ${extra}/>`;
+        let grelha = '';
+        for (let i = 0; i <= nY; i++) { const v = passoY * i; grelha += `<line x1="${pe}" x2="${W - pd}" y1="${Y(v)}" y2="${Y(v)}" stroke="#21262d"/><text x="${pe - 6}" y="${Y(v) + 4}" fill="#6e7681" font-size="10" text-anchor="end">${v >= 1000 ? (v / 1000).toLocaleString('pt-PT', { maximumFractionDigits: 1 }) + ' mil' : Math.round(v)}</text>`; }
+        const passo = Math.max(1, Math.ceil(anos / (W < 500 ? 5 : 10)));
+        for (let a = 0; a <= anos; a += passo) grelha += `<text x="${X(a)}" y="${H - 8}" fill="#6e7681" font-size="10" text-anchor="middle">${a === 0 ? 'hoje' : a + 'a'}</text>`;
+        document.getElementById('sim-grafico').innerHTML = `
+            <div style="display:flex; flex-wrap:wrap; gap:12px; font-size:11px; color:#c9d1d9; margin-bottom:4px">${cen.map(c => `<span><span style="display:inline-block; width:12px; height:3px; background:${c.cor}; vertical-align:middle"></span> ${c.nome}</span>`).join('')}
+                <span><span style="display:inline-block; width:12px; border-top:2px dashed #c9d1d9; vertical-align:middle"></span> O que entregaste${real ? ' (em euros de hoje)' : ''}</span></div>
+            <svg viewBox="0 0 ${W} ${H}" style="width:100%; max-width:${W}px; height:auto; display:block">${grelha}
+                ${cen.map(c => linha(c.k, c.cor)).join('')}${linha('entregue', '#c9d1d9', 'stroke-dasharray="5 4" stroke-width="1.4" opacity="0.8"')}</svg>`;
+        // tabela
+        const fim = anual[anual.length - 1], d = def(anos);
+        const linhas = cen.map(c => {
+            const v = fim[c.k], ganho = v - fim.entregue, hoje = v / Math.pow(1 + inf / 100, anos), poder = hoje - fim.entregueHoje;
+            return `<tr style="border-top:1px solid #21262d"><td style="padding:6px"><span style="color:${c.cor}">●</span> ${c.nome}<div style="font-size:10px; color:#6e7681">${c.taxa}</div></td>
+                <td style="padding:6px; text-align:right; font-weight:bold; color:#f0f2f5">${eur(v / d)}</td>
+                <td style="padding:6px; text-align:right; color:${ganho >= 0 ? '#3fb950' : '#f85149'}">${ganho >= 0 ? '+' : ''}${eur(ganho)}</td>
+                <td style="padding:6px; text-align:right; color:${poder >= 0 ? '#3fb950' : '#f85149'}; font-weight:bold">${poder >= 0 ? '+' : ''}${eur(poder)}</td></tr>`;
+        }).join('');
+        document.getElementById('sim-tabela').innerHTML = `
+            <table style="width:100%; border-collapse:collapse; font-size:12px; margin-top:10px; max-width:760px">
+                <thead style="color:#8b949e; font-size:10px; text-transform:uppercase"><tr>
+                    <th style="padding:6px; text-align:left">Ao fim de ${anos} ${anos === 1 ? 'ano' : 'anos'} · entregaste ${eur(fim.entregue)}</th>
+                    <th style="padding:6px; text-align:right">${ofDica(real ? 'Valor final convertido para euros de hoje (descontada a inflação).' : 'Valor final depois de impostos. No ETF, já descontado o IRS de 28% sobre a mais-valia, como se vendesses no fim.', 240)} Valor final${real ? ' (euros de hoje)' : ''}</th>
+                    <th style="padding:6px; text-align:right">${ofDica('Valor final menos tudo o que entregaste, em euros correntes (sem descontar a inflação).', 220)} Ganho líquido</th>
+                    <th style="padding:6px; text-align:right">${ofDica('O que realmente interessa: depois de descontar a inflação, ficaste com mais ou menos poder de compra do que o dinheiro que puseste? Compara tudo em euros de hoje (cada entrega mensal também é convertida). Negativo = a aplicação não acompanhou a subida dos preços.', 260)} Poder de compra ganho</th></tr></thead>
+                <tbody>${linhas}</tbody></table>
+            ${taxas.etf > 0 && fim.etf > fim.dep ? `<div style="font-size:11px; color:#e3b341; margin-top:8px">⚠️ O ETF parece o vencedor, mas a linha verde é uma média suave que não existe na realidade: pelo caminho haverá anos com quedas de 20% a 40%. Só faz sentido para dinheiro de que não vais precisar durante muitos anos, e o resultado não é garantido.</div>` : ''}`;
     }
 
     function ofMini(serie, cor = '#58a6ff', larg = 220, alt = 46) {
@@ -8187,8 +8322,8 @@ function renderizarCalendarioDiario() {
         const div = document.getElementById('of-pt');
         let d;
         try { d = await (await fetch('/api/oficial/portugal')).json(); } catch (e) { div.innerHTML = 'Erro ao carregar.'; return; }
-        const b = d.bancos || {}, e = d.economia || {};
-        if (!Object.keys(b).length && !Object.keys(e).length) { div.innerHTML = 'Os dados do Banco de Portugal e do Eurostat ainda não foram descarregados neste servidor (acontece automaticamente depois das 12:00, ou o Admin pode testar as fontes na Gestão).'; return; }
+        const b = d.bancos || {}, e = d.economia || {}, c = d.confianca || {};
+        if (!Object.keys(b).length && !Object.keys(e).length && !Object.keys(c).length) { div.innerHTML = 'Os dados do Banco de Portugal e do Eurostat ainda não foram descarregados neste servidor (acontece automaticamente depois das 12:00, ou o Admin pode testar as fontes na Gestão).'; return; }
         document.getElementById('of-pt-atual').innerText = `Fontes: ${d.fonte_bdp} · ${d.fonte_eurostat}`;
         const pp = v => v === null || v === undefined ? '—' : (v >= 0 ? '+' : '') + v.toFixed(2).replace('.', ',') + ' p.p.';
         const caixa = (tit, v, sub, dica, extra = '') => `<div style="background:#0d1117; border:1px solid #30363d; border-radius:6px; padding:10px 12px; flex:1 1 200px">
@@ -8215,6 +8350,28 @@ function renderizarCalendarioDiario() {
                 'Estimativa mensal, ajustada da sazonalidade (sem os efeitos do verão, do Natal, etc.). O INE publica também a taxa trimestral do Inquérito ao Emprego, que pode diferir umas décimas.', ofMini(e.desemprego.serie, '#58a6ff'));
             if (e.habitacao) h += caixa('Preços das casas (variação anual)', ofPct(e.habitacao.pt, 1), `${e.habitacao.periodo.replace(/^(\d{4})-Q(\d)$/, '$2.º trimestre de $1')} · ${nomeAE(e.habitacao.area)}: ${ofPct(e.habitacao.ae, 1)}${e.habitacao.pt_ha_um_ano !== null ? ' · há 1 ano: ' + ofPct(e.habitacao.pt_ha_um_ano, 1) : ''}`,
                 'Quanto subiram os preços das casas transacionadas face ao mesmo trimestre do ano anterior (índice de preços da habitação). Dados trimestrais, publicados com cerca de 3 meses de atraso.', ofMini(e.habitacao.serie, '#d9534f'));
+            h += '</div>';
+        }
+        if (Object.keys(c).length) {
+            const nomeAE = a => a && a !== 'EA' ? `área do euro (${a.replace('EA', '')} países)` : 'área do euro';
+            const num = (v, casas = 1) => v === null || v === undefined ? '—' : v.toFixed(casas).replace('.', ',');
+            const sinal = v => v === null || v === undefined ? '—' : (v > 0 ? '+' : '') + num(v);
+            const variacao = x => {
+                if (x.mes_anterior === null || x.mes_anterior === undefined) return '';
+                const dlt = x.pt - x.mes_anterior, cor = dlt > 0.05 ? '#3fb950' : dlt < -0.05 ? '#f85149' : '#8b949e';
+                return ` · <span style="color:${cor}">${dlt > 0 ? '▲' : dlt < 0 ? '▼' : '='} ${num(Math.abs(dlt))} face ao mês anterior</span>`;
+            };
+            const leituraESI = v => v >= 105 ? '🟢 otimismo acima do normal' : v >= 100 ? '🟢 ligeiramente acima do normal' : v >= 95 ? '🟡 ligeiramente abaixo do normal' : v >= 90 ? '🟠 pessimismo' : '🔴 pessimismo forte';
+            const linhaESI = x => `<div style="font-size:11px; color:#c9d1d9; margin-top:2px">${leituraESI(x.pt)}</div>`;
+            h += `<div style="font-weight:bold; color:#c9d1d9; margin:16px 0 8px">🧭 Confiança na economia (inquéritos da Comissão Europeia) ${ofDica('Todos os meses a Comissão Europeia pergunta a milhares de consumidores e empresas como veem a situação atual e os próximos meses. Como as respostas chegam antes dos números oficiais (PIB, emprego, vendas), estes indicadores costumam antecipar o rumo da economia. São inquéritos, por isso medem expectativas e não factos: uma queda forte de confiança é um sinal de alerta, não uma certeza.', 360)}</div><div style="display:flex; flex-wrap:wrap; gap:10px">`;
+            if (c.sentimento) h += caixa('Sentimento económico (ESI)', num(c.sentimento.pt), `${ofData(c.sentimento.periodo)} · ${nomeAE(c.sentimento.area)}: ${num(c.sentimento.ae)}${variacao(c.sentimento)}`,
+                'Indicador de Sentimento Económico: junta a confiança da indústria (40%), serviços (30%), consumidores (20%), comércio (5%) e construção (5%). Está construído para que a média de longo prazo seja 100: acima de 100 o sentimento é melhor do que o habitual, abaixo de 100 é pior. Quedas para perto de 90 costumam coincidir com abrandamentos ou recessões.', linhaESI(c.sentimento) + ofMini(c.sentimento.serie, '#3fb950'));
+            if (c.conf_consumidores) h += caixa('Confiança dos consumidores', sinal(c.conf_consumidores.pt), `${ofData(c.conf_consumidores.periodo)} · ${nomeAE(c.conf_consumidores.area)}: ${sinal(c.conf_consumidores.ae)}${variacao(c.conf_consumidores)}`,
+                'Saldo entre respostas otimistas e pessimistas das famílias sobre a sua situação financeira, a economia do país e as grandes compras previstas. Costuma ser negativo (há sempre mais pessimistas), por isso o que importa é a tendência e a comparação com a área do euro. Confiança a subir costuma antecipar mais consumo.', ofMini(c.conf_consumidores.serie, '#58a6ff'));
+            if (c.conf_industria) h += caixa('Confiança da indústria', sinal(c.conf_industria.pt), `${ofData(c.conf_industria.periodo)} · ${nomeAE(c.conf_industria.area)}: ${sinal(c.conf_industria.ae)}${variacao(c.conf_industria)}`,
+                'Saldo das respostas das empresas industriais sobre encomendas, stocks e produção prevista. Abaixo de zero significa mais empresas a ver a atividade a abrandar do que a acelerar. É um dos indicadores mais seguidos para antecipar o ciclo económico e os resultados das empresas industriais.', ofMini(c.conf_industria.serie, '#e3b341'));
+            if (c.conf_servicos) h += caixa('Confiança dos serviços', sinal(c.conf_servicos.pt), `${ofData(c.conf_servicos.periodo)} · ${nomeAE(c.conf_servicos.area)}: ${sinal(c.conf_servicos.ae)}${variacao(c.conf_servicos)}`,
+                'Saldo das respostas das empresas de serviços (turismo, comércio de serviços, transportes, etc.) sobre o negócio recente e a procura esperada. Em Portugal os serviços — e o turismo em especial — pesam muito na economia, por isso este indicador é particularmente relevante.', ofMini(c.conf_servicos.serie, '#a371f7'));
             h += '</div>';
         }
         div.innerHTML = h;
