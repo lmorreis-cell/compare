@@ -69,6 +69,19 @@
             gap: 10px;
         }
 
+        /* Widgets do TradingView */
+        .tv-bloco { margin-top: 25px; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 14px; color: #c9d1d9; font-family: inherit; }
+        .tv-bloco-cab { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; font-size: 13px; font-weight: bold; color: #f0f2f5; text-transform: uppercase; }
+        .tv-bloco-cab a { color: #58a6ff; font-size: 12px; text-transform: none; font-weight: normal; text-decoration: none; }
+        .tv-grafico { height: 460px; }
+        .tv-mapa { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; }
+        .tv-mapa summary { cursor: pointer; font-size: 13px; font-weight: bold; color: #f0f2f5; text-transform: uppercase; }
+        .tv-fonte { background: transparent; color: #8b949e; border: 1px solid #30363d; padding: 5px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; }
+        .tv-fonte.ativo { color: #58a6ff; border-color: #58a6ff; }
+        .tradingview-widget-copyright { font-size: 11px; color: #6e7681; margin-top: 4px; text-align: right; }
+        .tradingview-widget-copyright a { color: #58a6ff; text-decoration: none; }
+        @media (max-width: 760px) { .tv-grafico { height: 380px; } #tv-mapa-caixa { height: 420px !important; } }
+
         /* Simulador de poupança: rótulo por cima do campo */
         .sim-campo { display: flex; flex-direction: column; gap: 4px; flex: 1 1 150px; min-width: 130px; font-size: 11px; color: #8b949e; }
         .sim-campo .input-moderno { width: 100%; box-sizing: border-box; padding: 9px 12px; font-size: 13px; flex: 0 0 auto !important; }
@@ -526,6 +539,16 @@
         <div id="painel-movers" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px;">
             <!-- O Javascript vai injetar as 3 colunas aqui -->
         </div>
+
+        <!-- MAPA DE CALOR (widget gratuito do TradingView, só carrega quando se abre) -->
+        <details id="tv-mapa" class="tv-mapa" ontoggle="if (this.open) tvMapaCalor()">
+            <summary>🗺️ Mapa de calor do mercado americano <span class="dica-edu" style="text-transform:none; font-weight:normal" onclick="event.preventDefault()">ℹ️<span class="dica-texto" style="width:340px">Cada retângulo é uma empresa: o <b>tamanho</b> é o valor em bolsa e a <b>cor</b> é a variação de hoje (verde sobe, vermelho desce). Agrupado por setor, mostra num relance se o dia é de subidas generalizadas ou se o dinheiro está a fugir de um setor para outro. Passa o rato (ou toca) numa empresa para ver o detalhe. Fornecido pelo TradingView e carregado dos servidores deles, com dados com algum atraso.</span></span></summary>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin:10px 0">
+                <button class="tv-fonte ativo" data-fonte="SPX500" onclick="tvMapaCalor('SPX500', this)">S&amp;P 500</button>
+                <button class="tv-fonte" data-fonte="NASDAQ100" onclick="tvMapaCalor('NASDAQ100', this)">Nasdaq 100</button>
+            </div>
+            <div id="tv-mapa-caixa" style="height:520px"></div>
+        </details>
 
         <!-- NOVO: SISTEMA DE WATCHLIST -->
         <div class="painel-controlo borda-azul">
@@ -2742,6 +2765,7 @@
             if (dados.length === 2) {
                 relatorio.innerHTML = gerarRelatorioNLG(dados[0], dados[1]);
                 relatorio.style.display = 'block';
+                tvAnexarGrafico(relatorio, t1.toUpperCase(), { comparar: t2.toUpperCase(), escuro: true });
             } else if (dados.length === 1) {
                 relatorio.innerHTML = `<div style="background-color: #1a1a1a; padding: 25px; border-radius: 8px; border-left: 4px solid #f44336; color: white;"><p style="color: #f44336; font-weight: bold;">Erro de Duelo: O ticker inserido não possui os 252 dias de histórico exigidos para calcular a Força Relativa.</p></div>`;
                 relatorio.style.display = 'block';
@@ -3344,6 +3368,7 @@
             container.innerHTML = html;
             document.getElementById('loading').style.display = 'none';
             container.style.display = 'block';
+            tvAnexarGrafico(container, dados.ticker, { intervalo: tf });
 
             if (dados.dados_grafico && dados.dados_grafico.datas.length > 0) {
                 desenharGraficoPlotly(dados.dados_grafico);
@@ -4181,6 +4206,7 @@
             container.innerHTML = html;
             document.getElementById('loading').style.display = 'none';
             container.style.display = 'block';
+            tvAnexarGrafico(container, dados.ticker, { intervalo: tf });
 
             if (dados.dados_grafico && dados.dados_grafico.datas.length > 0) {
                 desenharGraficoPlotly(dados.dados_grafico, 'plotly-sniper-cripto');
@@ -4239,6 +4265,7 @@
             if (dados.length === 2) {
                 relatorio.innerHTML = gerarRelatorioNLG(dados[0], dados[1]);
                 relatorio.style.display = 'block';
+                tvAnexarGrafico(relatorio, t1, { comparar: t2, escuro: true });
                 guardarHistorico('duelo', t1, t2); // Regista no histórico
             } else {
                 relatorio.innerHTML = `<div style="background-color: #1a1a1a; padding: 25px; border-radius: 8px; border-left: 4px solid #f44336; color: white;"><p style="color: #f44336; font-weight: bold;">Erro: Histórico insuficiente para calcular divergência.</p></div>`;
@@ -4477,6 +4504,7 @@
             container.innerHTML = html;
             document.getElementById('loading').style.display = 'none';
             container.style.display = 'block';
+            tvAnexarGrafico(container, dados.ticker, { intervalo: tf });
             
             // Reaproveita o Plotly mudando apenas o ID do div para não colidir
             if (dados.dados_grafico && dados.dados_grafico.datas.length > 0) {
@@ -8000,6 +8028,105 @@ function renderizarCalendarioDiario() {
         ofCmvm();
         of13fLista();
         ofPesquisarCurtas();
+    }
+
+    // =========================================================
+    // 📈 WIDGETS GRATUITOS DO TRADINGVIEW (gráfico interativo e mapa de calor)
+    // Carregados dos servidores do TradingView, com a marca deles visível (condição de uso).
+    // Não têm acesso a nada do portal: os dados do Cofre continuam só no browser.
+    // =========================================================
+    const TV_SUFIXOS = {
+        AS: 'EURONEXT', PA: 'EURONEXT', BR: 'EURONEXT', LS: 'EURONEXT', IR: 'EURONEXT',
+        MC: 'BME', MI: 'MIL', DE: 'XETR', F: 'FWB', L: 'LSE', SW: 'SIX', VI: 'VIE',
+        CO: 'OMXCOP', ST: 'OMXSTO', HE: 'OMXHEX', OL: 'OSL', TO: 'TSX', HK: 'HKEX', T: 'TSE', AX: 'ASX'
+    };
+    const TV_INDICES = { '^GSPC': 'SP:SPX', '^IXIC': 'NASDAQ:IXIC', '^NDX': 'NASDAQ:NDX', '^DJI': 'DJ:DJI', '^VIX': 'CBOE:VIX',
+        '^RUT': 'TVC:RUT', '^STOXX50E': 'TVC:SX5E', '^GDAXI': 'XETR:DAX', '^FCHI': 'EURONEXT:PX1', 'PSI20.LS': 'EURONEXT:PSI20' };
+
+    // Converte o ticker do Yahoo (EDP.LS, NOVO-B.CO, BTC-USD, BRK-B) para o símbolo do TradingView
+    function tvSimbolo(t) {
+        t = String(t || '').trim().toUpperCase();
+        if (!t) return null;
+        if (TV_INDICES[t]) return TV_INDICES[t];
+        if (t.startsWith('^') || t.endsWith('=F') || t.endsWith('=X')) return null;
+        const cripto = t.match(/^([A-Z0-9]+)-(USD|EUR|USDT)$/);
+        if (cripto) return `CRYPTO:${cripto[1]}${cripto[2] === 'USDT' ? 'USD' : cripto[2]}`;
+        const p = t.lastIndexOf('.');
+        if (p > 0) {
+            const base = t.slice(0, p), suf = t.slice(p + 1);
+            if (TV_SUFIXOS[suf]) return `${TV_SUFIXOS[suf]}:${base.replace(/-/g, '_')}`;
+        }
+        return t.replace(/-/g, '.');  // EUA: BRK-B -> BRK.B (o TradingView encontra a bolsa)
+    }
+
+    // Os scripts de widget têm de ser criados com createElement (inseridos por innerHTML não correm)
+    function tvWidget(caixa, ficheiro, config) {
+        caixa.innerHTML = '';
+        const cont = document.createElement('div');
+        cont.className = 'tradingview-widget-container';
+        cont.style.height = '100%';
+        const alvo = document.createElement('div');
+        alvo.className = 'tradingview-widget-container__widget';
+        alvo.style.height = 'calc(100% - 22px)';
+        const credito = document.createElement('div');
+        credito.className = 'tradingview-widget-copyright';
+        credito.innerHTML = '<a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank">Gráficos por TradingView</a>';
+        const sc = document.createElement('script');
+        sc.type = 'text/javascript';
+        sc.async = true;
+        sc.src = `https://s3.tradingview.com/external-embedding/${ficheiro}`;
+        sc.text = JSON.stringify(config);
+        cont.appendChild(alvo); cont.appendChild(credito); cont.appendChild(sc);
+        caixa.appendChild(cont);
+    }
+
+    function tvIntervalo(tf) {
+        return { '1h': '60', '4h': '240', '1d': 'D', '1wk': 'W', '1w': 'W' }[String(tf || '1d').toLowerCase()] || 'D';
+    }
+
+    // Acrescenta um gráfico interativo no fim de um bloco de resultados (Sniper ou Duelo)
+    function tvAnexarGrafico(bloco, ticker, opcoes = {}) {
+        try {
+            const simb = tvSimbolo(ticker);
+            if (!bloco || !simb) return;
+            const simbComp = opcoes.comparar ? tvSimbolo(opcoes.comparar) : null;
+            const anterior = bloco.querySelector(':scope > .tv-bloco');
+            if (anterior) anterior.remove();
+            const id = 'tv-' + Math.random().toString(36).slice(2, 9);
+            const div = document.createElement('div');
+            div.className = 'tv-bloco';
+            div.innerHTML = `
+                <div class="tv-bloco-cab">
+                    <span class="dica-edu">📈 Gráfico interativo${simbComp ? ' · ' + ticker.toUpperCase() + ' vs ' + String(opcoes.comparar).toUpperCase() : ''} ℹ️
+                        <span class="dica-texto" style="width:340px; text-transform:none; font-weight:normal">Gráfico do TradingView: muda o período em cima, acrescenta indicadores (médias, RSI, MACD…) no botão <b>Indicadores</b> e desenha linhas de tendência na barra lateral.${simbComp ? ' No Duelo, os dois ativos aparecem em <b>percentagem</b>, a partir do mesmo ponto, para se comparar o desempenho e não o preço.' : ''} Os dados das bolsas chegam com algum atraso (cripto em tempo real). Se aparecer «símbolo inválido», a bolsa desse ativo não está disponível nos widgets gratuitos.</span>
+                    </span>
+                    <a href="https://www.tradingview.com/chart/?symbol=${encodeURIComponent(simb)}" target="_blank" rel="noopener">Abrir no TradingView ↗</a>
+                </div>
+                <div class="tv-grafico" id="${id}"></div>`;
+            bloco.appendChild(div);
+            const config = {
+                autosize: true, symbol: simb, interval: tvIntervalo(opcoes.intervalo), timezone: 'Europe/Lisbon',
+                theme: 'dark', style: simbComp ? '2' : '1', locale: 'br', backgroundColor: '#0d1117',
+                gridColor: 'rgba(48, 54, 61, 0.5)', allow_symbol_change: false, hide_side_toolbar: false,
+                calendar: false, save_image: false, support_host: 'https://www.tradingview.com'
+            };
+            if (simbComp) config.compare_symbols = [{ symbol: simbComp, position: 'SameScale' }];
+            tvWidget(document.getElementById(id), 'embed-widget-advanced-chart.js', config);
+        } catch (e) { console.warn('TradingView:', e); }
+    }
+
+    function tvMapaCalor(fonte, botao) {
+        const caixa = document.getElementById('tv-mapa-caixa');
+        if (!caixa) return;
+        if (!fonte && caixa.dataset.fonte) return;          // já carregado: abrir/fechar não recarrega
+        fonte = fonte || 'SPX500';
+        if (botao) document.querySelectorAll('.tv-fonte').forEach(b => b.classList.toggle('ativo', b === botao));
+        caixa.dataset.fonte = fonte;
+        tvWidget(caixa, 'embed-widget-stock-heatmap.js', {
+            exchanges: [], dataSource: fonte, grouping: 'sector', blockSize: 'market_cap_basic', blockColor: 'change',
+            locale: 'br', symbolUrl: '', colorTheme: 'dark', hasTopBar: false, isDataSetEnabled: false, isZoomEnabled: true,
+            hasSymbolTooltip: true, isMonoSize: false, width: '100%', height: '100%'
+        });
     }
 
     // =========================================================
