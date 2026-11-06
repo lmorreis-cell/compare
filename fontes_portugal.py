@@ -5,6 +5,8 @@ fontes_portugal.py — Portugal em números, de fontes oficiais, gratuitas e sem
        ao consumo em Portugal, comparados com a média dos bancos da área do euro.             → portugal_bdp.json
     2. Eurostat (que publica os dados do INE harmonizados): estimativa rápida da inflação, taxa de desemprego mensal
        e preços da habitação, de Portugal e da área do euro.                                     → portugal_eurostat.json
+    3. Comissão Europeia (via Eurostat): inquéritos de confiança — sentimento económico, consumidores, indústria e
+       serviços, de Portugal e da área do euro.                                                  → portugal_eurostat.json
 
 Porque Eurostat e não diretamente o INE: o serviço de dados do INE limita os pedidos automáticos de forma muito
 agressiva (responde 429 e bloqueia temporariamente o endereço). Os números são os mesmos: o Eurostat recebe-os do INE.
@@ -44,7 +46,15 @@ SERIES_EUROSTAT = {
     "inflacao": ("teicp000", {"unit": "PCH_M12"}, 26),         # estimativa rápida incluída (mês mais recente)
     "desemprego": ("une_rt_m", {"s_adj": "SA", "age": "TOTAL", "sex": "T", "unit": "PC_ACT"}, 36),
     "habitacao": ("prc_hpi_q", {"purchase": "TOTAL", "unit": "RCH_A"}, 12),
+    # Inquéritos de conjuntura da Comissão Europeia (publicados pelo Eurostat no fim de cada mês, sobre esse mês).
+    # As tabelas «teibs» só trazem os últimos 12 meses: o histórico vai-se acumulando no ficheiro, mês a mês.
+    "sentimento": ("teibs010", {"indic": "BS-ESI-I", "s_adj": "SA"}, 12),          # índice: média de longo prazo = 100
+    "conf_consumidores": ("teibs020", {"indic": "BS-CSMCI-BAL", "s_adj": "SA"}, 12),  # saldo de respostas (%)
+    "conf_industria": ("teibs020", {"indic": "BS-ICI-BAL", "s_adj": "SA"}, 12),
+    "conf_servicos": ("teibs020", {"indic": "BS-SCI-BAL", "s_adj": "SA"}, 12),
 }
+SERIES_ACUMULADAS = {"sentimento", "conf_consumidores", "conf_industria", "conf_servicos"}
+MAX_ACUMULADO = 60  # meses guardados
 AREAS_EURO = ("EA21", "EA20", "EA")  # a área do euro muda de código quando entra um país novo
 
 
@@ -162,7 +172,8 @@ def _jsonstat_series(j, filtros, geo):
 def atualizar_eurostat(forcar=False):
     with _lock:
         d = _ler(ARQ_EUROSTAT, {"series": {}})
-        if not forcar and d.get("series") and (d.get("atualizado_em") or "")[:10] == date.today().isoformat():
+        completo = all(k in (d.get("series") or {}) for k in SERIES_EUROSTAT)
+        if not forcar and completo and (d.get("atualizado_em") or "")[:10] == date.today().isoformat():
             return True, "Já atualizado hoje."
         erros, n = [], 0
         for chave, (conjunto, filtros, ultimos) in SERIES_EUROSTAT.items():
@@ -177,6 +188,13 @@ def atualizar_eurostat(forcar=False):
                         area = a
                         break
                 if pt:
+                    if chave in SERIES_ACUMULADAS:  # junta ao que já estava guardado (os valores novos prevalecem)
+                        antigo = d["series"].get(chave) or {}
+                        pt = {**dict(antigo.get("PT") or []), **pt}
+                        if area and area == antigo.get("area"):
+                            ae = {**dict(antigo.get("AE") or []), **ae}
+                        pt = dict(sorted(pt.items())[-MAX_ACUMULADO:])
+                        ae = dict(sorted(ae.items())[-MAX_ACUMULADO:])
                     d["series"][chave] = {"PT": sorted(pt.items()), "AE": sorted(ae.items()), "area": area,
                                           "atualizado_fonte": j.get("updated")}
                     n += 1
@@ -215,12 +233,21 @@ def painel():
         if mes:
             out["bancos"][chave] = {"nome": nome, "mes": mes, "taxa": v, "ha_um_ano": ano, "serie": s[chave][-36:]}
     passos = {"inflacao": 12, "desemprego": 12, "habitacao": 4}
+    out["confianca"] = {}
     for chave, x in (e.get("series") or {}).items():
         mes, v, ano = _ultimo_e_ano(x.get("PT"), passos.get(chave, 12))
         mes_ae, v_ae, _ = _ultimo_e_ano(x.get("AE"), passos.get(chave, 12))
-        if mes:
-            out["economia"][chave] = {"periodo": mes, "pt": v, "pt_ha_um_ano": ano, "ae": v_ae, "periodo_ae": mes_ae,
-                                      "area": x.get("area"), "serie": [list(p) for p in x["PT"][-36:]]}
+        if not mes:
+            continue
+        item = {"periodo": mes, "pt": v, "pt_ha_um_ano": ano, "ae": v_ae, "periodo_ae": mes_ae,
+                "area": x.get("area"), "serie": [list(p) for p in x["PT"][-36:]]}
+        if chave in SERIES_ACUMULADAS:
+            pt = x.get("PT") or []
+            item["mes_anterior"] = pt[-2][1] if len(pt) > 1 else None
+            item["serie_ae"] = [list(p) for p in (x.get("AE") or [])[-36:]]
+            out["confianca"][chave] = item
+        else:
+            out["economia"][chave] = item
     return out
 
 
@@ -233,7 +260,9 @@ _ultima_tentativa = {}
 def diario(agora):
     for nome, f, arq in (("Banco de Portugal", atualizar_bdp, ARQ_BDP), ("Eurostat", atualizar_eurostat, ARQ_EUROSTAT)):
         existente = _ler(arq, {})
-        vazio = not existente.get("series")
+        # «vazio» também quando falta um indicador novo (ex.: a confiança, acrescentada depois): vai buscá-lo já
+        esperadas = SERIES_EUROSTAT if arq == ARQ_EUROSTAT else SERIES_BDP
+        vazio = not existente.get("series") or any(k not in existente["series"] for k in esperadas)
         if (existente.get("atualizado_em") or "")[:10] == agora.date().isoformat() and not vazio:
             continue
         if not vazio and agora.hour < 12:
@@ -251,7 +280,7 @@ def diario(agora):
 def testar():
     r = {}
     for nome, f, chave in (("Banco de Portugal · juros de depósitos e crédito", atualizar_bdp, "bdp"),
-                           ("Eurostat/INE · inflação, desemprego e habitação", atualizar_eurostat, "eurostat")):
+                           ("Eurostat/INE · inflação, desemprego, habitação e confiança", atualizar_eurostat, "eurostat")):
         try:
             ok, msg = f(forcar=True)
         except Exception as e:

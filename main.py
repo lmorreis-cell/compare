@@ -117,6 +117,10 @@ cache = Cache(app)
 # O Flask precisa de uma chave secreta para assinar os cookies do browser
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "chave_fallback_insegura")
 
+# Ícone do separador (favicon) e limpeza da antiga app no telemóvel, que foi desligada (ver pwa.py)
+import pwa
+pwa.registar(app)
+
 # ==========================================
 # MOTOR OAUTH2 DISCORD E RBAC (CASCATA DE PRIVILÉGIOS)
 # ==========================================
@@ -2558,6 +2562,9 @@ rel_psi.iniciar()
 # Escola: /escola (membros) e /admin/escola (editor de lições)
 import escola
 escola.registar(app, requer_cargo=requer_cargo, e_admin=_e_admin)
+# Pergunta do dia da Escola no Discord (envio pelo agendador; configuração na Área de Gestão)
+import escola_discord
+escola_discord.registar(app, e_admin=_e_admin)
 
 
 # ==========================================
