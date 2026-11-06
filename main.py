@@ -2596,6 +2596,8 @@ def api_cotacoes_lote():
         return jsonify({"precos": {}, "cambio": None, "erro": str(e)}), 503
 
     precos = {}
+    anteriores = {}   # fecho da sessão anterior (para a variação do dia no Cofre)
+    datas = {}        # data da última cotação
     cambio = None
     if dados is not None and not dados.empty:
         fechos = dados['Close']
@@ -2603,11 +2605,14 @@ def api_cotacoes_lote():
             serie_t = yg.serie(fechos, t).dropna()
             if not serie_t.empty:
                 precos[t] = round(float(serie_t.iloc[-1]), 5)
+                datas[t] = serie_t.index[-1].strftime('%Y-%m-%d')
+                if len(serie_t) >= 2:
+                    anteriores[t] = round(float(serie_t.iloc[-2]), 5)
         serie_fx = yg.serie(fechos, "EURUSD=X").dropna()
         if not serie_fx.empty:
             cambio = round(float(serie_fx.iloc[-1]), 4)
 
-    return jsonify({"precos": precos, "cambio": cambio})
+    return jsonify({"precos": precos, "anteriores": anteriores, "datas": datas, "cambio": cambio})
 
 
 @app.route('/api/radar_eventos_carteira', methods=['POST'])
