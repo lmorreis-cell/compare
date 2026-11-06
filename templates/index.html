@@ -322,12 +322,41 @@
         <button onclick="this.parentElement.style.display='none'" style="background: rgba(0,0,0,0.2); border: none; color: white; cursor: pointer; font-weight: bold; padding: 4px 10px; border-radius: 4px; transition: background 0.2s;">✕</button>
     </div>
     
-    <!-- BOTÃO DE RETORNO AO MENU (Agora ancorado à grelha central) -->
-    <div style="margin-top: 10px; margin-bottom: -10px; display: flex; justify-content: flex-start; position: relative; z-index: 1000;">
-        <a href="/" title="Voltar à página inicial do Portal (relatórios, Liga, Escola)" style="background: #232d3f; color: #d7dce6; padding: 8px 16px; border-radius: 4px; text-decoration: none; font-size: 13px; font-weight: bold; border: 1px solid #2d333b; display: inline-flex; align-items: center; gap: 6px; transition: background 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">
-            🏠 Página inicial
-        </a>
+    <!-- BARRA DE TOPO (a mesma navegação da página inicial) -->
+    <style>
+        .pb-topo { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 10px 0 18px; padding: 10px 14px; background: #11161f; border: 1px solid #232b38; border-radius: 12px; position: relative; z-index: 1000; }
+        .pb-marca { display: flex; align-items: center; gap: 10px; text-decoration: none; color: #e6edf3; font-weight: 800; font-size: 15px; margin-right: auto; }
+        .pb-marca .pb-logo { width: 34px; height: 34px; border-radius: 9px; background: #f28b24; color: #1a1205; display: grid; place-items: center; font-weight: 900; font-size: 14px; }
+        .pb-marca small { display: block; font-size: 11px; color: #8b949e; font-weight: 500; }
+        .pb-btn { display: inline-flex; align-items: center; gap: 6px; position: relative; background: rgba(242,139,36,.10); border: 1px solid rgba(242,139,36,.35); color: #f28b24; padding: 7px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; text-decoration: none; }
+        .pb-btn:hover { background: rgba(242,139,36,.18); }
+        .pb-btn.sec { background: transparent; border-color: #30363d; color: #c9d1d9; }
+        .pb-user { display: inline-flex; align-items: center; border: 1px solid #30363d; border-radius: 999px; padding: 3px; }
+        .pb-user .pb-av { width: 24px; height: 24px; border-radius: 50%; background: #161c27; border: 1px solid #3a4456; display: grid; place-items: center; font-size: 11px; font-weight: 800; color: #e6edf3; }
+        .pb-ponto { display: none; position: absolute; top: -3px; right: -3px; width: 10px; height: 10px; border-radius: 50%; background: #f28b24; box-shadow: 0 0 0 2px #0b0e14; }
+        @media (max-width: 760px) {
+            .pb-topo { padding: 8px 10px; gap: 6px; }
+            .pb-marca > span:last-child, .pb-txt, .pb-user { display: none; }
+            .pb-btn { padding: 7px 9px; font-size: 14px; }
+        }
+    </style>
+    <div class="pb-topo">
+        <a href="/" class="pb-marca" title="Página inicial do Portal (relatórios, Liga, Escola)"><span class="pb-logo">PB</span><span>Portal Bolsa<small>partilha de ideias</small></span></a>
+        <a href="/" class="pb-btn sec" title="Página inicial do Portal">🏠</a>
+        {% if is_admin %}<a href="/admin" class="pb-btn" title="Área de Gestão">⚙️<span class="pb-txt">&nbsp;Gestão</span></a>{% endif %}
+        <a href="/escola" class="pb-btn" title="Escola">🎓<span class="pb-txt">&nbsp;Escola</span></a>
+        <a href="/glossario" class="pb-btn" title="Glossário">📖<span class="pb-txt">&nbsp;Glossário</span></a>
+        <a href="/novidades" class="pb-btn" title="O que há de novo">🆕<span class="pb-txt">&nbsp;Novidades</span><span class="pb-ponto" id="pb-nov-ponto"></span></a>
+        <span class="pb-user" title="{{ username|default('Membro') }}"><span class="pb-av">{{ (username|default('M'))[:1]|upper }}</span></span>
+        <a href="/logout" class="pb-btn sec" title="Terminar sessão">Sair</a>
     </div>
+    <script>
+        (function () {
+            var ultima = "{{ novidades_ultima|default('') }}", visto = "";
+            try { visto = localStorage.getItem("novidadesVisto") || ""; } catch (e) {}
+            if (ultima && ultima > visto) document.getElementById("pb-nov-ponto").style.display = "block";
+        })();
+    </script>
 
     <div class="terminal-global">
         
