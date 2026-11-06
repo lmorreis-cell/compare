@@ -19,6 +19,7 @@ Todos os dias (hora de Lisboa):
     12:00 → juros dos bancos em Portugal (Banco de Portugal) e inflação, desemprego e habitação (Eurostat/INE) (fontes_portugal.py)
     06:00 → agenda macro: reuniões do BCE e da Fed, publicações do BLS (calendario_macro.py); 05:00 → fails-to-deliver da SEC
     12:30 (dias úteis; sábado só a resposta) → pergunta do dia da Escola no Discord (escola_discord.py; WEBHOOK_ESCOLA)
+    hora marcada na Gestão (desligado por omissão) → newsletters Radar States / Europa (newsletters_auto.py)
     sempre → vigia: avisa o Admin em privado se a fotografia, um briefing ou um aviso falhar (alertas_admin.py)
 
 Todos os dias (10:00–21:59, hora de Lisboa):
@@ -60,6 +61,7 @@ import cmvm_comunicados
 import fontes_portugal
 import calendario_macro
 import escola_discord
+import newsletters_auto
 
 try:
     from zoneinfo import ZoneInfo
@@ -147,7 +149,8 @@ def _ciclo():
                              (cmvm_comunicados.diario, "leitura dos comunicados da CMVM"),
                              (fontes_portugal.diario, "atualização do Banco de Portugal e do Eurostat"),
                              (calendario_macro.diario, "atualização da agenda macro"),
-                             (escola_discord.diario, "pergunta do dia da Escola")):
+                             (escola_discord.diario, "pergunta do dia da Escola"),
+                             (newsletters_auto.diario, "newsletters Radar States / Europa")):
             try:
                 tarefa(agora_lisboa())
             except Exception as e:

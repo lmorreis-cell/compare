@@ -2565,6 +2565,9 @@ escola.registar(app, requer_cargo=requer_cargo, e_admin=_e_admin)
 # Pergunta do dia da Escola no Discord (envio pelo agendador; configuração na Área de Gestão)
 import escola_discord
 escola_discord.registar(app, e_admin=_e_admin)
+# Newsletters Radar States / Radar Europa geradas no próprio servidor (agendador + Área de Gestão)
+import newsletters_auto
+newsletters_auto.registar(app, e_admin=_e_admin)
 
 
 # ==========================================

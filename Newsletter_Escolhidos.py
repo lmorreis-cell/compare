@@ -4444,6 +4444,86 @@ def funcao_legado_remover_se_desnecessario():
 
    
 
+# =====================================================================
+# VERIFICAÇÃO AUTOMÁTICA DAS VARIAÇÕES DO DIA (antes de gravar a newsletter)
+# Volta a pedir ao Yahoo os fechos diários oficiais, à parte de tudo o resto, e confirma a variação
+# de cada ação. Se algum valor da newsletter fugir mais de LIMITE_PP pontos, o Top Vencedores/Perdedores
+# é refeito com os fechos oficiais e é enviado um aviso para a sala privada (WEBHOOK_ADMIN).
+# =====================================================================
+LIMITE_PP = 1.0
+
+def _variacoes_oficiais(tickers):
+    dados = yg.download(tickers, period="10d", interval="1d", usar_cache=False)
+    fechos = dados['Close'] if 'Close' in dados else dados
+    if isinstance(fechos, pd.Series):
+        fechos = fechos.to_frame(tickers[0])
+    out = {}
+    for t in fechos.columns:
+        s = fechos[t].dropna()
+        if len(s) >= 2 and s.iloc[-2]:
+            out[t] = ((s.iloc[-1] / s.iloc[-2]) - 1) * 100
+    return out
+
+def _avisar_admin(titulo, linhas, cor=0xF0AD4E):
+    url = _os.environ.get("WEBHOOK_ADMIN")
+    if not url:
+        print("   (sem WEBHOOK_ADMIN: o aviso fica só neste registo)")
+        return
+    try:
+        import requests
+        requests.post(url, json={"username": "Verificação da newsletter", "embeds": [{
+            "title": titulo, "description": "\n".join(linhas)[:3900], "color": cor,
+            "footer": {"text": datetime.now().strftime("%d/%m/%Y %H:%M")}}]}, timeout=15)
+    except Exception as e:
+        print(f"   Aviso para o Discord falhou: {e}")
+
+def verificar_movers(movers, ficheiro_tickers, nome_newsletter, excluir=(), extra=()):
+    print("A verificar as variações do dia com os fechos oficiais...")
+    try:
+        with open(ficheiro_tickers, "r") as f:
+            tickers = [l.strip().upper() for l in f if l.strip() and l.strip().upper() not in excluir]
+        tickers = list(dict.fromkeys(tickers + [t for t in extra if t not in tickers]))  # o mesmo universo do Top da newsletter
+        oficiais = _variacoes_oficiais(tickers)
+    except Exception as e:
+        print(f"   Verificação indisponível ({e}): a newsletter segue sem verificação.")
+        _avisar_admin(f"⚠️ {nome_newsletter}: verificação indisponível",
+                      [f"Não foi possível pedir os fechos oficiais ({str(e)[:200]}).", "A newsletter foi gravada sem verificação."])
+        return movers
+    if len(oficiais) < max(1, len(tickers) // 2):
+        print(f"   Só {len(oficiais)} de {len(tickers)} ações com fechos oficiais: verificação ignorada.")
+        return movers
+
+    problemas = []
+    for lista in ("gainers", "losers"):
+        for m in (movers or {}).get(lista, []):
+            ofi = oficiais.get(m["ticker"])
+            if ofi is not None and abs(ofi - m["perf"]) > LIMITE_PP:
+                problemas.append(f"**{m['ticker']}**: newsletter {m['perf']:+.1f}% · oficial {ofi:+.1f}%")
+
+    serie = pd.Series(oficiais).sort_values(ascending=False)
+    oficial = {
+        "gainers": [{"ticker": t, "perf": round(p, 1)} for t, p in serie.head(5).items() if p > 0],
+        "losers": [{"ticker": t, "perf": round(p, 1)} for t, p in serie.tail(5).sort_values(ascending=True).items() if p < 0],
+    }
+    antes = {(m["ticker"], l) for l in ("gainers", "losers") for m in (movers or {}).get(l, [])}
+    depois = {(m["ticker"], l) for l in ("gainers", "losers") for m in oficial[l]}
+    if antes != depois and not problemas:
+        problemas.append("A lista de maiores subidas/descidas não coincidia com a dos fechos oficiais.")
+
+    if not problemas:
+        print("   ✔ Variações confirmadas.")
+        return movers
+    print("   ✖ Diferenças encontradas, Top Vencedores/Perdedores refeito com os fechos oficiais:")
+    for p in problemas:
+        print("     -", p.replace("**", ""))
+    _avisar_admin(f"🛠️ {nome_newsletter}: variações corrigidas antes de publicar", problemas + [
+        "", "Corrigido na newsletter com os fechos oficiais:",
+        "🚀 " + ", ".join(f"{m['ticker']} {m['perf']:+.1f}%" for m in oficial["gainers"]),
+        "🩸 " + ", ".join(f"{m['ticker']} {m['perf']:+.1f}%" for m in oficial["losers"]),
+        "", "Outras secções que usam a mesma vela (Exception Report, breadth) podem ter sido afetadas: confirma a newsletter."])
+    return oficial
+
+
 if __name__ == "__main__":
     dados_breadth = None
     alertas_diarios = []
@@ -4471,6 +4551,7 @@ if __name__ == "__main__":
     
     # Recebemos apenas as 10 variáveis originais
     t_a, t_b, t_q, bl, g_disp, g_back, movers_diarios, correlacao_a, alertas_diarios, dados_breadth, breadth_macro, mapa_cobertura = executar_screener()
+    movers_diarios = verificar_movers(movers_diarios, "tickers_escolhidos_europe.txt", "Radar Europa", excluir=('^STOXX',))
 
     gravar_historico_auditoria(t_a, t_b)
     
