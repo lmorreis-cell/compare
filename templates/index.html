@@ -73,7 +73,10 @@
         .tv-bloco { margin-top: 25px; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 14px; color: #c9d1d9; font-family: inherit; }
         .tv-bloco-cab { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; font-size: 13px; font-weight: bold; color: #f0f2f5; text-transform: uppercase; }
         .tv-bloco-cab a { color: #58a6ff; font-size: 12px; text-transform: none; font-weight: normal; text-decoration: none; }
-        .tv-grafico { height: 460px; }
+        .tv-grafico { height: 460px; flex: 3 1 480px; min-width: 0; }
+        .tv-linha { display: flex; flex-wrap: wrap; gap: 12px; align-items: stretch; }
+        .tv-medidor { flex: 1 1 280px; background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 10px; }
+        .tv-medidor-tit { font-size: 12px; font-weight: bold; color: #c9d1d9; text-transform: uppercase; margin-bottom: 4px; }
         .tv-mapa { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; }
         .tv-mapa summary { cursor: pointer; font-size: 13px; font-weight: bold; color: #f0f2f5; text-transform: uppercase; }
         .tv-fonte { background: transparent; color: #8b949e; border: 1px solid #30363d; padding: 5px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; }
@@ -917,7 +920,13 @@
     <!-- SEPARADOR 3: CRIPTOATIVOS -->
     <div id="tab-cripto" class="tab-content">
         <!-- COLA AQUI: A caixa completa da "Arbitragem & Correlação (Spot vs Proxy)" -->
-        <!-- COLA AQUI: A caixa completa do "Cripto Sniper (Alavancagem & Liquidação)" --><!-- DUELO DE CORRELAÇÃO (SPOT VS PROXY) -->
+        <!-- COLA AQUI: A caixa completa do "Cripto Sniper (Alavancagem & Liquidação)" -->
+        <!-- MAPA DE CALOR CRIPTO (widget gratuito do TradingView, só carrega quando se abre) -->
+        <details id="tv-mapa-cripto" class="tv-mapa" ontoggle="if (this.open) tvMapaCripto()">
+            <summary>🗺️ Mapa de calor das criptomoedas <span class="dica-edu" style="text-transform:none; font-weight:normal" onclick="event.preventDefault()">ℹ️<span class="dica-texto" style="width:340px">Cada retângulo é uma criptomoeda: o <b>tamanho</b> é o valor de mercado e a <b>cor</b> é a variação nas últimas 24 horas (verde sobe, vermelho desce). Mostra num relance se o mercado cripto está todo na mesma direção ou se há moedas a destoar. Fornecido pelo TradingView, em tempo real.</span></span></summary>
+            <div id="tv-mapa-cripto-caixa" style="height:520px; margin-top:10px"></div>
+        </details>
+<!-- DUELO DE CORRELAÇÃO (SPOT VS PROXY) -->
     <div class="painel-controlo" style="border-left: 5px solid #00ffcc;">
         <h3 class="painel-titulo">
             <span class="dica-edu" style="border-bottom: 1px dotted #8b949e; cursor: help;">
@@ -8102,7 +8111,10 @@ function renderizarCalendarioDiario() {
                     </span>
                     <a href="https://www.tradingview.com/chart/?symbol=${encodeURIComponent(simb)}" target="_blank" rel="noopener">Abrir no TradingView ↗</a>
                 </div>
-                <div class="tv-grafico" id="${id}"></div>`;
+                <div class="tv-linha">
+                    <div class="tv-grafico" id="${id}"></div>
+                    ${simbComp ? '' : `<div class="tv-medidor"><div class="tv-medidor-tit"><span class="dica-edu">🧭 Opinião técnica do TradingView ℹ️<span class="dica-texto" style="width:320px; text-transform:none; font-weight:normal">Resumo automático do TradingView a partir de 26 indicadores técnicos (médias móveis e osciladores como RSI, MACD, estocástico…). Muda o período nos separadores. É uma <b>segunda opinião</b> mecânica para comparar com a análise do portal, não uma recomendação: quando as duas discordam, vale a pena perceber porquê.</span></span></div><div id="${id}-m" style="height:410px"></div></div>`}
+                </div>`;
             bloco.appendChild(div);
             const config = {
                 autosize: true, symbol: simb, interval: tvIntervalo(opcoes.intervalo), timezone: 'Europe/Lisbon',
@@ -8112,7 +8124,25 @@ function renderizarCalendarioDiario() {
             };
             if (simbComp) config.compare_symbols = [{ symbol: simbComp, position: 'SameScale' }];
             tvWidget(document.getElementById(id), 'embed-widget-advanced-chart.js', config);
+            if (!simbComp) {
+                const intervaloTA = { '60': '1h', '240': '4h', 'D': '1D', 'W': '1W' }[config.interval] || '1D';
+                tvWidget(document.getElementById(id + '-m'), 'embed-widget-technical-analysis.js', {
+                    interval: intervaloTA, width: '100%', height: '100%', isTransparent: true, symbol: simb,
+                    showIntervalTabs: true, displayMode: 'single', locale: 'br', colorTheme: 'dark'
+                });
+            }
         } catch (e) { console.warn('TradingView:', e); }
+    }
+
+    function tvMapaCripto() {
+        const caixa = document.getElementById('tv-mapa-cripto-caixa');
+        if (!caixa || caixa.dataset.carregado) return;
+        caixa.dataset.carregado = '1';
+        tvWidget(caixa, 'embed-widget-crypto-coins-heatmap.js', {
+            dataSource: 'Crypto', blockSize: 'market_cap_calc', blockColor: '24h_close_change|5', locale: 'br', symbolUrl: '',
+            colorTheme: 'dark', hasTopBar: false, isDataSetEnabled: false, isZoomEnabled: true, hasSymbolTooltip: true,
+            isMonoSize: false, width: '100%', height: '100%'
+        });
     }
 
     function tvMapaCalor(fonte, botao) {
