@@ -89,6 +89,11 @@
         .stop-niveis { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
         .stop-nivel { background: transparent; border: 1px solid #30363d; color: #8b949e; border-radius: 6px; padding: 6px 12px; font-size: 12px; font-weight: bold; cursor: pointer; }
         .stop-nivel.ativo { border-color: #f85149; color: #f85149; background: rgba(248,81,73,.08); }
+        .stop-vistas { display: flex; gap: 0; margin-bottom: 10px; border: 1px solid #30363d; border-radius: 8px; width: fit-content; overflow: hidden; }
+        .stop-vista { background: transparent; border: 0; color: #8b949e; padding: 8px 16px; font-size: 13px; font-weight: bold; cursor: pointer; }
+        .stop-vista + .stop-vista { border-left: 1px solid #30363d; }
+        .stop-vista.ativo[data-vista="stop"] { color: #f85149; background: rgba(248,81,73,.1); }
+        .stop-vista.ativo[data-vista="alvos"] { color: #3fb950; background: rgba(63,185,80,.1); }
         .stop-nivel:disabled { cursor: not-allowed; opacity: .6; }
         .stop-nivel small { font-weight: normal; font-size: 10px; margin-left: 4px; }
         .stop-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
@@ -465,7 +470,7 @@
                 <button class="tab-btn active" onclick="abrirSeparador(event, 'tab-radar')">📡 Radar Global</button>
                 <button class="tab-btn" onclick="abrirSeparador(event, 'tab-acoes')">📈 Ações & ETFs</button>
                 <button class="tab-btn" onclick="abrirSeparador(event, 'tab-cripto')">⚡ Criptoativos</button>
-                <button class="tab-btn" onclick="abrirSeparador(event, 'tab-stop');">🛑 Assistente de Stop</button>
+                <button class="tab-btn" onclick="abrirSeparador(event, 'tab-stop');">🎯 Stop e alvos</button>
                 <button class="tab-btn" onclick="abrirSeparador(event, 'tab-screener')">🦅 Screener Algorítmico</button>
             </div>
         </div>
@@ -1947,16 +1952,21 @@
 <div id="tab-stop" class="tab-content">
     <div class="painel-controlo" style="border-left: 5px solid #f85149;">
         <h3 class="painel-titulo">
-            <span class="dica-edu">🛑 Assistente de Stop
+            <span class="dica-edu">🎯 Stop e alvos
                 <span class="dica-texto" style="width: 400px; font-weight: normal; text-transform: none;">
                     O stop é o preço a que decides <b>antes</b> sair se a operação correr mal. Um bom stop responde a três perguntas, por esta ordem:
                     <b>1.</b> onde é que a ideia deixa de fazer sentido? <b>2.</b> quanto é que este ativo oscila normalmente (para o stop não ficar dentro do «ruído»)? <b>3.</b> quanto dinheiro aceito perder?
                     Primeiro decide-se o stop; depois calcula-se quantas ações comprar para que a perda fique dentro do que aceitas — nunca o contrário.
+                    Em «Pontos de entrada» / «Alvos de saída» vês onde faz sentido entrar (comprar já, esperar um recuo ou um rompimento) ou onde realizar o ganho, sempre com o stop e a relação ganho/risco.
                     O preço de entrada, o capital e as quantidades ficam só neste browser.
                 </span>
             </span>
         </h3>
-        <p style="color:#8b949e; font-size:12px; margin:0 0 12px">Calcula um stop com base na volatilidade do ativo, o tamanho da posição e avisa quando o ativo está «esticado» depois de uma subida forte.</p>
+        <p style="color:#8b949e; font-size:12px; margin:0 0 12px">Calcula o stop, o tamanho da posição, onde entrar e onde realizar o ganho, com base na volatilidade do ativo, nos suportes e resistências e no que aconteceu no passado. Avisa quando o ativo está «esticado» depois de uma subida forte.</p>
+        <div class="stop-vistas">
+            <button class="stop-vista ativo" data-vista="stop" title="Onde sair se correr mal">🛑 Stop</button>
+            <button class="stop-vista" data-vista="alvos" id="stop-vista-alvos" title="Onde entrar (se vais comprar) ou onde realizar o ganho (se já tens a ação)">🎯 Pontos de entrada</button>
+        </div>
         <div class="stop-niveis">
             <button class="stop-nivel ativo" data-nivel="1" title="Stop sugerido, tamanho da posição e a tabela com as várias opções">1 · Simples</button>
             <button class="stop-nivel" data-nivel="2" title="Troca a tabela de opções pelo gráfico com os níveis de stop desenhados por cima do preço">2 · Gráfico</button>
@@ -1973,7 +1983,7 @@
                 <select id="stop-risco" class="input-moderno"><option value="0.5">0,5% (prudente)</option><option value="1" selected>1% (habitual)</option><option value="2">2% (máximo recomendado)</option></select></label>
             <label class="sim-campo"><span class="dica-edu">Horizonte<span class="dica-texto" style="width:280px; left:0; transform:none">Quanto tempo pensas ficar. Quanto mais longo, mais espaço o stop precisa para aguentar as oscilações normais: dias = 1,5× o ATR, semanas = 2×, meses = 3×.</span></span>
                 <select id="stop-horizonte" class="input-moderno"><option value="1.5|10">Poucos dias</option><option value="2|30" selected>Algumas semanas</option><option value="3|90">Meses</option></select></label>
-            <button class="btn-moderno" style="background:#f85149; color:#fff; align-self:flex-end" onclick="stopCalcular()">Calcular stop</button>
+            <button class="btn-moderno" style="background:#f85149; color:#fff; align-self:flex-end" onclick="stopCalcular()">Calcular</button>
         </div>
         <div id="stop-resultado" style="margin-top:16px"></div>
         <div style="font-size:10.5px; color:#6e7681; margin-top:10px">Conteúdo educativo, não é recomendação de investimento. Operações de compra (long). Um stop não garante o preço de saída: em saltos de abertura (resultados, notícias) a venda pode sair abaixo do stop.</div>
@@ -8371,6 +8381,12 @@ function renderizarCalendarioDiario() {
         const distPct = (ref - stop) / ref * 100;
 
         let h = `<div style="font-size:13px; color:#8b949e; margin-bottom:10px">${d.nome ? `<b style="color:#e6edf3">${d.nome}</b> · ` : ''}${d.ticker} · última cotação ${m(d.preco)} (${d.data.slice(8, 10)}/${d.data.slice(5, 7)}) · RSI ${stopFmt(d.rsi, 0)} · oscilação média diária (ATR) ${m(atr)} = ${stopFmt(d.atr_pct, 1)}%</div>`;
+        const nivel = stopNivel();
+        let alv = null;
+        if (stopVista === 'alvos') {
+            alv = alvConteudo(d, { tenho, entrada, mult, dias, stop, m, eur, est, nivel });
+            h += alv.html;
+        } else {
         h += '<div class="stop-cartoes">';
         h += `<div class="stop-cartao" style="border-color:rgba(248,81,73,.5)"><h4>${usarProtetor ? '🛡️ Stop de proteção sugerido' : '🛑 Stop sugerido'}</h4>
             <div class="stop-grande">${m(stop)}</div>
@@ -8419,12 +8435,12 @@ function renderizarCalendarioDiario() {
         h += '</div>';
 
         // Zona de detalhe: muda com o nível (1 tabela de opções, 2 gráfico, 3 histórico)
-        const nivel = stopNivel();
         if (nivel === 2) h += `<div class="stop-cartao" style="margin-top:12px"><h4>📈 As opções de stop no gráfico</h4><div id="stop-grafico" style="height:520px"></div>
             <div id="stop-grafico-fora" style="font-size:11.5px; color:#8b949e"></div>
             <div style="font-size:11.5px; color:#8b949e; margin-top:6px">Linhas tracejadas = opções de stop (laranja apertado, verde equilibrado, azul largo; a ⭐ mais grossa é a sugestão); a linha amarela é ${tenho ? 'o preço de compra' : 'a entrada'}. O gráfico está ampliado na zona dos stops. Vê se o stop fica abaixo de fundos anteriores ou no meio das oscilações normais. Para criar um alerta de um nível específico, usa o nível 1.</div></div>`;
         else if (nivel === 3) h += stopHistorico(d, { tenho, entrada, mult, dias });
         else h += stopTabelaOpcoes(d, { tenho, entrada, mult, dias, sugerido: stop, moeda: m, eur });
+        }
 
         // Ativo esticado
         if (est.ativo) {
@@ -8447,12 +8463,17 @@ function renderizarCalendarioDiario() {
             if (faltam >= 0 && faltam <= dias) h += `<div class="stop-aviso forte" style="background:rgba(248,81,73,.06); border:1px solid rgba(248,81,73,.45)">📅 <b>Resultados em ${d.resultados.slice(8, 10)}/${d.resultados.slice(5, 7)}</b> (daqui a ${faltam} dia${faltam === 1 ? '' : 's'}), dentro do teu horizonte. No dia dos resultados a ação pode abrir muito abaixo do stop, e a venda sai a esse preço. Muitos traders reduzem a posição antes.</div>`;
         }
 
-        h += `<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px">
+        if (alv) {
+            if (alv.alerta) h += `<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px">
+                <button class="btn-moderno btn-azul" style="padding:9px 14px; font-size:12px" onclick="stopCriarAlerta(${alv.alerta.preco.toFixed(6)}, '${alv.alerta.cond}', '${alv.alerta.nota}')">${alv.alerta.texto}</button>
+            </div>
+            <div style="font-size:11px; color:#6e7681; margin-top:6px">O alerta avisa-te quando o fecho ficar ${alv.alerta.cond === 'abaixo' ? 'igual ou abaixo' : 'igual ou acima'} desse preço. Não substitui uma ordem na corretora.</div>`;
+        } else h += `<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px">
             <button class="btn-moderno btn-azul" style="padding:9px 14px; font-size:12px" onclick="stopCriarAlerta(${stop.toFixed(6)})">🔔 Criar alerta de stop na Central de Alertas</button>
         </div>
         <div style="font-size:11px; color:#6e7681; margin-top:6px">O alerta avisa-te quando o fecho ficar abaixo do stop. Não substitui uma ordem stop real na corretora.</div>`;
         caixa.innerHTML = h;
-        if (nivel === 2) stopDesenharGrafico(d, { tenho, entrada, mult, sugerido: stop });
+        if (nivel === 2) { if (alv) stopGrafico(d, alv.niveis); else stopDesenharGrafico(d, { tenho, entrada, mult, sugerido: stop }); }
     }
 
     function stopNivel() {
@@ -8466,14 +8487,7 @@ function renderizarCalendarioDiario() {
     });
 
     function stopDesenharGrafico(d, o) {
-        const el = document.getElementById('stop-grafico');
-        if (typeof Plotly === 'undefined' || !d.velas || !el) return;
-        const v = d.velas, SESS = 90, ini = Math.max(0, v.c.length - SESS);
-        const sl = a => (a || v.c).slice(ini);
-        const x = v.d.slice(ini).map(s => `${s.slice(8, 10)}/${s.slice(5, 7)}`);
-        const L = sl(v.l), H = sl(v.h), atr = d.atr;
-        const refPreco = o.tenho ? d.preco : o.entrada;
-        // Níveis a desenhar: opções + compra/entrada
+        const atr = d.atr, refPreco = o.tenho ? d.preco : o.entrada;
         const niveis = stopOpcoes(d, o.entrada, o.mult, o.tenho).map(op => {
             const distAtr = (refPreco - op.preco) / atr;
             const eSug = Math.abs(op.preco - o.sugerido) < 0.15 * atr;
@@ -8483,12 +8497,23 @@ function renderizarCalendarioDiario() {
         const jaTem = niveis.find(n => Math.abs(n.y - o.entrada) < 0.05 * atr);
         if (jaTem) Object.assign(jaTem, { cor: '#e3b341', traco: 'solid', larg: Math.max(jaTem.larg, 2) });
         else niveis.push({ y: o.entrada, cor: '#e3b341', txt: `${o.tenho ? 'Compra' : 'Entrada'} ${stopFmt(o.entrada)}`, larg: 2, traco: 'solid' });
-        // Zoom na zona útil: últimas ~30 sessões + níveis até 5 ATR abaixo do preço
+        stopGrafico(d, niveis);
+    }
+
+    // Gráfico genérico: velas das últimas 90 sessões + linhas horizontais com etiquetas que não se sobrepõem
+    function stopGrafico(d, niveis) {
+        const el = document.getElementById('stop-grafico');
+        if (typeof Plotly === 'undefined' || !d.velas || !el) return;
+        const v = d.velas, SESS = 90, ini = Math.max(0, v.c.length - SESS);
+        const sl = a => (a || v.c).slice(ini);
+        const x = v.d.slice(ini).map(s => `${s.slice(8, 10)}/${s.slice(5, 7)}`);
+        const L = sl(v.l), H = sl(v.h), atr = d.atr;
+        // Zoom na zona útil: últimas ~30 sessões + níveis até 5 ATR do preço
         const recL = Math.min(...L.slice(-30)), recH = Math.max(...H.slice(-30));
-        const visiveis = niveis.filter(n => n.y >= d.preco - 5 * atr || n.y >= recL);
+        const visiveis = niveis.filter(n => Math.abs(n.y - d.preco) <= 5 * atr || (n.y >= recL && n.y <= recH));
         const fora = niveis.filter(n => !visiveis.includes(n));
-        let lo = Math.min(recL, ...visiveis.map(n => n.y)) - 0.6 * atr, hi = Math.max(recH, d.preco) + 0.6 * atr;
-        // Etiquetas sem sobreposição: afastadas pelo menos ~4,2% da altura
+        let lo = Math.min(recL, ...visiveis.map(n => n.y)) - 0.6 * atr, hi = Math.max(recH, d.preco, ...visiveis.map(n => n.y)) + 0.6 * atr;
+        // Etiquetas afastadas pelo menos ~4,2% da altura
         const gap = (hi - lo) * 0.042;
         const ord = [...visiveis].sort((a, b) => b.y - a.y);
         let prev = Infinity;
@@ -8502,7 +8527,6 @@ function renderizarCalendarioDiario() {
             anot.push({ xref: 'paper', x: 1.014, xanchor: 'left', y: n.yl, yanchor: 'middle', text: n.sug ? `<b>${n.txt}</b>` : n.txt, showarrow: false,
                         font: { size: 11.5, color: n.cor }, bgcolor: 'rgba(13,17,23,.85)' });
         });
-        // Preço atual
         anot.push({ xref: 'paper', x: 0.01, xanchor: 'left', y: d.preco, yanchor: 'bottom', text: `Agora ${stopFmt(d.preco)}`, showarrow: false, font: { size: 11, color: '#e6edf3' } });
         const traces = [{
             type: 'candlestick', x, open: sl(v.o), high: H, low: L, close: sl(v.c), name: d.ticker, showlegend: false,
@@ -8517,7 +8541,7 @@ function renderizarCalendarioDiario() {
             shapes: formas, annotations: anot, dragmode: 'pan'
         }, { responsive: true, displayModeBar: false, scrollZoom: false });
         const f = document.getElementById('stop-grafico-fora');
-        if (f) f.innerHTML = fora.length ? `Fora do gráfico (muito abaixo do preço): ${fora.map(n => `<span style="color:${n.cor}">${n.txt}</span>`).join(' · ')}` : '';
+        if (f) f.innerHTML = fora.length ? `Fora do gráfico (longe do preço): ${fora.map(n => `<span style="color:${n.cor}">${n.txt}</span>`).join(' · ')}` : '';
     }
 
     // ---------- Nível 3: como cada método teria funcionado em situações parecidas do passado ----------
@@ -8533,10 +8557,9 @@ function renderizarCalendarioDiario() {
         return { atr, ema20, rsi };
     }
 
-    function stopHistorico(d, o) {
-        const v = d.velas; if (!v || !v.c || v.c.length < 120) return '';
-        const N = o.dias <= 10 ? 5 : o.dias <= 30 ? 20 : 60;
-        const { atr, ema20, rsi } = stopIndicadores(v), n = v.c.length, op = v.o || v.c;
+    // Sessões do passado parecidas com a de hoje (esticado / acima ou abaixo da EMA 20), com N sessões à frente
+    function stopAmostra(d, N, ind) {
+        const v = d.velas, n = v.c.length, { atr, ema20, rsi } = ind;
         const esticadoEm = i => {
             if (!(rsi[i] >= 70)) return false;
             let seq = 0; for (let k = i; k > 0 && v.c[k] > v.c[k - 1]; k--) seq++;
@@ -8544,17 +8567,25 @@ function renderizarCalendarioDiario() {
             return seq >= 4 || (v.c[i] - ema20[i]) / atr[i] >= 2 || v.c[i] / min20 - 1 >= 0.25;
         };
         const agoraEsticado = !!(d.esticado && d.esticado.ativo), agoraAcima = d.preco > d.ema20;
-        let amostra = [], criterio;
+        let amostra = [];
         for (let i = 40; i + N < n; i++) {
             const est = esticadoEm(i);
             if (agoraEsticado ? est : (!est && (v.c[i] > ema20[i]) === agoraAcima)) amostra.push(i);
         }
-        criterio = agoraEsticado ? 'em que o ativo também estava esticado (RSI ≥ 70 depois de uma subida forte)'
+        let criterio = agoraEsticado ? 'em que o ativo também estava esticado (RSI ≥ 70 depois de uma subida forte)'
             : agoraAcima ? 'em que o preço estava acima da EMA 20, sem estar esticado (como agora)' : 'em que o preço estava abaixo da EMA 20 (como agora)';
         if (amostra.length < 15) {
             amostra = []; for (let i = 40; i + N < n; i++) amostra.push(i);
             criterio = 'do último ano e meio (houve poucas situações parecidas com a atual)';
         }
+        return { amostra, criterio };
+    }
+
+    function stopHistorico(d, o) {
+        const v = d.velas; if (!v || !v.c || v.c.length < 120) return '';
+        const N = o.dias <= 10 ? 5 : o.dias <= 30 ? 20 : 60;
+        const { atr, ema20, rsi } = stopIndicadores(v), n = v.c.length, op = v.o || v.c;
+        const { amostra, criterio } = stopAmostra(d, N, { atr, ema20, rsi });
         const pivotAntes = i => { for (let j = i - 3; j >= Math.max(3, i - 126); j--) { const w = v.l.slice(j - 3, j + 4); if (v.l[j] === Math.min(...w) && v.l[j] < v.c[i]) return v.l[j]; } return null; };
         const metodos = [
             { nome: 'Mínimo da sessão anterior', fixo: i => v.l[i - 1] - 0.1 * atr[i] },
@@ -8688,15 +8719,369 @@ function renderizarCalendarioDiario() {
         </div>`;
     }
 
-    function stopCriarAlerta(preco) {
+    // =========================================================
+    // 🎯 ENTRADAS E ALVOS (mesmo separador do Assistente de Stop; contas 100% no browser)
+    // =========================================================
+    let stopVista = 'stop';
+    document.addEventListener('click', ev => {
+        const b = ev.target.closest('.stop-vista'); if (!b) return;
+        stopVista = b.dataset.vista;
+        document.querySelectorAll('.stop-vista').forEach(x => x.classList.toggle('ativo', x === b));
+        if (stopDados) stopMostrar();
+    });
+    document.addEventListener('change', ev => { if (ev.target && ev.target.id === 'stop-situacao') alvRotulo(); });
+    function alvRotulo() {
+        const t = document.getElementById('stop-situacao').value === 'tenho', b = document.getElementById('stop-vista-alvos');
+        if (b) b.textContent = t ? '🎯 Alvos de saída' : '🎯 Pontos de entrada';
+    }
+    const alvDM = s => s ? `${s.slice(8, 10)}/${s.slice(5, 7)}` : '';
+
+    // Máximos relevantes (pivots: o máximo mais alto de 7 sessões) acima do preço, no último ano
+    function alvResistencias(d, acimaDe) {
+        const v = d.velas; if (!v || !v.h) return [];
+        const ref = acimaDe ?? d.preco, n = v.h.length, ini = Math.max(3, n - 252), out = [];
+        for (let j = n - 4; j >= ini; j--) {
+            const w = v.h.slice(j - 3, j + 4);
+            if (v.h[j] === Math.max(...w) && v.h[j] > ref) out.push({ preco: v.h[j], data: v.d[j] });
+        }
+        out.sort((a, b) => a.preco - b.preco);
+        const u = []; out.forEach(r => { if (!u.some(x => Math.abs(x.preco - r.preco) < 0.5 * d.atr)) u.push(r); });
+        return u.slice(0, 5);
+    }
+    function alvMax52(d) {
+        const v = d.velas, n = v.h.length, ini = Math.max(0, n - 252); let mi = ini;
+        for (let j = ini; j < n; j++) if (v.h[j] > v.h[mi]) mi = j;
+        return { preco: v.h[mi], data: v.d[mi] };
+    }
+    // Último impulso de subida: máximo das últimas 60 sessões e o mínimo nas 60 anteriores a esse máximo
+    function alvImpulso(d) {
+        const v = d.velas, n = v.h.length; if (n < 70) return null;
+        let ih = n - 60; for (let j = n - 60; j < n; j++) if (v.h[j] >= v.h[ih]) ih = j;
+        let il = Math.max(0, ih - 60); for (let j = il; j <= ih; j++) if (v.l[j] <= v.l[il]) il = j;
+        const hi = v.h[ih], lo = v.l[il];
+        return hi > lo && ih - il >= 3 ? { hi, lo, dHi: v.d[ih], dLo: v.d[il] } : null;
+    }
+    // Probabilidade histórica de o preço SUBIR pelo menos distFrac nas n sessões seguintes (máximos)
+    function alvProbSubida(d, distFrac, n) {
+        const v = d.velas; if (!v || !v.c || v.c.length < n + 30) return null;
+        let t = 0, tot = 0;
+        for (let i = 0; i + n < v.c.length; i++) {
+            const alvo = v.c[i] * (1 + distFrac); let max = -Infinity;
+            for (let k = i + 1; k <= i + n; k++) if (v.h[k] > max) max = v.h[k];
+            tot++; if (max >= alvo) t++;
+        }
+        return tot ? t / tot : null;
+    }
+    const alvDedupe = (ops, prioridade, tol) => {
+        ops.sort((a, b) => prioridade.indexOf(a.id) - prioridade.indexOf(b.id));
+        const u = []; ops.forEach(o => { if (!u.some(x => Math.abs(x.preco - o.preco) < tol)) u.push(o); });
+        return u;
+    };
+
+    // ---------- Alvos de saída (já tens a ação) ----------
+    function alvAlvos(d, o) {
+        const p = d.preco, atr = d.atr, ops = [];
+        const add = (id, nome, preco, explica) => { if (preco > p + 0.25 * atr) ops.push({ id, nome, preco, explica }); };
+        alvResistencias(d).slice(0, 3).forEach((r, k) => add('res' + k, `Resistência de ${alvDM(r.data)}`, r.preco - 0.1 * atr,
+            `Máximo relevante (pivot) de ${stopFmt(r.preco)} em ${alvDM(r.data)}. O alvo fica um pouco abaixo: nestes níveis costumam aparecer vendedores, e o preço pode não chegar ao valor exato.`));
+        const mx = alvMax52(d);
+        add('max52', `Máximo de 52 semanas (${alvDM(mx.data)})`, mx.preco - 0.1 * atr, `O preço mais alto do último ano foi ${stopFmt(mx.preco)}. Muitos investidores que compraram lá vendem quando o preço volta a esse nível.`);
+        const imp = alvImpulso(d);
+        if (imp) [[1.272, '127%'], [1.618, '161,8%']].forEach(([f, t]) => add('fib' + f, `Extensão de Fibonacci ${t}`, imp.lo + (imp.hi - imp.lo) * f,
+            `Projeção do último impulso de subida (de ${stopFmt(imp.lo)} em ${alvDM(imp.dLo)} a ${stopFmt(imp.hi)} em ${alvDM(imp.dHi)}): ${t} desse movimento a partir do mínimo. Muito usada quando o preço já está acima de máximos anteriores e não há resistências por perto.`));
+        const R = o.mult * atr;
+        [1, 2, 3].forEach(k => add('r' + k, `${k}R desde a compra`, o.entrada + k * R,
+            `R = o risco inicial de uma operação com stop a ${stopFmt(o.mult, 1).replace(',0', '')}× ATR (${stopFmt(R)}). ${k}R = ganhar ${k} vez${k > 1 ? 'es' : ''} o que se arriscava ao comprar.`));
+        [1, 2].forEach(k => add('atr' + k, `+${stopFmt(k * o.mult, 1).replace(',0', '')}× ATR desde hoje`, p + k * o.mult * atr,
+            `O que a ação costuma andar no horizonte escolhido, ao ritmo normal de oscilação (${stopFmt(k * o.mult, 1).replace(',0', '')}× ${stopFmt(atr)}).`));
+        return alvDedupe(ops, ['res0', 'max52', 'res1', 'res2', 'fib1.272', 'fib1.618', 'r1', 'r2', 'r3', 'atr1', 'atr2'], 0.3 * atr).sort((a, b) => a.preco - b.preco);
+    }
+
+    // ---------- Pontos de entrada (vou comprar) ----------
+    function alvEntradas(d, o) {
+        const p = d.preco, atr = d.atr, v = d.velas, ops = [];
+        const add = (id, nome, preco, tipo, explica) => { if (preco > 0 && (tipo !== 'recuo' || preco < p - 0.1 * atr)) ops.push({ id, nome, preco, tipo, explica }); };
+        add('agora', 'Comprar já', p, 'agora', 'Ao preço atual. Não perdes a subida se ela continuar, mas pagas o preço de hoje.');
+        if (d.ema10) add('ema10', 'Recuo à EMA 10', d.ema10, 'recuo', 'Em tendências fortes, os recuos param muitas vezes na média de 10 sessões.');
+        if (d.ema20) add('ema20', 'Recuo à EMA 20', d.ema20, 'recuo', 'A média de 20 sessões é o «chão» habitual de uma tendência de curto prazo saudável.');
+        const sup = (d.suportes || []).find(s => s.preco < p);
+        if (sup) add('sup', `Perto do suporte de ${alvDM(sup.data)}`, sup.preco + 0.15 * atr, 'recuo', `Logo acima do último fundo relevante (${stopFmt(sup.preco)}): se o preço lá voltar e segurar, o stop pode ficar bem perto, logo abaixo do fundo.`);
+        const imp = alvImpulso(d);
+        if (imp && p > imp.lo) [[0.382, '38,2%'], [0.5, '50%'], [0.618, '61,8%']].forEach(([f, t]) => add('fib' + f, `Recuo de Fibonacci ${t}`, imp.hi - (imp.hi - imp.lo) * f, 'recuo',
+            `Devolve ${t} do último impulso de subida (de ${stopFmt(imp.lo)} a ${stopFmt(imp.hi)}). Os recuos de 38,2% a 61,8% são os mais comuns numa tendência que continua.`));
+        if (v && v.h) {
+            const max20 = Math.max(...v.h.slice(-20));
+            if (max20 > p + 0.1 * atr) add('romp', 'Rompimento do máximo de 20 sessões', max20 + 0.1 * atr, 'rompimento',
+                `Só compra se o preço passar acima de ${stopFmt(max20)} (o máximo das últimas 20 sessões): pagas mais caro, mas entras com a tendência confirmada.`);
+        }
+        const u = alvDedupe(ops, ['agora', 'sup', 'ema20', 'ema10', 'fib0.5', 'fib0.382', 'fib0.618', 'romp'], 0.25 * atr);
+        const W = o.dias <= 10 ? 5 : 10;
+        u.forEach(e => {
+            e.stop = e.preco - o.mult * atr;
+            if (e.id === 'sup' && sup) e.stop = Math.max(e.stop, sup.preco - 0.25 * atr);
+            const res = alvResistencias(d, e.preco + 0.5 * atr)[0], mx = alvMax52(d);
+            if (res) { e.alvo = res.preco - 0.1 * atr; e.alvoNome = `resistência de ${alvDM(res.data)}`; }
+            else if (mx.preco > e.preco + 0.5 * atr) { e.alvo = mx.preco - 0.1 * atr; e.alvoNome = 'máximo de 52 semanas'; }
+            else { e.alvo = e.preco + 2 * o.mult * atr; e.alvoNome = `${stopFmt(2 * o.mult, 0)}× ATR (sem resistências acima)`; }
+            e.rr = (e.alvo - e.preco) / (e.preco - e.stop);
+            e.prob = e.tipo === 'agora' ? 1 : e.tipo === 'recuo' ? stopProbToque(d, (p - e.preco) / p, W) : alvProbSubida(d, (e.preco - p) / p, W);
+        });
+        u.W = W;
+        return u.sort((a, b) => b.preco - a.preco);
+    }
+
+    function alvConteudo(d, c) {
+        const { tenho, entrada, mult, dias, stop, m, eur, est, nivel } = c;
+        const N = dias <= 10 ? 5 : dias <= 30 ? 20 : 60, atr = d.atr, p = d.preco;
+        const cripto = /-(USD|EUR|USDT)$/.test(d.ticker);
+        const pct = x => `${x >= 0 ? '+' : ''}${stopFmt(x, 1)}%`;
+        const cor = x => x >= 0 ? '#3fb950' : '#f85149';
+        const btn = (preco, cond, nota) => `<button class="btn-moderno" style="padding:5px 10px; font-size:11px; background:#232d3f; color:#e6edf3" onclick="stopCriarAlerta(${preco.toFixed(6)}, '${cond}', '${nota}')" title="Criar alerta na Central de Alertas">🔔</button>`;
+        let h = '', alerta, niveis = [];
+
+        if (tenho) {
+            const alvos = alvAlvos(d, { entrada, mult });
+            const qtd = parseFloat(document.getElementById('stop-qtd').value);
+            const riscoAgora = p - stop;
+            alvos.forEach(a => { a.gr = riscoAgora > 0 ? (a.preco - p) / riscoAgora : null; a.prob = alvProbSubida(d, (a.preco - p) / p, N); });
+            if (!alvos.length) return { html: `<div class="stop-aviso info">Não há alvos acima do preço atual nos dados disponíveis.</div>`, alerta: null, niveis };
+            const sug = alvos.find(a => a.gr !== null && a.gr >= 1.5) || alvos[0];
+            const a2 = alvos.find(a => a.preco >= sug.preco + 0.5 * atr);
+            const ganhoAlvo = a => (a.preco / entrada - 1) * 100;
+            const maxH22 = Math.max(...d.velas.h.slice(-22)), trailing = maxH22 - 3 * atr;
+            h += '<div class="stop-cartoes">';
+            h += `<div class="stop-cartao" style="border-color:rgba(63,185,80,.5)"><h4>🎯 Próximo alvo sugerido</h4>
+                <div class="stop-grande">${m(sug.preco)}</div>
+                <div style="font-size:13px; color:#c9d1d9; margin-top:6px">${sug.nome} · ${pct((sug.preco / p - 1) * 100)} desde hoje.
+                ${sug.prob !== null ? ` Em ${stopFmt(sug.prob * 100, 0)}% das sessões do último ano e meio o preço subiu pelo menos isto nas ${N} sessões seguintes.` : ''}</div>
+                <div class="stop-linha" style="margin-top:8px"><span>Ganho desde a compra</span><b style="color:${cor(ganhoAlvo(sug))}">${pct(ganhoAlvo(sug))}${qtd > 0 && d.fx ? ` · ${eur(qtd * (sug.preco - entrada) / d.fx)}` : ''}</b></div>
+                <div class="stop-linha"><span class="dica-edu">Ganho/risco a partir de hoje<span class="dica-texto" style="width:260px; left:0; transform:none">Quanto falta até ao alvo a dividir pelo que arriscas até ao stop sugerido (${m(stop)}). Acima de 1,5 vale a pena esperar pelo alvo; abaixo de 1, o que podes ganhar é pouco para o que arriscas.</span></span><b>${sug.gr === null ? '—' : stopFmt(sug.gr, 1) + ' : 1'}</b></div>
+                ${sug.gr !== null && sug.gr < 1.5 ? `<div style="font-size:12px; color:#e3b341; margin-top:6px">Nenhum alvo dá pelo menos 1,5 de ganho por 1 de risco: o stop está longe ou o preço já está perto das resistências. Pode fazer sentido realizar parte já.</div>` : ''}
+            </div>`;
+            const parte = x => cripto ? Math.floor(x * 10000) / 10000 : Math.floor(x);
+            const q1 = qtd > 0 ? parte(qtd / 3) : 0, q2 = qtd > 0 ? parte(qtd / 3) : 0, q3 = qtd > 0 ? qtd - q1 - q2 : 0;
+            const qf = x => stopFmt(x, cripto ? 4 : 0);
+            const linhaP = (rot, preco, q, txt) => `<div class="stop-linha"><span>${rot}${q ? ` <small style="color:#8b949e">(${qf(q)})</small>` : ''}</span><b>${txt}${preco ? ` <span style="color:${cor(preco - entrada)}">${pct((preco / entrada - 1) * 100)}</span>` : ''}</b></div>`;
+            h += `<div class="stop-cartao"><h4>🪜 Plano de saída em partes</h4>
+                ${est.ativo ? linhaP('⅓ já, ao preço atual', p, q1, m(p)) + linhaP(`⅓ no alvo (${sug.nome.replace(/\s*\(.*\)/, '')})`, sug.preco, q2, m(sug.preco))
+                    : linhaP(`⅓ no alvo 1 (${sug.nome.replace(/\s*\(.*\)/, '')})`, sug.preco, q1, m(sug.preco)) + (a2 ? linhaP(`⅓ no alvo 2 (${a2.nome.replace(/\s*\(.*\)/, '')})`, a2.preco, q2, m(a2.preco)) : linhaP('⅓ no alvo 1 também', sug.preco, q2, m(sug.preco)))}
+                ${linhaP('⅓ com trailing stop', null, q3, `hoje em ${m(trailing)}`)}
+                <div style="font-size:12px; color:#8b949e; margin-top:8px">${est.ativo ? 'O ativo está esticado: vender já uma parte garante ganho caso a subida acabe de forma brusca.' : 'Vender por partes evita a escolha «tudo ou nada»: garante ganho no primeiro alvo e deixa uma parte aproveitar uma subida maior.'}
+                Depois da primeira venda, sobe o stop do resto para o preço de compra. O trailing (máximo das últimas 22 sessões menos 3× ATR) só sobe, nunca desce.</div>
+            </div></div>`;
+            if (nivel === 2) h += alvCartaoGrafico('Linhas verdes tracejadas = alvos (a ⭐ mais grossa é a sugestão); vermelha = stop sugerido; amarela = preço de compra.');
+            else if (nivel === 3) h += alvHistorico(d, { tenho, entrada, mult, dias });
+            else {
+                const linhas = alvos.map(a => {
+                    const g = ganhoAlvo(a), eS = a === sug;
+                    return `<tr style="border-top:1px solid #21262d${eS ? '; background:rgba(63,185,80,.07)' : ''}">
+                        <td style="padding:7px 6px"><span class="dica-edu" style="font-weight:bold; color:#e6edf3">${eS ? '⭐ ' : ''}${a.nome}<span class="dica-texto" style="width:280px; left:0; transform:none; font-weight:normal">${a.explica}</span></span></td>
+                        <td style="padding:7px 6px; text-align:right; font-weight:bold; white-space:nowrap">${m(a.preco)}</td>
+                        <td style="padding:7px 6px; text-align:right; white-space:nowrap">${pct((a.preco / p - 1) * 100)}<br><small style="color:#8b949e">${stopFmt((a.preco - p) / atr, 1)}× ATR</small></td>
+                        <td style="padding:7px 6px; text-align:right">${a.prob === null ? '—' : stopFmt(a.prob * 100, 0) + '%'}</td>
+                        <td style="padding:7px 6px; text-align:right"><span style="color:${cor(g)}">${pct(g)}</span>${qtd > 0 && d.fx ? `<br><small style="color:#8b949e">${eur(qtd * (a.preco - entrada) / d.fx)}</small>` : ''}</td>
+                        <td style="padding:7px 6px; text-align:right">${a.gr === null ? '—' : stopFmt(a.gr, 1) + ' : 1'}</td>
+                        <td style="padding:7px 6px; text-align:right">${btn(a.preco, 'acima', 'Alvo (Stop e alvos)')}</td></tr>`;
+                }).join('');
+                h += `<div class="stop-cartao" style="margin-top:12px"><h4>🧭 Alvos possíveis, do mais perto para o mais longe</h4>
+                    <div style="overflow-x:auto"><table style="width:100%; border-collapse:collapse; font-size:12.5px; color:#c9d1d9" data-sem-scroll>
+                    <thead style="color:#8b949e; font-size:10.5px; text-transform:uppercase"><tr><th style="text-align:left; padding:6px">Método</th><th style="text-align:right; padding:6px">Alvo</th><th style="text-align:right; padding:6px">Distância</th>
+                    <th style="text-align:right; padding:6px"><span class="dica-edu">Atingido em ${N} sessões<span class="dica-texto" style="width:300px; right:0; left:auto; transform:none; text-transform:none; font-weight:normal">Em quantas das sessões do último ano e meio o preço subiu pelo menos esta distância nas ${N} sessões seguintes (horizonte escolhido). Estatística do passado, não uma previsão.</span></span></th>
+                    <th style="text-align:right; padding:6px">Ganho desde a compra</th><th style="text-align:right; padding:6px">Ganho/risco</th><th></th></tr></thead><tbody>${linhas}</tbody></table></div>
+                    <div style="font-size:11.5px; color:#8b949e; margin-top:8px">⭐ = o alvo mais perto com pelo menos 1,5 de ganho por 1 de risco até ao stop sugerido. Alvos perto são atingidos mais vezes mas rendem menos; alvos longe rendem mais mas muitas vezes não chegam. Passa o rato sobre cada método para ver como é calculado. 🔔 cria um alerta «fecho igual ou acima de».</div></div>`;
+            }
+            alerta = { preco: sug.preco, cond: 'acima', nota: 'Alvo (Stop e alvos)', texto: '🔔 Criar alerta do alvo na Central de Alertas' };
+            alvos.forEach(a => niveis.push({ y: a.preco, cor: '#3fb950', sug: a === sug, txt: `${a === sug ? '⭐ ' : ''}${a.nome.replace(/\s*\(.*\)/, '')} ${stopFmt(a.preco)}`, larg: a === sug ? 3 : 1.3, traco: 'dash' }));
+            niveis.push({ y: stop, cor: '#f85149', txt: `Stop ${stopFmt(stop)}`, larg: 2, traco: 'solid' });
+            if (Math.abs(entrada - stop) > 0.05 * atr) niveis.push({ y: entrada, cor: '#e3b341', txt: `Compra ${stopFmt(entrada)}`, larg: 2, traco: 'solid' });
+        } else {
+            const ents = alvEntradas(d, { mult, dias }), W = ents.W;
+            const capital = parseFloat(document.getElementById('stop-capital').value);
+            const riscoPct = parseFloat(document.getElementById('stop-risco').value);
+            const qtdPara = e => {
+                if (!(capital > 0 && d.fx) || !(e.preco > e.stop)) return null;
+                let q = capital * riscoPct / 100 * d.fx / (e.preco - e.stop);
+                if (q * e.preco / d.fx > capital) q = capital * d.fx / e.preco;
+                return cripto ? Math.floor(q * 10000) / 10000 : Math.floor(q);
+            };
+            const permitidas = ents.filter(e => e.rr > 0 && e.prob !== null && !(est.ativo && e.tipo !== 'recuo'));
+            const bons = permitidas.filter(e => e.rr >= 1);
+            const candidatas = bons.filter(e => e.prob >= 0.3);
+            const pool = candidatas.length ? candidatas : bons.length ? bons : permitidas.length ? permitidas : ents;
+            const sug = pool.reduce((a, b) => (b.prob ?? 0) * b.rr > (a.prob ?? 0) * a.rr ? b : a);
+            const improvavel = sug.tipo !== 'agora' && sug.prob !== null && sug.prob < 0.3;
+            const q = qtdPara(sug);
+            h += '<div class="stop-cartoes">';
+            h += `<div class="stop-cartao" style="border-color:rgba(57,197,207,.5)"><h4>🎯 Entrada sugerida</h4>
+                <div class="stop-grande">${m(sug.preco)}</div>
+                <div style="font-size:13px; color:#c9d1d9; margin-top:6px"><b>${sug.nome}</b>${sug.tipo === 'agora' ? '' : ` · ${pct((sug.preco / p - 1) * 100)} face a hoje`}.
+                ${sug.tipo === 'recuo' ? ` Em ${stopFmt(sug.prob * 100, 0)}% das sessões do último ano e meio o preço recuou até aqui nas ${W} sessões seguintes. Deixa uma ordem limitada ou um alerta.` : sug.tipo === 'rompimento' ? ` Em ${stopFmt(sug.prob * 100, 0)}% das sessões o preço chegou aqui nas ${W} sessões seguintes. Usa uma ordem stop de compra.` : ''}</div>
+                <div class="stop-linha" style="margin-top:8px"><span>Stop</span><b style="color:#f85149">${m(sug.stop)} (${pct((sug.stop / sug.preco - 1) * 100)})</b></div>
+                <div class="stop-linha"><span>Alvo (${sug.alvoNome})</span><b style="color:#3fb950">${m(sug.alvo)} (${pct((sug.alvo / sug.preco - 1) * 100)})</b></div>
+                <div class="stop-linha"><span class="dica-edu">Ganho/risco<span class="dica-texto" style="width:260px; left:0; transform:none">Distância até ao alvo a dividir pela distância até ao stop. 2 : 1 quer dizer que, se correr bem, ganhas o dobro do que perdes se correr mal: assim basta acertar em 1 de cada 3 operações para não perder dinheiro.</span></span><b>${stopFmt(sug.rr, 1)} : 1</b></div>
+                ${est.ativo ? `<div style="font-size:12px; color:#e3b341; margin-top:6px">Ativo esticado: a sugestão fica nos recuos, onde o risco de comprar no topo de uma subida brusca é menor.</div>` : ''}
+                ${sug.rr < 1 ? `<div style="font-size:12px; color:#e3b341; margin-top:6px">Nenhuma entrada dá pelo menos 1 de ganho por 1 de risco: há uma resistência perto, acima do preço. Pode valer a pena esperar que ela seja ultrapassada.</div>` : ''}
+                ${improvavel ? `<div style="font-size:12px; color:#8b949e; margin-top:6px">Atenção: um recuo destes foi raro no passado (${stopFmt(sug.prob * 100, 0)}% das vezes em ${W} sessões). Se não quiseres ficar de fora, uma alternativa é comprar uma parte já, com o stop de proteção, e o resto só se o preço recuar.</div>` : ''}
+            </div>`;
+            h += `<div class="stop-cartao"><h4>📏 Posição nesta entrada</h4>${q !== null ? `
+                <div class="stop-grande">${stopFmt(q, cripto ? 4 : 0)} <span style="font-size:14px; color:#8b949e">${cripto ? 'unidades' : 'ações'}</span></div>
+                <div class="stop-linha"><span>Valor investido</span><b>${eur(q * sug.preco / d.fx)} (${stopFmt(q * sug.preco / d.fx / capital * 100, 1)}% do capital)</b></div>
+                <div class="stop-linha"><span>Perda se o stop for tocado</span><b style="color:#f85149">−${eur(q * (sug.preco - sug.stop) / d.fx)}</b></div>
+                <div class="stop-linha"><span>Ganho se chegar ao alvo</span><b style="color:#3fb950">+${eur(q * (sug.alvo - sug.preco) / d.fx)}</b></div>`
+                : `<div style="font-size:13px; color:#8b949e">${d.fx ? 'Indica o capital da carteira para saber quantas ações comprar em cada entrada.' : 'Não foi possível obter o câmbio para converter para euros.'}</div>`}
+            </div></div>`;
+            if (nivel === 2) h += alvCartaoGrafico('Linhas azul-turquesa = entradas em recuo (a ⭐ mais grossa é a sugestão); roxa = rompimento; vermelha = stop da entrada sugerida; verde = o seu alvo.');
+            else if (nivel === 3) h += alvHistorico(d, { tenho, entrada, mult, dias });
+            else {
+                const linhas = ents.map(e => {
+                    const eS = e === sug, qq = qtdPara(e);
+                    return `<tr style="border-top:1px solid #21262d${eS ? '; background:rgba(57,197,207,.07)' : ''}">
+                        <td style="padding:7px 6px"><span class="dica-edu" style="font-weight:bold; color:#e6edf3">${eS ? '⭐ ' : ''}${e.nome}<span class="dica-texto" style="width:280px; left:0; transform:none; font-weight:normal">${e.explica}</span></span></td>
+                        <td style="padding:7px 6px; text-align:right; font-weight:bold; white-space:nowrap">${m(e.preco)}<br><small style="color:#8b949e">${e.tipo === 'agora' ? 'hoje' : pct((e.preco / p - 1) * 100)}</small></td>
+                        <td style="padding:7px 6px; text-align:right">${e.tipo === 'agora' ? '—' : e.prob === null ? '—' : stopFmt(e.prob * 100, 0) + '%'}</td>
+                        <td style="padding:7px 6px; text-align:right; white-space:nowrap; color:#f85149">${m(e.stop)}</td>
+                        <td style="padding:7px 6px; text-align:right; white-space:nowrap; color:#3fb950">${m(e.alvo)}</td>
+                        <td style="padding:7px 6px; text-align:right; font-weight:bold; color:${e.rr >= 2 ? '#3fb950' : e.rr >= 1 ? '#e3b341' : '#f85149'}">${stopFmt(e.rr, 1)} : 1</td>
+                        <td style="padding:7px 6px; text-align:right">${qq === null ? '—' : stopFmt(qq, cripto ? 4 : 0)}</td>
+                        <td style="padding:7px 6px; text-align:right">${e.tipo === 'agora' ? '' : btn(e.preco, e.tipo === 'recuo' ? 'abaixo' : 'acima', 'Entrada (Stop e alvos)')}</td></tr>`;
+                }).join('');
+                h += `<div class="stop-cartao" style="margin-top:12px"><h4>🧭 Onde entrar: comprar já, esperar um recuo ou um rompimento</h4>
+                    <div style="overflow-x:auto"><table style="width:100%; border-collapse:collapse; font-size:12.5px; color:#c9d1d9" data-sem-scroll>
+                    <thead style="color:#8b949e; font-size:10.5px; text-transform:uppercase"><tr><th style="text-align:left; padding:6px">Entrada</th><th style="text-align:right; padding:6px">Preço</th>
+                    <th style="text-align:right; padding:6px"><span class="dica-edu">Chega lá em ${W} sessões<span class="dica-texto" style="width:300px; right:0; left:auto; transform:none; text-transform:none; font-weight:normal">Em quantas das sessões do último ano e meio o preço chegou a esta distância nas ${W} sessões seguintes. É o preço de esperar: uma entrada melhor que raramente chega faz-te perder a operação. Estatística do passado, não uma previsão.</span></span></th>
+                    <th style="text-align:right; padding:6px">Stop</th><th style="text-align:right; padding:6px">Alvo</th><th style="text-align:right; padding:6px">Ganho/risco</th><th style="text-align:right; padding:6px">Posição (mesmo risco)</th><th></th></tr></thead><tbody>${linhas}</tbody></table></div>
+                    <div style="font-size:11.5px; color:#8b949e; margin-top:8px">⭐ = melhor equilíbrio entre a probabilidade de o preço lá chegar e o ganho/risco${est.ativo ? ' (com o ativo esticado, só entre os recuos)' : ''}. Um preço melhor aumenta o ganho/risco, mas pode nunca chegar — e é precisamente quando não recua que a ação mais sobe. O stop de cada entrada fica a ${stopFmt(mult, 1).replace(',0', '')}× ATR (ou logo abaixo do suporte); o alvo é a primeira resistência acima. 🔔 cria um alerta para o preço de entrada.</div></div>`;
+            }
+            alerta = sug.tipo === 'agora' ? null : { preco: sug.preco, cond: sug.tipo === 'recuo' ? 'abaixo' : 'acima', nota: 'Entrada (Stop e alvos)', texto: '🔔 Criar alerta da entrada na Central de Alertas' };
+            ents.filter(e => e.tipo !== 'agora').forEach(e => niveis.push({ y: e.preco, cor: e.tipo === 'recuo' ? '#39c5cf' : '#bc8cff', sug: e === sug, txt: `${e === sug ? '⭐ ' : ''}${e.nome.replace(/\s*\(.*\)/, '')} ${stopFmt(e.preco)}`, larg: e === sug ? 3 : 1.3, traco: 'dash' }));
+            niveis.push({ y: sug.stop, cor: '#f85149', txt: `Stop ${stopFmt(sug.stop)}`, larg: 2, traco: 'solid' });
+            niveis.push({ y: sug.alvo, cor: '#3fb950', txt: `Alvo ${stopFmt(sug.alvo)}`, larg: 2, traco: 'solid' });
+        }
+        return { html: h, alerta, niveis };
+    }
+
+    function alvCartaoGrafico(legenda) {
+        return `<div class="stop-cartao" style="margin-top:12px"><h4>📈 No gráfico</h4><div id="stop-grafico" style="height:520px"></div>
+            <div id="stop-grafico-fora" style="font-size:11.5px; color:#8b949e"></div>
+            <div style="font-size:11.5px; color:#8b949e; margin-top:6px">${legenda} O gráfico está ampliado na zona útil. Para criar alertas de cada nível, usa o nível 1.</div></div>`;
+    }
+
+    // ---------- Nível 3: como teria funcionado no passado ----------
+    function alvHistorico(d, o) {
+        const v = d.velas; if (!v || !v.c || v.c.length < 120) return '';
+        const N = o.dias <= 10 ? 5 : o.dias <= 30 ? 20 : 60;
+        const ind = stopIndicadores(v), { atr } = ind, n = v.c.length, op = v.o || v.c;
+        const { amostra, criterio } = stopAmostra(d, N, ind);
+        const pct = x => `<span style="color:${x >= 0 ? '#3fb950' : '#f85149'}">${x >= 0 ? '+' : ''}${stopFmt(x * 100, 1)}%</span>`;
+        const resistAntes = i => { let best = null; for (let j = i - 3; j >= Math.max(3, i - 252); j--) { const w = v.h.slice(j - 3, j + 4); if (v.h[j] === Math.max(...w) && v.h[j] > v.c[i] + 0.5 * atr[i] && (best === null || v.h[j] < best)) best = v.h[j]; } return best; };
+        const tabela = (cab, linhas, nota) => `<div style="overflow-x:auto"><table style="width:100%; border-collapse:collapse; font-size:12.5px; color:#c9d1d9" data-sem-scroll>
+            <thead style="color:#8b949e; font-size:10.5px; text-transform:uppercase"><tr>${cab.map((c, k) => `<th style="text-align:${k ? 'right' : 'left'}; padding:6px">${c}</th>`).join('')}</tr></thead><tbody>${linhas}</tbody></table></div>
+            <div style="font-size:11.5px; color:#8b949e; margin-top:8px">${nota} Estatística do passado de uma só ação, sem comissões: o futuro pode ser diferente.</div>`;
+        const media = a => a.reduce((x, y) => x + y, 0) / a.length;
+
+        if (o.tenho) {
+            // Saída: posição aberta ao fecho do dia i, stop inicial a mult×ATR; vende conforme o plano
+            const simular = (i, plano) => {
+                const ent = v.c[i], R = o.mult * atr[i];
+                const alvos = plano.alvos(i, ent, R); if (alvos === null) return null;
+                let stop = ent - R, resto = 1, ganho = 0, atingiu = false, maxH = Math.max(...v.h.slice(Math.max(0, i - 21), i + 1));
+                const pend = alvos.map(a => ({ ...a })).sort((a, b) => a.nivel - b.nivel);
+                for (let k = i + 1; k <= i + N && resto > 1e-9; k++) {
+                    if (plano.trailing) stop = Math.max(stop, maxH - 3 * atr[k - 1]);
+                    if (v.l[k] <= stop) { ganho += resto * (Math.min(stop, op[k]) / ent - 1); resto = 0; break; }
+                    for (const a of pend) if (!a.feito && v.h[k] >= a.nivel) {
+                        a.feito = true; atingiu = true; const f = Math.min(a.frac, resto);
+                        ganho += f * (Math.max(a.nivel, op[k]) / ent - 1); resto -= f;
+                        if (plano.beAposPrimeiro) stop = Math.max(stop, ent);
+                    }
+                    maxH = Math.max(maxH, v.h[k]);
+                }
+                if (resto > 1e-9) ganho += resto * (v.c[i + N] / ent - 1);
+                return { r: ganho, atingiu };
+            };
+            const planos = [
+                { nome: 'Vender tudo na resistência mais próxima', alvos: i => { const r = resistAntes(i); return r ? [{ nivel: r - 0.1 * atr[i], frac: 1 }] : null; } },
+                { nome: 'Vender tudo a 1R', alvos: (i, e, R) => [{ nivel: e + R, frac: 1 }] },
+                { nome: 'Vender tudo a 2R', alvos: (i, e, R) => [{ nivel: e + 2 * R, frac: 1 }] },
+                { nome: 'Vender tudo a 3R', alvos: (i, e, R) => [{ nivel: e + 3 * R, frac: 1 }] },
+                { nome: 'Em partes: ⅓ a 1R, ⅓ a 2R, ⅓ com trailing', alvos: (i, e, R) => [{ nivel: e + R, frac: 1 / 3 }, { nivel: e + 2 * R, frac: 1 / 3 }], trailing: true, beAposPrimeiro: true },
+                { nome: 'Sem alvo: só trailing 3× ATR desde o máximo', alvos: () => [], trailing: true, semAlvos: true },
+                { nome: 'Segurar até ao fim (só o stop inicial)', alvos: () => [], semAlvo: true, semAlvos: true },
+            ];
+            const res = planos.map(pl => {
+                const r = amostra.map(i => simular(i, pl)).filter(Boolean);
+                if (!r.length) return null;
+                const rr = r.map(x => x.r);
+                return { nome: pl.nome, n: r.length, ating: pl.semAlvos ? null : r.filter(x => x.atingiu).length / r.length,
+                         media: media(rr), pior: Math.min(...rr), melhor: Math.max(...rr), semAlvo: !!pl.semAlvo };
+            }).filter(Boolean);
+            if (!res.length) return '';
+            const top = Math.max(...res.map(r => r.media));
+            const linhas = res.map(r => `<tr style="border-top:1px solid #21262d${r.semAlvo ? '; color:#8b949e' : ''}">
+                <td style="padding:6px">${r.media === top ? '🏅 ' : ''}${r.nome}</td>
+                <td style="padding:6px; text-align:right">${r.ating === null ? '—' : stopFmt(r.ating * 100, 0) + '%'}</td>
+                <td style="padding:6px; text-align:right; font-weight:bold">${pct(r.media)}</td><td style="padding:6px; text-align:right">${pct(r.pior)}</td><td style="padding:6px; text-align:right">${pct(r.melhor)}</td></tr>`).join('');
+            return `<div class="stop-cartao" style="margin-top:12px"><h4>🧪 Como cada forma de sair teria funcionado no passado (${d.ticker})</h4>
+                <div style="font-size:12.5px; color:#c9d1d9; margin-bottom:8px">Simulação: em cada uma das <b>${amostra.length} sessões</b> ${criterio}, uma posição comprada ao fecho, com stop inicial a ${stopFmt(o.mult, 1).replace(',0', '')}× ATR (R = essa distância), vendida conforme o plano ou ao fim de <b>${N} sessões</b>. Se o stop e o alvo fossem tocados na mesma sessão, conta o stop (o pior caso).</div>
+                ${tabela(['Plano de saída', 'Alvo atingido', 'Resultado médio', 'Pior caso', 'Melhor caso'], linhas,
+                    'Como ler: alvos perto são atingidos muitas vezes mas cortam as grandes subidas; «segurar» apanha-as mas devolve ganhos nas descidas. Vender em partes costuma ficar no meio, com menos arrependimento. 🏅 = melhor resultado médio nesta ação e nestas condições.')}</div>`;
+        }
+
+        // Entrada: no dia i decide-se; espera até W sessões pelo preço; depois fica até i+N com stop a mult×ATR
+        const W = Math.max(3, Math.min(10, Math.floor(N / 2)));
+        const { ema20 } = ind, ema10 = []; { let e = v.c[0]; for (let i = 0; i < n; i++) { e = e + (v.c[i] - e) * 2 / 11; ema10.push(e); } }
+        const estrategias = [
+            { nome: 'Comprar já', nivel: i => v.c[i], tipo: 'agora' },
+            { nome: 'Esperar recuo à EMA 10', nivel: i => ema10[i] < v.c[i] ? ema10[i] : null, tipo: 'recuo' },
+            { nome: 'Esperar recuo à EMA 20', nivel: i => ema20[i] < v.c[i] ? ema20[i] : null, tipo: 'recuo' },
+            { nome: 'Esperar recuo de 1× ATR', nivel: i => v.c[i] - atr[i], tipo: 'recuo' },
+            { nome: 'Esperar recuo de 2× ATR', nivel: i => v.c[i] - 2 * atr[i], tipo: 'recuo' },
+            { nome: 'Comprar no rompimento do máximo de 20 sessões', nivel: i => { const mx = Math.max(...v.h.slice(Math.max(0, i - 19), i + 1)); return mx > v.c[i] + 0.1 * atr[i] ? mx + 0.1 * atr[i] : null; }, tipo: 'rompimento' },
+        ];
+        const res = estrategias.map(es => {
+            let ops = 0, entrou = 0; const rEnt = [], rOp = [];
+            amostra.forEach(i => {
+                const lvl = es.nivel(i); if (lvl === null || !(lvl > 0)) return;
+                ops++;
+                let k0 = null, preco = null;
+                if (es.tipo === 'agora') { k0 = i; preco = v.c[i]; }
+                else for (let k = i + 1; k <= Math.min(i + W, i + N - 1); k++) {
+                    if (es.tipo === 'recuo' && v.l[k] <= lvl) { k0 = k; preco = Math.min(lvl, op[k]); break; }
+                    if (es.tipo === 'rompimento' && v.h[k] >= lvl) { k0 = k; preco = Math.max(lvl, op[k]); break; }
+                }
+                if (k0 === null) { rOp.push(0); return; }
+                entrou++;
+                const stop = preco - o.mult * atr[i]; let saida = null;
+                for (let k = k0 + 1; k <= i + N; k++) if (v.l[k] <= stop) { saida = Math.min(stop, op[k]); break; }
+                const r = (saida ?? v.c[i + N]) / preco - 1;
+                rEnt.push(r); rOp.push(r);
+            });
+            if (!ops) return null;
+            return { nome: es.nome, ops, entrou: entrou / ops, mediaEnt: rEnt.length ? media(rEnt) : null, mediaOp: media(rOp), pior: rEnt.length ? Math.min(...rEnt) : null, agora: es.tipo === 'agora' };
+        }).filter(Boolean);
+        if (!res.length) return '';
+        const top = Math.max(...res.map(r => r.mediaOp));
+        const linhas = res.map(r => `<tr style="border-top:1px solid #21262d">
+            <td style="padding:6px">${r.mediaOp === top && top > 0 ? '🏅 ' : ''}${r.nome}${r.agora ? '' : ` <small style="color:#8b949e">(${r.ops} casos)</small>`}</td>
+            <td style="padding:6px; text-align:right">${stopFmt(r.entrou * 100, 0)}%</td>
+            <td style="padding:6px; text-align:right">${r.mediaEnt === null ? '—' : pct(r.mediaEnt)}</td>
+            <td style="padding:6px; text-align:right; font-weight:bold">${pct(r.mediaOp)}</td>
+            <td style="padding:6px; text-align:right">${r.pior === null ? '—' : pct(r.pior)}</td></tr>`).join('');
+        return `<div class="stop-cartao" style="margin-top:12px"><h4>🧪 Comprar já ou esperar? Como teria corrido no passado (${d.ticker})</h4>
+            <div style="font-size:12.5px; color:#c9d1d9; margin-bottom:8px">Simulação: em cada uma das <b>${amostra.length} sessões</b> ${criterio}, decide-se a entrada. Nas estratégias de espera, aguarda-se até <b>${W} sessões</b> pelo preço (se não chegar, fica-se de fora). Depois de entrar, stop a ${stopFmt(o.mult, 1).replace(',0', '')}× ATR e venda ao fim de <b>${N} sessões</b> contadas desde a decisão.</div>
+            ${tabela(['Estratégia', 'Conseguiu entrar', 'Resultado quando entrou', 'Resultado por oportunidade', 'Pior caso'], linhas,
+                'Como ler: «resultado quando entrou» mostra que esperar compra mais barato; «resultado por oportunidade» conta também as vezes em que se ficou de fora (0%) — é a comparação justa com «comprar já». 🏅 = melhor resultado por oportunidade nesta ação e nestas condições.' + (top <= 0 ? ' <b style="color:#e3b341">Nestas condições nenhuma estratégia ganhou dinheiro em média: no passado desta ação, comprar em situações como a atual correu mal — o resultado menos mau vem sobretudo de ficar de fora.</b>' : ''))}</div>`;
+    }
+
+    function stopCriarAlerta(preco, cond = 'abaixo', nota = 'Stop (Assistente de Stop)') {
         if (!stopDados || typeof calLerPrecos !== 'function') return;
         const lista = calLerPrecos();
         if (lista.length >= 50) { alert('⚠️ Máximo de 50 alertas de preço.'); return; }
         const p = Math.round(preco * 10000) / 10000;
-        lista.push({ id: Date.now(), ticker: stopDados.ticker, cond: 'abaixo', preco: p, nota: 'Stop (Assistente de Stop)', ativo: true });
+        lista.push({ id: Date.now(), ticker: stopDados.ticker, cond, preco: p, nota, ativo: true });
         calGravarPrecos(lista);
         if (typeof calVerificar === 'function') calVerificar(true);
-        alert(`✅ Alerta criado: ${stopDados.ticker} com fecho igual ou abaixo de ${stopFmt(p)}.`);
+        alert(`✅ Alerta criado: ${stopDados.ticker} com fecho igual ou ${cond === 'abaixo' ? 'abaixo' : 'acima'} de ${stopFmt(p)}.`);
     }
 
     // =========================================================
