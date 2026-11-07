@@ -1958,9 +1958,9 @@
         </h3>
         <p style="color:#8b949e; font-size:12px; margin:0 0 12px">Calcula um stop com base na volatilidade do ativo, o tamanho da posição e avisa quando o ativo está «esticado» depois de uma subida forte.</p>
         <div class="stop-niveis">
-            <button class="stop-nivel ativo" data-nivel="1">1 · Simples</button>
-            <button class="stop-nivel" data-nivel="2" disabled title="Em breve">2 · Comparar métodos <small>em breve</small></button>
-            <button class="stop-nivel" data-nivel="3" disabled title="Em breve">3 · Avançado <small>em breve</small></button>
+            <button class="stop-nivel ativo" data-nivel="1" title="Stop sugerido, tamanho da posição e as várias opções">1 · Simples</button>
+            <button class="stop-nivel" data-nivel="2" title="Acrescenta o gráfico com os níveis de stop desenhados por cima do preço">2 · Gráfico</button>
+            <button class="stop-nivel" data-nivel="3" title="Acrescenta como cada método teria funcionado em situações parecidas do passado">3 · Histórico</button>
         </div>
         <div class="stop-form">
             <label class="sim-campo"><span>Ticker</span><input id="stop-ticker" class="input-moderno" placeholder="Ex.: AAPL, EDP.LS, BTC-USD" style="text-transform:uppercase"></label>
@@ -8446,7 +8446,133 @@ function renderizarCalendarioDiario() {
             <button class="btn-moderno btn-azul" style="padding:9px 14px; font-size:12px" onclick="stopCriarAlerta(${stop.toFixed(6)})">🔔 Criar alerta de stop na Central de Alertas</button>
         </div>
         <div style="font-size:11px; color:#6e7681; margin-top:6px">O alerta avisa-te quando o fecho ficar abaixo do stop. Não substitui uma ordem stop real na corretora.</div>`;
+        // Níveis 2 e 3: gráfico e histórico
+        const nivel = stopNivel();
+        if (nivel >= 2) h += `<div class="stop-cartao" style="margin-top:12px"><h4>📈 Os níveis no gráfico (últimos 6 meses)</h4><div id="stop-grafico" style="height:420px"></div>
+            <div style="font-size:11.5px; color:#8b949e; margin-top:6px">Linhas tracejadas = opções de stop (laranja apertado, verde equilibrado, azul largo; a ⭐ mais grossa é a sugestão); a linha amarela é ${tenho ? 'o preço de compra' : 'a entrada'}. Vê se o stop fica abaixo de fundos anteriores ou no meio das oscilações normais.</div></div>`;
+        if (nivel >= 3) h += stopHistorico(d, { tenho, entrada, mult, dias });
         caixa.innerHTML = h;
+        if (nivel >= 2) stopDesenharGrafico(d, { tenho, entrada, mult, sugerido: stop });
+    }
+
+    function stopNivel() {
+        const b = document.querySelector('.stop-nivel.ativo');
+        return b ? +b.dataset.nivel : 1;
+    }
+    document.addEventListener('click', ev => {
+        const b = ev.target.closest('.stop-nivel'); if (!b) return;
+        document.querySelectorAll('.stop-nivel').forEach(x => x.classList.toggle('ativo', x === b));
+        if (stopDados) stopMostrar();
+    });
+
+    function stopDesenharGrafico(d, o) {
+        if (typeof Plotly === 'undefined' || !d.velas || !document.getElementById('stop-grafico')) return;
+        const v = d.velas, ini = Math.max(0, v.c.length - 126);
+        const x = v.d.slice(ini);
+        const ops = stopOpcoes(d, o.entrada, o.mult, o.tenho);
+        const traces = [{
+            type: 'candlestick', x, open: (v.o || v.c).slice(ini), high: v.h.slice(ini), low: v.l.slice(ini), close: v.c.slice(ini),
+            name: d.ticker, increasing: { line: { color: '#3fb950' } }, decreasing: { line: { color: '#f85149' } }, showlegend: false
+        }];
+        const formas = [], anotacoes = [];
+        const linha = (y, cor, texto, larg, traco) => {
+            formas.push({ type: 'line', xref: 'paper', x0: 0, x1: 1, y0: y, y1: y, line: { color: cor, width: larg, dash: traco } });
+            anotacoes.push({ xref: 'paper', x: 1, xanchor: 'left', y, text: texto, showarrow: false, font: { size: 10, color: cor } });
+        };
+        ops.forEach(op => {
+            const distAtr = ((o.tenho ? d.preco : o.entrada) - op.preco) / d.atr;
+            const cor = distAtr < 1.25 ? '#f0883e' : distAtr <= 2.5 ? '#3fb950' : '#58a6ff';
+            const eSug = Math.abs(op.preco - o.sugerido) < 0.15 * d.atr;
+            linha(op.preco, cor, `${eSug ? '⭐ ' : ''}${op.nome.replace(/\s*\(.*\)/, '')} ${stopFmt(op.preco)}`, eSug ? 2.4 : 1.1, 'dash');
+        });
+        linha(o.entrada, '#e3b341', `${o.tenho ? 'Compra' : 'Entrada'} ${stopFmt(o.entrada)}`, 1.5, 'solid');
+        Plotly.newPlot('stop-grafico', traces, {
+            paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: { color: '#8b949e', size: 11 },
+            margin: { l: 50, r: 200, t: 10, b: 30 }, xaxis: { rangeslider: { visible: false }, gridcolor: '#21262d', type: 'category', nticks: 8 },
+            yaxis: { gridcolor: '#21262d' }, shapes: formas, annotations: anotacoes
+        }, { responsive: true, displayModeBar: false });
+    }
+
+    // ---------- Nível 3: como cada método teria funcionado em situações parecidas do passado ----------
+    function stopIndicadores(v) {
+        const n = v.c.length, atr = new Array(n).fill(null), ema20 = new Array(n).fill(null), rsi = new Array(n).fill(null);
+        let a = null, e = v.c[0], g = 0, p = 0;
+        for (let i = 0; i < n; i++) {
+            const tr = i ? Math.max(v.h[i] - v.l[i], Math.abs(v.h[i] - v.c[i - 1]), Math.abs(v.l[i] - v.c[i - 1])) : v.h[i] - v.l[i];
+            a = a === null ? tr : a + (tr - a) / 14; atr[i] = a;
+            e = e + (v.c[i] - e) * 2 / 21; ema20[i] = e;
+            if (i) { const dlt = v.c[i] - v.c[i - 1]; g = g + (Math.max(dlt, 0) - g) / 14; p = p + (Math.max(-dlt, 0) - p) / 14; rsi[i] = 100 - 100 / (1 + g / (p || 1e-12)); }
+        }
+        return { atr, ema20, rsi };
+    }
+
+    function stopHistorico(d, o) {
+        const v = d.velas; if (!v || !v.c || v.c.length < 120) return '';
+        const N = o.dias <= 10 ? 5 : o.dias <= 30 ? 20 : 60;
+        const { atr, ema20, rsi } = stopIndicadores(v), n = v.c.length, op = v.o || v.c;
+        const esticadoEm = i => {
+            if (!(rsi[i] >= 70)) return false;
+            let seq = 0; for (let k = i; k > 0 && v.c[k] > v.c[k - 1]; k--) seq++;
+            const min20 = Math.min(...v.l.slice(Math.max(0, i - 19), i + 1));
+            return seq >= 4 || (v.c[i] - ema20[i]) / atr[i] >= 2 || v.c[i] / min20 - 1 >= 0.25;
+        };
+        const agoraEsticado = !!(d.esticado && d.esticado.ativo), agoraAcima = d.preco > d.ema20;
+        let amostra = [], criterio;
+        for (let i = 40; i + N < n; i++) {
+            const est = esticadoEm(i);
+            if (agoraEsticado ? est : (!est && (v.c[i] > ema20[i]) === agoraAcima)) amostra.push(i);
+        }
+        criterio = agoraEsticado ? 'em que o ativo também estava esticado (RSI ≥ 70 depois de uma subida forte)'
+            : agoraAcima ? 'em que o preço estava acima da EMA 20, sem estar esticado (como agora)' : 'em que o preço estava abaixo da EMA 20 (como agora)';
+        if (amostra.length < 15) {
+            amostra = []; for (let i = 40; i + N < n; i++) amostra.push(i);
+            criterio = 'do último ano e meio (houve poucas situações parecidas com a atual)';
+        }
+        const pivotAntes = i => { for (let j = i - 3; j >= Math.max(3, i - 126); j--) { const w = v.l.slice(j - 3, j + 4); if (v.l[j] === Math.min(...w) && v.l[j] < v.c[i]) return v.l[j]; } return null; };
+        const metodos = [
+            { nome: 'Mínimo da sessão anterior', fixo: i => v.l[i - 1] - 0.1 * atr[i] },
+            { nome: 'Abaixo do último fundo (pivot)', fixo: i => { const p = pivotAntes(i); return p ? p - 0.25 * atr[i] : null; } },
+            { nome: 'Abaixo da EMA 20', fixo: i => ema20[i] < v.c[i] ? ema20[i] - 0.25 * atr[i] : null },
+            { nome: '1,5× ATR', fixo: i => v.c[i] - 1.5 * atr[i] },
+            { nome: '2× ATR', fixo: i => v.c[i] - 2 * atr[i] },
+            { nome: '3× ATR', fixo: i => v.c[i] - 3 * atr[i] },
+            { nome: 'Trailing 2× ATR (sobe com o preço)', trail: (k, maxC) => maxC - 2 * atr[k - 1] },
+            { nome: 'Trailing 3× ATR desde o máximo', trail: (k, maxC, maxH) => maxH - 3 * atr[k - 1] },
+            { nome: 'Sem stop (vender no fim)', nenhum: true },
+        ];
+        const res = metodos.map(m => {
+            const r = []; let tocados = 0;
+            amostra.forEach(i => {
+                const ent = v.c[i]; let stop = m.fixo ? m.fixo(i) : null;
+                if (m.fixo && !(stop > 0 && stop < ent)) return;
+                let maxC = ent, maxH = Math.max(...v.h.slice(Math.max(0, i - 21), i + 1)), saida = null;
+                for (let k = i + 1; k <= i + N; k++) {
+                    if (m.trail) { const t = m.trail(k, maxC, maxH); stop = stop === null ? t : Math.max(stop, t); }
+                    if (!m.nenhum && stop !== null && stop > 0 && v.l[k] <= stop) { saida = Math.min(stop, op[k]); tocados++; break; }
+                    maxC = Math.max(maxC, v.c[k]); maxH = Math.max(maxH, v.h[k]);
+                }
+                r.push((saida ?? v.c[i + N]) / ent - 1);
+            });
+            if (!r.length) return null;
+            return { nome: m.nome, n: r.length, toque: tocados / r.length, media: r.reduce((a, b) => a + b, 0) / r.length,
+                     pior: Math.min(...r), melhor: Math.max(...r), nenhum: !!m.nenhum };
+        }).filter(Boolean);
+        if (!res.length) return '';
+        const pct = x => `<span style="color:${x >= 0 ? '#3fb950' : '#f85149'}">${x >= 0 ? '+' : ''}${stopFmt(x * 100, 1)}%</span>`;
+        const comStop = res.filter(r => !r.nenhum), melhorMedia = Math.max(...comStop.map(r => r.media));
+        const total = (res.find(r => r.nenhum) || res[0]).n;
+        const linhas = res.map(r => `<tr style="border-top:1px solid #21262d${r.nenhum ? '; color:#8b949e' : ''}">
+            <td style="padding:6px">${r.media === melhorMedia && !r.nenhum ? '🏅 ' : ''}${r.nome}</td>
+            <td style="padding:6px; text-align:right">${r.nenhum ? '—' : stopFmt(r.toque * 100, 0) + '%'}</td>
+            <td style="padding:6px; text-align:right; font-weight:bold">${pct(r.media)}</td>
+            <td style="padding:6px; text-align:right">${pct(r.pior)}</td>
+            <td style="padding:6px; text-align:right">${pct(r.melhor)}</td></tr>`).join('');
+        return `<div class="stop-cartao" style="margin-top:12px"><h4>🧪 Como cada método teria funcionado no passado (${d.ticker})</h4>
+            <div style="font-size:12.5px; color:#c9d1d9; margin-bottom:8px">Simulação: em cada uma das <b>${total} sessões</b> ${criterio}, «comprar» ao fecho, pôr o stop e sair ao fim de <b>${N} sessões</b> — ou antes, se o stop fosse tocado (nos saltos de abertura, ao preço de abertura, como na realidade).</div>
+            <div style="overflow-x:auto"><table style="width:100%; border-collapse:collapse; font-size:12.5px; color:#c9d1d9" data-sem-scroll>
+                <thead style="color:#8b949e; font-size:10.5px; text-transform:uppercase"><tr><th style="text-align:left; padding:6px">Método</th><th style="text-align:right; padding:6px">Stop tocado</th><th style="text-align:right; padding:6px">Resultado médio</th><th style="text-align:right; padding:6px">Pior caso</th><th style="text-align:right; padding:6px">Melhor caso</th></tr></thead>
+                <tbody>${linhas}</tbody></table></div>
+            <div style="font-size:11.5px; color:#8b949e; margin-top:8px">Como ler: compara o <b>pior caso</b> de cada método com o de «sem stop» — é aí que o stop mostra o que vale. Um método com resultado médio parecido e pior caso muito menor é um bom equilíbrio; um stop tocado muitas vezes com resultado médio baixo está dentro do ruído. 🏅 = melhor resultado médio nesta ação e nestas condições. Estatística do passado de uma só ação, sem comissões: o futuro pode ser diferente.</div></div>`;
     }
 
     // Probabilidade histórica de um stop a esta distância ser tocado nas próximas N sessões
