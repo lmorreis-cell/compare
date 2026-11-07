@@ -93,7 +93,9 @@
         .stop-vista { background: transparent; border: 0; color: #8b949e; padding: 8px 16px; font-size: 13px; font-weight: bold; cursor: pointer; }
         .stop-vista + .stop-vista { border-left: 1px solid #30363d; }
         .stop-vista.ativo[data-vista="stop"] { color: #f85149; background: rgba(248,81,73,.1); }
+        .stop-vista.ativo[data-vista="entrada"] { color: #39c5cf; background: rgba(57,197,207,.1); }
         .stop-vista.ativo[data-vista="alvos"] { color: #3fb950; background: rgba(63,185,80,.1); }
+        @media (max-width: 560px) { .stop-vistas { width: 100%; } .stop-vista { flex: 1; padding: 8px 6px; font-size: 12px; } }
         .stop-nivel:disabled { cursor: not-allowed; opacity: .6; }
         .stop-nivel small { font-weight: normal; font-size: 10px; margin-left: 4px; }
         .stop-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
@@ -1964,9 +1966,11 @@
         </h3>
         <p style="color:#8b949e; font-size:12px; margin:0 0 12px">Calcula o stop, o tamanho da posição, onde entrar e onde realizar o ganho, com base na volatilidade do ativo, nos suportes e resistências e no que aconteceu no passado. Avisa quando o ativo está «esticado» depois de uma subida forte.</p>
         <div class="stop-vistas">
-            <button class="stop-vista ativo" data-vista="stop" title="Onde sair se correr mal">🛑 Stop</button>
-            <button class="stop-vista" data-vista="alvos" id="stop-vista-alvos" title="Onde entrar (se vais comprar) ou onde realizar o ganho (se já tens a ação)">🎯 Pontos de entrada</button>
+            <button class="stop-vista ativo" data-vista="stop" title="Onde sair se a operação correr mal">🛑 Definir stop</button>
+            <button class="stop-vista" data-vista="entrada" title="Vais comprar: a que preço entrar">🟢 Onde entrar</button>
+            <button class="stop-vista" data-vista="alvos" title="Onde realizar o ganho">🎯 Onde sair (alvos)</button>
         </div>
+        <div id="stop-modo-desc" style="font-size:12.5px; color:#c9d1d9; margin:-2px 0 12px"></div>
         <div class="stop-niveis">
             <button class="stop-nivel ativo" data-nivel="1" title="Stop sugerido, tamanho da posição e a tabela com as várias opções">1 · Simples</button>
             <button class="stop-nivel" data-nivel="2" title="Troca a tabela de opções pelo gráfico com os níveis de stop desenhados por cima do preço">2 · Gráfico</button>
@@ -1974,13 +1978,13 @@
         </div>
         <div class="stop-form">
             <label class="sim-campo"><span>Ticker</span><input id="stop-ticker" class="input-moderno" placeholder="Ex.: AAPL, EDP.LS, BTC-USD" style="text-transform:uppercase"></label>
-            <label class="sim-campo"><span class="dica-edu">Situação<span class="dica-texto" style="width:260px; left:0; transform:none">«Vou comprar»: calcula o stop e quantas ações comprar. «Já tenho»: calcula um stop para proteger a posição (e o ganho, se houver).</span></span>
+            <label class="sim-campo" id="stop-campo-situacao"><span class="dica-edu">Situação<span class="dica-texto" style="width:260px; left:0; transform:none">«Vou comprar»: calcula o stop e quantas ações comprar. «Já tenho»: calcula um stop para proteger a posição (e o ganho, se houver).</span></span>
                 <select id="stop-situacao" class="input-moderno"><option value="comprar">Vou comprar</option><option value="tenho">Já tenho a ação</option></select></label>
-            <label class="sim-campo"><span class="dica-edu" id="stop-lbl-entrada">Preço de entrada<span class="dica-texto" style="width:240px; left:0; transform:none">Deixa vazio para usar a cotação mais recente. Na moeda do ativo (USD nas ações americanas).</span></span><input id="stop-entrada" type="number" step="0.0001" class="input-moderno" placeholder="cotação"></label>
+            <label class="sim-campo" id="stop-campo-entrada"><span class="dica-edu" id="stop-lbl-entrada">Preço de entrada<span class="dica-texto" style="width:240px; left:0; transform:none">Deixa vazio para usar a cotação mais recente. Na moeda do ativo (USD nas ações americanas).</span></span><input id="stop-entrada" type="number" step="0.0001" class="input-moderno" placeholder="cotação"></label>
             <label class="sim-campo stop-so-comprar"><span class="dica-edu">Capital da carteira (€)<span class="dica-texto" style="width:240px; left:0; transform:none">O total que tens para investir. Serve para calcular quanto arriscas em euros e quantas ações comprar.</span></span><input id="stop-capital" type="number" step="100" min="0" class="input-moderno" placeholder="Ex.: 10000"></label>
-            <label class="sim-campo stop-so-tenho" style="display:none"><span>Quantidade que tens</span><input id="stop-qtd" type="number" step="any" min="0" class="input-moderno" placeholder="Ex.: 20"></label>
-            <label class="sim-campo stop-so-comprar"><span class="dica-edu">Risco por operação<span class="dica-texto" style="width:270px; left:0; transform:none">Quanto do capital aceitas perder <b>se o stop for tocado</b>. Os profissionais costumam ficar entre 0,5% e 2%: assim, mesmo 10 perdas seguidas não destroem a carteira.</span></span>
-                <select id="stop-risco" class="input-moderno"><option value="0.5">0,5% (prudente)</option><option value="1" selected>1% (habitual)</option><option value="2">2% (máximo recomendado)</option></select></label>
+            <label class="sim-campo stop-so-tenho" style="display:none"><span class="dica-edu" id="stop-lbl-qtd">Quantidade que tens<span class="dica-texto" style="width:240px; left:0; transform:none">Opcional: serve para mostrar os valores em euros.</span></span><input id="stop-qtd" type="number" step="any" min="0" class="input-moderno" placeholder="Ex.: 20"></label>
+            <label class="sim-campo stop-so-comprar"><span class="dica-edu">Perda máxima aceite<span class="dica-texto" style="width:270px; left:0; transform:none">Quanto do capital aceitas perder nesta compra <b>se o stop for tocado</b>. Serve só para calcular quantas ações comprar: quanto mais perto o stop, mais ações podes comprar com a mesma perda. Os profissionais costumam ficar entre 0,5% e 2%: assim, mesmo 10 perdas seguidas não destroem a carteira.</span></span>
+                <select id="stop-risco" class="input-moderno"><option value="0.5">0,5% do capital (prudente)</option><option value="1" selected>1% do capital (habitual)</option><option value="2">2% do capital (máximo recomendado)</option></select></label>
             <label class="sim-campo"><span class="dica-edu">Horizonte<span class="dica-texto" style="width:280px; left:0; transform:none">Quanto tempo pensas ficar. Quanto mais longo, mais espaço o stop precisa para aguentar as oscilações normais: dias = 1,5× o ATR, semanas = 2×, meses = 3×.</span></span>
                 <select id="stop-horizonte" class="input-moderno"><option value="1.5|10">Poucos dias</option><option value="2|30" selected>Algumas semanas</option><option value="3|90">Meses</option></select></label>
             <button class="btn-moderno" style="background:#f85149; color:#fff; align-self:flex-end" onclick="stopCalcular()">Calcular</button>
@@ -8352,7 +8356,7 @@ function renderizarCalendarioDiario() {
 
     function stopMostrar() {
         const d = stopDados, caixa = document.getElementById('stop-resultado');
-        const tenho = document.getElementById('stop-situacao').value === 'tenho';
+        const tenho = stopTenho();
         const entradaInput = parseFloat(document.getElementById('stop-entrada').value);
         const entrada = entradaInput > 0 ? entradaInput : d.preco;
         const [mult, dias] = document.getElementById('stop-horizonte').value.split('|').map(Number);
@@ -8383,8 +8387,8 @@ function renderizarCalendarioDiario() {
         let h = `<div style="font-size:13px; color:#8b949e; margin-bottom:10px">${d.nome ? `<b style="color:#e6edf3">${d.nome}</b> · ` : ''}${d.ticker} · última cotação ${m(d.preco)} (${d.data.slice(8, 10)}/${d.data.slice(5, 7)}) · RSI ${stopFmt(d.rsi, 0)} · oscilação média diária (ATR) ${m(atr)} = ${stopFmt(d.atr_pct, 1)}%</div>`;
         const nivel = stopNivel();
         let alv = null;
-        if (stopVista === 'alvos') {
-            alv = alvConteudo(d, { tenho, entrada, mult, dias, stop, m, eur, est, nivel });
+        if (stopVista !== 'stop') {
+            alv = alvConteudo(d, { tenho, entrada, mult, dias, stop, m, eur, est, nivel, semPreco: !(entradaInput > 0) });
             h += alv.html;
         } else {
         h += '<div class="stop-cartoes">';
@@ -8727,12 +8731,32 @@ function renderizarCalendarioDiario() {
         const b = ev.target.closest('.stop-vista'); if (!b) return;
         stopVista = b.dataset.vista;
         document.querySelectorAll('.stop-vista').forEach(x => x.classList.toggle('ativo', x === b));
+        stopCampos();
         if (stopDados) stopMostrar();
     });
-    document.addEventListener('change', ev => { if (ev.target && ev.target.id === 'stop-situacao') alvRotulo(); });
-    function alvRotulo() {
-        const t = document.getElementById('stop-situacao').value === 'tenho', b = document.getElementById('stop-vista-alvos');
-        if (b) b.textContent = t ? '🎯 Alvos de saída' : '🎯 Pontos de entrada';
+    document.addEventListener('change', ev => { if (ev.target && ev.target.id === 'stop-situacao') stopCampos(); });
+    document.addEventListener('DOMContentLoaded', () => { if (document.getElementById('stop-situacao')) stopCampos(); });
+    // «Onde entrar» é sempre para quem vai comprar; «Onde sair» é sempre para uma posição (comprada ou a comprar a um preço)
+    function stopTenho() {
+        return stopVista === 'alvos' ? true : stopVista === 'entrada' ? false : document.getElementById('stop-situacao').value === 'tenho';
+    }
+    // Mostra só os campos que cada modo usa
+    function stopCampos() {
+        const tenho = stopTenho(), mostra = (el, sim) => { if (el) el.style.display = sim ? '' : 'none'; };
+        mostra(document.getElementById('stop-campo-situacao'), stopVista === 'stop');
+        mostra(document.getElementById('stop-campo-entrada'), stopVista !== 'entrada');
+        document.querySelectorAll('.stop-so-comprar').forEach(e => mostra(e, !tenho));
+        document.querySelectorAll('.stop-so-tenho').forEach(e => mostra(e, tenho));
+        const lbl = document.getElementById('stop-lbl-entrada');
+        if (lbl) lbl.firstChild.textContent = stopVista === 'alvos' ? 'Preço de compra' : tenho ? 'Preço de compra' : 'Preço de entrada';
+        const lq = document.getElementById('stop-lbl-qtd');
+        if (lq) lq.firstChild.textContent = stopVista === 'alvos' ? 'Quantidade (opcional)' : 'Quantidade que tens';
+        const desc = document.getElementById('stop-modo-desc');
+        if (desc) desc.innerHTML = stopVista === 'entrada'
+            ? '🟢 <b>Vais comprar:</b> comprar já, esperar um recuo ou um rompimento? Para cada entrada: a probabilidade de o preço lá chegar, o stop, o alvo e quantas ações comprar.'
+            : stopVista === 'alvos'
+            ? '🎯 <b>Onde realizar o ganho:</b> alvos acima do preço e um plano de venda em partes. Indica o preço de compra (ou o preço a que pensas comprar); se o deixares vazio, conta a partir da cotação.'
+            : '🛑 <b>Onde sair se correr mal:</b> o stop sugerido e outras opções. Se vais comprar, também quantas ações comprar para a perda que aceitas.';
     }
     const alvDM = s => s ? `${s.slice(8, 10)}/${s.slice(5, 7)}` : '';
 
@@ -8790,7 +8814,7 @@ function renderizarCalendarioDiario() {
         if (imp) [[1.272, '127%'], [1.618, '161,8%']].forEach(([f, t]) => add('fib' + f, `Extensão de Fibonacci ${t}`, imp.lo + (imp.hi - imp.lo) * f,
             `Projeção do último impulso de subida (de ${stopFmt(imp.lo)} em ${alvDM(imp.dLo)} a ${stopFmt(imp.hi)} em ${alvDM(imp.dHi)}): ${t} desse movimento a partir do mínimo. Muito usada quando o preço já está acima de máximos anteriores e não há resistências por perto.`));
         const R = o.mult * atr;
-        [1, 2, 3].forEach(k => add('r' + k, `${k}R desde a compra`, o.entrada + k * R,
+        [1, 2, 3].forEach(k => add('r' + k, `${k}R ${o.semPreco ? 'a partir de hoje' : 'desde a compra'}`, o.entrada + k * R,
             `R = o risco inicial de uma operação com stop a ${stopFmt(o.mult, 1).replace(',0', '')}× ATR (${stopFmt(R)}). ${k}R = ganhar ${k} vez${k > 1 ? 'es' : ''} o que se arriscava ao comprar.`));
         [1, 2].forEach(k => add('atr' + k, `+${stopFmt(k * o.mult, 1).replace(',0', '')}× ATR desde hoje`, p + k * o.mult * atr,
             `O que a ação costuma andar no horizonte escolhido, ao ritmo normal de oscilação (${stopFmt(k * o.mult, 1).replace(',0', '')}× ${stopFmt(atr)}).`));
@@ -8831,7 +8855,8 @@ function renderizarCalendarioDiario() {
     }
 
     function alvConteudo(d, c) {
-        const { tenho, entrada, mult, dias, stop, m, eur, est, nivel } = c;
+        const { tenho, entrada, mult, dias, stop, m, eur, est, nivel, semPreco } = c;
+        const desde = semPreco ? 'desde hoje' : 'desde a compra';
         const N = dias <= 10 ? 5 : dias <= 30 ? 20 : 60, atr = d.atr, p = d.preco;
         const cripto = /-(USD|EUR|USDT)$/.test(d.ticker);
         const pct = x => `${x >= 0 ? '+' : ''}${stopFmt(x, 1)}%`;
@@ -8840,7 +8865,7 @@ function renderizarCalendarioDiario() {
         let h = '', alerta, niveis = [];
 
         if (tenho) {
-            const alvos = alvAlvos(d, { entrada, mult });
+            const alvos = alvAlvos(d, { entrada, mult, semPreco });
             const qtd = parseFloat(document.getElementById('stop-qtd').value);
             const riscoAgora = p - stop;
             alvos.forEach(a => { a.gr = riscoAgora > 0 ? (a.preco - p) / riscoAgora : null; a.prob = alvProbSubida(d, (a.preco - p) / p, N); });
@@ -8854,7 +8879,7 @@ function renderizarCalendarioDiario() {
                 <div class="stop-grande">${m(sug.preco)}</div>
                 <div style="font-size:13px; color:#c9d1d9; margin-top:6px">${sug.nome} · ${pct((sug.preco / p - 1) * 100)} desde hoje.
                 ${sug.prob !== null ? ` Em ${stopFmt(sug.prob * 100, 0)}% das sessões do último ano e meio o preço subiu pelo menos isto nas ${N} sessões seguintes.` : ''}</div>
-                <div class="stop-linha" style="margin-top:8px"><span>Ganho desde a compra</span><b style="color:${cor(ganhoAlvo(sug))}">${pct(ganhoAlvo(sug))}${qtd > 0 && d.fx ? ` · ${eur(qtd * (sug.preco - entrada) / d.fx)}` : ''}</b></div>
+                <div class="stop-linha" style="margin-top:8px"><span>Ganho ${desde}</span><b style="color:${cor(ganhoAlvo(sug))}">${pct(ganhoAlvo(sug))}${qtd > 0 && d.fx ? ` · ${eur(qtd * (sug.preco - entrada) / d.fx)}` : ''}</b></div>
                 <div class="stop-linha"><span class="dica-edu">Ganho/risco a partir de hoje<span class="dica-texto" style="width:260px; left:0; transform:none">Quanto falta até ao alvo a dividir pelo que arriscas até ao stop sugerido (${m(stop)}). Acima de 1,5 vale a pena esperar pelo alvo; abaixo de 1, o que podes ganhar é pouco para o que arriscas.</span></span><b>${sug.gr === null ? '—' : stopFmt(sug.gr, 1) + ' : 1'}</b></div>
                 ${sug.gr !== null && sug.gr < 1.5 ? `<div style="font-size:12px; color:#e3b341; margin-top:6px">Nenhum alvo dá pelo menos 1,5 de ganho por 1 de risco: o stop está longe ou o preço já está perto das resistências. Pode fazer sentido realizar parte já.</div>` : ''}
             </div>`;
@@ -8887,7 +8912,7 @@ function renderizarCalendarioDiario() {
                     <div style="overflow-x:auto"><table style="width:100%; border-collapse:collapse; font-size:12.5px; color:#c9d1d9" data-sem-scroll>
                     <thead style="color:#8b949e; font-size:10.5px; text-transform:uppercase"><tr><th style="text-align:left; padding:6px">Método</th><th style="text-align:right; padding:6px">Alvo</th><th style="text-align:right; padding:6px">Distância</th>
                     <th style="text-align:right; padding:6px"><span class="dica-edu">Atingido em ${N} sessões<span class="dica-texto" style="width:300px; right:0; left:auto; transform:none; text-transform:none; font-weight:normal">Em quantas das sessões do último ano e meio o preço subiu pelo menos esta distância nas ${N} sessões seguintes (horizonte escolhido). Estatística do passado, não uma previsão.</span></span></th>
-                    <th style="text-align:right; padding:6px">Ganho desde a compra</th><th style="text-align:right; padding:6px">Ganho/risco</th><th></th></tr></thead><tbody>${linhas}</tbody></table></div>
+                    <th style="text-align:right; padding:6px">Ganho ${desde}</th><th style="text-align:right; padding:6px">Ganho/risco</th><th></th></tr></thead><tbody>${linhas}</tbody></table></div>
                     <div style="font-size:11.5px; color:#8b949e; margin-top:8px">⭐ = o alvo mais perto com pelo menos 1,5 de ganho por 1 de risco até ao stop sugerido. Alvos perto são atingidos mais vezes mas rendem menos; alvos longe rendem mais mas muitas vezes não chegam. Passa o rato sobre cada método para ver como é calculado. 🔔 cria um alerta «fecho igual ou acima de».</div></div>`;
             }
             alerta = { preco: sug.preco, cond: 'acima', nota: 'Alvo (Stop e alvos)', texto: '🔔 Criar alerta do alvo na Central de Alertas' };
