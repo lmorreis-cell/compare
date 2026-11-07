@@ -258,14 +258,10 @@
         /* ==========================================
            SISTEMA DE NAVEGAÇÃO (SEPARADORES/TABS)
            ========================================== */
-        .tab-menu { 
-            display: flex; 
-            gap: 2px; /* Reduzimos o gap ligeiramente */
-            margin-bottom: 25px; 
-            border-bottom: 2px solid #30363d; 
-            padding-bottom: 0;
-            /* Apagámos o overflow-x: auto; que causava a barra de scroll */
-        }
+        /* Menu em duas linhas, por grupos (cresce sem apertar os botões) */
+        .tab-menu { display: flex; flex-direction: column; gap: 10px; margin-bottom: 25px; }
+        .tab-grupo-tit { display: block; font-size: 10px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; color: #6e7681; margin: 0 0 4px 4px; }
+        .tab-linha { display: flex; gap: 2px; border-bottom: 2px solid #30363d; }
         .tab-btn { 
             flex: 1; /* Força os 6 botões a dividirem os 100% da largura de forma igual */
             text-align: center; /* Centra o texto no novo botão perfeitamente dividido */
@@ -309,7 +305,8 @@
             .terminal-global { padding: 14px 10px !important; margin-top: 10px; border-radius: 10px; }
             .titulo-terminal { font-size: 17px !important; letter-spacing: 0.5px !important; }
             /* Separadores em grelha (3 por linha) em vez de uma fila cortada */
-            .tab-menu { flex-wrap: wrap; gap: 4px; border-bottom: none; }
+            .tab-menu { gap: 8px; }
+            .tab-linha { flex-wrap: wrap; gap: 4px; border-bottom: none; }
             .tab-btn { flex: 1 1 31%; font-size: 10.5px; padding: 8px 3px; border-radius: 6px; border: 1px solid #30363d; border-bottom-width: 1px; }
             .tab-btn.active { border-color: #58a6ff; }
             /* Cartões com menos margem interior (os estilos estão escritos nos próprios elementos) */
@@ -462,26 +459,28 @@
 
 <!-- MENU DE NAVEGAÇÃO -->
     <div class="tab-menu">
-            <button class="tab-btn active" onclick="abrirSeparador(event, 'tab-radar')">📡 Radar Global</button>
-            <button class="tab-btn" onclick="abrirSeparador(event, 'tab-acoes')">📈 Ações & ETFs</button>
-            <button class="tab-btn" onclick="abrirSeparador(event, 'tab-cripto')">⚡ Criptoativos</button>
-            <button class="tab-btn" onclick="abrirSeparador(event, 'tab-screener')">🦅 Screener Algorítmico</button>
-            
-            
-            
-            <button class="tab-btn" onclick="abrirSeparador(event, 'tab-cofre'); setTimeout(atualizarCofre, 50); setTimeout(sincronizarPrecosLiveCofre, 150);">🏛️ Cofre Fiscal</button>
-            
-        
-            <button class="tab-btn" onclick="abrirSeparador(event, 'tab-irs'); carregarAnosIRS();">⚖️ Assistente IRS</button>
-
-            <button class="tab-btn" onclick="abrirSeparador(event, 'tab-risco'); carregarLaboratorioRisco();">🛡️ Risco & Stress</button>
-            <button class="tab-btn" onclick="abrirSeparador(event, 'tab-stop');">🛑 Assistente de Stop</button>
-            <button class="tab-btn" onclick="abrirSeparador(event, 'tab-diario'); atualizarDiarioBordo();">📓 Diário de Bordo</button>
-            <button class="tab-btn" onclick="abrirSeparador(event, 'tab-oficial'); carregarOficial();">🏦 Juros & Dados Oficiais</button>
-            
-            <button class="tab-btn" onclick="abrirSeparador(event, 'tab-liga'); carregarLiga();" style="color: #e3b341;">🏆 Liga Mensal</button>
-       
+        <div class="tab-grupo">
+            <span class="tab-grupo-tit">📈 Mercados e análise</span>
+            <div class="tab-linha">
+                <button class="tab-btn active" onclick="abrirSeparador(event, 'tab-radar')">📡 Radar Global</button>
+                <button class="tab-btn" onclick="abrirSeparador(event, 'tab-acoes')">📈 Ações & ETFs</button>
+                <button class="tab-btn" onclick="abrirSeparador(event, 'tab-cripto')">⚡ Criptoativos</button>
+                <button class="tab-btn" onclick="abrirSeparador(event, 'tab-stop');">🛑 Assistente de Stop</button>
+                <button class="tab-btn" onclick="abrirSeparador(event, 'tab-screener')">🦅 Screener Algorítmico</button>
+            </div>
         </div>
+        <div class="tab-grupo">
+            <span class="tab-grupo-tit">🧾 Carteira, impostos e dados</span>
+            <div class="tab-linha">
+                <button class="tab-btn" onclick="abrirSeparador(event, 'tab-cofre'); setTimeout(atualizarCofre, 50); setTimeout(sincronizarPrecosLiveCofre, 150);">🏛️ Cofre Fiscal</button>
+                <button class="tab-btn" onclick="abrirSeparador(event, 'tab-irs'); carregarAnosIRS();">⚖️ Assistente IRS</button>
+                <button class="tab-btn" onclick="abrirSeparador(event, 'tab-risco'); carregarLaboratorioRisco();">🛡️ Risco & Stress</button>
+                <button class="tab-btn" onclick="abrirSeparador(event, 'tab-diario'); atualizarDiarioBordo();">📓 Diário de Bordo</button>
+                <button class="tab-btn" onclick="abrirSeparador(event, 'tab-oficial'); carregarOficial();">🏦 Juros & Dados Oficiais</button>
+                <button class="tab-btn" onclick="abrirSeparador(event, 'tab-liga'); carregarLiga();" style="color: #e3b341;">🏆 Liga Mensal</button>
+            </div>
+        </div>
+    </div>
 
     <!-- ==========================================
          CONTEÚDOS DOS SEPARADORES
@@ -8361,8 +8360,13 @@ function renderizarCalendarioDiario() {
         let protetor = (d.min_anterior || 0) - 0.1 * atr, protetorPeloMinimo = true;
         if (!(protetor < d.preco) || d.preco - protetor > 2.5 * atr) { protetor = d.preco - 1.5 * atr; protetorPeloMinimo = false; }
         const est = d.esticado || {};
+        // Já tens a ação com ganho: quando o preço de compra já está fora do «ruído» de curto prazo
+        // (pelo menos 1,5× o ATR abaixo da cotação), o stop sobe para o preço de compra: a operação deixa de poder dar prejuízo
+        const stopVolatilidade = stop;
+        let regraCompra = false;
+        if (tenho && entrada < d.preco && (d.preco - entrada) >= 1.5 * atr && stop < entrada) { stop = entrada; regraCompra = true; }
         const usarProtetor = tenho && est.ativo && protetor > stop;
-        if (usarProtetor) stop = protetor;
+        if (usarProtetor) { stop = protetor; regraCompra = false; }
         stop = Math.max(stop, 0);
         const distPct = (ref - stop) / ref * 100;
 
@@ -8371,9 +8375,9 @@ function renderizarCalendarioDiario() {
         h += `<div class="stop-cartao" style="border-color:rgba(248,81,73,.5)"><h4>${usarProtetor ? '🛡️ Stop de proteção sugerido' : '🛑 Stop sugerido'}</h4>
             <div class="stop-grande">${m(stop)}</div>
             <div style="font-size:13px; color:#c9d1d9; margin-top:6px">${stopFmt(distPct, 1)}% abaixo ${tenho ? 'da cotação atual' : 'da entrada'}.
-            ${usarProtetor ? (protetorPeloMinimo ? `Fica logo abaixo do mínimo da sessão anterior (${m(d.min_anterior)}): perto, para proteger a subida — ver o aviso de ativo esticado.` : `Fica 1,5× a oscilação média diária abaixo da cotação: perto, para proteger a subida — ver o aviso de ativo esticado.`)
+            ${regraCompra ? `No preço de compra. O ganho atual (+${stopFmt((d.preco / entrada - 1) * 100, 1)}%) já é maior do que 1,5× a oscilação média diária deste ativo (${stopFmt(1.5 * atr / d.preco * 100, 1)}%): o preço de compra está fora do «ruído» de curto prazo, por isso o stop sobe para lá. Se for tocado, sais sem prejuízo.${suporteProx && suporteProx.preco - 0.25 * atr > entrada ? `<div style="font-size:12px; color:#8b949e; margin-top:6px">📉 Mais apertado: logo abaixo do suporte de ${m(suporteProx.preco)}, em ${m(suporteProx.preco - 0.25 * atr)}, ficas com +${stopFmt(((suporteProx.preco - 0.25 * atr) / entrada - 1) * 100, 1)}% se for tocado.</div>` : ''}<div style="font-size:12px; color:#8b949e; margin-top:6px">O stop só pela volatilidade seria ${m(stopVolatilidade)}: dá mais espaço à ação, mas pode transformar o ganho em perda.</div>` : usarProtetor ? (protetorPeloMinimo ? `Fica logo abaixo do mínimo da sessão anterior (${m(d.min_anterior)}): perto, para proteger a subida — ver o aviso de ativo esticado.` : `Fica 1,5× a oscilação média diária abaixo da cotação: perto, para proteger a subida — ver o aviso de ativo esticado.`)
                 : `É ${stopFmt(mult, 1).replace(',0', '')}× a oscilação média diária: fora do «ruído» normal para um horizonte de ${dias <= 10 ? 'poucos dias' : dias <= 30 ? 'algumas semanas' : 'meses'}.`}</div>
-            ${suporteProx && !usarProtetor ? `<div style="font-size:12px; color:#8b949e; margin-top:8px">📉 Suporte mais próximo: ${m(suporteProx.preco)} (${suporteProx.data.slice(8, 10)}/${suporteProx.data.slice(5, 7)}). ${suporteProx.preco > stop ? `Está <b>acima</b> do stop: se o preço o perder, a ideia enfraquece. Um stop logo abaixo dele, em ${m(suporteProx.preco - 0.25 * atr)}, é uma alternativa mais apertada.` : `Está abaixo do stop: o stop sai antes de o suporte ser testado.`}</div>` : ''}
+            ${suporteProx && !usarProtetor && !regraCompra ? `<div style="font-size:12px; color:#8b949e; margin-top:8px">📉 Suporte mais próximo: ${m(suporteProx.preco)} (${suporteProx.data.slice(8, 10)}/${suporteProx.data.slice(5, 7)}). ${suporteProx.preco > stop ? `Está <b>acima</b> do stop: se o preço o perder, a ideia enfraquece. Um stop logo abaixo dele, em ${m(suporteProx.preco - 0.25 * atr)}, é uma alternativa mais apertada.` : `Está abaixo do stop: o stop sai antes de o suporte ser testado.`}</div>` : ''}
         </div>`;
 
         if (!tenho) {
@@ -8407,12 +8411,15 @@ function renderizarCalendarioDiario() {
             const noStop = (stop - entrada) / entrada * 100;
             h += `<div class="stop-cartao"><h4>📊 A tua posição</h4>
                 <div class="stop-linha"><span>Ganho atual</span><b style="color:${ganhoAtual >= 0 ? '#3fb950' : '#f85149'}">${ganhoAtual >= 0 ? '+' : ''}${stopFmt(ganhoAtual, 1)}%</b></div>
-                <div class="stop-linha"><span>Se o stop for tocado</span><b style="color:${noStop >= 0 ? '#3fb950' : '#f85149'}">${noStop >= 0 ? 'ainda ficas com +' : ''}${stopFmt(noStop, 1)}% ${noStop >= 0 ? 'de ganho' : 'de perda'}</b></div>
+                <div class="stop-linha"><span>Se o stop for tocado</span><b style="color:${noStop >= 0 ? '#3fb950' : '#f85149'}">${Math.abs(noStop) < 0.05 ? 'sais sem ganho nem perda' : noStop > 0 ? `ainda ficas com +${stopFmt(noStop, 1)}% de ganho` : `${stopFmt(noStop, 1)}% de perda`}</b></div>
                 ${qtd > 0 && d.fx ? `<div class="stop-linha"><span>Em euros, se a venda sair no stop</span><b style="color:${noStop >= 0 ? '#3fb950' : '#f85149'}">${noStop >= 0 ? '+' : '−'}${eur(Math.abs(qtd * (stop - entrada) / d.fx))}</b></div>` : ''}
-                ${ganhoAtual > 0 && noStop < 0 ? `<div style="font-size:12px; color:#8b949e; margin-top:6px">Quando o ganho chegar a cerca de 1× o risco, muitos traders sobem o stop para o preço de compra (${m(entrada)}): a partir daí a operação já não pode dar prejuízo.</div>` : ''}
+                ${ganhoAtual > 0 && noStop < 0 ? `<div style="font-size:12px; color:#8b949e; margin-top:6px">O ganho (+${stopFmt(ganhoAtual, 1)}%) ainda é menor do que a oscilação normal deste ativo, por isso o stop fica abaixo do preço de compra. Quando a cotação chegar a ${m(entrada + 1.5 * atr)}, o assistente passa a sugerir o stop no preço de compra (${m(entrada)}).</div>` : ''}
             </div>`;
         }
         h += '</div>';
+
+        // Várias opções de stop, lado a lado
+        h += stopTabelaOpcoes(d, { tenho, entrada, mult, dias, sugerido: stop, moeda: m, eur });
 
         // Ativo esticado
         if (est.ativo) {
@@ -8440,6 +8447,92 @@ function renderizarCalendarioDiario() {
         </div>
         <div style="font-size:11px; color:#6e7681; margin-top:6px">O alerta avisa-te quando o fecho ficar abaixo do stop. Não substitui uma ordem stop real na corretora.</div>`;
         caixa.innerHTML = h;
+    }
+
+    // Probabilidade histórica de um stop a esta distância ser tocado nas próximas N sessões
+    // (em todas as sessões do último ano e meio: o mínimo das N sessões seguintes caiu abaixo de fecho × (1 − distância)?)
+    function stopProbToque(d, distFrac, n) {
+        const v = d.velas; if (!v || !v.c || v.c.length < n + 30) return null;
+        let toques = 0, total = 0;
+        for (let i = 0; i + n < v.c.length; i++) {
+            const nivel = v.c[i] * (1 - distFrac);
+            let min = Infinity;
+            for (let k = i + 1; k <= i + n; k++) if (v.l[k] < min) min = v.l[k];
+            total++; if (min <= nivel) toques++;
+        }
+        return total ? toques / total : null;
+    }
+
+    function stopOpcoes(d, entrada, mult, tenho) {
+        const p = d.preco, atr = d.atr, ops = [];
+        const add = (id, nome, preco, explica) => { if (preco > 0 && preco < p) ops.push({ id, nome, preco, explica }); };
+        if (tenho && entrada < p) {
+            add('compra', 'Preço de compra', entrada, 'Sais sem prejuízo se for tocado.');
+            add('metade', 'Garantir metade do ganho', entrada + 0.5 * (p - entrada), 'Fica a meio caminho entre o preço de compra e a cotação.');
+        }
+        const piv = (d.suportes || []).find(s => s.preco < p);
+        if (piv) add('pivot', `Abaixo do último fundo (${piv.data.slice(8, 10)}/${piv.data.slice(5, 7)})`, piv.preco - 0.25 * atr, `O último mínimo relevante (pivot) foi ${stopFmt(piv.preco)}; o stop fica um pouco abaixo, para não ser apanhado por um teste ao nível.`);
+        if (d.ema20) add('ema20', 'Abaixo da EMA 20', d.ema20 - 0.25 * atr, 'Enquanto o preço se mantiver acima da média de 20 sessões, a tendência de curto prazo continua.');
+        if (d.velas && d.velas.h) {
+            const maxH = Math.max(...d.velas.h.slice(-22).filter(x => x != null));
+            add('chandelier', 'Trailing de 3× ATR desde o máximo', maxH - 3 * atr, `Máximo das últimas 22 sessões (${stopFmt(maxH)}) menos 3× a oscilação média. Sobe sozinho quando a ação faz máximos novos («chandelier stop»).`);
+        }
+        [1.5, 2, 3].forEach(k => add('atr' + k, `${String(k).replace('.', ',')}× a oscilação média (ATR)`, (tenho ? p : entrada) - k * atr, `${String(k).replace('.', ',')}× ${stopFmt(atr)} abaixo ${tenho ? 'da cotação' : 'da entrada'}.`));
+        if (d.min_anterior) add('minant', 'Mínimo da sessão anterior', d.min_anterior - 0.1 * atr, 'Muito apertado: para proteger subidas esticadas ou operações de poucos dias.');
+        // retira níveis praticamente iguais (fica o método mais «com significado»: compra, pivot, médias…)
+        const prioridade = ['compra', 'pivot', 'metade', 'ema20', 'chandelier', 'minant', 'atr2', 'atr1.5', 'atr3'];
+        ops.sort((a, b) => prioridade.indexOf(a.id) - prioridade.indexOf(b.id));
+        const unicos = [];
+        ops.forEach(o => { if (!unicos.some(u => Math.abs(u.preco - o.preco) < 0.15 * atr)) unicos.push(o); });
+        // do mais apertado para o mais largo
+        return unicos.sort((a, b) => b.preco - a.preco);
+    }
+
+    function stopTabelaOpcoes(d, o) {
+        const ops = stopOpcoes(d, o.entrada, o.mult, o.tenho);
+        if (!ops.length) return '';
+        const n = o.dias <= 10 ? 5 : o.dias <= 30 ? 20 : 60;
+        const qtd = parseFloat(document.getElementById('stop-qtd').value);
+        const capital = parseFloat(document.getElementById('stop-capital').value);
+        const riscoPct = parseFloat(document.getElementById('stop-risco').value);
+        const ref = o.tenho ? d.preco : o.entrada;
+        let melhor = ops.reduce((a, b) => Math.abs(b.preco - o.sugerido) < Math.abs(a.preco - o.sugerido) ? b : a);
+        const linhas = ops.map(op => {
+            const distAtr = (ref - op.preco) / d.atr, distPct = (ref - op.preco) / ref * 100;
+            const perfil = distAtr < 1.25 ? ['Apertado', '#f0883e'] : distAtr <= 2.5 ? ['Equilibrado', '#3fb950'] : ['Largo', '#58a6ff'];
+            const prob = stopProbToque(d, (d.preco - op.preco) / d.preco, n);
+            let resultado = '';
+            if (o.tenho) {
+                const r = (op.preco / o.entrada - 1) * 100;
+                resultado = `<span style="color:${r >= 0 ? '#3fb950' : '#f85149'}">${Math.abs(r) < 0.05 ? '0%' : (r > 0 ? '+' : '') + stopFmt(r, 1) + '%'}</span>${qtd > 0 && d.fx ? `<br><small style="color:#8b949e">${r >= 0 ? '+' : '−'}${o.eur(Math.abs(qtd * (op.preco - o.entrada) / d.fx))}</small>` : ''}`;
+            } else if (capital > 0 && d.fx) {
+                const risco = o.entrada - op.preco;
+                let q = Math.floor(capital * riscoPct / 100 * d.fx / risco);
+                if (q * o.entrada / d.fx > capital) q = Math.floor(capital * d.fx / o.entrada);
+                resultado = `${q} ações<br><small style="color:#8b949e">${o.eur(q * o.entrada / d.fx)} investidos</small>`;
+            } else resultado = '—';
+            const eMelhor = op === melhor;
+            return `<tr style="border-top:1px solid #21262d${eMelhor ? '; background:rgba(248,81,73,.07)' : ''}">
+                <td style="padding:7px 6px"><span class="dica-edu" style="font-weight:bold; color:#e6edf3">${eMelhor ? '⭐ ' : ''}${op.nome}<span class="dica-texto" style="width:280px; left:0; transform:none; font-weight:normal">${op.explica}</span></span></td>
+                <td style="padding:7px 6px; text-align:right; font-weight:bold; white-space:nowrap">${o.moeda(op.preco)}</td>
+                <td style="padding:7px 6px; text-align:right; white-space:nowrap">−${stopFmt(distPct, 1)}%<br><small style="color:#8b949e">${stopFmt(distAtr, 1)}× ATR</small></td>
+                <td style="padding:7px 6px; text-align:center"><span style="color:${perfil[1]}; font-size:11px; font-weight:bold">${perfil[0]}</span></td>
+                <td style="padding:7px 6px; text-align:right">${prob === null ? '—' : stopFmt(prob * 100, 0) + '%'}</td>
+                <td style="padding:7px 6px; text-align:right">${resultado}</td>
+                <td style="padding:7px 6px; text-align:right"><button class="btn-moderno" style="padding:5px 10px; font-size:11px; background:#232d3f; color:#e6edf3" onclick="stopCriarAlerta(${op.preco.toFixed(6)})" title="Criar alerta na Central de Alertas">🔔</button></td>
+            </tr>`;
+        }).join('');
+        return `<div class="stop-cartao" style="margin-top:12px; flex-basis:100%">
+            <h4>🧭 Outras opções de stop, da mais apertada para a mais larga</h4>
+            <div style="overflow-x:auto"><table style="width:100%; border-collapse:collapse; font-size:12.5px; color:#c9d1d9" data-sem-scroll>
+                <thead style="color:#8b949e; font-size:10.5px; text-transform:uppercase"><tr>
+                    <th style="text-align:left; padding:6px">Método</th><th style="text-align:right; padding:6px">Stop</th>
+                    <th style="text-align:right; padding:6px">Distância${o.tenho ? '' : ' da entrada'}</th><th style="padding:6px">Perfil</th>
+                    <th style="text-align:right; padding:6px"><span class="dica-edu">Tocado em ${n} sessões<span class="dica-texto" style="width:300px; right:0; left:auto; transform:none; text-transform:none; font-weight:normal">Em quantas das sessões do último ano e meio um stop a esta distância teria sido tocado nas ${n} sessões seguintes (horizonte escolhido). Mostra se o stop está dentro do «ruído» normal do ativo: acima de 50%, é provável ser apanhado sem a ideia estar errada. É estatística do passado, não uma previsão.</span></span></th>
+                    <th style="text-align:right; padding:6px">${o.tenho ? 'Resultado se tocado' : 'Posição (mesmo risco)'}</th><th></th></tr></thead>
+                <tbody>${linhas}</tbody></table></div>
+            <div style="font-size:11.5px; color:#8b949e; margin-top:8px">⭐ = a sugestão do assistente. Não há um stop «certo»: um stop apertado protege mais o ganho mas sai mais vezes com o ruído; um largo aguenta oscilações mas devolve mais. Passa o rato sobre cada método para ver como é calculado. 🔔 cria o alerta desse nível.</div>
+        </div>`;
     }
 
     function stopCriarAlerta(preco) {
