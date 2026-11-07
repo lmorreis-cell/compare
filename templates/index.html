@@ -85,6 +85,24 @@
         .tradingview-widget-copyright a { color: #58a6ff; text-decoration: none; }
         @media (max-width: 760px) { .tv-grafico { height: 380px; } #tv-mapa-caixa { height: 420px !important; } }
 
+        /* Assistente de Stop */
+        .stop-niveis { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+        .stop-nivel { background: transparent; border: 1px solid #30363d; color: #8b949e; border-radius: 6px; padding: 6px 12px; font-size: 12px; font-weight: bold; cursor: pointer; }
+        .stop-nivel.ativo { border-color: #f85149; color: #f85149; background: rgba(248,81,73,.08); }
+        .stop-nivel:disabled { cursor: not-allowed; opacity: .6; }
+        .stop-nivel small { font-weight: normal; font-size: 10px; margin-left: 4px; }
+        .stop-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+        .stop-cartoes { display: flex; flex-wrap: wrap; gap: 12px; }
+        .stop-cartao { flex: 1 1 260px; background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 14px 16px; }
+        .stop-cartao h4 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; color: #8b949e; }
+        .stop-grande { font-size: 26px; font-weight: 900; color: #f0f2f5; }
+        .stop-linha { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; padding: 4px 0; border-bottom: 1px dashed #21262d; color: #c9d1d9; }
+        .stop-linha:last-child { border-bottom: 0; }
+        .stop-aviso { border-radius: 8px; padding: 12px 14px; font-size: 13px; line-height: 1.55; margin-top: 12px; }
+        .stop-aviso.esticado { background: rgba(227,179,65,.08); border: 1px solid rgba(227,179,65,.45); color: #e6edf3; }
+        .stop-aviso.forte { background: rgba(248,81,73,.08); border-color: rgba(248,81,73,.5); }
+        .stop-aviso.info { background: rgba(88,166,255,.06); border: 1px solid rgba(88,166,255,.35); color: #c9d1d9; }
+
         /* Simulador de poupança: rótulo por cima do campo */
         .sim-campo { display: flex; flex-direction: column; gap: 4px; flex: 1 1 150px; min-width: 130px; font-size: 11px; color: #8b949e; }
         .sim-campo .input-moderno { width: 100%; box-sizing: border-box; padding: 9px 12px; font-size: 13px; flex: 0 0 auto !important; }
@@ -457,6 +475,7 @@
             <button class="tab-btn" onclick="abrirSeparador(event, 'tab-irs'); carregarAnosIRS();">⚖️ Assistente IRS</button>
 
             <button class="tab-btn" onclick="abrirSeparador(event, 'tab-risco'); carregarLaboratorioRisco();">🛡️ Risco & Stress</button>
+            <button class="tab-btn" onclick="abrirSeparador(event, 'tab-stop');">🛑 Assistente de Stop</button>
             <button class="tab-btn" onclick="abrirSeparador(event, 'tab-diario'); atualizarDiarioBordo();">📓 Diário de Bordo</button>
             <button class="tab-btn" onclick="abrirSeparador(event, 'tab-oficial'); carregarOficial();">🏦 Juros & Dados Oficiais</button>
             
@@ -1923,6 +1942,45 @@
 </div>
     
 <!-- SEPARADOR 8: DIÁRIO DE BORDO -->
+<!-- ==========================================================
+     🛑 ASSISTENTE DE STOP (só Patrocinadores; as contas ficam no browser)
+     ========================================================== -->
+<div id="tab-stop" class="tab-content">
+    <div class="painel-controlo" style="border-left: 5px solid #f85149;">
+        <h3 class="painel-titulo">
+            <span class="dica-edu">🛑 Assistente de Stop
+                <span class="dica-texto" style="width: 400px; font-weight: normal; text-transform: none;">
+                    O stop é o preço a que decides <b>antes</b> sair se a operação correr mal. Um bom stop responde a três perguntas, por esta ordem:
+                    <b>1.</b> onde é que a ideia deixa de fazer sentido? <b>2.</b> quanto é que este ativo oscila normalmente (para o stop não ficar dentro do «ruído»)? <b>3.</b> quanto dinheiro aceito perder?
+                    Primeiro decide-se o stop; depois calcula-se quantas ações comprar para que a perda fique dentro do que aceitas — nunca o contrário.
+                    O preço de entrada, o capital e as quantidades ficam só neste browser.
+                </span>
+            </span>
+        </h3>
+        <p style="color:#8b949e; font-size:12px; margin:0 0 12px">Calcula um stop com base na volatilidade do ativo, o tamanho da posição e avisa quando o ativo está «esticado» depois de uma subida forte.</p>
+        <div class="stop-niveis">
+            <button class="stop-nivel ativo" data-nivel="1">1 · Simples</button>
+            <button class="stop-nivel" data-nivel="2" disabled title="Em breve">2 · Comparar métodos <small>em breve</small></button>
+            <button class="stop-nivel" data-nivel="3" disabled title="Em breve">3 · Avançado <small>em breve</small></button>
+        </div>
+        <div class="stop-form">
+            <label class="sim-campo"><span>Ticker</span><input id="stop-ticker" class="input-moderno" placeholder="Ex.: AAPL, EDP.LS, BTC-USD" style="text-transform:uppercase"></label>
+            <label class="sim-campo"><span class="dica-edu">Situação<span class="dica-texto" style="width:260px; left:0; transform:none">«Vou comprar»: calcula o stop e quantas ações comprar. «Já tenho»: calcula um stop para proteger a posição (e o ganho, se houver).</span></span>
+                <select id="stop-situacao" class="input-moderno"><option value="comprar">Vou comprar</option><option value="tenho">Já tenho a ação</option></select></label>
+            <label class="sim-campo"><span class="dica-edu" id="stop-lbl-entrada">Preço de entrada<span class="dica-texto" style="width:240px; left:0; transform:none">Deixa vazio para usar a cotação mais recente. Na moeda do ativo (USD nas ações americanas).</span></span><input id="stop-entrada" type="number" step="0.0001" class="input-moderno" placeholder="cotação atual"></label>
+            <label class="sim-campo stop-so-comprar"><span class="dica-edu">Capital da carteira (€)<span class="dica-texto" style="width:240px; left:0; transform:none">O total que tens para investir. Serve para calcular quanto arriscas em euros e quantas ações comprar.</span></span><input id="stop-capital" type="number" step="100" min="0" class="input-moderno" placeholder="Ex.: 10000"></label>
+            <label class="sim-campo stop-so-tenho" style="display:none"><span>Quantidade que tens</span><input id="stop-qtd" type="number" step="any" min="0" class="input-moderno" placeholder="Ex.: 20"></label>
+            <label class="sim-campo stop-so-comprar"><span class="dica-edu">Risco por operação<span class="dica-texto" style="width:270px; left:0; transform:none">Quanto do capital aceitas perder <b>se o stop for tocado</b>. Os profissionais costumam ficar entre 0,5% e 2%: assim, mesmo 10 perdas seguidas não destroem a carteira.</span></span>
+                <select id="stop-risco" class="input-moderno"><option value="0.5">0,5% (prudente)</option><option value="1" selected>1% (habitual)</option><option value="2">2% (máximo recomendado)</option></select></label>
+            <label class="sim-campo"><span class="dica-edu">Horizonte<span class="dica-texto" style="width:280px; left:0; transform:none">Quanto tempo pensas ficar. Quanto mais longo, mais espaço o stop precisa para aguentar as oscilações normais: dias = 1,5× o ATR, semanas = 2×, meses = 3×.</span></span>
+                <select id="stop-horizonte" class="input-moderno"><option value="1.5|10">Poucos dias</option><option value="2|30" selected>Algumas semanas</option><option value="3|90">Meses</option></select></label>
+            <button class="btn-moderno" style="background:#f85149; color:#fff; align-self:flex-end" onclick="stopCalcular()">Calcular stop</button>
+        </div>
+        <div id="stop-resultado" style="margin-top:16px"></div>
+        <div style="font-size:10.5px; color:#6e7681; margin-top:10px">Conteúdo educativo, não é recomendação de investimento. Operações de compra (long). Um stop não garante o preço de saída: em saltos de abertura (resultados, notícias) a venda pode sair abaixo do stop.</div>
+    </div>
+</div>
+
 <div id="tab-diario" class="tab-content">
     
     <!-- DASHBOARD DE PERFORMANCE -->
@@ -8231,6 +8289,168 @@ function renderizarCalendarioDiario() {
             locale: 'br', symbolUrl: '', colorTheme: 'dark', hasTopBar: false, isDataSetEnabled: false, isZoomEnabled: true,
             hasSymbolTooltip: true, isMonoSize: false, width: '100%', height: '100%'
         });
+    }
+
+    // =========================================================
+    // 🛑 ASSISTENTE DE STOP — nível 1 (contas 100% no browser; o servidor só dá os indicadores)
+    // =========================================================
+    let stopDados = null;
+    document.addEventListener('DOMContentLoaded', () => {
+        const sit = document.getElementById('stop-situacao');
+        if (!sit) return;
+        sit.addEventListener('change', () => {
+            const tenho = sit.value === 'tenho';
+            document.querySelectorAll('.stop-so-comprar').forEach(e => e.style.display = tenho ? 'none' : '');
+            document.querySelectorAll('.stop-so-tenho').forEach(e => e.style.display = tenho ? '' : 'none');
+            document.getElementById('stop-lbl-entrada').firstChild.textContent = tenho ? 'Preço de compra' : 'Preço de entrada';
+            if (stopDados) stopMostrar();
+        });
+        ['stop-entrada', 'stop-capital', 'stop-qtd', 'stop-risco', 'stop-horizonte'].forEach(id =>
+            document.getElementById(id).addEventListener('change', () => { if (stopDados) stopMostrar(); }));
+        document.getElementById('stop-ticker').addEventListener('keydown', e => { if (e.key === 'Enter') stopCalcular(); });
+        try { const c = localStorage.getItem('stopCapital'); if (c) document.getElementById('stop-capital').value = c; } catch (e) { }
+    });
+
+    async function stopCalcular() {
+        const t = document.getElementById('stop-ticker').value.trim().toUpperCase();
+        const caixa = document.getElementById('stop-resultado');
+        if (!t) { caixa.innerHTML = '<div class="stop-aviso info">Indica um ticker (ex.: AAPL, EDP.LS, BTC-USD).</div>'; return; }
+        caixa.innerHTML = '<div style="color:#e3b341; font-size:12px; font-weight:bold">📡 A calcular a volatilidade e os suportes de ' + t + '…</div>';
+        try {
+            const r = await fetch('/api/stop/' + encodeURIComponent(t));
+            const j = await r.json().catch(() => ({}));
+            if (!r.ok || j.erro) throw new Error(j.erro || ('Erro ' + r.status));
+            stopDados = j;
+            stopDados.fx = 1;
+            if (j.moeda && j.moeda !== 'EUR') {
+                try {
+                    const hoje = new Date().toISOString().slice(0, 10);
+                    const f = await (await fetch(`/api/cambio/${hoje}?moeda=${encodeURIComponent(j.moeda === 'GBp' ? 'GBP' : j.moeda)}`)).json();
+                    if (f.cambio) stopDados.fx = j.moeda === 'GBp' ? f.cambio * 100 : f.cambio;
+                } catch (e) { stopDados.fx = null; }
+            }
+            stopMostrar();
+        } catch (e) {
+            caixa.innerHTML = `<div class="stop-aviso forte">⚠️ ${e.message}</div>`;
+        }
+    }
+
+    function stopFmt(v, casas) {
+        if (v === null || v === undefined || isNaN(v)) return '—';
+        casas = casas ?? (Math.abs(v) >= 100 ? 2 : Math.abs(v) >= 1 ? 2 : 4);
+        return v.toLocaleString('pt-PT', { minimumFractionDigits: casas, maximumFractionDigits: casas });
+    }
+
+    function stopMostrar() {
+        const d = stopDados, caixa = document.getElementById('stop-resultado');
+        const tenho = document.getElementById('stop-situacao').value === 'tenho';
+        const entradaInput = parseFloat(document.getElementById('stop-entrada').value);
+        const entrada = entradaInput > 0 ? entradaInput : d.preco;
+        const [mult, dias] = document.getElementById('stop-horizonte').value.split('|').map(Number);
+        const moeda = d.moeda ? (d.moeda === 'GBp' ? 'GBp' : d.moeda) : '';
+        const m = v => `${stopFmt(v)} ${moeda}`;
+        const eur = v => `€${stopFmt(v, 2)}`;
+        const atr = d.atr;
+
+        // Stop pela volatilidade: abaixo do preço de referência (entrada, ou cotação atual se já tens a ação)
+        const ref = tenho ? Math.max(d.preco, 0) : entrada;
+        let stop = ref - mult * atr;
+        const suporteProx = (d.suportes || []).find(s => s.preco < ref);
+        // Stop de proteção para ativos esticados: perto (mínimo da sessão anterior ou 1,5 ATR, o mais alto)
+        // logo abaixo do mínimo da sessão anterior; se esse mínimo estiver longe (mais de 2,5 ATR) ou acima do preço, 1,5 ATR abaixo do preço
+        let protetor = (d.min_anterior || 0) - 0.1 * atr, protetorPeloMinimo = true;
+        if (!(protetor < d.preco) || d.preco - protetor > 2.5 * atr) { protetor = d.preco - 1.5 * atr; protetorPeloMinimo = false; }
+        const est = d.esticado || {};
+        const usarProtetor = tenho && est.ativo && protetor > stop;
+        if (usarProtetor) stop = protetor;
+        stop = Math.max(stop, 0);
+        const distPct = (ref - stop) / ref * 100;
+
+        let h = `<div style="font-size:13px; color:#8b949e; margin-bottom:10px">${d.nome ? `<b style="color:#e6edf3">${d.nome}</b> · ` : ''}${d.ticker} · última cotação ${m(d.preco)} (${d.data.slice(8, 10)}/${d.data.slice(5, 7)}) · RSI ${stopFmt(d.rsi, 0)} · oscilação média diária (ATR) ${m(atr)} = ${stopFmt(d.atr_pct, 1)}%</div>`;
+        h += '<div class="stop-cartoes">';
+        h += `<div class="stop-cartao" style="border-color:rgba(248,81,73,.5)"><h4>${usarProtetor ? '🛡️ Stop de proteção sugerido' : '🛑 Stop sugerido'}</h4>
+            <div class="stop-grande">${m(stop)}</div>
+            <div style="font-size:13px; color:#c9d1d9; margin-top:6px">${stopFmt(distPct, 1)}% abaixo ${tenho ? 'da cotação atual' : 'da entrada'}.
+            ${usarProtetor ? (protetorPeloMinimo ? `Fica logo abaixo do mínimo da sessão anterior (${m(d.min_anterior)}): perto, para proteger a subida — ver o aviso de ativo esticado.` : `Fica 1,5× a oscilação média diária abaixo da cotação: perto, para proteger a subida — ver o aviso de ativo esticado.`)
+                : `É ${stopFmt(mult, 1).replace(',0', '')}× a oscilação média diária: fora do «ruído» normal para um horizonte de ${dias <= 10 ? 'poucos dias' : dias <= 30 ? 'algumas semanas' : 'meses'}.`}</div>
+            ${suporteProx && !usarProtetor ? `<div style="font-size:12px; color:#8b949e; margin-top:8px">📉 Suporte mais próximo: ${m(suporteProx.preco)} (${suporteProx.data.slice(8, 10)}/${suporteProx.data.slice(5, 7)}). ${suporteProx.preco > stop ? `Está <b>acima</b> do stop: se o preço o perder, a ideia enfraquece. Um stop logo abaixo dele, em ${m(suporteProx.preco - 0.25 * atr)}, é uma alternativa mais apertada.` : `Está abaixo do stop: o stop sai antes de o suporte ser testado.`}</div>` : ''}
+        </div>`;
+
+        if (!tenho) {
+            const capital = parseFloat(document.getElementById('stop-capital').value);
+            const riscoPct = parseFloat(document.getElementById('stop-risco').value);
+            try { if (capital > 0) localStorage.setItem('stopCapital', capital); } catch (e) { }
+            if (capital > 0 && d.fx) {
+                const riscoEUR = capital * riscoPct / 100;
+                const riscoAcao = entrada - stop;
+                let qtd = riscoAcao > 0 ? Math.floor(riscoEUR * d.fx / riscoAcao) : 0;
+                const cripto = /-(USD|EUR|USDT)$/.test(d.ticker);
+                if (cripto) qtd = riscoAcao > 0 ? Math.floor(riscoEUR * d.fx / riscoAcao * 10000) / 10000 : 0;
+                let limitado = false;
+                if (qtd * entrada / d.fx > capital) { qtd = cripto ? Math.floor(capital * d.fx / entrada * 10000) / 10000 : Math.floor(capital * d.fx / entrada); limitado = true; }
+                const investido = qtd * entrada / d.fx, perda = qtd * riscoAcao / d.fx;
+                h += `<div class="stop-cartao"><h4>📏 Tamanho da posição</h4>
+                    <div class="stop-grande">${stopFmt(qtd, cripto ? 4 : 0)} <span style="font-size:14px; color:#8b949e">${cripto ? 'unidades' : 'ações'}</span></div>
+                    <div class="stop-linha"><span>Valor investido</span><b>${eur(investido)} (${stopFmt(investido / capital * 100, 1)}% do capital)</b></div>
+                    <div class="stop-linha"><span>Perda se o stop for tocado</span><b style="color:#f85149">−${eur(perda)} (${stopFmt(perda / capital * 100, 2)}%)</b></div>
+                    <div class="stop-linha"><span>Risco por ${cripto ? 'unidade' : 'ação'}</span><b>${m(riscoAcao)}</b></div>
+                    ${limitado ? `<div style="font-size:12px; color:#e3b341; margin-top:6px">O stop está perto: para arriscar ${riscoPct}% terias de investir mais do que o capital. A posição foi limitada ao capital disponível.</div>` : ''}
+                    ${qtd === 0 ? `<div style="font-size:12px; color:#e3b341; margin-top:6px">Com este capital e este risco não chega para 1 ação. Experimenta um risco maior ou um ativo mais barato.</div>` : ''}
+                    ${moeda && moeda !== 'EUR' ? `<div style="font-size:11px; color:#6e7681; margin-top:6px">Convertido ao câmbio de hoje (1 € = ${stopFmt(d.fx, 4)} ${moeda}).</div>` : ''}
+                </div>`;
+            } else {
+                h += `<div class="stop-cartao"><h4>📏 Tamanho da posição</h4><div style="font-size:13px; color:#8b949e">${d.fx ? 'Indica o capital da carteira para saber quantas ações comprar e quanto arriscas em euros.' : 'Não foi possível obter o câmbio para converter para euros.'}</div></div>`;
+            }
+        } else {
+            const qtd = parseFloat(document.getElementById('stop-qtd').value);
+            const ganhoAtual = (d.preco - entrada) / entrada * 100;
+            const noStop = (stop - entrada) / entrada * 100;
+            h += `<div class="stop-cartao"><h4>📊 A tua posição</h4>
+                <div class="stop-linha"><span>Ganho atual</span><b style="color:${ganhoAtual >= 0 ? '#3fb950' : '#f85149'}">${ganhoAtual >= 0 ? '+' : ''}${stopFmt(ganhoAtual, 1)}%</b></div>
+                <div class="stop-linha"><span>Se o stop for tocado</span><b style="color:${noStop >= 0 ? '#3fb950' : '#f85149'}">${noStop >= 0 ? 'ainda ficas com +' : ''}${stopFmt(noStop, 1)}% ${noStop >= 0 ? 'de ganho' : 'de perda'}</b></div>
+                ${qtd > 0 && d.fx ? `<div class="stop-linha"><span>Em euros, se a venda sair no stop</span><b style="color:${noStop >= 0 ? '#3fb950' : '#f85149'}">${noStop >= 0 ? '+' : '−'}${eur(Math.abs(qtd * (stop - entrada) / d.fx))}</b></div>` : ''}
+                ${ganhoAtual > 0 && noStop < 0 ? `<div style="font-size:12px; color:#8b949e; margin-top:6px">Quando o ganho chegar a cerca de 1× o risco, muitos traders sobem o stop para o preço de compra (${m(entrada)}): a partir daí a operação já não pode dar prejuízo.</div>` : ''}
+            </div>`;
+        }
+        h += '</div>';
+
+        // Ativo esticado
+        if (est.ativo) {
+            const ema10 = d.ema10, ema20 = d.ema20;
+            h += `<div class="stop-aviso esticado${est.forte ? ' forte' : ''}">
+                <b>${est.forte ? '🔥 Ativo muito esticado' : '⚠️ Ativo esticado'}${est.ressalto_pos_queda ? ' — ressalto forte depois de uma queda grande' : ''}</b><br>
+                RSI ${stopFmt(d.rsi, 0)}${est.sinais.length ? ' · ' + est.sinais.join(' · ') : ''}${est.ressalto_pos_queda ? ` · tinha caído ${stopFmt(Math.abs(d.queda_previa_pct), 0)}% antes do mínimo de ${d.minimo20_data.slice(8, 10)}/${d.minimo20_data.slice(5, 7)}` : ''}.<br>
+                ${tenho
+                    ? `O ganho pode desaparecer depressa: estas subidas acabam muitas vezes de forma brusca. Em vez de um stop longe, usa um <b>stop de proteção perto</b> — abaixo do mínimo da sessão anterior (${m(d.min_anterior)}) ou da EMA 10 (${m(ema10)}) — e <b>sobe-o todos os dias</b>, nunca o desças. Outra opção é realizar parte do ganho (por exemplo metade) e deixar o resto com o stop a subir.`
+                    : `Entrar agora é arriscado: o preço está muito acima das médias e, quando a subida parar, uma correção normal pode levá-lo de volta até elas — a EMA 20 está em ${m(ema20)} (${stopFmt((ema20 / d.preco - 1) * 100, 1)}%), bem abaixo do stop. Alternativas: <b>esperar por um recuo</b> para perto da EMA 10 (${m(ema10)}) ou da EMA 20, ou entrar com metade da posição e um stop de proteção em ${m(protetor)}.`}
+                <div style="font-size:12px; color:#8b949e; margin-top:6px">O RSI alto, sozinho, não é sinal de venda: em recuperações fortes pode ficar acima de 70 durante semanas. O que este aviso diz é que o risco de uma correção brusca é maior do que o normal.</div>
+            </div>`;
+        } else if (d.rsi >= 70) {
+            h += `<div class="stop-aviso info">RSI ${stopFmt(d.rsi, 0)}: em zona de sobrecompra, mas sem sinais de subida exagerada (poucas sessões seguidas a subir e preço perto das médias).</div>`;
+        }
+
+        // Resultados antes do fim do horizonte
+        if (d.resultados) {
+            const faltam = Math.round((new Date(d.resultados) - new Date()) / 86400000);
+            if (faltam >= 0 && faltam <= dias) h += `<div class="stop-aviso forte" style="background:rgba(248,81,73,.06); border:1px solid rgba(248,81,73,.45)">📅 <b>Resultados em ${d.resultados.slice(8, 10)}/${d.resultados.slice(5, 7)}</b> (daqui a ${faltam} dia${faltam === 1 ? '' : 's'}), dentro do teu horizonte. No dia dos resultados a ação pode abrir muito abaixo do stop, e a venda sai a esse preço. Muitos traders reduzem a posição antes.</div>`;
+        }
+
+        h += `<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px">
+            <button class="btn-moderno btn-azul" style="padding:9px 14px; font-size:12px" onclick="stopCriarAlerta(${stop.toFixed(6)})">🔔 Criar alerta de stop na Central de Alertas</button>
+        </div>
+        <div style="font-size:11px; color:#6e7681; margin-top:6px">O alerta avisa-te quando o fecho ficar abaixo do stop. Não substitui uma ordem stop real na corretora.</div>`;
+        caixa.innerHTML = h;
+    }
+
+    function stopCriarAlerta(preco) {
+        if (!stopDados || typeof calLerPrecos !== 'function') return;
+        const lista = calLerPrecos();
+        if (lista.length >= 50) { alert('⚠️ Máximo de 50 alertas de preço.'); return; }
+        const p = Math.round(preco * 10000) / 10000;
+        lista.push({ id: Date.now(), ticker: stopDados.ticker, cond: 'abaixo', preco: p, nota: 'Stop (Assistente de Stop)', ativo: true });
+        calGravarPrecos(lista);
+        if (typeof calVerificar === 'function') calVerificar(true);
+        alert(`✅ Alerta criado: ${stopDados.ticker} com fecho igual ou abaixo de ${stopFmt(p)}.`);
     }
 
     // =========================================================
