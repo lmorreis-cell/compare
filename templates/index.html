@@ -1958,9 +1958,9 @@
         </h3>
         <p style="color:#8b949e; font-size:12px; margin:0 0 12px">Calcula um stop com base na volatilidade do ativo, o tamanho da posição e avisa quando o ativo está «esticado» depois de uma subida forte.</p>
         <div class="stop-niveis">
-            <button class="stop-nivel ativo" data-nivel="1" title="Stop sugerido, tamanho da posição e as várias opções">1 · Simples</button>
-            <button class="stop-nivel" data-nivel="2" title="Acrescenta o gráfico com os níveis de stop desenhados por cima do preço">2 · Gráfico</button>
-            <button class="stop-nivel" data-nivel="3" title="Acrescenta como cada método teria funcionado em situações parecidas do passado">3 · Histórico</button>
+            <button class="stop-nivel ativo" data-nivel="1" title="Stop sugerido, tamanho da posição e a tabela com as várias opções">1 · Simples</button>
+            <button class="stop-nivel" data-nivel="2" title="Troca a tabela de opções pelo gráfico com os níveis de stop desenhados por cima do preço">2 · Gráfico</button>
+            <button class="stop-nivel" data-nivel="3" title="Troca a tabela de opções por como cada método teria funcionado em situações parecidas do passado">3 · Histórico</button>
         </div>
         <div class="stop-form">
             <label class="sim-campo"><span>Ticker</span><input id="stop-ticker" class="input-moderno" placeholder="Ex.: AAPL, EDP.LS, BTC-USD" style="text-transform:uppercase"></label>
@@ -8418,8 +8418,13 @@ function renderizarCalendarioDiario() {
         }
         h += '</div>';
 
-        // Várias opções de stop, lado a lado
-        h += stopTabelaOpcoes(d, { tenho, entrada, mult, dias, sugerido: stop, moeda: m, eur });
+        // Zona de detalhe: muda com o nível (1 tabela de opções, 2 gráfico, 3 histórico)
+        const nivel = stopNivel();
+        if (nivel === 2) h += `<div class="stop-cartao" style="margin-top:12px"><h4>📈 As opções de stop no gráfico</h4><div id="stop-grafico" style="height:520px"></div>
+            <div id="stop-grafico-fora" style="font-size:11.5px; color:#8b949e"></div>
+            <div style="font-size:11.5px; color:#8b949e; margin-top:6px">Linhas tracejadas = opções de stop (laranja apertado, verde equilibrado, azul largo; a ⭐ mais grossa é a sugestão); a linha amarela é ${tenho ? 'o preço de compra' : 'a entrada'}. O gráfico está ampliado na zona dos stops. Vê se o stop fica abaixo de fundos anteriores ou no meio das oscilações normais. Para criar um alerta de um nível específico, usa o nível 1.</div></div>`;
+        else if (nivel === 3) h += stopHistorico(d, { tenho, entrada, mult, dias });
+        else h += stopTabelaOpcoes(d, { tenho, entrada, mult, dias, sugerido: stop, moeda: m, eur });
 
         // Ativo esticado
         if (est.ativo) {
@@ -8446,13 +8451,8 @@ function renderizarCalendarioDiario() {
             <button class="btn-moderno btn-azul" style="padding:9px 14px; font-size:12px" onclick="stopCriarAlerta(${stop.toFixed(6)})">🔔 Criar alerta de stop na Central de Alertas</button>
         </div>
         <div style="font-size:11px; color:#6e7681; margin-top:6px">O alerta avisa-te quando o fecho ficar abaixo do stop. Não substitui uma ordem stop real na corretora.</div>`;
-        // Níveis 2 e 3: gráfico e histórico
-        const nivel = stopNivel();
-        if (nivel >= 2) h += `<div class="stop-cartao" style="margin-top:12px"><h4>📈 Os níveis no gráfico (últimos 6 meses)</h4><div id="stop-grafico" style="height:420px"></div>
-            <div style="font-size:11.5px; color:#8b949e; margin-top:6px">Linhas tracejadas = opções de stop (laranja apertado, verde equilibrado, azul largo; a ⭐ mais grossa é a sugestão); a linha amarela é ${tenho ? 'o preço de compra' : 'a entrada'}. Vê se o stop fica abaixo de fundos anteriores ou no meio das oscilações normais.</div></div>`;
-        if (nivel >= 3) h += stopHistorico(d, { tenho, entrada, mult, dias });
         caixa.innerHTML = h;
-        if (nivel >= 2) stopDesenharGrafico(d, { tenho, entrada, mult, sugerido: stop });
+        if (nivel === 2) stopDesenharGrafico(d, { tenho, entrada, mult, sugerido: stop });
     }
 
     function stopNivel() {
@@ -8466,31 +8466,58 @@ function renderizarCalendarioDiario() {
     });
 
     function stopDesenharGrafico(d, o) {
-        if (typeof Plotly === 'undefined' || !d.velas || !document.getElementById('stop-grafico')) return;
-        const v = d.velas, ini = Math.max(0, v.c.length - 126);
-        const x = v.d.slice(ini);
-        const ops = stopOpcoes(d, o.entrada, o.mult, o.tenho);
-        const traces = [{
-            type: 'candlestick', x, open: (v.o || v.c).slice(ini), high: v.h.slice(ini), low: v.l.slice(ini), close: v.c.slice(ini),
-            name: d.ticker, increasing: { line: { color: '#3fb950' } }, decreasing: { line: { color: '#f85149' } }, showlegend: false
-        }];
-        const formas = [], anotacoes = [];
-        const linha = (y, cor, texto, larg, traco) => {
-            formas.push({ type: 'line', xref: 'paper', x0: 0, x1: 1, y0: y, y1: y, line: { color: cor, width: larg, dash: traco } });
-            anotacoes.push({ xref: 'paper', x: 1, xanchor: 'left', y, text: texto, showarrow: false, font: { size: 10, color: cor } });
-        };
-        ops.forEach(op => {
-            const distAtr = ((o.tenho ? d.preco : o.entrada) - op.preco) / d.atr;
-            const cor = distAtr < 1.25 ? '#f0883e' : distAtr <= 2.5 ? '#3fb950' : '#58a6ff';
-            const eSug = Math.abs(op.preco - o.sugerido) < 0.15 * d.atr;
-            linha(op.preco, cor, `${eSug ? '⭐ ' : ''}${op.nome.replace(/\s*\(.*\)/, '')} ${stopFmt(op.preco)}`, eSug ? 2.4 : 1.1, 'dash');
+        const el = document.getElementById('stop-grafico');
+        if (typeof Plotly === 'undefined' || !d.velas || !el) return;
+        const v = d.velas, SESS = 90, ini = Math.max(0, v.c.length - SESS);
+        const sl = a => (a || v.c).slice(ini);
+        const x = v.d.slice(ini).map(s => `${s.slice(8, 10)}/${s.slice(5, 7)}`);
+        const L = sl(v.l), H = sl(v.h), atr = d.atr;
+        const refPreco = o.tenho ? d.preco : o.entrada;
+        // Níveis a desenhar: opções + compra/entrada
+        const niveis = stopOpcoes(d, o.entrada, o.mult, o.tenho).map(op => {
+            const distAtr = (refPreco - op.preco) / atr;
+            const eSug = Math.abs(op.preco - o.sugerido) < 0.15 * atr;
+            return { y: op.preco, cor: distAtr < 1.25 ? '#f0883e' : distAtr <= 2.5 ? '#3fb950' : '#58a6ff', sug: eSug,
+                     txt: `${eSug ? '⭐ ' : ''}${op.nome.replace(/\s*\(.*\)/, '')} ${stopFmt(op.preco)}`, larg: eSug ? 3 : 1.4, traco: 'dash' };
         });
-        linha(o.entrada, '#e3b341', `${o.tenho ? 'Compra' : 'Entrada'} ${stopFmt(o.entrada)}`, 1.5, 'solid');
-        Plotly.newPlot('stop-grafico', traces, {
+        const jaTem = niveis.find(n => Math.abs(n.y - o.entrada) < 0.05 * atr);
+        if (jaTem) Object.assign(jaTem, { cor: '#e3b341', traco: 'solid', larg: Math.max(jaTem.larg, 2) });
+        else niveis.push({ y: o.entrada, cor: '#e3b341', txt: `${o.tenho ? 'Compra' : 'Entrada'} ${stopFmt(o.entrada)}`, larg: 2, traco: 'solid' });
+        // Zoom na zona útil: últimas ~30 sessões + níveis até 5 ATR abaixo do preço
+        const recL = Math.min(...L.slice(-30)), recH = Math.max(...H.slice(-30));
+        const visiveis = niveis.filter(n => n.y >= d.preco - 5 * atr || n.y >= recL);
+        const fora = niveis.filter(n => !visiveis.includes(n));
+        let lo = Math.min(recL, ...visiveis.map(n => n.y)) - 0.6 * atr, hi = Math.max(recH, d.preco) + 0.6 * atr;
+        // Etiquetas sem sobreposição: afastadas pelo menos ~4,2% da altura
+        const gap = (hi - lo) * 0.042;
+        const ord = [...visiveis].sort((a, b) => b.y - a.y);
+        let prev = Infinity;
+        ord.forEach(n => { n.yl = Math.min(n.y, prev - gap); prev = n.yl; });
+        const minYl = Math.min(...ord.map(n => n.yl));
+        if (minYl < lo) lo = minYl - gap / 2;
+        const formas = [], anot = [];
+        ord.forEach(n => {
+            formas.push({ type: 'line', xref: 'paper', x0: 0, x1: 1, y0: n.y, y1: n.y, line: { color: n.cor, width: n.larg, dash: n.traco } });
+            if (Math.abs(n.yl - n.y) > 1e-9) formas.push({ type: 'line', xref: 'paper', x0: 1, x1: 1.012, y0: n.y, y1: n.yl, line: { color: n.cor, width: 1 } });
+            anot.push({ xref: 'paper', x: 1.014, xanchor: 'left', y: n.yl, yanchor: 'middle', text: n.sug ? `<b>${n.txt}</b>` : n.txt, showarrow: false,
+                        font: { size: 11.5, color: n.cor }, bgcolor: 'rgba(13,17,23,.85)' });
+        });
+        // Preço atual
+        anot.push({ xref: 'paper', x: 0.01, xanchor: 'left', y: d.preco, yanchor: 'bottom', text: `Agora ${stopFmt(d.preco)}`, showarrow: false, font: { size: 11, color: '#e6edf3' } });
+        const traces = [{
+            type: 'candlestick', x, open: sl(v.o), high: H, low: L, close: sl(v.c), name: d.ticker, showlegend: false,
+            increasing: { line: { color: '#3fb950', width: 1 }, fillcolor: '#3fb950' }, decreasing: { line: { color: '#f85149', width: 1 }, fillcolor: '#f85149' }
+        }];
+        const estreito = el.clientWidth < 600;
+        Plotly.newPlot(el, traces, {
             paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: { color: '#8b949e', size: 11 },
-            margin: { l: 50, r: 200, t: 10, b: 30 }, xaxis: { rangeslider: { visible: false }, gridcolor: '#21262d', type: 'category', nticks: 8 },
-            yaxis: { gridcolor: '#21262d' }, shapes: formas, annotations: anotacoes
-        }, { responsive: true, displayModeBar: false });
+            margin: { l: 45, r: estreito ? 150 : 250, t: 10, b: 35 },
+            xaxis: { rangeslider: { visible: false }, gridcolor: '#21262d', type: 'category', nticks: estreito ? 5 : 9, tickangle: 0 },
+            yaxis: { gridcolor: '#21262d', range: [lo, hi], side: 'left' },
+            shapes: formas, annotations: anot, dragmode: 'pan'
+        }, { responsive: true, displayModeBar: false, scrollZoom: false });
+        const f = document.getElementById('stop-grafico-fora');
+        if (f) f.innerHTML = fora.length ? `Fora do gráfico (muito abaixo do preço): ${fora.map(n => `<span style="color:${n.cor}">${n.txt}</span>`).join(' · ')}` : '';
     }
 
     // ---------- Nível 3: como cada método teria funcionado em situações parecidas do passado ----------
