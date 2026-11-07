@@ -2577,6 +2577,9 @@ novidades.registar(app, requer_cargo=requer_cargo, e_admin=_e_admin)
 # Aviso no Discord na véspera dos grandes eventos macro (envio pelo agendador)
 import macro_vespera
 macro_vespera.registar(app, e_admin=_e_admin)
+# Assistente de Stop do terminal (só Patrocinadores): dados técnicos; as contas ficam no browser
+import stop_assistente
+stop_assistente.registar(app, requer_cargo=requer_cargo, cache=cache)
 
 
 # ==========================================
